@@ -1,0 +1,110 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "小爱弥斯.moc3",
+		"Textures": [
+			"小爱弥斯.4096/texture_00.png",
+			"小爱弥斯.4096/texture_01.png"
+		],
+		"Physics": "小爱弥斯.physics3.json",
+		"DisplayInfo": "小爱弥斯.cdi3.json",
+		"Motions": {
+			"Idle": [
+				{ "File": "动画/长动画/待机.motion3.json", "FadeInTime": 1.0, "FadeOutTime": 1.0 }
+			],
+			"Expression": [
+				{ "File": "动画/表情/wink.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/呆.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/点头.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/黑化.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/横眼嘟嘴.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/惊讶.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/可怜.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/哭.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/脸红.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/笑.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/笑2.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/笑3.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/表情/摇头.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 }
+			],
+			"TapShort": [
+				{ "File": "动画/短动画/戳脸.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/戳右边海豹.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/戳右边头.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/戳右猫耳.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/戳右眼睛.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/戳左边海豹.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/戳左边头.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/戳左猫耳.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/戳左眼睛.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/脚往右.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/跳一下.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/左手 拿剑.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 },
+				{ "File": "动画/短动画/左手 拿剑 取消.motion3.json", "FadeInTime": 0.3, "FadeOutTime": 0.5 }
+			],
+			"TapLong": [
+				{ "File": "动画/长动画/抱抱.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 1.0 },
+				{ "File": "动画/长动画/抱猫蹭.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 1.0 },
+				{ "File": "动画/长动画/抱猫蹭 -取消.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 1.0 },
+				{ "File": "动画/长动画/发呆.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 1.0 },
+				{ "File": "动画/长动画/剪刀手.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 1.0 },
+				{ "File": "动画/长动画/困.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 1.0 },
+				{ "File": "动画/长动画/食指.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 1.0 },
+				{ "File": "动画/长动画/捂嘴笑.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 1.0 },
+				{ "File": "动画/长动画/纸飞机.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 1.0 }
+			],
+			"Other": [
+				{ "File": "动画/其他/翅膀.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/其他/翅膀入场.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/其他/翅膀消失.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/其他/猫耳.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/其他/猫耳消失.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 },
+				{ "File": "动画/其他/晕.motion3.json", "FadeInTime": 0.5, "FadeOutTime": 0.5 }
+			]
+		},
+		"Expressions": [
+			{ "Name": "happy", "File": "表情-》《.exp3.json" },
+			{ "Name": "blank", "File": "表情-呆.exp3.json" },
+			{ "Name": "dizzy", "File": "表情-豆豆眼.exp3.json" },
+			{ "Name": "dark", "File": "表情-黑化.exp3.json" },
+			{ "Name": "pout", "File": "表情-横眼.exp3.json" },
+			{ "Name": "pitiful", "File": "表情-可怜.exp3.json" },
+			{ "Name": "cry", "File": "表情-哭.exp3.json" },
+			{ "Name": "blush", "File": "表情-脸红.exp3.json" },
+			{ "Name": "angry", "File": "表情-生气.exp3.json" },
+			{ "Name": "dazed", "File": "表情-晕.exp3.json" },
+			{ "Name": "wing", "File": "其他-翅膀.exp3.json" },
+			{ "Name": "seal", "File": "其他-海豹.exp3.json" },
+			{ "Name": "sword", "File": "其他-剑.exp3.json" },
+			{ "Name": "catear", "File": "其他-猫耳.exp3.json" },
+			{ "Name": "hug", "File": "手-抱抱.exp3.json" },
+			{ "Name": "cathug", "File": "手-抱猫.exp3.json" },
+			{ "Name": "scissors", "File": "手-剪刀手.exp3.json" },
+			{ "Name": "point", "File": "手-食指.exp3.json" },
+			{ "Name": "pad", "File": "手-手柄.exp3.json" },
+			{ "Name": "cover", "File": "手-捂嘴.exp3.json" },
+			{ "Name": "paperplane", "File": "手-纸飞机.exp3.json" },
+			{ "Name": "wave", "File": "嘴-波浪嘴.exp3.json" },
+			{ "Name": "grin", "File": "嘴-呲牙.exp3.json" },
+			{ "Name": "pucker", "File": "嘴-嘟嘴.exp3.json" },
+			{ "Name": "puff", "File": "嘴-鼓嘴.exp3.json" },
+			{ "Name": "tongue", "File": "嘴-吐舌.exp3.json" },
+			{ "Name": "bite", "File": "嘴-咬嘴.exp3.json" }
+		]
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": [
+				"ParamEyeROpen",
+				"ParamEyeLOpen"
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		}
+	]
+}

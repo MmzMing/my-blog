@@ -1,0 +1,31 @@
+{
+    "Type": "Live2D Expression",
+    "IsModelCustomizationExpression": false,
+    "Parameters": [
+        {
+            "Id": "Param159",
+            "Value": 10.0,
+            "Blend": "Add"
+        },
+        {
+            "Id": "ParamBrowLX",
+            "Value": -0.3095260262489319,
+            "Blend": "Add"
+        },
+        {
+            "Id": "ParamBrowLAngle",
+            "Value": -0.3338702917098999,
+            "Blend": "Add"
+        },
+        {
+            "Id": "ParamBrowLForm",
+            "Value": -0.7025206089019775,
+            "Blend": "Add"
+        },
+        {
+            "Id": "ParamMouthForm",
+            "Value": -1.2999999523162842,
+            "Blend": "Add"
+        }
+    ]
+}
