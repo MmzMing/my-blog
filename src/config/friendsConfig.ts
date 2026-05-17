@@ -113,9 +113,9 @@ export const friendsConfig: FriendLink[] = [
 	{
 		title: "xf_blog",
 		imgurl:
-			"https://github.com/lm-xiao-fen/lm-xiao-fen.github.io/blob/main/image/MEITU_20260128_220225596.jpg?raw=true",
+			"https://github.com/xfcnl/xfcnl.github.io/blob/main/image/MEITU_20260128_220225596.jpg?raw=true",
 		desc: "立志用 cloudflare workers，GitHub pages 和 vercel 做出整个互联网的up（虽然不会成功",
-		siteurl: "https://lm-xiao-fen.github.io/",
+		siteurl: "https://xfcnl.github.io/",
 		tags: ["Blog"],
 		weight: 5,
 		enabled: true,
