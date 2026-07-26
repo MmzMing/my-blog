@@ -190,7 +190,11 @@ onMount(() => {
 	} catch {}
 
 	window.addEventListener("layoutChange", handleLayoutChange);
-	if (umamiPageviews?.enabled && umamiPageviews.apiBase && umamiPageviews.shareId) {
+	if (
+		umamiPageviews?.enabled &&
+		umamiPageviews.apiBase &&
+		umamiPageviews.shareId
+	) {
 		void getUmamiPageviewLookup(umamiPageviews)
 			.then((lookup) => {
 				pageviewLookup = lookup;

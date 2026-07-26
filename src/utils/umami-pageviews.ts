@@ -44,22 +44,28 @@ function readCache<T>(key: string, ttl: number): T | null {
 
 function writeCache<T>(key: string, value: T) {
 	try {
-		getStorage()?.setItem(key, JSON.stringify({ createdAt: Date.now(), value }));
+		getStorage()?.setItem(
+			key,
+			JSON.stringify({ createdAt: Date.now(), value }),
+		);
 	} catch {}
 }
 
 export function normalizeUmamiPageviewPath(path: string): string {
 	if (!path) return "/";
 
+	let normalizedPath: string;
 	try {
 		const origin =
-			typeof window === "undefined" ? "https://example.invalid" : window.location.origin;
-		path = new URL(path, origin).pathname;
+			typeof window === "undefined"
+				? "https://example.invalid"
+				: window.location.origin;
+		normalizedPath = new URL(path, origin).pathname;
 	} catch {
-		path = path.split(/[?#]/, 1)[0] || "/";
+		normalizedPath = path.split(/[?#]/, 1)[0] || "/";
 	}
 
-	const normalized = path.replace(/\/+$/, "").toLowerCase();
+	const normalized = normalizedPath.replace(/\/+$/, "").toLowerCase();
 	return normalized || "/";
 }
 
@@ -83,7 +89,8 @@ async function fetchShare(
 	if (cached) return cached;
 
 	const response = await fetch(`${apiBase}/api/share/${shareId}`);
-	if (!response.ok) throw new Error(`Umami share request failed: ${response.status}`);
+	if (!response.ok)
+		throw new Error(`Umami share request failed: ${response.status}`);
 	const share = (await response.json()) as UmamiShareResponse;
 	writeCache(cacheKey, share);
 	return share;
@@ -95,12 +102,16 @@ async function loadUmamiPageviewLookup({
 }: UmamiPageviewOptions): Promise<Map<string, number>> {
 	const normalizedApiBase = apiBase.replace(/\/$/, "");
 	const metricsCacheKey = `${METRICS_CACHE_PREFIX}${shareId}`;
-	const cached = readCache<[string, number][]>(metricsCacheKey, METRICS_CACHE_TTL);
+	const cached = readCache<[string, number][]>(
+		metricsCacheKey,
+		METRICS_CACHE_TTL,
+	);
 	if (cached) return new Map(cached);
 
 	const share = await fetchShare(normalizedApiBase, shareId);
 	const websiteId = share.websiteId || share.entityId;
-	if (!websiteId) throw new Error("Umami share response did not include a website ID");
+	if (!websiteId)
+		throw new Error("Umami share response did not include a website ID");
 
 	const response = await fetch(
 		`${normalizedApiBase}/api/websites/${websiteId}/metrics?startAt=0&endAt=${Date.now()}&type=path&limit=1000`,
@@ -111,7 +122,8 @@ async function loadUmamiPageviewLookup({
 			},
 		},
 	);
-	if (!response.ok) throw new Error(`Umami metrics request failed: ${response.status}`);
+	if (!response.ok)
+		throw new Error(`Umami metrics request failed: ${response.status}`);
 
 	const rows = (await response.json()) as UmamiMetricRow[];
 	const lookup = buildUmamiPageviewLookup(rows);
