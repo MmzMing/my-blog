@@ -7,7 +7,7 @@ import Navbar from "@components/layout/Navbar.astro";
 import NavMenuPanel from "@components/layout/NavMenuPanel.astro";
 import CategoryBar from "@/components/layout/CategoryBar.astro";
 
-import { live2dModelConfig, navBarConfig, siteConfig } from "@/config";
+import { live2dModelConfig, navBarConfig, siteConfig, spineModelConfig } from "@/config";
 import { LinkPresets } from "@/constants/link-presets";
 import Layout from "./Layout.astro";
 
@@ -74,8 +74,8 @@ const navLinks = navBarConfig.links.map((item) => {
 
 	<div class="relative w-full" id="main-grid-wrapper">
 		<div class="mx-auto max-w-5xl px-4 md:px-6" data-sidebar-position="none" id="main-grid">
-			<div id="left-sidebar-dynamic" class="hidden transition-swup-main"></div>
-			<div id="right-sidebar-dynamic" class="hidden transition-swup-main"></div>
+			<div id="left-sidebar-dynamic" class="hidden"></div>
+			<div id="right-sidebar-dynamic" class="hidden"></div>
 
 			<main id="swup-container" class="transition-swup-main" data-current-post-category={postCategory || ""}>
 				{isPostPage && <ArticleOutlineRail />}
@@ -90,7 +90,7 @@ const navLinks = navBarConfig.links.map((item) => {
 				</div>
 			</main>
 
-			<SpineModel></SpineModel>
+			{spineModelConfig.enable && <SpineModel />}
 			{live2dModelConfig.enable && <Live2DWidget config={live2dModelConfig} />}
 		</div>
 	</div>

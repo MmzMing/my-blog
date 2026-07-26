@@ -318,6 +318,10 @@ const tags = await getTagList();
 			e.stopPropagation();
 			window.navigateToPage("/");
 		});
+		// 悬停预载首页：home 按钮是 button，Swup 悬停预载覆盖不到
+		document.getElementById("dock-home-btn")?.addEventListener("pointerenter", () => {
+			void window.swup?.preload?.("/")?.catch(() => {});
+		});
 		document.getElementById("dock-comment-btn")?.addEventListener("click", (e) => {
 			e.stopPropagation();
 			document.getElementById("post-comments")?.scrollIntoView({ behavior: "smooth", block: "start" });

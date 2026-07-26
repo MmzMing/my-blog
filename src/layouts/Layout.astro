@@ -318,7 +318,6 @@ const siteLang = lang.replace("_", "-");
 
 <script>
 	import { ArticleOutlineRailRuntime } from "@/utils/article-outline-controller";
-  import { pathsEqual } from "@/utils/url-utils";
   import { expressiveCodeConfig, siteConfig } from "@/config";
 
 	if (!window.__articleOutlineRailRuntime) {
@@ -379,24 +378,6 @@ const siteLang = lang.replace("_", "-");
   }
 
   const setup = async () => {
-    window.swup.hooks.on("link:click", (_visit: any, { el }: { el: HTMLAnchorElement }) => {
-      document.documentElement.style.setProperty("--content-delay", "0ms");
-      const targetHref = el.getAttribute("href") || "";
-      const targetPathname = (() => {
-        try {
-          return new URL(targetHref, window.location.href).pathname;
-        } catch {
-          return targetHref;
-        }
-      })();
-      const isSamePage = pathsEqual(targetPathname, window.location.pathname);
-      if (isSamePage) {
-        document.documentElement.classList.remove("is-page-transitioning");
-      } else {
-        document.documentElement.classList.add("is-page-transitioning");
-      }
-    });
-
     window.swup.hooks.on("content:replace", () => {
       scheduleContentOverflowEnhancements();
     });
@@ -417,17 +398,8 @@ const siteLang = lang.replace("_", "-");
       updateSidebarWidgetVisibility();
     });
 
-    window.swup.hooks.on("visit:start", (visit: any) => {
+    window.swup.hooks.on("visit:start", () => {
       clearAllTransitionTimeouts();
-      const targetUrl = visit?.to?.url || "";
-      const targetPathname = (() => {
-        try { return new URL(targetUrl, window.location.href).pathname; } catch { return targetUrl; }
-      })();
-      const isSamePage = pathsEqual(targetPathname, window.location.pathname);
-      if (!isSamePage) {
-        document.documentElement.classList.add("is-page-transitioning");
-      }
-
       const progressBar = document.getElementById("progress-bar");
       if (progressBar) {
         progressBar.classList.remove("finishing", "done");
@@ -469,7 +441,6 @@ const siteLang = lang.replace("_", "-");
       }
 
       transitionTimeout = setTimeout(() => {
-        document.documentElement.classList.remove("is-page-transitioning");
         // 重置 TOC 内部导航标记
         (window as any).tocInternalNavigation = false;
       }, 400);

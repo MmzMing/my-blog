@@ -379,6 +379,18 @@ if (!isHome) {
 		if (!target.closest || !target.closest("[data-breadcrumb-dropdown]")) closeAllDropdowns();
 	});
 
+	// 悬停预载：Swup 悬停预载只覆盖 <a>，下拉项是 button，需手动预取目标页
+	document.addEventListener("pointerover", function(e) {
+		var target = e.target;
+		if (!target || !target.closest) return;
+		var item = target.closest("[data-breadcrumb-dropdown-item]");
+		if (!item) return;
+		var targetUrl = item.getAttribute("href") || getCategoryNavigateUrl(item.getAttribute("data-value") || "");
+		if (targetUrl && window.swup && typeof window.swup.preload === "function") {
+			window.swup.preload(targetUrl).catch(function () {});
+		}
+	});
+
 	document.addEventListener("keydown", function(e) {
 		var target = e.target;
 		if (!target) return;

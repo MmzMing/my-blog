@@ -165,7 +165,6 @@ const articleListPosts = await Promise.all(
 			publishedIso: entry.data.published.toISOString(),
 			publishedText: dateFormatter.format(entry.data.published),
 			category,
-			categoryUrl: getCategoryUrl(rawCategory || null),
 			tags,
 			description:
 				entry.data.description ||

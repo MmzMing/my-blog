@@ -168,6 +168,10 @@ const showSpine = !!spineModelConfig?.enable;
 		window.addEventListener("theme-change", updateThemeIcon);
 
 		// ── 首页导航 ──
+		// 触摸即预载首页：移动端无 hover，touchstart 提供 ~80ms 提前量
+		document.getElementById("mobile-dock-home-btn")?.addEventListener("touchstart", () => {
+			void window.swup?.preload?.("/")?.catch(() => {});
+		}, { passive: true });
 		document.getElementById("mobile-dock-home-btn")?.addEventListener("click", (e) => {
 			e.stopPropagation();
 			const isHome = window.location.pathname === "/" || window.location.pathname === "";

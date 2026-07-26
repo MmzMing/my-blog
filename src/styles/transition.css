@@ -46,22 +46,18 @@
 }
 
 /* Swup 离开阶段：is-leaving 在 animatePageOut 时添加，content:replace 时移除 */
-html.is-leaving .transition-swup-leaving,
 html.is-leaving .transition-swup-main {
     animation: blur-fade-out 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* Swup 进入阶段：is-rendering 在 content:replace 后添加，animatePageIn 完成时移除 */
-html.is-rendering .transition-swup-leaving,
 html.is-rendering .transition-swup-main {
     animation: blur-fade-in 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* 无障碍：减少动画 */
 @media (prefers-reduced-motion: reduce) {
-    html.is-leaving .transition-swup-leaving,
     html.is-leaving .transition-swup-main,
-    html.is-rendering .transition-swup-leaving,
     html.is-rendering .transition-swup-main {
         animation: none;
     }

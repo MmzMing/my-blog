@@ -74,7 +74,8 @@ export default defineConfig({
 			],
 			smoothScrolling: false,
 			cache: true,
-			preload: true,
+			preload: { hover: true, visible: true },
+			loadOnIdle: false,
 			accessibility: true,
 			updateHead: true,
 			updateBodyClass: false,
@@ -303,7 +304,7 @@ export default defineConfig({
 				},
 			},
 			// CSS 优化
-			cssCodeSplit: true,
+			cssCodeSplit: false,
 			cssMinify: "esbuild",
 			assetsInlineLimit: 4096,
 		},
