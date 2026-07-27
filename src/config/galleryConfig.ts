@@ -14,37 +14,13 @@ export const galleryConfig: GalleryConfig = {
 		// tags: 相册标签，用于分类和过滤
 		// 每添加一个数组项就相当于添加了一个相册，记得在 public/gallery/ 目录下创建对应的子目录并放入图片
 		{
-			id: "ai-2026",
-			name: "祖国人",
-			description: "逆天AI生图",
-			location: "沃特公司",
-			date: "2026-05-06",
-			tags: ["AI", "祖国人"],
-		},
-		{
 			id: "gpt-img2-2026",
 			name: "GPT生图",
-			description: "GPT生成的图片",
+			description: "Image 2 生成的图片",
 			location: "gpt",
 			date: "2026-05-24",
 			tags: ["AI", "GPT生图"],
-		},
-		{
-			id: "mc-2026",
-			name: "鸣潮",
-			description: "鸣潮相册",
-			location: "鸣潮",
-			date: "2026-05-11",
-			tags: ["鸣潮"],
-		},
-		{
-			id: "bl-ll-2026",
-			name: "萝莉",
-			description: "进来先电",
-			location: "碧蓝航线",
-			date: "2026-05-06",
-			tags: ["碧蓝航线", "萝莉"],
-		},
+		}
 	],
 
 	// 瀑布流最小列宽(px)，浏览器根据容器宽度自动计算列数，默认 240
