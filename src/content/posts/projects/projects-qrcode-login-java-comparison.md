@@ -7,13 +7,12 @@ category: 实践笔记
 draft: false
 ---
 
-# 登录 | 扫码登录
 
 > 核心思路：PC 端生成带唯一标识的二维码，手机端扫码确认后，服务端更新 Redis 状态，PC 端通过 WebSocket 实时感知状态变更并获取 Token。评审重点：二维码状态机的 5 种状态转换是否完整、WebSocket 与长轮询的降级策略是否可靠、安全防御是否覆盖二维码劫持和重放攻击。
 
 ---
 
-## 一、背景
+# 一、背景
 
 用户在 PC 端访问 Web 应用时，输入账号密码是最直接的登录方式。但在以下场景中，扫码登录体验更优：
 
@@ -28,9 +27,9 @@ draft: false
 
 ---
 
-## 二、扫码登录核心流程
+# 二、扫码登录核心流程
 
-### 2.1 完整时序
+## 1、完整时序
 
 ```mermaid
 sequenceDiagram
@@ -80,7 +79,7 @@ sequenceDiagram
     Server->>PC: WebSocket 推送 CANCELED 状态
 ```
 
-### 2.2 二维码状态机
+## 2、二维码状态机
 
 二维码有 5 种状态，转换关系如下：
 
@@ -122,11 +121,11 @@ sequenceDiagram
 
 ---
 
-## 三、方案对比：PC 端如何感知状态变更
+# 三、方案对比：PC 端如何感知状态变更
 
 PC 端生成二维码后，需要实时感知"手机已扫码/已确认/已取消"的状态变更。四种主流方案的对比如下：
 
-### 3.1 方案总览
+## 1、方案总览
 
 | 维度 | 短轮询 | 长轮询 | WebSocket | SSE |
 |------|--------|--------|-----------|-----|
@@ -139,7 +138,7 @@ PC 端生成二维码后，需要实时感知"手机已扫码/已确认/已取�
 | **防火墙/代理** | 无问题 | 部分代理提前返回 | 可能被拦截 | 可能被拦截 |
 | **实现复杂度** | ★☆☆ | ★★☆ | ★★★ | ★★☆ |
 
-### 3.2 资源消耗对比
+## 2、资源消耗对比
 
 以 10,000 个并发等待扫码的 PC 端为例：
 
@@ -150,7 +149,7 @@ PC 端生成二维码后，需要实时感知"手机已扫码/已确认/已取�
 | WebSocket | 0（仅心跳） | 低（NIO 不占线程） | 仅状态变更时 | 极低 |
 | SSE | 0（仅心跳） | 低 | 仅状态变更时 | 极低 |
 
-### 3.3 方案选型结论
+## 3、方案选型结论
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -183,9 +182,9 @@ PC 端生成二维码后，需要实时感知"手机已扫码/已确认/已取�
 
 ---
 
-## 四、后端实现：基于 Spring Boot + Redis
+# 四、后端实现：基于 Spring Boot + Redis
 
-### 4.1 Maven 依赖配置
+## 1、Maven 依赖配置
 
 ```xml
 <!-- pom.xml -->
@@ -250,7 +249,7 @@ PC 端生成二维码后，需要实时感知"手机已扫码/已确认/已取�
 </dependencies>
 ```
 
-### 4.2 数据模型
+## 2、数据模型
 
 ```java
 @Data
@@ -283,7 +282,7 @@ public enum QrCodeStatusEnum {
 }
 ```
 
-### 4.2 Redis 存储设计
+## 3、Redis 存储设计
 
 | Key | 类型 | TTL | 说明 |
 |-----|------|-----|------|
@@ -302,7 +301,7 @@ Hash 字段：
 | `pcRefreshToken` | PC 端刷新 Token |
 | `createdAt` | 创建时间戳 |
 
-### 4.3 WebSocket 配置
+## 4、WebSocket 配置
 
 ```java
 @Configuration
@@ -411,7 +410,7 @@ public class QrCodeWebSocketHandler extends TextWebSocketHandler {
 }
 ```
 
-### 4.4 生成二维码
+## 5、生成二维码
 
 ```java
 @Service
@@ -459,7 +458,7 @@ public class QrCodeLoginServiceImpl implements QrCodeLoginService {
     }
 ```
 
-### 4.5 手机扫码
+## 6、手机扫码
 
 ```java
     @Override
@@ -528,7 +527,7 @@ public class QrCodeLoginServiceImpl implements QrCodeLoginService {
     }
 ```
 
-### 4.7 手机确认登录
+## 7、手机确认登录
 
 ```java
     @Override
@@ -596,7 +595,7 @@ public class QrCodeLoginServiceImpl implements QrCodeLoginService {
     }
 ```
 
-### 4.8 手机取消登录
+## 8、手机取消登录
 
 ```java
     @Override
@@ -639,7 +638,7 @@ public class QrCodeLoginServiceImpl implements QrCodeLoginService {
     }
 ```
 
-### 4.9 长轮询降级实现
+## 9、长轮询降级实现
 
 ```java
     @Override
@@ -704,7 +703,7 @@ public class QrCodeLoginServiceImpl implements QrCodeLoginService {
 }
 ```
 
-### 4.10 Controller 层
+## 10、Controller 层
 
 ```java
 @RestController
@@ -759,7 +758,7 @@ public class QrCodeLoginController {
 }
 ```
 
-### 4.11 Gateway 白名单
+## 11、Gateway 白名单
 
 ```yaml
 security:
@@ -774,9 +773,9 @@ security:
 
 ---
 
-## 五、前端实现
+# 五、前端实现
 
-### 5.1 PC 端：二维码展示 + WebSocket
+## 1、PC 端：二维码展示 + WebSocket
 
 ```typescript
 import { ref, onMounted, onUnmounted } from 'vue'
@@ -953,7 +952,7 @@ export function useQrCodeLogin() {
 }
 ```
 
-### 5.2 PC 端：Vue 组件
+## 2、PC 端：Vue 组件
 
 ```vue
 <template>
@@ -1008,7 +1007,7 @@ const {
 </style>
 ```
 
-### 5.3 手机端：扫码 + 确认流程
+## 3、手机端：扫码 + 确认流程
 
 ```typescript
 export function useScanLogin() {
@@ -1058,7 +1057,7 @@ export function useScanLogin() {
 }
 ```
 
-### 5.4 手机端：确认页面组件
+## 4、手机端：确认页面组件
 
 ```vue
 <template>
@@ -1098,9 +1097,9 @@ onMounted(() => scanQrCode(qrCodeId))
 
 ---
 
-## 六、安全防御
+# 六、安全防御
 
-### 6.1 威胁模型
+## 1、威胁模型
 
 | 攻击类型 | 攻击方式 | 影响 |
 |---------|---------|------|
@@ -1112,7 +1111,7 @@ onMounted(() => scanQrCode(qrCodeId))
 | **中间人攻击** | HTTP 明文截获 Token | Token 泄露 |
 | **WebSocket 劫持** | 劫持 WebSocket 连接获取状态推送 | 非授权获取状态变更 |
 
-### 6.2 防御措施
+## 2、防御措施
 
 **1）二维码劫持防御**
 
@@ -1172,7 +1171,7 @@ if (Boolean.FALSE.equals(locked)) {
 
 生产环境 WebSocket 必须使用 `wss://`，所有接口必须走 HTTPS，防止中间人截获 Token。
 
-### 6.3 安全措施汇总
+## 3、安全措施汇总
 
 | 威胁 | 防御措施 | 防御效果 |
 |------|---------|---------|
@@ -1186,9 +1185,9 @@ if (Boolean.FALSE.equals(locked)) {
 
 ---
 
-## 七、踩坑点 & 注意事项
+# 七、踩坑点 & 注意事项
 
-### 7.1 WebSocket 连接断开后状态丢失
+## 1、WebSocket 连接断开后状态丢失
 
 **问题**：用户网络抖动导致 WebSocket 断开，重连后无法获取之前的状态。
 
@@ -1209,7 +1208,7 @@ public void afterConnectionEstablished(WebSocketSession session) throws Exceptio
 }
 ```
 
-### 7.2 二维码过期但手机端还在确认
+## 2、二维码过期但手机端还在确认
 
 **问题**：用户在二维码即将过期时扫码，确认请求到达时二维码已过期。
 
@@ -1227,7 +1226,7 @@ public QrCodeScanResponse scan(String qrCodeId, String accessToken) {
 }
 ```
 
-### 7.3 用户扫码后不确认也不取消
+## 3、用户扫码后不确认也不取消
 
 **问题**：用户扫码后关闭了手机 APP，二维码停留在 SCANNED 状态，PC 端一直等待。
 
@@ -1260,7 +1259,7 @@ public class QrCodeExpireListener {
 }
 ```
 
-### 7.4 PC 端刷新页面后丢失二维码
+## 4、PC 端刷新页面后丢失二维码
 
 **问题**：用户刷新页面，qrCodeId 丢失，无法继续连接。
 
@@ -1292,7 +1291,7 @@ function generateQrCode() {
 
 页面加载时先检查 sessionStorage，如果有未完成的 qrCodeId，继续连接而非重新生成。
 
-### 7.5 WebSocket 被防火墙/代理拦截
+## 5、WebSocket 被防火墙/代理拦截
 
 **问题**：企业内网防火墙拦截 WebSocket 连接。
 
@@ -1315,7 +1314,7 @@ ws.onclose = () => {
 
 ---
 
-## 八、生产环境部署清单
+# 八、生产环境部署清单
 
 ```
 □ 后端
@@ -1356,7 +1355,7 @@ ws.onclose = () => {
 
 ---
 
-## 九、方案对比总结
+# 九、方案对比总结
 
 | 维度 | 短轮询 | 长轮询 | WebSocket |
 |------|--------|--------|-----------|
@@ -1372,7 +1371,7 @@ ws.onclose = () => {
 
 ---
 
-## 参考资料
+# 十、参考资料
 
 - [RFC 6749: The WebSocket Protocol](https://tools.ietf.org/html/rfc6455)
 - [RFC 6749: OAuth 2.0 Authorization Framework](https://tools.ietf.org/html/rfc6749)

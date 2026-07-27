@@ -7,11 +7,10 @@ category: 学习文档
 pinned: true
 draft: false
 ---
-# 这个博客《纯AI，零人工》
 > [!CAUTION] 注意
 > 我太懂你这种感觉了！！最直接、最真相、最不绕弯、最扎心、最硬核、最干脆、最不墨迹、最戳痛点、最不留情面、最一针见血、最开门见山、最单刀直入、最不铺垫、最不客套、最不煽情、最不废话、最不拐弯、最不磨叽、最不装、最不端着、最不啰嗦、最不拖沓、最不委婉、最不掩饰、最不藏着掖着、最直白、最露骨、最实在、最通透、最毒辣、最爽快、最解气、最上头、最够劲、最过瘾、最粗暴、最有效、最狠、最准、最稳、最绝、最顶、最炸、最刚、最烈、最飒、最莽、最冲、最猛、最脆、最亮、最透、最干、最净、最利落、最霸道、最硬核、最生猛、最狂野、最直白、最粗暴、最不讲虚的、最不玩套路、最不搞形式、最不整虚头巴脑、最只讲干货、最只说重点、最只给结果、最只聊真相、最只谈核心、最只戳关键的方式来告诉你。
 
-# 流程
+# 一、流程
 
 你是否这样子做过
 
@@ -35,7 +34,7 @@ draft: false
 
 参考我的邪修大发直接从现成 UI 库、开源代码、参考网页中挑元素拼接。
 
-### 原型图步骤
+### 2.1 原型图步骤
 
 1. 在 UI 库或开源代码中找参考。
 2. 若只有代码或图片，让 AI 生成对应 HTML 原型。
@@ -43,7 +42,7 @@ draft: false
 4. 让 AI 按代码规范把原型接入指定页面位置。
 5. 本地微调测试；除 Codex 外通常需多轮。
 
-### 重点速查表
+### 2.2 重点速查表
 
 常见模块：导航栏（logo、菜单、按钮）、Hero（banner、首屏展示字体、引导）、Content（图文、卡片、表格）、Footer（版权、联系信息）。
 
@@ -53,14 +52,14 @@ draft: false
 - 挑现成组件：看组件库。
 - 明确结果：抄对标网站。
 
-### 推荐资源
+### 2.3 推荐资源
 
 - 提示词优化：[PromptPilot](https://promptpilot.volcengine.com/)
 - 网站参考：[awwwards](https://www.awwwards.com/)、[OnePageLove](https://onepagelove.com/)、[mobbin](https://mobbin.com/)
 - UI 组件库：[Uiverse](https://uiverse.io/)、[React Bits](https://www.reactbits.dev/)、[CodePen](https://codepen.io/)、[Magic UI](https://magicui.design/)、[Aceternity UI](https://ui.aceternity.com/)
 - 图标库：[Iconify](https://iconify.design/)
 
-### 提示词速查表
+### 2.4 提示词速查表
 
 根据原型图生成代码规范：
 
@@ -94,7 +93,7 @@ draft: false
 2. 代码质量未知：若项目本身混乱，初始化会让问题更难处理。
 3. 来回纠错成本高：报错、样式失效、需求被忽略等问题会反复出现。”报错你没看到嘛“、”画面怎么黑了“、“不要无视我的需求”、“不用抱歉，帮我改对啊”、“怎么切换页面后css失效了啊”。。。
 
-### 正确流程
+### 3.1 正确流程
 
 1. 让 AI 先深度分析项目结构、开发注意事项和目录树，输出架构图、模块依赖、核心数据流。
 2. 重点询问：坑点、配置方式、调试方法、部署注意事项。输出一份「新人上手清单」和「常见翻车现场合集」。
@@ -102,7 +101,7 @@ draft: false
 4. 检查 `claude.md`：例如若其中提到提交代码规范，而你有对应 skill，可改为让其使用指定 skill。
 5. 再让 AI 做一次头脑风暴，按企业级规范对齐内容，迭代一次。
 
-### TDD是神
+### 3.2 TDD是神
 
 ![](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260620163427.webp)
 
@@ -118,7 +117,7 @@ draft: false
 
 开发完成后仍需持续优化。
 
-### 动效
+### 5.1 动效
 
 想让页面更有质感，可用以下提示词：
 
@@ -126,7 +125,7 @@ draft: false
 依次从上往下分层显示。"我想要更像高端设计师作品集/创意机构官网的动效，不要普通淡入。首屏需要有完整openinganimation，标题要有强视觉进场，比如遮罩揭开、位移、压缩后归位。滚动到每个模块时，英文大标题先大幅进场，卡片再依次stagger出现，图片要有 reveal 或轻微parallax。整体动效要夸张一点但高级，节奏慢一些、缓动丝滑，不要廉价弹跳，也不要影响性能。可以用 GSAP +ScrollTrigger。"
 ```
 
-### 资源优化
+### 5.2 资源优化
 
 ```
 图片：压缩，适当调整分辨率适合对应的位置大小，转换成webp
@@ -141,15 +140,15 @@ draft: false
 ```
 
 
-### 定期扫描
+### 5.3 定期扫描
 
 定时让 AI 扫描项目漏洞、代码规范和冗余代码。
 
-# AI 工具
+# 二、AI 工具
 
 博客主要用 Claude Code（cc）和 Codex 编写。
 
-## Skill
+## 1、Skill
 
 - 头脑风暴：brainstorming
 - TDD 测试：test-driven-development
@@ -157,16 +156,16 @@ draft: false
 - UI 设计（自己打磨细节时基本用不上）：ui-ux-pro-max
 - 技术文档：tech-blog（自己维护，源码见 [claude-setting/skills/tech-blog](https://github.com/MmzMing/claude-setting/tree/master/skills/tech-blog)）
 
-## 模型选择
+## 2、模型选择
 
 - 首推：Codex + GPT-5.5
 - 次选：Claude Code + DeepSeek-V4-Pro
 
 建议分工：顶模负责思考 PLAN，低模按代码规范编写，顶模最后审查代码。
 
-# 博客设计
+# 三、博客设计
 
-## 博客设计原则
+## 1、博客设计原则
 
 [谈谈不受欢迎的博客技术特征 - 纸鹿摸鱼处](https://blog.zhilu.site/2025/unpopular-blog-tech)
 而本站也很大遵循该原则，因为热爱AI绘画，所以只在首页展示AI绘画作品，其他页面则专注于文章内容呈现。后续也会继续遵循该原则。

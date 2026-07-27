@@ -12,9 +12,9 @@ draft: false
 
 Q1: 为什么不直接用[fuwari](https://github.com/saicaca/fuwari)啊，为啥要用[Astro](https://astro.build/)啊
 
-你敢信我一开始就奔着不是博客，而是个人主页去做的😢，看到一个直接零成本部署博客的（后面才知道只要是个静态博客就能做到零成本了），稀里糊涂的入坑Firefly了，不是说Firefly不好，只是二开再二开。
+你敢信吗？我一开始的目标根本不是做博客，而是做一个个人主页。后来偶然发现博客也能零成本部署，就稀里糊涂地入坑了 Firefly。不是说 Firefly 不好，只是我一路改着改着，变成了“二开再二开”。
 
-尽管astro这个架构有些不适合我（重构太费时费力气了），以目前来看灯塔测试全绿，构建平均时间40s内，没看出啥毛病（如果大家有建议可以来评论区说说，我最喜欢别人锐评）
+虽然 Astro 这套架构对我来说不算特别合适，后续重构确实费时费力，但目前来看整体运行得还不错：灯塔测试基本全绿，平均构建时间也控制在 40 秒以内，网页访问速度也很快，暂时没发现明显问题。要是大家还有什么建议，欢迎在评论区直接锐评，我很乐意听。
 
 **项目地址**
 
@@ -22,9 +22,9 @@ Q1: 为什么不直接用[fuwari](https://github.com/saicaca/fuwari)啊，为啥
 
 项目属于二开，感兴趣可以点个star
 
-# 重点
+# 一、重点
 
-## 首页
+## 1、首页
 
 1. hero区域旮旯game风格
 2. 站点地图一览
@@ -39,7 +39,7 @@ Q1: 为什么不直接用[fuwari](https://github.com/saicaca/fuwari)啊，为啥
 | `@swup/astro` | `1.8.0` | 提供页面缓存、预加载和页面切换；切换后重新初始化动态组件 |
 | Tailwind CSS | `4.2.4` | 提供通用布局、排版和响应式样式 |
 
-## 音乐
+## 2、音乐
 
 3D棋盘可视化音乐。
 
@@ -54,7 +54,7 @@ Q1: 为什么不直接用[fuwari](https://github.com/saicaca/fuwari)啊，为啥
 | WebGL | 浏览器原生 API | 渲染音乐可视化的 3D 画面 |
 | Web Audio API | 浏览器原生 API | 使用 AudioContext 与分析节点读取频谱数据并驱动可视化 |
 
-## 分类标签
+## 3、分类标签
 
 分类标签都做成了图表，分类玫瑰图和标签关系图谱。
 
@@ -67,7 +67,7 @@ Q1: 为什么不直接用[fuwari](https://github.com/saicaca/fuwari)啊，为啥
 | （核心）ECharts Graph Series | `5.6.0` | 使用力导向布局展示标签共同出现关系，支持缩放、拖拽与节点跳转 |
 | MutationObserver、Resize 事件 | 浏览器原生 API | 在主题切换和容器尺寸变化后更新图表颜色与尺寸 |
 
-## 留言
+## 4、留言
 
 转变UI为聊天室，并复用 Waline 的登录、审核、表情和访问量能力。原本做了个翻卡牌的，因为这个在KV上面天天给我报警告，后面就取消了。
 
@@ -84,7 +84,7 @@ Waline 服务独立部署，博客只保存服务地址和客户端配置；项�
 
 管理员 Token 仅保存到 `sessionStorage`；普通用户根据"记住登录"选项保存到 `sessionStorage` 或 `localStorage`。任何读取、发布、修改或删除请求返回鉴权错误时，页面都会清除本地 Token 并要求重新登录。
 
-### 接口列表
+### 4.1 接口列表
 
 以下为 `@waline/api` 中留言板实际调用的 CRUD 接口。
 
@@ -174,7 +174,7 @@ fetch(`${serverURL}/api/token?lang=${lang}`, {
 // Response: { errno: number, errmsg?: string, data?: UserInfo }
 ```
 
-### 登录流程
+### 4.2 登录流程
 
 ```mermaid
 sequenceDiagram
@@ -222,7 +222,7 @@ sequenceDiagram
     Page->>Page: 刷新留言列表
 ```
 
-## 关于
+## 5、关于
 
 Markdown编写，canvas绘制弹跳球，pretext处理Markdown文本。pretext是神，性能非常好。
 
@@ -235,7 +235,7 @@ Markdown编写，canvas绘制弹跳球，pretext处理Markdown文本。pretext�
 | Canvas 2D API、Pointer Events | 浏览器原生 API | 绘制可拖拽的资料画布并处理指针交互 |
 | （核心）`@chenglou/pretext` | `0.0.7` | 按可用宽度计算 Markdown 文本的换行与排版 |
 
-## 日历
+## 6、日历
 
 日历聚合文章发布日期、节假日、生日和自定义日程，在固定的 `6 × 7` 月视图中展示公历和农历信息，并提供近期事件与当天详情。
 
@@ -245,7 +245,7 @@ Markdown编写，canvas绘制弹跳球，pretext处理Markdown文本。pretext�
 | Fetch API | 浏览器原生 API | 获取文章元数据和节假日 JSON 数据，用于日历小组件或页面初始数据 |
 | CSS Grid | 浏览器标准 | 使用 `6 × 7` 网格稳定渲染每月 42 个日期单元格 |
 
-### 接口列表
+### 6.1 接口列表
 
 页面在 SSR 阶段（构建时）调用以下两个内部 API 获取数据。其中 `/api/holidays.json` 内部还会调用第三方节假日 API 获取数据。
 
@@ -281,7 +281,7 @@ fetch("https://timor.tech/api/holiday/year/2026")
 
 两个内部 API 在 `astro build` 时被调用并输出为静态 JSON，生产环境由静态资源直接返回。文章或节假日更新后需要重新构建才能反映到日历上。
 
-## 归档
+## 7、归档
 
 归档页按年、月和文章组织时间线，支持分类和标签筛选，显示年度文章进度，并按需读取 GitHub 年度贡献数据。
 
@@ -292,11 +292,11 @@ fetch("https://timor.tech/api/holiday/year/2026")
 | Intl.DateTimeFormat | 浏览器原生 API | 按站点时区计算当前年度，用于年度文章统计和 GitHub 请求参数 |
 | Fetch API、Cloudflare Workers | 浏览器原生 API、Wrangler `4.110.0` | 调用 GitHub 贡献汇总接口，避免在浏览器暴露 GitHub Token |
 
-### GitHub 动态贡献数据
+### 7.1 GitHub 动态贡献数据
 
 浏览器通过博客自己的 Worker 接口间接获取 GitHub 贡献数据，避免在客户端暴露 GitHub Token。Worker 内部调用 GitHub GraphQL API，聚合后返回简化摘要。
 
-#### 接口列表
+#### 7.1.1 接口列表
 
 ```ts
 // --------------------------------------------------------------------------
@@ -346,7 +346,7 @@ fetchGithubContributionSummary(
 | 502 | `github_unavailable` | Worker 请求 GitHub 超时或网络异常 |
 | 503 | `github_not_configured` | Worker 未配置 GITHUB_TOKEN |
 
-## 其他
+## 8、其他
 
 1. 取消了侧边栏，首页和文章页将主要导航集中到顶部与移动端 Dock。
 2. 修改了整体 UI 风格，保留亮色与暗色两种主题，不再维护背景图和多套背景配置。
@@ -355,9 +355,9 @@ fetchGithubContributionSummary(
 5. 使用 Pagefind `1.5.2` 构建本地全文索引；使用 Cloudflare Vectorize、Workers AI 和 Durable Objects 提供可选的 AI 语义搜索与限流。
 6. 使用 Cloudflare Workers 运行时承担 GitHub 贡献数据、AI 搜索和随机封面代理等动态接口；静态文章、图片和 Pagefind 索引仍由静态资源服务返回。
 
-# 部署流程
+# 二、部署流程
 
-## 本地部署
+## 1、本地部署
 
 1. 安装依赖：安装 Node.js 22 和 pnpm 9，然后执行 `pnpm install`。
 2. 配置环境变量，主要用于获取github贡献和AI搜索功能：
@@ -378,7 +378,7 @@ fetchGithubContributionSummary(
 </iframe>
 
 
-## 环境变量获取说明
+## 2、环境变量获取说明
 
 | 变量 | 用途 | 存放位置 |
 |---|---|---|
@@ -387,7 +387,7 @@ fetchGithubContributionSummary(
 | `CLOUDFLARE_API_TOKEN` | 构建脚本上传向量到 Vectorize | `.env.cf` |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 账户标识，供构建脚本使用 | `.env.cf` |
 
-### GITHUB_TOKEN
+### 2.1 GITHUB_TOKEN
 
 1. 登录 GitHub → 右上角头像 → **Settings** → **Developer settings**（左侧底部）
 2. **Personal access tokens** → **Fine-grained tokens** → **Generate new token**
@@ -396,14 +396,14 @@ fetchGithubContributionSummary(
 5. 创建后**立即复制** Token（只显示一次），粘贴到 `.env` 的 `GITHUB_TOKEN=`
 6. **部署后也要在 Cloudflare 设置同名 Secret**：`npx wrangler secret put GITHUB_TOKEN`
 
-### AI_API_KEY
+### 2.2 AI_API_KEY
 
 1. 登录 [魔搭社区 ModelScope](https://modelscope.cn)
 2. 右上角头像 → **API-KEY 管理** → **创建 API Key**
 3. 复制 Key，粘贴到 `.env` 的 `AI_API_KEY=`
 4. 部署后同样设置 Cloudflare Secret：`npx wrangler secret put AI_API_KEY`
 
-### CLOUDFLARE_API_TOKEN
+### 2.3 CLOUDFLARE_API_TOKEN
 
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. 右上角头像 → **My Profile** → **API Tokens** → **Create Token**
@@ -412,7 +412,7 @@ fetchGithubContributionSummary(
    - **Account > Workers AI > Use**
 4. 创建后复制 Token，粘贴到 `.env.cf` 的 `CLOUDFLARE_API_TOKEN=`
 
-### CLOUDFLARE_ACCOUNT_ID
+### 2.4 CLOUDFLARE_ACCOUNT_ID
 
 1. Cloudflare Dashboard → 任意域名概览页
 2. 右侧栏 **API** 区域 → **Account ID**（或直接从 URL `https://dash.cloudflare.com/<account_id>/...` 复制）
@@ -420,7 +420,7 @@ fetchGithubContributionSummary(
 
 > 不要将 `.env`、`.env.cf`、真实 Token 或 Cloudflare API Token 提交到仓库。
 
-# 用到的AI模型
+# 三、用到的AI模型
 
 - MIMO V2.5/PRO（送的百亿补贴）
 - claude opus 4.6\4.7\4.8\fable 5
@@ -433,7 +433,7 @@ fetchGithubContributionSummary(
 
 我不确定是模型问题还是平台，用来写的代码BUG是真的多。
 
-# 优点与UI复制
+# 四、优点与UI复制
 
 纯静态，部署快，维护简单，成本低（只需要域名的费用）。
 
@@ -441,9 +441,8 @@ fetchGithubContributionSummary(
 
 如果感兴趣可以可以加入加QQ群(群里个个都是人才，说话又好听)，群主这方面最懂行，群号我放导航栏的联系我中。
 
-# 后续计划
+# 五、后续计划
 
 当然是写博客啦，同时站点有BUG我也会及时修复，如果大家有好的建议可以在下方评论哦。
 
 说句实话，UI修改的时候，给我一种当年那个QQ空间那种复制神秘代码的时代，可能这个梗过时你不了解。
-

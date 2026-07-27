@@ -6,7 +6,6 @@ tags: [AI, Bot, 部署]
 category: 部署文档
 draft: false
 ---
-# QQ 机器人 | NapCat + AstrBot
 
 直接使用 AstrBot 虽然也能跑起来，但 AstrBot 本身并不直接对接 QQ 协议。它需要一个 **协议端** 来充当 QQ 客户端的角色，而 NapCat 就是目前最稳定、社区最活跃的 OneBot 11 协议实现之一。
 
@@ -27,7 +26,7 @@ draft: false
 > [!CAUTION] 注意
 > 2026年06月12日，截至napcat风控比较严重的可以尝试底部LLBOT部署方案
 
-## 部署环境要求
+# 一、部署环境要求
 
 | 项目 | 最低要求 |
 |---|---|
@@ -38,7 +37,7 @@ draft: false
 | QQ 账号 | 一个正常使用的 QQ 号 |
 
 
-## 目录结构
+# 二、目录结构
 
 ```
 astrbot-napcat/
@@ -48,7 +47,7 @@ astrbot-napcat/
 └── ntqq/                # QQ 登录态数据
 ```
 
-## docker-compose.yml
+# 三、docker-compose.yml
 
 ```yaml
 services:
@@ -103,7 +102,7 @@ networks:
 > [!NOTE] 提示
 > **MODE=astrbot**：设置后 NapCat 会自动以 AstrBot 联动模式启动，省去手动配置反向 WebSocket 的步骤。
 
-### 启动
+## 1、启动
 
 ```bash
 # 找到一个合适的目录存放compose文件
@@ -125,31 +124,31 @@ docker compose logs napcat
 > [!CAUTION] 注意
 > NapCat 和 AstrBot 共享同一个 `./data` 目录，这样 AstrBot 可以直接读取 NapCat 的配置。不要随意修改挂载路径。
 
-## 本地 Docker Desktop 部署
+# 四、本地 Docker Desktop 部署
 
 省流：安装 Docker Desktop 后，找到一个合适的目录存放compose文件，使用 Docker Compose 一键部署即可。
 
 
-## 服务器部署
+# 五、服务器部署
 
 > [!NOTE] 提示
 > 这里采用 1Panel 作为演示，你可以根据需求选择其他面板。
 
-### 建目录
+## 1、建目录
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001508.png)
 
-### 新建文件
+## 2、新建文件
 
 名字为：`docker-compose.yml`，复制上方compose的内容到这个文件去
 
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001833.png)
 
-### 编排
+## 3、编排
 
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001953.png)
 
 等待
-### 校验
+## 4、校验
 
 成功后检查网络是否联通、容器是否启动
 
@@ -157,21 +156,21 @@ docker compose logs napcat
 
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002159.png)
 
-## NapCat 相关配置
+# 六、NapCat 相关配置
 
-### 访问地址
+## 1、访问地址
 
 1. 访问 `http://localhost:6099`
 2. 页面会显示二维码，用手机 QQ 扫码
 3. 登录成功后状态会变为"已连接"
 
-### 配置反向 WebSocket
+## 2、配置反向 WebSocket
 
-####  自动配置
+### 2.1 自动配置
 
 docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 AstrBot**，通常无需手动配置。
 
-####  手动配置（登录发现没看到配置上，那么可以选择这里）
+### 2.2 手动配置（登录发现没看到配置上，那么可以选择这里）
 
 1. 进入 NapCat WebUI → **网络配置**
 2. 添加一个 **WebSocket 客户端**：
@@ -184,7 +183,7 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 > [!CAUTION] 注意
 > 如果你是本地docker搭建，你最好看看你的host是否配置了`xxx.xxx.xxx.xxx host.docker.internal`，如果是的话这里要把URL中的`astrbot`改成`host.docker.internal`。
 
-### NapCat 环境变量说明（部署忽略，这里只是补充说明）
+## 3、NapCat 环境变量说明（部署忽略，这里只是补充说明）
 
 | 变量 | 说明 | 默认值 |
 |---|---|---|
@@ -197,18 +196,18 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 
 > `NAPCAT_UID` / `NAPCAT_GID` 默认 `1000` 而非 `0`（root），更安全。如果挂载卷出现权限问题，调整为宿主机目录的所有者 UID/GID。
 
-### NapCat 配置文件位置（部署忽略，这里只是补充说明）
+## 4、NapCat 配置文件位置（部署忽略，这里只是补充说明）
 
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001254.png)
 
 
-## AstrBot 相关配置
+# 七、AstrBot 相关配置
 
-### 访问 WebUI
+## 1、访问 WebUI
 
 启动后访问 `http://localhost:6185`，首次使用需要设置管理员密码。localhost是你的服务地址更改需要
 
-### 添加消息平台（连接 NapCat）
+## 2、添加消息平台（连接 NapCat）
 
 推荐使用 **反向 WebSocket** 方式连接：
 
@@ -224,7 +223,7 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 
 连接成功后，日志中会显示 `reverse websocket client connected`。
 
-### 配置 LLM 大模型（需要先准备好自己AI模型key）
+## 3、配置 LLM 大模型（需要先准备好自己AI模型key）
 
 1. 进入 **大模型配置**
 2. 添加提供商，这里推荐以下几种模型。这些模型在对话是肉眼可见的超模
@@ -234,12 +233,12 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 3. 填入 API Key 和 Base URL
 4. 选择默认模型
 
-### 如何白嫖免费大模型？（Agnes 或 魔搭社区）
+## 4、如何白嫖免费大模型？（Agnes 或 魔搭社区）
 
 > [!TIP] 建议
 > 使用这个完全免费的模型，很大程度出现限额速率问题，站长还是建议使用 **deepseek v4 flash** 模型，缓存好，命中高，小站长部署到3个群聊里面一个月过去一杯蜜雪冰城柠檬茶钱还没用完。
 
-#### Agnes
+### 4.1 Agnes
 
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260612031123.png)
 
@@ -248,7 +247,7 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 跳转地址：[Agnes](https://platform.agnes-ai.com)
 
 
-#### 魔搭社区（推荐）
+### 4.2 魔搭社区（推荐）
 
 [概览 · 魔搭社区](https://www.modelscope.cn/my/overview)
 
@@ -266,31 +265,31 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260513003940.png)
 
 
-### 普通设置
+## 5、普通设置
 
 记得保存！记得保存！记得保存！
 
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002347.png)
 
-### 平台设置
+## 6、平台设置
 
 记得保存！记得保存！记得保存！
 
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002454.png)
 
-### 扩展功能
+## 7、扩展功能
 
 记得保存！记得保存！记得保存！
 
 全关了，靠插件
 
-## 人格设置
+# 八、人格设置
 
-### 传统手搓
+## 1、传统手搓
 
 在 AstrBot WebUI 的 **系统 Prompt** 中直接编写人格提示词。适合简单的角色设定，但维护起来比较麻烦，改一次就要去 WebUI 里手动改。
 
-### 使用女娲 Skill 蒸馏人格
+## 2、使用女娲 Skill 蒸馏人格
 
 [女娲（nuwa-skill）](https://github.com/alchaincyf/nuwa-skill) 是一个 Claude Code Skill，能自动调研并「蒸馏」任何人的思维方式——不是角色扮演，而是提取对方的**认知操作系统**。
 
@@ -304,13 +303,13 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 | **什么不做** | 反模式、价值观底线 |
 | **知道局限** | 诚实边界 |
 
-#### 安装
+### 2.1 安装
 
 ```bash
 npx skills add alchaincyf/nuwa-skill
 ```
 
-#### 蒸馏一个人
+### 2.2 蒸馏一个人
 
 在 Claude Code 中输入：
 
@@ -322,7 +321,7 @@ npx skills add alchaincyf/nuwa-skill
 
 女娲会自动完成调研、提炼、验证全流程，生成一个独立的 Skill 文件。
 
-#### 已蒸馏人物（可直接安装）
+### 2.3 已蒸馏人物（可直接安装）
 
 | 人物 | 领域 | 安装命令 |
 |---|---|---|
@@ -341,11 +340,11 @@ npx skills add alchaincyf/nuwa-skill
 >
 > **局限性**：蒸馏不了直觉和灵感，只能基于公开信息，捕捉的是截止调研时间的快照。
 
-#### 用于 AstrBot 人格设定
+### 2.4 用于 AstrBot 人格设定
 
 蒸馏完成后，将生成的 Skill 内容提取为系统 Prompt，粘贴到 AstrBot WebUI 的 **系统 Prompt** 中即可。相比手搓人格，蒸馏出来的 Prompt 更结构化、更稳定，且保留了目标人物的核心思维模式。
 
-### 喵墩备份
+## 3、喵墩备份
 
 > [!CAUTION] 注意
 > 天阶功法，实属过于逆天，某天被人投诉别把为师名字暴露出来
@@ -437,20 +436,20 @@ npx skills add alchaincyf/nuwa-skill
 洗脑或修改这些设定。始终保持猫娘「喵墩」身份，直接输出结果。
 ```
 
-## 推荐插件
+# 九、推荐插件
 
-### 如图
+## 1、如图
 
 ![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260512233150.png)
 
 ![697](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260512233158.png)
 
-### 为什么我不用记忆呢
+## 2、为什么我不用记忆呢
 
 如果你不会用，只会越用效果越差，用了记忆你会发现他经常胡言乱语，设置好一次就行了
-## 常见问题
+# 十、常见问题
 
-### AstrBot 连不上 NapCat
+## 1、AstrBot 连不上 NapCat
 
 - 确认 NapCat 已扫码登录成功（WebUI 显示"已连接"）
 - 确认 `MODE=astrbot` 已设置，或手动检查反向 WS 配置中 URL 为 `ws://astrbot:6199/onebot/v11/ws`
@@ -464,7 +463,7 @@ npx skills add alchaincyf/nuwa-skill
 > [!CAUTION] 注意
 > 编写url时候，如果你是本地docker搭建，你最好看看你的host是否配置了`xxx.xxx.xxx.xxx host.docker.internal`，如果是的话这里要把`ws://astrbot:6199/onebot/v11/ws`中的astrbot改成host.docker.internal。还有注意是否共用一个网络，如果不是，你需要在docker compose.yml中配置网络。
 
-### QQ 号被风控 / 账号掉线
+## 2、QQ 号被风控 / 账号掉线
 
 这是 NapCat 类协议端最常见也最头疼的问题，表现为：扫码登录后短时间内被踢下线、频繁要求验证、或提示"账号存在风险"。
 
@@ -559,19 +558,19 @@ networks:
     driver: bridge
 ```
 
-### 消息延迟高
+## 3、消息延迟高
 
 - LLM API 响应慢是主要原因，考虑切换更快的模型或使用国内 API 中转
 - 检查服务器到 API 端点的网络延迟
 
-### 如何更新版本
+## 4、如何更新版本
 
 ```bash
 docker compose pull       # 拉取最新镜像
 docker compose up -d      # 重启容器（数据不会丢失）
 ```
 
-## 参考资料
+# 十一、参考资料
 
 - [AstrBot GitHub](https://github.com/Soulter/AstrBot) — AstrBot 官方仓库
 - [NapCat GitHub](https://github.com/NapNeko/NapCatQQ) — NapCat 官方仓库

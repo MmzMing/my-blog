@@ -7,11 +7,10 @@ category: 部署文档
 draft: false
 ---
 
-# Umami | Vercel + Neon 部署
 
 > 用 Vercel + Neon 免费部署 Umami，并通过 Share API 在博客首页展示 UV/PV。个人博客（< 10 万 PV/月）零成本运行。
 
-## 架构
+# 一、架构
 
 ```
 博客用户
@@ -35,7 +34,7 @@ Cloudflare D1 基于 SQLite，Umami 仅支持 PostgreSQL，无法兼容。
 
 ---
 
-## 第一步：创建 Neon 数据库
+# 二、第一步：创建 Neon 数据库
 
 1. 访问 [neon.tech](https://neon.tech/) 注册
 2. **Create Project**：
@@ -49,13 +48,13 @@ Cloudflare D1 基于 SQLite，Umami 仅支持 PostgreSQL，无法兼容。
 
 ---
 
-## 第二步：Fork Umami 仓库
+# 三、第二步：Fork Umami 仓库
 
 访问 [github.com/umami-software/umami](https://github.com/umami-software/umami)，点击 **Fork**，保持默认设置。
 
 ---
 
-## 第三步：确认 Prisma 7 适配
+# 四、第三步：确认 Prisma 7 适配
 
 Umami 最新版使用 **Prisma 7**，`url` 和 `directUrl` 不再支持在 `schema.prisma` 中配置，已移至 `prisma.config.ts`。Umami 项目根目录已自带 `prisma.config.ts`：
 
@@ -74,7 +73,7 @@ export default defineConfig({
 
 ---
 
-## 第四步：部署到 Vercel
+# 五、第四步：部署到 Vercel
 
 1. 访问 [vercel.com](https://vercel.com/)，GitHub 登录
 2. **Add New → Project**，找到 Fork 的 `umami` 仓库，**Import**
@@ -89,7 +88,7 @@ export default defineConfig({
 
 ---
 
-## 第五步：首次登录和安全设置
+# 六、第五步：首次登录和安全设置
 
 1. 访问部署地址，默认凭据：用户名 `admin`，密码 `umami`
 2. **立即修改密码**：Settings → Profile
@@ -98,7 +97,7 @@ export default defineConfig({
 
 ---
 
-## 第六步：绑定自定义域名
+# 七、第六步：绑定自定义域名
 
 > Vercel 的 `.vercel.app` 域名在国内可能被墙，绑定自定义域名解决。
 
@@ -117,9 +116,9 @@ export default defineConfig({
 
 ---
 
-## 第七步：配置博客接入 Umami
+# 八、第七步：配置博客接入 Umami
 
-### 通用接入方式
+## 1、通用接入方式
 
 在网站 `<head>` 中添加：
 
@@ -135,7 +134,7 @@ export default defineConfig({
 | `data-do-not-track="true"` | 尊重浏览器 DNT 设置 |
 | `data-domains="example.com"` | 仅在指定域名下追踪 |
 
-### 本项目接入方式
+## 2、本项目接入方式
 
 本博客已内置 Umami 组件，修改 `src/config/siteConfig.ts`：
 
@@ -155,11 +154,11 @@ analytics: {
 
 ---
 
-## 第八步：开启 Share URL（用于公开访问 UV/PV）
+# 九、第八步：开启 Share URL（用于公开访问 UV/PV）
 
 > 通过 Umami 的 Share API，无需服务端鉴权即可在博客首页展示访问数据。
 
-### 开启 Share URL
+## 1、开启 Share URL
 
 1. 登录 Umami 后台 → 你的网站 → 右上角 **Edit**
 2. 找到 **Share URL** 选项
@@ -167,7 +166,7 @@ analytics: {
 4. 保存后复制生成的分享链接，格式：`https://stats.yourdomain.com/share/xxxxxxxxx`
 5. 链接末尾的字符串即为 **Share ID**，填入 `siteConfig.ts` 的 `shareId` 字段
 
-### 本项目获取 UV/PV 的实现
+## 2、本项目获取 UV/PV 的实现
 
 实现位于 `src/components/layout/HomeDataLayer.astro`，核心流程：
 
@@ -205,25 +204,25 @@ const data = await statsRes.json();
 
 > 不需要在本项目后端配置 Umami 的 API Token。Share URL 是 Umami 提供的公开访问入口，前端可直接调用。
 
-### 直接重定向到分享页
+## 3、直接重定向到分享页
 
 如果只需要跳转到 Umami 公开面板，可在博客路由中直接重定向到 `https://stats.yourdomain.com/share/{shareId}`。
 
 ---
 
-## 第九步：设置数据自动清理
+# 十、第九步：设置数据自动清理
 
 Umami 后台 → Settings → Websites → 你的网站 → **Data retention**，建议设为 **1 年**，避免超出 Neon 0.5 GB 免费额度。
 
 ---
 
-## 更新 Umami 版本
+# 十一、更新 Umami 版本
 
 进入 Fork 的 GitHub 仓库 → **Sync fork → Update branch**，Vercel 自动检测变更并重新部署。
 
 ---
 
-## 常见问题
+# 十二、常见问题
 
 | 问题 | 解决方案 |
 |---|---|
@@ -235,7 +234,7 @@ Umami 后台 → Settings → Websites → 你的网站 → **Data retention**�
 
 ---
 
-## 保存清单
+# 十三、保存清单
 
 | 项目 | 存放位置 |
 |---|---|

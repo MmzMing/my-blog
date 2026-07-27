@@ -8,18 +8,17 @@ image: ./cover/cover1.webp
 draft: false
 ---
 
-# OpenSpec + Superpowers
 
 > [!NOTE] 提示
 > 本文面向使用 AI 辅助编程的开发者，系统整理 OpenSpec 与 Superpowers 两个工具的核心能力、配置方法与协同流程。核心目标：建立"规范驱动规划 + 流程驱动执行"的 AI 工程化闭环，降低需求偏差与代码回归风险。
 
 ---
 
-## 一、介绍
+# 一、介绍
 
 ![](./image/ai-openspec-superpowers-workflow.assets/ai-openspec-superpowers-workflow-20260620163505.png)
 
-### 1.1 Superpowers
+## 1、Superpowers
 
 **Superpowers** 是由 Jesse Vincent（obra）维护的 AI Agent 工程化开发工作流集合，核心理念是 **Process over Prompt（流程大于提示词）**。它通过一系列结构化的子技能，约束 AI 在编码前完成思考、规划、验收条件定义，在编码中遵循 TDD、子代理审查、代码审查，在编码后完成验证与分支收尾。
 
@@ -29,7 +28,7 @@ draft: false
 - 防止 AI 一上来就写代码导致方向偏离。
 - 通过强制验证与审查环节，减少"看起来对了但测试没跑"的回归风险。
 
-### 1.2 OpenSpec
+## 2、OpenSpec
 
 **OpenSpec** 是由 Fission AI 开源的规范驱动开发框架，核心理念是 **Spec before Code（代码之前先写规范）**。它通过结构化工件（proposal、specs、design、tasks）将需求意图、行为契约、技术方案与实现任务固化下来，作为人类与 AI 之间的"真相源"。
 
@@ -41,9 +40,9 @@ draft: false
 
 ---
 
-## 二、作用
+# 二、作用
 
-### 2.1 Superpowers 的功能特性与应用场景
+## 1、Superpowers 的功能特性与应用场景
 
 | 特性 | 说明 | 适用场景 |
 | --- | --- | --- |
@@ -54,7 +53,7 @@ draft: false
 | Git 工作树 | 创建隔离工作区，避免污染主分支 | 并行处理多个变更 |
 | 验证铁则 | 没有测试通过证据就不能声明完成 | 所有任务交付节点 |
 
-### 2.2 OpenSpec 的功能特性与应用场景
+## 2、OpenSpec 的功能特性与应用场景
 
 | 特性 | 说明 | 适用场景 |
 | --- | --- | --- |
@@ -66,9 +65,9 @@ draft: false
 
 ---
 
-## 三、使用步骤
+# 三、使用步骤
 
-### 3.1 Superpowers 使用步骤
+## 1、Superpowers 使用步骤
 
 Superpowers 以 Claude Code 插件形式运行，安装后自动生效。日常开发中 AI 会根据当前任务自动匹配并调用相关子技能。
 
@@ -87,7 +86,7 @@ flowchart TD
     I --> J["finishing-a-development-branch<br/>测试通过 → merge/PR/keep/discard"]
 ```
 
-### 3.2 OpenSpec 使用步骤
+## 2、OpenSpec 使用步骤
 
 OpenSpec 通过 CLI 与 AI 命令两种方式工作。
 
@@ -118,9 +117,9 @@ flowchart LR
 
 ---
 
-## 四、相关 Skill
+# 四、相关 Skill
 
-### 4.1 Superpowers 子技能
+## 1、Superpowers 子技能
 
 Superpowers 共包含 14 个子技能，覆盖完整 SDLC：
 
@@ -141,7 +140,7 @@ Superpowers 共包含 14 个子技能，覆盖完整 SDLC：
 | 协作 Git | `using-git-worktrees` | 创建隔离工作区 + 基线验证 |
 | 协作 Git | `writing-skills` | 用 TDD 方法写新技能 |
 
-### 4.2 OpenSpec 命令与能力
+## 2、OpenSpec 命令与能力
 
 | 命令 | 作用 |
 | --- | --- |
@@ -156,15 +155,15 @@ Superpowers 共包含 14 个子技能，覆盖完整 SDLC：
 
 ---
 
-## 五、安装
+# 五、安装
 
-### 5.1 环境要求
+## 1、环境要求
 
 - **Node.js**：≥ 20.19.0（OpenSpec CLI 要求）
 - **AI 客户端**：Claude Code（Superpowers 与 OpenSpec 命令均支持）
 - **Git**：用于工作区隔离与变更归档
 
-### 5.2 安装 Superpowers
+## 2、安装 Superpowers
 
 ```bash
 /plugin marketplace add obra/superpowers-marketplace
@@ -173,7 +172,7 @@ Superpowers 共包含 14 个子技能，覆盖完整 SDLC：
 
 安装后无需手动触发，AI 会在每次任务前自动检查适用的子技能。
 
-### 5.3 安装 OpenSpec
+## 3、安装 OpenSpec
 
 ```bash
 # 安装 CLI
@@ -202,9 +201,9 @@ openspec/
 
 ---
 
-## 六、卸载
+# 六、卸载
 
-### 6.1 卸载 Superpowers
+## 1、卸载 Superpowers
 
 ```bash
 /plugin uninstall superpowers
@@ -212,14 +211,14 @@ openspec/
 
 卸载后，AI 不再自动调用 Superpowers 子技能。已创建的工作区与 Git 分支不受影响。
 
-### 6.2 卸载 OpenSpec
+## 2、卸载 OpenSpec
 
 ```bash
 # 卸载全局 CLI
 npm uninstall -g @fission-ai/openspec
 ```
 
-### 6.3 残留清理
+## 3、残留清理
 
 清理 Superpowers 残留：
 
@@ -241,9 +240,9 @@ rm -rf openspec/
 
 ---
 
-## 七、协同使用方法
+# 七、协同使用方法
 
-### 7.1 协同场景
+## 1、协同场景
 
 单独使用 OpenSpec，可以解决"想清楚"的问题；单独使用 Superpowers，可以解决"做对了"的问题。两者结合时，Spec 成为 TDD 的输入源，TDD 成为 Spec 的质量保障。
 
@@ -254,7 +253,7 @@ rm -rf openspec/
 - 团队协作：Spec 作为人类与 AI 之间的契约，降低沟通歧义。
 - 长期维护：archive 沉淀知识，worktree 隔离风险。
 
-### 7.2 协同优势
+## 2、协同优势
 
 | 维度 | 单独 OpenSpec | 单独 Superpowers | 组合使用 |
 | --- | --- | --- | --- |
@@ -265,7 +264,7 @@ rm -rf openspec/
 | 审查 | verify 自动检查 | 子代理审查 | 自动 + 子代理双重审查 |
 | 回滚 | 变更目录可追溯 | Git 分支可回滚 | 规范回滚 + 代码回滚 |
 
-### 7.3 协同操作步骤
+## 3、协同操作步骤
 
 ```mermaid
 flowchart TD
@@ -296,7 +295,7 @@ flowchart TD
     P3_A --> P3_B --> P3_C
 ```
 
-### 7.4 实战示例：实现订单导出功能
+## 4、实战示例：实现订单导出功能
 
 **Step 1：OpenSpec 规划**
 
@@ -371,7 +370,7 @@ Then  返回 403，错误信息为 "无权访问该租户数据"
 
 Superpowers 的 `finishing-a-development-branch` 负责最终的测试验证与 Git 清理。
 
-### 7.5 关键协同点
+## 5、关键协同点
 
 1. **Spec 是 TDD 的输入源**：OpenSpec `specs/` 中的 Given/When/Then 场景可直接转化为测试用例。
 2. **verify 对齐 Spec 与实现**：Superpowers 的 `verification-before-completion` 关注"测试通过没"，OpenSpec 的 `verify` 关注"实现跟 Spec 对上了没"。
@@ -379,13 +378,13 @@ Superpowers 的 `finishing-a-development-branch` 负责最终的测试验证与 
 
 ---
 
-## 八、常见问题
+# 八、常见问题
 
-### Q1：OpenSpec 与 Superpowers 必须一起使用吗？
+## 1、Q1：OpenSpec 与 Superpowers 必须一起使用吗？
 
 **A**：不是必须。OpenSpec 更适合需求复杂、需要结构化对齐的场景；Superpowers 更适合任何需要工程纪律的编码任务。两者组合可覆盖完整闭环，但单独使用也能产生价值。
 
-### Q2：Superpowers 安装后为什么不生效？
+## 2、Q2：Superpowers 安装后为什么不生效？
 
 **A**：检查以下三点：
 
@@ -393,21 +392,21 @@ Superpowers 的 `finishing-a-development-branch` 负责最终的测试验证与 
 2. Claude Code 版本是否支持该插件；
 3. 当前任务是否触发了相应的子技能（部分子技能只在特定场景下激活）。
 
-### Q3：OpenSpec 的 Spec 应该写到什么粒度？
+## 3、Q3：OpenSpec 的 Spec 应该写到什么粒度？
 
 **A**：Spec 应描述行为契约（Given/When/Then），不写实现细节。判断标准：如果实现方式变了但外部行为不变，就不该出现在 Spec 里。
 
-### Q4：如何处理开发过程中的需求变更？
+## 4、Q4：如何处理开发过程中的需求变更？
 
 **A**：回到 OpenSpec 修改 Spec，重新生成 Delta，然后再用 Superpowers 执行。不要在代码里绕过 Spec。
 
-### Q5：团队如何协作使用 OpenSpec？
+## 5、Q5：团队如何协作使用 OpenSpec？
 
 **A**：将 `.openspec` 目录纳入版本控制，每个变更独立目录，通过 PR 流程审核 proposal 与 specs。归档后的主规范作为团队共享的真相源。
 
 ---
 
-## 九、总结
+# 九、总结
 
 - **OpenSpec 管"想清楚"**：通过结构化工件将需求、设计、任务固化，作为人类与 AI 的对齐依据。
 - **Superpowers 管"做对了"**：通过 TDD、审查、验证铁则确保代码质量。
@@ -429,7 +428,7 @@ flowchart TD
 
 ---
 
-## 参考资料
+# 十、参考资料
 
 - [Fission-AI/OpenSpec](https://github.com/Fission-AI/OpenSpec)
 - [obra/superpowers](https://github.com/obra/superpowers)

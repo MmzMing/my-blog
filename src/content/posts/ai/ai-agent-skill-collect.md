@@ -7,12 +7,10 @@ category: 学习文档
 draft: false
 ---
 
-# Skill学习 | 收集
-
 > [!NOTE] 提示
 > 在拿到陌生的SKILL时候，一定要让AI先解释一下，再开始使用。否则很有可能染上赛博花柳。
 
-## superpowers — 工程化开发工作流
+# 一、superpowers — 工程化开发工作流
 
 - **地址**: [obra/superpowers](https://github.com/obra/superpowers)
 - **简短解释**: AI Agent 开发工作流的决定版，核心理念是 **Process over Prompt**，给 AI 套上软件工程的纪律与护栏，强制先思考、再规划、后编码、必验证。
@@ -43,7 +41,7 @@ draft: false
 
 ---
 
-## skill-creator — 技能创建器
+# 二、skill-creator — 技能创建器
 
 - **地址**: [anthropics/skills/skill-creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator)
 - **简短解释**: Anthropic 官方元技能，用来创建新 Skill 的 Skill，提供标准化创建框架。
@@ -53,7 +51,7 @@ draft: false
 
 ---
 
-## fireworks-tech-graph — 技术图表生成
+# 三、fireworks-tech-graph — 技术图表生成
 
 - **地址**: [yizhiyanhua-ai/fireworks-tech-graph](https://github.com/yizhiyanhua-ai/fireworks-tech-graph)
 - **简短解释**: 从自然语言生成生产级 SVG + PNG 技术图表，无需学习 Mermaid/PlantUML 语法。
@@ -63,7 +61,7 @@ draft: false
 
 ---
 
-## addyosmani/agent-skills — 生产级工程技能集
+# 四、addyosmani/agent-skills — 生产级工程技能集
 
 - **地址**: [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 - **简短解释**: Addy Osmani 维护的生产级 AI Agent 工程技能集合，覆盖从需求定义到生产发布的完整软件生命周期，强调流程、验证与反合理化。
@@ -87,7 +85,7 @@ draft: false
 
 ---
 
-## mattpocock/skills — 工程师实战技能集
+# 五、mattpocock/skills — 工程师实战技能集
 
 - **地址**: [mattpocock/skills](https://github.com/mattpocock/skills)
 - **简短解释**: TypeScript 专家 Matt Pocock 维护的个人技能集，从真实工程实践中蒸馏而来。

@@ -7,15 +7,13 @@ category: 设计文档
 draft: false
 ---
 
-# AI 搜索 | Cloudflare Vectorize 实现问答搜索
-
-## 背景
+# 一、背景
 
 博客已有 Pagefind 全文搜索，但它是关键词匹配——用户搜「缓存穿透怎么解决」，如果文章标题和正文中没有这几个字，就搜不到。
 
 需要的是语义搜索：用户提问，AI 基于博客内容生成回答，并附上参考文章链接。
 
-## 架构
+# 二、架构
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -40,7 +38,7 @@ draft: false
 
 核心是 RAG（Retrieval-Augmented Generation）：先检索再生成。
 
-## 文档分块策略
+# 三、文档分块策略
 
 直接把整篇文章向量化效果差——一篇 3000 字的文章，embedding 模型只能捕捉到主题，丢失细节。
 
@@ -69,7 +67,7 @@ draft: false
 
 空字段（如无分类、无标签）自动省略，通过 `.filter(Boolean)` 过滤空行。过滤条件：正文少于 50 字的段落丢弃（太短没有检索价值）。
 
-### 实现细节
+## 1、实现细节
 
 分块逻辑在 `scripts/build-vectorize-index.js` 的 `splitByHeadings()` 中：
 
@@ -110,7 +108,7 @@ function splitByHeadings(content, articleTitle) {
 - 每个 chunk 的 ID 由 `slug::heading` 哈希生成，保证同一章节始终对应同一向量 ID
 - 每个 chunk 携带 metadata（`articleTitle`、`articlePath`、`published`、`category`、`tags`、`heading`、`excerpt`），供检索结果展示和去重使用
 
-### 与 LangChain 递归分块的对比
+## 2、与 LangChain 递归分块的对比
 
 | 维度 | Heading 分块（本博客） | LangChain RecursiveCharacterTextSplitter |
 |---|---|---|
@@ -138,9 +136,9 @@ for sep in separators:
 
 **改进方向**：先按 Heading 切分保留语义边界，再对超长段落做二次字符切分，同时让子 chunk 继承父标题路径。
 
-## 向量化与存储
+# 四、向量化与存储
 
-### 构建脚本
+## 1、构建脚本
 
 `scripts/build-vectorize-index.js` 负责：
 
@@ -151,7 +149,7 @@ for sep in separators:
 
 支持增量更新——通过 `.vectorize-manifest.json` 记录每篇文章的内容 hash，只处理新增/修改/删除的文章。具体用法和底层 API 见下文「向量索引上传」小节。
 
-### Embedding 来源
+## 2、Embedding 来源
 
 两种模式，三者齐备时走第三方 API，否则用 Cloudflare Workers AI 免费模型：
 
@@ -180,7 +178,7 @@ AI_API_KEY=sk-xxx
 
 非敏感配置（API 地址、模型名称、向量维度等）统一在 `aiSearchConfig.ts` 中管理，无需在 `.env` 重复配置。
 
-### Cloudflare 凭证获取
+## 3、Cloudflare 凭证获取
 
 **CLOUDFLARE_API_TOKEN**：
 
@@ -204,7 +202,7 @@ AI_API_KEY=sk-xxx
 1. 注册 [ModelScope](https://modelscope.cn)
 2. 右上角头像 → **API-KEY 管理** → **创建 API Key**
 
-### Worker Secret 配置
+## 4、Worker Secret 配置
 
 Worker 运行时需要的 `AI_API_KEY` 不能写在代码中，需在 Cloudflare Dashboard 配置：
 
@@ -212,7 +210,7 @@ Worker 运行时需要的 `AI_API_KEY` 不能写在代码中，需在 Cloudflare
 2. **Workers & Pages** → 选择你的 Worker → **Settings** → **Variables and Secrets**
 3. 添加 **Secret** 类型变量：`AI_API_KEY`，值为第三方 API 的 Key
 
-### 向量索引上传
+## 5、向量索引上传
 
 构建脚本 `scripts/build-vectorize-index.js` 通过 Cloudflare REST API 操作 Vectorize（不是 Wrangler CLI）：
 
@@ -252,11 +250,11 @@ const results = await env.VECTORIZE.query(queryVector, {
 });
 ```
 
-## Worker 端问答流程
+# 五、Worker 端问答流程
 
 `src/worker.js` 中的 `handleAIChat` 处理 `/api/ai-chat`：
 
-### 1. 统一配置管理
+## 1、统一配置管理
 
 所有 AI 相关配置集中在 `src/config/aiSearchConfig.ts`，前端组件、构建脚本、Worker 三方共享：
 
@@ -274,7 +272,7 @@ export const aiSearchConfig = {
 
 Worker 运行时通过 `getAiConfig(env)` 读取配置，非敏感项从 `aiSearchConfig` 取值，仅 API Key 从环境变量 `env.AI_API_KEY` 注入。当配置项和 API Key 都存在时走第三方 API，否则回退到 Cloudflare Workers AI 内置模型。
 
-### 2. Embedding
+## 2、Embedding
 
 ```javascript
 async function getEmbedding(env, text) {
@@ -305,7 +303,7 @@ async function getEmbedding(env, text) {
 
 模型名和维度均从 `aiSearchConfig` 读取，切换模型只需改配置文件。
 
-### 3. 向量检索
+## 3、向量检索
 
 ```javascript
 const queryVector = await getEmbedding(env, question);
@@ -317,7 +315,7 @@ const results = await env.VECTORIZE.query(queryVector, {
 
 过滤 `score < 0.2` 的低相似度结果，按 `articlePath` 去重后拼接上下文。每条匹配结果格式为 `【文章标题 - 章节标题】\n摘要`，用 `---` 分隔。去重后的文章信息（标题、路径、发布日期、摘要、相似度分数）作为 `refs` 事件先于回答发送。
 
-### 4. Prompt 拼接与 system 注入防护
+## 4、Prompt 拼接与 system 注入防护
 
 系统提示（system prompt）决定了 AI 的人格和行为准则。如果用户通过构造请求在 `history` 中插入 `role: "system"` 的消息，就可能覆盖或绕过预设人格——这称为 **system 注入攻击**。
 
@@ -335,7 +333,7 @@ const messages = [
 
 当前人格设定为猫娘「喵墩」，系统提示包含完整的角色背景、语言规范、性格画像等，与博客检索规则拼接后传给 LLM。
 
-### 5. 流式返回
+## 5、流式返回
 
 SSE 格式，四种事件类型：
 
@@ -348,7 +346,7 @@ data: {"type":"done"}                     ← 结束
 
 LLM 后端由 `aiSearchConfig` 决定：配置了 `apiUrl` + `modelName` + `AI_API_KEY` 时走第三方 API（OpenAI 兼容格式流），否则回退 Workers AI（`@cf/meta/llama-3-8b-instruct`，Cloudflare 原生流）。
 
-## 前端组件
+# 六、前端组件
 
 `src/components/controls/AISearch.svelte`，Svelte 5 + runes。
 
@@ -380,9 +378,9 @@ let showSessionList = $state(false);
 
 流式读取使用 `ReadableStream` + `TextDecoder`，逐行解析 SSE data。生成中可通过 `AbortController` 中断请求，同时取消 `reader`。前端处理四种 SSE 事件：`refs`（参考文章）、`chunk`（文本片段）、`error`（错误信息）、`done`（结束）。
 
-### 会话管理
+## 1、会话管理
 
-#### 数据结构设计
+### 1.1 数据结构设计
 
 ```typescript
 interface SessionMeta {
@@ -396,7 +394,7 @@ localStorage 存储策略：
 - `ai-chat:sessions` — 会话元数据列表（JSON 数组）
 - `ai-chat:session:{id}` — 单个会话的完整消息记录
 
-#### 新建会话
+### 1.2 新建会话
 
 标题栏「新建会话」按钮（`add-circle-outline` 图标），点击后：
 1. 保存当前会话到 localStorage
@@ -412,7 +410,7 @@ function startNewSession() {
 }
 ```
 
-#### 历史会话列表
+### 1.3 历史会话列表
 
 标题栏「历史」按钮（`history` 图标），点击展开/收起下拉面板：
 
@@ -439,7 +437,7 @@ function startNewSession() {
 {/if}
 ```
 
-#### 会话切换
+### 1.4 会话切换
 
 点击历史会话项切换到该会话，自动保存当前会话后加载目标会话的消息：
 
@@ -454,7 +452,7 @@ function switchSession(id: string) {
 }
 ```
 
-#### 会话删除
+### 1.5 会话删除
 
 鼠标悬停会话项时出现删除按钮（`close` 图标），删除后若删除的是当前会话则自动新建会话：
 
@@ -469,7 +467,7 @@ function deleteSession(id: string) {
 }
 ```
 
-#### 会话上限与自动清理
+### 1.6 会话上限与自动清理
 
 最多保留 **20 个会话**，超出时自动清理最旧的：
 
@@ -485,7 +483,7 @@ if (sessionList.length > MAX_SESSIONS) {
 }
 ```
 
-#### 自动保存时机
+### 1.7 自动保存时机
 
 - **每次 AI 回复完成后**：`send()` 的 `finally` 块中调用 `saveCurrentSession()`
 - **组件卸载时**：`onMount` 返回的清理函数中保存
@@ -500,7 +498,7 @@ function saveCurrentSession() {
 }
 ```
 
-#### 初始化恢复
+### 1.8 初始化恢复
 
 组件挂载时自动恢复最近会话：
 
@@ -521,11 +519,11 @@ onMount(() => {
 });
 ```
 
-## 敏感配置处理
+# 七、敏感配置处理
 
 非敏感配置集中在 `src/config/aiSearchConfig.ts`，三方共享。敏感信息（API Key）的配置方式见上文「Worker Secret 配置」小节。
 
-## 资源消耗
+# 八、资源消耗
 
 | 资源 | 免费额度 | 单次问答消耗 | 日均可用 |
 |---|---|---|---|
@@ -535,7 +533,7 @@ onMount(() => {
 
 个人博客完全够用。
 
-## 文件清单
+# 九、文件清单
 
 | 文件 | 作用 |
 |---|---|
@@ -547,7 +545,7 @@ onMount(() => {
 | `wrangler.toml` | Vectorize + AI 绑定配置 |
 | `.vectorize-manifest.json` | 增量更新 manifest（gitignored） |
 
-## 踩坑记录
+# 十、踩坑记录
 
 **1. 向量维度不一致**
 
