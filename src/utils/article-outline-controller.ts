@@ -204,6 +204,7 @@ export class ArticleOutlineRailController {
 		this.headings.forEach((heading) => {
 			const item = document.createElement("a");
 			item.className = "article-outline-rail__browse-item";
+			item.style.borderRadius = "0.5rem";
 			item.dataset.outlineTarget = String(heading.index);
 			item.dataset.outlineLevel = String(heading.level);
 			item.href = heading.element.id

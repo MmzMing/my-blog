@@ -63,6 +63,7 @@ let containerRef = $state<HTMLElement | null>(null);
 let view = $state<ArticleListView>(defaultView);
 let currentPage = $state(1);
 let pageviewLookup = $state<Map<string, number> | null>(null);
+let loadedImageIds = $state<Set<string>>(new Set());
 
 const showLoadingSkeleton =
 	coverImageConfig.randomCoverImage.showLoading ?? true;
@@ -110,10 +111,13 @@ function queueCoverCache(postId: string, imageUrl: string) {
 }
 
 function markImageLoaded(image: HTMLImageElement, postId: string) {
-	if (image.classList.contains("is-loaded")) return;
-	image.classList.add("is-loaded");
-	image.parentElement?.classList.remove("skeleton-shimmer");
-	queueCoverCache(postId, image.currentSrc || image.src);
+	if (!image.classList.contains("is-loaded")) {
+		image.classList.add("is-loaded");
+		queueCoverCache(postId, image.currentSrc || image.src);
+	}
+	if (postId && !loadedImageIds.has(postId)) {
+		loadedImageIds = new Set(loadedImageIds).add(postId);
+	}
 }
 
 function handleImageLoad(event: Event, postId: string) {
@@ -258,7 +262,7 @@ onMount(() => {
 						{#if post.imageUrl}
 							<div
 								class="article-list-card__media"
-								class:skeleton-shimmer={showLoadingSkeleton}
+								class:skeleton-shimmer={showLoadingSkeleton && !loadedImageIds.has(post.id)}
 								aria-hidden="true"
 							>
 								<picture>
