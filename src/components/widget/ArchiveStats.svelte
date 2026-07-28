@@ -30,6 +30,7 @@ let displayedScopePosts = totalPosts;
 let displayedMonthPosts = currentMonthPosts;
 let scopePostsLabel = totalPostsLabel;
 let writingSpanDays: number | null = null;
+let displayedWritingSpanDays: number | null = null;
 let displayedProgress: number | null = null;
 let progressTarget: number | null = null;
 let animationFrames: number[] = [];
@@ -164,9 +165,11 @@ onMount(() => {
 	const scopeSummary = getScopeSummary();
 	scopePostsLabel = scopeSummary.label;
 	writingSpanDays = scopeSummary.spanDays;
+	displayedWritingSpanDays = writingSpanDays;
 
 	if (!reducedMotion) {
 		displayedScopePosts = 0;
+		displayedWritingSpanDays = writingSpanDays === null ? null : 0;
 		displayedMonthPosts = 0;
 		displayedProgress = progressTarget === null ? null : 0;
 	}
@@ -176,6 +179,13 @@ onMount(() => {
 		(value) => (displayedScopePosts = value),
 		reducedMotion,
 	);
+	if (writingSpanDays !== null) {
+		animateNumber(
+			writingSpanDays,
+			(value) => (displayedWritingSpanDays = value),
+			reducedMotion,
+		);
+	}
 	animateNumber(
 		currentMonthPosts,
 		(value) => (displayedMonthPosts = value),
@@ -209,13 +219,13 @@ $: evaluationText = getEvaluation();
 			<span class="archive-stats__value" aria-hidden="true">{formatNumber(displayedScopePosts)}</span>
 			<span class="archive-stats__label">{scopePostsLabel}</span>
 		</div>
-		{#if writingSpanDays !== null}
+		{#if displayedWritingSpanDays !== null}
 			<div
 				class="archive-stats__metric"
 				role="group"
-				aria-label={`${writingSpanLabel}: ${formatNumber(writingSpanDays)}`}
+				aria-label={`${writingSpanLabel}: ${formatNumber(displayedWritingSpanDays)}`}
 			>
-				<span class="archive-stats__value" aria-hidden="true">{formatNumber(writingSpanDays)}</span>
+				<span class="archive-stats__value" aria-hidden="true">{formatNumber(displayedWritingSpanDays)}</span>
 				<span class="archive-stats__label">{writingSpanLabel}</span>
 			</div>
 		{/if}

@@ -47,7 +47,7 @@ const hasChildren = processedLink.children && processedLink.children.length > 0;
 		>
 			<div class="flex items-center gap-1.5">
 				{processedLink.icon && (
-					<span class="navbar-trigger-icon">
+					<span class="navbar-trigger-icon" data-navbar-icon-template aria-hidden="true">
 						<Icon name={processedLink.icon} is:inline class="text-[1.05rem]" />
 					</span>
 				)}
@@ -94,7 +94,7 @@ const hasChildren = processedLink.children && processedLink.children.length > 0;
 		>
 			<div class="flex items-center gap-1.5">
 				{processedLink.icon && (
-					<span class="navbar-trigger-icon">
+					<span class="navbar-trigger-icon" data-navbar-icon-template aria-hidden="true">
 						<Icon name={processedLink.icon} is:inline class="text-[1.05rem]" />
 					</span>
 				)}

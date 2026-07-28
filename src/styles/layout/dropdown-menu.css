@@ -51,14 +51,12 @@
 	border-color: transparent;
 }
 
-/* ── 一级导航触发器图标：默认不渲染，选中时显示 ──
-   不用占位；选中后由 JS 重新计算 hover slider 实现完全覆盖 */
+/* 一级导航图标仅负责为激活项预留布局，实际图标由浮动层绘制。 */
 .navbar-trigger-icon {
 	display: none;
 	align-items: center;
 	justify-content: center;
 	margin-right: 0;
-	transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .navbar-trigger-icon svg {
@@ -66,12 +64,12 @@
 	height: 0.9rem;
 }
 
-/* 选中时图标显示 */
+/* 激活项保留原有宽度与间距，隐藏模板避免和浮动图标重叠。 */
 .dropdown-container.nav-item-active > a .navbar-trigger-icon,
 .dropdown-container.nav-item-active > button .navbar-trigger-icon {
 	display: inline-flex;
 	margin-right: 0.375rem;
-	opacity: 1;
+	visibility: hidden;
 }
 
 .dropdown-menu {

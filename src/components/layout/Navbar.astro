@@ -75,6 +75,10 @@ if (isLocalSrcLogo) {
 		<div class="navbar-seg navbar-seg--center" data-navbar-nav>
 			<div class="navbar-nav hidden lg:flex items-center gap-0.5 relative">
 				<div class="navbar-hover-highlight" data-hover-border></div>
+				<span class="navbar-moving-icon" data-navbar-moving-icon aria-hidden="true">
+					<span class="navbar-moving-icon__glyph navbar-moving-icon__glyph--current" data-navbar-icon-current></span>
+					<span class="navbar-moving-icon__glyph navbar-moving-icon__glyph--next" data-navbar-icon-next></span>
+				</span>
 				{links.map((l) => <DropdownMenu link={l} />)}
 			</div>
 		</div>
@@ -99,6 +103,14 @@ import { requestSearchModalToggle } from "@/utils/search-modal-controller";
 
 let _hoverSliderAbortController: AbortController | null = null;
 let _hoverSliderMouseEnterHandlers: Array<[Element, (e: Event) => void]> = [];
+let _navbarIconAnimations: Animation[] = [];
+let _navbarIconAnimationRevision = 0;
+let _navbarIconResizeObserver: ResizeObserver | null = null;
+let _navbarIconResizeFrame: number | null = null;
+let _navbarActiveItem: HTMLElement | null = null;
+
+const NAVBAR_ICON_DURATION = 260;
+const NAVBAR_ICON_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
 function cleanupHoverSlider() {
 	if (_hoverSliderAbortController) {
@@ -109,6 +121,12 @@ function cleanupHoverSlider() {
 		item.removeEventListener('mouseenter', handler);
 	});
 	_hoverSliderMouseEnterHandlers = [];
+	_navbarIconResizeObserver?.disconnect();
+	_navbarIconResizeObserver = null;
+	if (_navbarIconResizeFrame !== null) {
+		cancelAnimationFrame(_navbarIconResizeFrame);
+		_navbarIconResizeFrame = null;
+	}
 }
 
 /**
@@ -141,7 +159,214 @@ function moveHighlight(navContainer: HTMLElement, hoverBorder: HTMLElement, item
 	hoverBorder.style.top = `${rect.top - containerRect.top}px`;
 }
 
-function initHoverSlider() {
+interface NavbarIconParts {
+	layer: HTMLElement;
+	current: HTMLElement;
+	next: HTMLElement;
+}
+
+interface NavbarIconSnapshot {
+	rect: DOMRect | null;
+	markup: string;
+}
+
+function getNavbarIconParts(navContainer: HTMLElement): NavbarIconParts | null {
+	const layer = navContainer.querySelector('[data-navbar-moving-icon]') as HTMLElement | null;
+	const current = layer?.querySelector('[data-navbar-icon-current]') as HTMLElement | null;
+	const next = layer?.querySelector('[data-navbar-icon-next]') as HTMLElement | null;
+	return layer && current && next ? { layer, current, next } : null;
+}
+
+function getNavbarIconTemplate(item: HTMLElement | null): HTMLElement | null {
+	return item?.querySelector('.navbar-trigger-icon') as HTMLElement | null;
+}
+
+function getNavbarIconMarkup(item: HTMLElement | null): string {
+	return getNavbarIconTemplate(item)?.innerHTML.trim() || '';
+}
+
+function hasRunningNavbarIconAnimation(): boolean {
+	return _navbarIconAnimations.some((animation) => animation.playState === 'running');
+}
+
+function cancelNavbarIconAnimations(): number {
+	const revision = ++_navbarIconAnimationRevision;
+	_navbarIconAnimations.forEach((animation) => animation.cancel());
+	_navbarIconAnimations = [];
+	return revision;
+}
+
+function captureNavbarIconSnapshot(parts: NavbarIconParts): NavbarIconSnapshot {
+	const currentOpacity = Number.parseFloat(getComputedStyle(parts.current).opacity) || 0;
+	const nextOpacity = Number.parseFloat(getComputedStyle(parts.next).opacity) || 0;
+	const markup = parts.next.innerHTML && nextOpacity > currentOpacity
+		? parts.next.innerHTML
+		: parts.current.innerHTML;
+	const layerOpacity = Number.parseFloat(getComputedStyle(parts.layer).opacity) || 0;
+	return {
+		rect: markup && layerOpacity > 0.01 ? parts.layer.getBoundingClientRect() : null,
+		markup,
+	};
+}
+
+function setNavbarIconBox(
+	navContainer: HTMLElement,
+	layer: HTMLElement,
+	template: HTMLElement,
+): DOMRect | null {
+	const navRect = navContainer.getBoundingClientRect();
+	const templateRect = template.getBoundingClientRect();
+	if (templateRect.width === 0 || templateRect.height === 0) return null;
+
+	layer.style.left = `${templateRect.left - navRect.left}px`;
+	layer.style.top = `${templateRect.top - navRect.top}px`;
+	layer.style.width = `${templateRect.width}px`;
+	layer.style.height = `${templateRect.height}px`;
+	return templateRect;
+}
+
+function hideNavbarIcon(parts: NavbarIconParts) {
+	cancelNavbarIconAnimations();
+	parts.layer.style.opacity = '0';
+	parts.layer.style.transform = 'none';
+	parts.current.style.opacity = '1';
+	parts.next.style.opacity = '0';
+	parts.current.innerHTML = '';
+	parts.next.innerHTML = '';
+}
+
+function showNavbarIconImmediately(
+	navContainer: HTMLElement,
+	parts: NavbarIconParts,
+	template: HTMLElement,
+	markup: string,
+) {
+	cancelNavbarIconAnimations();
+	if (!setNavbarIconBox(navContainer, parts.layer, template)) {
+		hideNavbarIcon(parts);
+		return;
+	}
+	parts.layer.style.opacity = '1';
+	parts.layer.style.transform = 'none';
+	parts.current.innerHTML = markup;
+	parts.current.style.opacity = '1';
+	parts.next.innerHTML = '';
+	parts.next.style.opacity = '0';
+}
+
+function finishNavbarIconAnimations(
+	revision: number,
+	animations: Animation[],
+	onFinish: () => void,
+) {
+	void Promise.all(animations.map((animation) => animation.finished.catch(() => undefined))).then(() => {
+		if (revision !== _navbarIconAnimationRevision) return;
+		onFinish();
+		animations.forEach((animation) => animation.cancel());
+		_navbarIconAnimations = [];
+	});
+}
+
+function syncNavbarIcon(
+	navContainer: HTMLElement,
+	previousItem: HTMLElement | null,
+	nextItem: HTMLElement | null,
+	snapshot: NavbarIconSnapshot,
+	animate: boolean,
+) {
+	const parts = getNavbarIconParts(navContainer);
+	if (!parts) return;
+
+	const template = getNavbarIconTemplate(nextItem);
+	const targetMarkup = getNavbarIconMarkup(nextItem);
+	const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const canAnimate = animate && !reduceMotion && typeof parts.layer.animate === 'function';
+
+	if (previousItem === nextItem && nextItem) {
+		if (!hasRunningNavbarIconAnimation() && template && targetMarkup) {
+			showNavbarIconImmediately(navContainer, parts, template, targetMarkup);
+		}
+		return;
+	}
+
+	if (!template || !targetMarkup) {
+		if (!canAnimate || !snapshot.rect || !snapshot.markup) {
+			hideNavbarIcon(parts);
+			return;
+		}
+
+		const revision = cancelNavbarIconAnimations();
+		const navRect = navContainer.getBoundingClientRect();
+		parts.layer.style.left = `${snapshot.rect.left - navRect.left}px`;
+		parts.layer.style.top = `${snapshot.rect.top - navRect.top}px`;
+		parts.layer.style.width = `${snapshot.rect.width}px`;
+		parts.layer.style.height = `${snapshot.rect.height}px`;
+		parts.layer.style.opacity = '1';
+		parts.layer.style.transform = 'none';
+		parts.current.innerHTML = snapshot.markup;
+		parts.current.style.opacity = '1';
+		parts.next.innerHTML = '';
+		parts.next.style.opacity = '0';
+		const fadeOut = parts.layer.animate(
+			[{ opacity: 1 }, { opacity: 0 }],
+			{ duration: 180, easing: 'ease-out', fill: 'both' },
+		);
+		_navbarIconAnimations = [fadeOut];
+		finishNavbarIconAnimations(revision, [fadeOut], () => {
+			parts.layer.style.opacity = '0';
+			parts.current.innerHTML = '';
+		});
+		return;
+	}
+
+	if (!canAnimate || !snapshot.rect || !snapshot.markup) {
+		showNavbarIconImmediately(navContainer, parts, template, targetMarkup);
+		return;
+	}
+
+	const revision = cancelNavbarIconAnimations();
+	const targetRect = setNavbarIconBox(navContainer, parts.layer, template);
+	if (!targetRect) {
+		hideNavbarIcon(parts);
+		return;
+	}
+
+	parts.layer.style.opacity = '1';
+	parts.layer.style.transform = 'none';
+	parts.current.innerHTML = snapshot.markup;
+	parts.current.style.opacity = '1';
+	parts.next.innerHTML = targetMarkup;
+	parts.next.style.opacity = '0';
+
+	const deltaX = snapshot.rect.left - targetRect.left;
+	const deltaY = snapshot.rect.top - targetRect.top;
+	const movement = parts.layer.animate(
+		[
+			{ transform: `translate3d(${deltaX}px, ${deltaY}px, 0)` },
+			{ transform: 'translate3d(0, 0, 0)' },
+		],
+		{ duration: NAVBAR_ICON_DURATION, easing: NAVBAR_ICON_EASING, fill: 'both' },
+	);
+	const outgoing = parts.current.animate(
+		[{ opacity: 1 }, { opacity: 0 }],
+		{ duration: NAVBAR_ICON_DURATION, easing: 'ease-in-out', fill: 'both' },
+	);
+	const incoming = parts.next.animate(
+		[{ opacity: 0 }, { opacity: 1 }],
+		{ duration: NAVBAR_ICON_DURATION, easing: 'ease-in-out', fill: 'both' },
+	);
+	const animations = [movement, outgoing, incoming];
+	_navbarIconAnimations = animations;
+	finishNavbarIconAnimations(revision, animations, () => {
+		parts.layer.style.transform = 'none';
+		parts.current.innerHTML = targetMarkup;
+		parts.current.style.opacity = '1';
+		parts.next.innerHTML = '';
+		parts.next.style.opacity = '0';
+	});
+}
+
+function initHoverSlider(animateActiveChange = false) {
 	cleanupHoverSlider();
 
 	const navContainer = document.querySelector('[data-navbar-nav] .navbar-nav') as HTMLElement | null;
@@ -163,10 +388,15 @@ function initHoverSlider() {
 	function detectActiveItem() {
 		const currentPath = window.location.pathname;
 		let activeItem: HTMLElement | null = null;
+		const previousItem = _navbarActiveItem?.isConnected
+			? _navbarActiveItem
+			: _navContainer.querySelector('.nav-item-active') as HTMLElement | null;
+		const iconParts = getNavbarIconParts(_navContainer);
+		const iconSnapshot = iconParts
+			? captureNavbarIconSnapshot(iconParts)
+			: { rect: null, markup: '' };
 
 		navItems.forEach((item) => {
-			item.classList.remove('nav-item-active');
-
 			// 收集所有可匹配的 href：自身 + 子菜单
 			const hrefs: string[] = [];
 			const selfLink = item.querySelector(':scope > a') as HTMLAnchorElement | null;
@@ -181,15 +411,21 @@ function initHoverSlider() {
 			});
 
 			const matched = hrefs.some((href) => pathMatches(currentPath, href));
-			if (matched) {
-				item.classList.add('nav-item-active');
-				if (!activeItem) activeItem = item;
-			}
+			if (matched && !activeItem) activeItem = item;
 		});
+
+		navItems.forEach((item) => item.classList.toggle('nav-item-active', item === activeItem));
+		_navbarActiveItem = activeItem;
+		syncNavbarIcon(
+			_navContainer,
+			previousItem,
+			activeItem,
+			iconSnapshot,
+			animateActiveChange,
+		);
 
 		if (activeItem) {
 			_navContainer.classList.add('nav-has-active');
-			// 图标从 display:none 显示后容器宽度会变化，等浏览器重排后再计算 slider
 			requestAnimationFrame(() => {
 				moveHighlight(_navContainer, _hoverBorder, activeItem);
 			});
@@ -214,8 +450,28 @@ function initHoverSlider() {
 		_hoverBorder.style.opacity = '1';
 	}, { signal: _hoverSliderAbortController.signal });
 
+	function scheduleIconPositionSync() {
+		if (_navbarIconResizeFrame !== null) return;
+		_navbarIconResizeFrame = requestAnimationFrame(() => {
+			_navbarIconResizeFrame = null;
+			if (hasRunningNavbarIconAnimation()) return;
+			const activeItem = _navbarActiveItem?.isConnected
+				? _navbarActiveItem
+				: _navContainer.querySelector('.nav-item-active') as HTMLElement | null;
+			const parts = getNavbarIconParts(_navContainer);
+			const template = getNavbarIconTemplate(activeItem);
+			if (parts && template) setNavbarIconBox(_navContainer, parts.layer, template);
+		});
+	}
+
+	_navbarIconResizeObserver = new ResizeObserver(scheduleIconPositionSync);
+	_navbarIconResizeObserver.observe(_navContainer);
+	window.addEventListener('resize', scheduleIconPositionSync, {
+		passive: true,
+		signal: _hoverSliderAbortController.signal,
+	});
+
 	detectActiveItem();
-	document.addEventListener('astro:page-load', detectActiveItem, { signal: _hoverSliderAbortController.signal });
 }
 
 initHoverSlider();
@@ -328,7 +584,7 @@ function initSearchShortcut() {
 }
 
 document.addEventListener("astro:page-load", () => {
-	initHoverSlider();
+	initHoverSlider(true);
 	initSearchShortcut();
 });
 

@@ -328,9 +328,53 @@
 	background-color: color-mix(in oklch, var(--deep-text) 12%, transparent);
 }
 
+/* 当前栏目图标：独立于各导航项移动，避免布局宽度参与动画。 */
+.navbar-moving-icon {
+	position: absolute;
+	display: grid;
+	place-items: center;
+	color: var(--deep-text);
+	opacity: 0;
+	pointer-events: none;
+	z-index: 30;
+	will-change: transform, opacity;
+}
+
+.navbar-moving-icon__glyph {
+	display: inline-flex;
+	grid-area: 1 / 1;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	will-change: opacity;
+}
+
+.navbar-moving-icon__glyph--next {
+	opacity: 0;
+}
+
+.navbar-moving-icon svg {
+	display: block;
+	width: 0.9rem;
+	height: 0.9rem;
+}
+
 .navbar-nav:hover .navbar-hover-highlight,
 .navbar-nav.nav-has-active .navbar-hover-highlight {
 	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.navbar-hover-highlight {
+		transition-duration: 0.01ms;
+	}
+
+	.navbar-moving-icon,
+	.navbar-moving-icon__glyph {
+		animation: none !important;
+		transition: none !important;
+	}
 }
 
 /* 禁用各 item 自身的 expand-animation 背景 */
