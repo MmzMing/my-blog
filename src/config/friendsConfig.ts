@@ -325,6 +325,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "Eliauk's Blog",
+		imgurl: "https://img.eliauk312.top/avatar/default-avatar.jpg",
+		desc: "一方天地，记录代码、生活和偶尔的奇思妙想。",
+		siteurl: "https://eliauk312.top/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
