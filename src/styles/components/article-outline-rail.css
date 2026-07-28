@@ -17,7 +17,7 @@
 		right: auto;
 		z-index: 30;
 		display: block;
-		width: 3rem;
+		width: 5rem;
 		height: min(40rem, calc(100vh - 10rem));
 		min-height: 18rem;
 		outline: none;
@@ -59,32 +59,30 @@
 
 	.article-outline-rail__heading-mark,
 	.article-outline-rail__body-tick {
-		--article-outline-wave-scale: 1;
 		display: block;
-		width: 1.2rem;
-		height: 2px;
+		height: 4px;
 		flex: none;
 		border-radius: 999px;
 		background: var(--line-color);
-		transform-origin: left center;
-		transform: scaleX(var(--article-outline-wave-scale));
-		transition: transform 90ms linear, background-color 180ms ease, opacity 180ms ease;
+		transition: background-color 180ms ease, opacity 180ms ease;
 	}
 
-	.article-outline-rail__segment[data-outline-level="1"] .article-outline-rail__heading-mark {
-		width: 2.4rem;
+	.article-outline-rail__heading-mark {
+		width: var(--article-outline-heading-width, 1.5rem);
 	}
 
 	.article-outline-rail__segment[data-outline-level="2"] .article-outline-rail__heading-mark {
-		width: 1.85rem;
+		margin-left: 0.5rem;
 	}
 
 	.article-outline-rail__segment[data-outline-level="3"] .article-outline-rail__heading-mark {
-		width: 1.35rem;
+		margin-left: 1rem;
 	}
 
-	.article-outline-rail__heading-mark.is-active {
+	.article-outline-rail__heading-mark.is-active,
+	.article-outline-rail__body-tick.is-active {
 		background: var(--article-outline-active);
+		opacity: 1;
 	}
 
 	.article-outline-rail__body-ticks {
@@ -92,8 +90,8 @@
 	}
 
 	.article-outline-rail__body-tick {
-		width: 0.72rem;
-		height: 2px;
+		width: 0.75rem;
+		margin-left: 1.5rem;
 		opacity: 0.72;
 	}
 

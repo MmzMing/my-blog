@@ -14,6 +14,9 @@ const READING_OFFSET = 80;
 const MINIMAP_TICK_BUDGET = 48;
 const MAX_TICKS_PER_SECTION = 12;
 const COLLAPSE_DELAY = 250;
+const MIN_HEADING_MARK_WIDTH = 1.5;
+const MAX_HEADING_MARK_WIDTH = 4;
+const HEADING_MARK_WIDTH_PER_CHARACTER = 0.16;
 
 function clamp(value: number, minimum: number, maximum: number): number {
 	return Math.min(Math.max(value, minimum), maximum);
@@ -33,6 +36,17 @@ function getHeadingText(heading: HTMLElement): string {
 	return text || heading.getAttribute("aria-label") || heading.id || "Heading";
 }
 
+function getHeadingMarkWidth(text: string): string {
+	const characterCount = Array.from(text.replace(/\s+/gu, " ").trim()).length;
+	const width = clamp(
+		MIN_HEADING_MARK_WIDTH +
+			Math.max(0, characterCount - 1) * HEADING_MARK_WIDTH_PER_CHARACTER,
+		MIN_HEADING_MARK_WIDTH,
+		MAX_HEADING_MARK_WIDTH,
+	);
+	return `${width.toFixed(2)}rem`;
+}
+
 export class ArticleOutlineRailController {
 	private readonly root: HTMLElement;
 	private readonly abortController = new AbortController();
@@ -44,6 +58,7 @@ export class ArticleOutlineRailController {
 	private article: HTMLElement | null = null;
 	private headings: OutlineHeading[] = [];
 	private activeIndex = -1;
+	private activeRailBar: HTMLElement | null = null;
 	private articleStart = 0;
 	private articleEnd = 0;
 	private animationFrame: number | null = null;
@@ -177,6 +192,10 @@ export class ArticleOutlineRailController {
 			const marker = document.createElement("span");
 			marker.className = "article-outline-rail__heading-mark";
 			marker.dataset.outlineIndex = String(heading.index);
+			marker.style.setProperty(
+				"--article-outline-heading-width",
+				getHeadingMarkWidth(heading.text),
+			);
 			segment.appendChild(marker);
 
 			const bodyTicks = document.createElement("span");
@@ -184,6 +203,7 @@ export class ArticleOutlineRailController {
 			for (let tickIndex = 1; tickIndex < tickCount; tickIndex += 1) {
 				const tick = document.createElement("span");
 				tick.className = "article-outline-rail__body-tick";
+				tick.dataset.outlineLevel = "4";
 				bodyTicks.appendChild(tick);
 			}
 			segment.appendChild(bodyTicks);
@@ -195,6 +215,7 @@ export class ArticleOutlineRailController {
 			String(rowCount),
 		);
 		this.minimap.replaceChildren(fragment);
+		this.activeRailBar = null;
 	}
 
 	private renderBrowseList(): void {
@@ -270,7 +291,7 @@ export class ArticleOutlineRailController {
 			this.activeIndex = nextActiveIndex;
 			this.syncActiveHeading(this.headings[nextActiveIndex]);
 		}
-		this.updateReadingWave();
+		this.syncActiveRailBar(this.headings[nextActiveIndex]);
 	}
 
 	private getProgress(): number {
@@ -305,14 +326,6 @@ export class ArticleOutlineRailController {
 	}
 
 	private syncActiveHeading(activeHeading: OutlineHeading): void {
-		this.root
-			.querySelectorAll<HTMLElement>(".article-outline-rail__heading-mark")
-			.forEach((element) => {
-				element.classList.toggle(
-					"is-active",
-					element.dataset.outlineIndex === String(activeHeading.index),
-				);
-			});
 		this.root
 			.querySelectorAll<HTMLElement>("[data-outline-target]")
 			.forEach((item) => {
@@ -364,44 +377,37 @@ export class ArticleOutlineRailController {
 		);
 	}
 
-	private updateReadingWave(): void {
+	private syncActiveRailBar(activeHeading: OutlineHeading): void {
 		if (!this.minimap) return;
-		const readingPosition = window.scrollY + READING_OFFSET;
+		const segment = this.minimap.querySelector<HTMLElement>(
+			`.article-outline-rail__segment[data-outline-index="${activeHeading.index}"]`,
+		);
+		if (!segment) return;
+
 		const bars = Array.from(
-			this.minimap.querySelectorAll<HTMLElement>(
+			segment.querySelectorAll<HTMLElement>(
 				".article-outline-rail__heading-mark, .article-outline-rail__body-tick",
 			),
 		);
-		const isInsideArticle =
-			readingPosition >= this.articleStart &&
-			readingPosition <= this.articleEnd;
-		if (!isInsideArticle) {
-			bars.forEach((bar) => {
-				bar.style.setProperty(
-					"--article-outline-wave-scale",
-					bar.classList.contains("is-active") ? "1.12" : "1",
-				);
-			});
-			return;
-		}
+		if (!bars.length) return;
 
-		const readingRatio =
-			(readingPosition - this.articleStart) /
-			Math.max(1, this.articleEnd - this.articleStart);
-		const minimapRect = this.minimap.getBoundingClientRect();
-		const waveCenter = clamp(readingRatio, 0, 1) * minimapRect.height;
-		const waveSigma = 18;
-		bars.forEach((bar) => {
-			const rect = bar.getBoundingClientRect();
-			const barCenter = rect.top - minimapRect.top + rect.height / 2;
-			const distance = (barCenter - waveCenter) / waveSigma;
-			const influence = Math.exp((-distance * distance) / 2);
-			const baseScale = bar.classList.contains("is-active") ? 1.12 : 1;
-			bar.style.setProperty(
-				"--article-outline-wave-scale",
-				String(baseScale + influence * 0.86),
-			);
-		});
+		const readingPosition = window.scrollY + READING_OFFSET;
+		const sectionProgress = clamp(
+			(readingPosition - activeHeading.absoluteTop) /
+				Math.max(1, activeHeading.sectionEnd - activeHeading.absoluteTop),
+			0,
+			1,
+		);
+		const activeBarIndex = Math.min(
+			bars.length - 1,
+			Math.floor(sectionProgress * bars.length),
+		);
+		const nextActiveRailBar = bars[activeBarIndex];
+		if (nextActiveRailBar === this.activeRailBar) return;
+
+		this.activeRailBar?.classList.remove("is-active");
+		nextActiveRailBar.classList.add("is-active");
+		this.activeRailBar = nextActiveRailBar;
 	}
 
 	private navigateToHeading(event: Event): void {
