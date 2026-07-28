@@ -6,277 +6,111 @@ interface Props {
 }
 
 const { graph } = Astro.props;
-
-const chartData = {
-	...graph,
-	nodes: graph.nodes.map((node) => ({
-		...node,
-		category:
-			node.value >= 5 ? "高频标签" : node.value >= 2 ? "常用标签" : "低频标签",
-	})),
-};
+const accessibleLabel = `标签关系图谱，共 ${graph.nodes.length} 个标签、${graph.links.length} 条关联。使用方向键选择标签，回车打开。`;
+const initialStatus =
+	graph.nodes.length === 0 ? "暂无标签关系" : "正在准备图谱…";
 ---
 
 <div
 	id="tag-graph-container"
 	class="tag-graph"
-	data-graph={JSON.stringify(chartData)}
+	data-graph={JSON.stringify(graph)}
 >
   <div class="tag-graph__header">
-    <div>
-      <h2 class="tag-graph__title">标签关系图谱</h2>
-      <p class="tag-graph__meta">
-        {graph.nodes.length} 个标签
-      </p>
-    </div>
+    <p class="tag-graph__description">
+      本关系图谱基于
+      <a href="https://d3js.org/" target="_blank" rel="noopener noreferrer">D3.js</a>
+      进行绘制。
+    </p>
   </div>
 
-  <div id="tag-graph-chart" class="tag-graph__chart" aria-label="标签关系图谱"></div>
+  <div
+    id="tag-graph-chart"
+    class="tag-graph__chart"
+    data-tag-graph-surface
+    data-state={graph.nodes.length === 0 ? "empty" : "idle"}
+  >
+    <canvas
+      class="tag-graph__canvas"
+      data-tag-graph-canvas
+      role="img"
+      tabindex="0"
+      aria-label={accessibleLabel}
+    >
+      {accessibleLabel}
+    </canvas>
+    <div
+      class="tag-graph__status"
+      data-tag-graph-status
+      aria-live="polite"
+    >
+      {initialStatus}
+    </div>
+    <div
+      class="tag-graph__tooltip"
+      data-tag-graph-tooltip
+      role="tooltip"
+      aria-hidden="true"
+      hidden
+    >
+      <strong data-tag-graph-tooltip-title></strong>
+      <span data-tag-graph-tooltip-meta></span>
+    </div>
+  </div>
 </div>
 
-<script is:inline>
-(function() {
-  if (window.__tagGraphPageListenerBound) return;
-  window.__tagGraphPageListenerBound = true;
+<script>
+  import type { TagGraphController } from "@/utils/tag-graph-controller";
 
-  var activeState = null;
+  let activeController: TagGraphController | null = null;
+  let loadingObserver: IntersectionObserver | null = null;
+  let loadVersion = 0;
 
-  function loadECharts(callback) {
-    if (window.echarts) {
-      callback(window.echarts);
-      return;
-    }
-
-    var existing = document.querySelector("script[data-echarts-loader]");
-    if (existing) {
-      existing.addEventListener("load", function() { callback(window.echarts); }, { once: true });
-      return;
-    }
-
-    var script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js";
-    script.async = true;
-    script.dataset.echartsLoader = "true";
-    script.onload = function() { callback(window.echarts); };
-    document.head.appendChild(script);
+  function cleanupTagGraphLoader() {
+    loadVersion++;
+    loadingObserver?.disconnect();
+    loadingObserver = null;
+    activeController?.destroy();
+    activeController = null;
   }
 
-  function parseGraph(container) {
-    var raw = container.getAttribute("data-graph");
-    if (!raw) return null;
+  async function loadTagGraph(root: HTMLElement, version: number) {
+    const surface = root.querySelector<HTMLElement>("[data-tag-graph-surface]");
+    if (!surface || surface.dataset.state === "empty") return;
+
+    surface.dataset.state = "loading";
     try {
-      return JSON.parse(raw);
-    } catch (_err) {
-      return null;
+      const { mountTagGraph } = await import("@/utils/tag-graph-controller");
+      if (version !== loadVersion || !root.isConnected) return;
+      activeController = mountTagGraph(root);
+    } catch (error) {
+      if (version !== loadVersion || !root.isConnected) return;
+      surface.dataset.state = "error";
+      const status = surface.querySelector<HTMLElement>("[data-tag-graph-status]");
+      if (status) status.textContent = "关系图谱加载失败";
+      console.error("Failed to load the tag graph", error);
     }
   }
 
-  function getThemeColors() {
-    var isDark = document.documentElement.classList.contains("dark");
-    return {
-      isDark: isDark,
-      text: isDark ? "rgba(255,255,255,0.9)" : "rgba(24,24,27,0.92)",
-	      muted: isDark ? "rgba(255,255,255,0.56)" : "rgba(63,63,70,0.66)",
-	      line: isDark ? "rgba(255,132,112,0.35)" : "rgba(189,78,62,0.3)",
-	      tooltipBg: "rgba(30,30,30,0.96)",
-	      tooltipBorder: "rgba(255,255,255,0.18)",
-	      tooltipText: "rgba(255,255,255,0.94)",
-	    };
-	  }
+  function initTagGraphLoader() {
+    cleanupTagGraphLoader();
 
-  function getSymbolSize(value, minValue, maxValue) {
-    var minSize = 24;
-    var maxSize = 78;
-    if (maxValue === minValue) return 44;
-    return minSize + ((value - minValue) / (maxValue - minValue)) * (maxSize - minSize);
+    const root = document.getElementById("tag-graph-container");
+    if (!root) return;
+    const surface = root.querySelector<HTMLElement>("[data-tag-graph-surface]");
+    if (!surface || surface.dataset.state === "empty") return;
+
+    const version = loadVersion;
+    loadingObserver = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (!entry?.isIntersecting || surface.offsetWidth === 0 || surface.offsetHeight === 0) return;
+      loadingObserver?.disconnect();
+      loadingObserver = null;
+      void loadTagGraph(root, version);
+    }, { rootMargin: "120px 0px" });
+    loadingObserver.observe(surface);
   }
 
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
-
-  function buildChartOption(graph) {
-    var colors = getThemeColors();
-    var palette = [
-      "#e76f61", "#2f8f83", "#d6a13d", "#5d7bd9", "#b264b4",
-      "#2b9db6", "#c75c8a", "#6f8f36", "#d47f42", "#6d75a8",
-    ];
-    var values = graph.nodes.map(function(node) { return node.value; });
-    var maxValue = Math.max.apply(null, values);
-    var minValue = Math.min.apply(null, values);
-    var maxLink = Math.max.apply(null, graph.links.map(function(link) { return link.value; }).concat([1]));
-
-    var nodes = graph.nodes.map(function(node, index) {
-      var color = palette[index % palette.length];
-      return {
-        id: node.id,
-        name: node.name,
-        value: node.value,
-        url: node.url,
-        posts: node.posts,
-        category: node.category,
-        symbolSize: getSymbolSize(node.value, minValue, maxValue),
-        itemStyle: {
-          color: color,
-          borderColor: colors.isDark ? "rgba(255,255,255,0.52)" : "rgba(255,255,255,0.95)",
-          borderWidth: 2,
-          shadowBlur: 16,
-          shadowColor: color + "55",
-        },
-        label: {
-          show: true,
-          position: "right",
-          formatter: "{b}",
-          color: colors.text,
-          fontSize: node.value >= maxValue * 0.5 ? 14 : 12,
-          fontWeight: 700,
-        },
-      };
-    });
-
-    var links = graph.links.map(function(link) {
-      var width = 1 + Math.min(4, (link.value / maxLink) * 4);
-      var opacity = 0.22 + Math.min(0.48, (link.value / maxLink) * 0.48);
-      return {
-        source: link.source,
-        target: link.target,
-        value: link.value,
-        lineStyle: {
-          width: width,
-          opacity: opacity,
-          color: colors.line,
-          curveness: 0.08,
-        },
-      };
-    });
-
-    return {
-      color: palette,
-      tooltip: {
-        trigger: "item",
-        formatter: function(params) {
-          if (params.dataType === "edge") {
-            return "共同出现：" + params.data.value + " 篇";
-          }
-          return "<strong>" + escapeHtml(params.name) + "</strong><br/>文章数量：" + params.value + " 篇";
-        },
-        backgroundColor: colors.tooltipBg,
-        borderColor: colors.tooltipBorder,
-        borderWidth: 1,
-	        textStyle: { color: colors.tooltipText },
-	        extraCssText: "border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,0.28);",
-	      },
-      legend: { show: false },
-      animationDuration: 900,
-      animationEasing: "cubicOut",
-      series: [{
-        type: "graph",
-        layout: "force",
-        roam: true,
-        roamTrigger: "global",
-        scaleLimit: { min: 0.45, max: 6 },
-        draggable: true,
-        data: nodes,
-        links: links,
-        categories: [
-          { name: "高频标签" },
-          { name: "常用标签" },
-          { name: "低频标签" },
-        ],
-        label: { show: true, position: "right", formatter: "{b}" },
-        force: {
-          edgeLength: [44, 150],
-          repulsion: 150,
-          gravity: 0.08,
-          friction: 0.35,
-          layoutAnimation: true,
-        },
-        lineStyle: { color: colors.line },
-        emphasis: {
-          focus: "adjacency",
-          label: { fontSize: 16, fontWeight: "bold" },
-          itemStyle: { shadowBlur: 24 },
-          lineStyle: { opacity: 0.82 },
-        },
-        blur: {
-          itemStyle: { opacity: 0.18 },
-          label: { opacity: 0.28 },
-          lineStyle: { opacity: 0.06 },
-        },
-      }],
-    };
-  }
-
-  function cleanupState() {
-    if (!activeState) return;
-    window.removeEventListener("resize", activeState.resizeHandler);
-    activeState.observer.disconnect();
-    activeState.chart.dispose();
-    activeState.chartDom.removeAttribute("data-echarts-initialized");
-    activeState = null;
-  }
-
-  function initTagGraph() {
-    var container = document.getElementById("tag-graph-container");
-    if (!container) {
-      cleanupState();
-      return;
-    }
-
-    var chartDom = document.getElementById("tag-graph-chart");
-    if (!chartDom || chartDom.getAttribute("data-echarts-initialized")) return;
-
-    var graph = parseGraph(container);
-    if (!graph || !graph.nodes || graph.nodes.length === 0) return;
-
-	loadECharts(function(echarts) {
-		if (
-			!echarts ||
-			!document.documentElement.contains(container) ||
-			!document.documentElement.contains(chartDom) ||
-			chartDom.getAttribute("data-echarts-initialized")
-		) return;
-
-      cleanupState();
-      chartDom.setAttribute("data-echarts-initialized", "true");
-
-      var chart = echarts.init(chartDom);
-      chart.setOption(buildChartOption(graph));
-
-      var state = {
-        chart: chart,
-        chartDom: chartDom,
-        resizeHandler: function() { chart.resize(); },
-        observer: new MutationObserver(function() {
-          chart.setOption(buildChartOption(graph), true);
-        }),
-      };
-      activeState = state;
-
-      chart.on("click", function(params) {
-        if (params.dataType !== "node" || !params.data) return;
-        if (params.data.url) {
-          if (window.navigateToPage) {
-            window.navigateToPage(params.data.url);
-          } else {
-            window.location.href = params.data.url;
-          }
-        }
-      });
-
-      window.addEventListener("resize", state.resizeHandler);
-      state.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    });
-  }
-
-  document.addEventListener("swup:willReplaceContent", cleanupState);
-  document.addEventListener("astro:page-load", initTagGraph);
-  document.addEventListener("swup:contentReplaced", initTagGraph);
-  initTagGraph();
-})();
+  initTagGraphLoader();
+  document.addEventListener("astro:page-load", initTagGraphLoader);
 </script>

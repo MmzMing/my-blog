@@ -61,7 +61,7 @@ function makePairKey(source: string, target: string): string {
 
 export function buildTagGraphData(
 	posts: TagGraphInputPost[],
-	threshold = 2,
+	threshold = 1,
 ): TagGraphData {
 	const nodeMap = new Map<string, TagGraphNode>();
 	const pairMap = new Map<string, PairCount>();

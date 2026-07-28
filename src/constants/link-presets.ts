@@ -64,9 +64,9 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
 		icon: "material-symbols:calendar-today",
 	},
 	[LinkPreset.Categories]: {
-		name: "分类标签",
+		name: "标签图谱",
 		url: "/categories/",
-		icon: "material-symbols:category",
+		icon: "material-symbols:hub-outline",
 	},
 	[LinkPreset.Tags]: {
 		name: i18n(I18nKey.tags),
