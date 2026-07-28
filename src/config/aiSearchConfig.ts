@@ -2,6 +2,8 @@
 // 支持第三方 API（如 ModelScope）和 Cloudflare Workers AI 两种后端
 // 配置了 API Key 时走第三方，否则回退 Workers AI 内置模型
 export const aiSearchConfig = {
+	// AI 搜索站点总开关（修改后需要重新构建部署）
+	enabled: false,
 	// ── AI 服务商配置 ──────────────────────────────
 	provider: {
 		// 第三方 API 地址（当前使用魔搭社区 ModelScope）
@@ -63,6 +65,8 @@ export const aiSearchConfig = {
 
 // 对外公开的配置（不含敏感字段，可供客户端使用）
 export const aiSearchPublicConfig = {
+	// AI 搜索是否启用
+	enabled: aiSearchConfig.enabled,
 	// 使用的对话模型名称
 	modelName: aiSearchConfig.provider.chatModel,
 } as const;

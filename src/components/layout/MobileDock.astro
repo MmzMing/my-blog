@@ -6,6 +6,7 @@ import Icon from "@components/common/Icon.astro";
  * 桌面端保持现有 FloatingDock 与顶部 Navbar 不变
  */
 import { announcementConfig, spineModelConfig } from "@/config";
+import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import { musicPlayerConfig } from "@/config/musicConfig";
 
 // 工具栏 sheet 内按钮显隐条件预计算
@@ -61,10 +62,12 @@ const showSpine = !!spineModelConfig?.enable;
 <div class="mobile-dock__sheet" id="mobile-dock-sheet">
 	<div class="mobile-dock__sheet-title">工具</div>
 	<div class="mobile-dock__sheet-grid">
-		<button class="mobile-dock__sheet-item" id="md-ai-search-btn" aria-label="AI 搜索" type="button">
-			<span class="mobile-dock__sheet-item-icon"><Icon name="ri:ai" is:inline /></span>
-			<span class="mobile-dock__sheet-item-label">AI 搜索</span>
-		</button>
+		{aiSearchPublicConfig.enabled && (
+			<button class="mobile-dock__sheet-item" id="md-ai-search-btn" aria-label="AI 搜索" type="button">
+				<span class="mobile-dock__sheet-item-icon"><Icon name="ri:ai" is:inline /></span>
+				<span class="mobile-dock__sheet-item-label">AI 搜索</span>
+			</button>
+		)}
 		{showMusic && (
 			<button class="mobile-dock__sheet-item" id="md-music-btn" aria-label="音乐" type="button">
 				<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:music-note-rounded" is:inline /></span>

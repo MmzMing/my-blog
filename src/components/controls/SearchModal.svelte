@@ -1,6 +1,7 @@
 <script lang="ts">
 import { navigateToPage } from "@utils/navigation-utils";
 import { onMount, tick } from "svelte";
+import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import type { SearchResult } from "@/global";
 import { bindSearchModalController } from "@/utils/search-modal-controller";
 import { url as formatUrl, getSearchUrl } from "@/utils/url-utils";
@@ -247,6 +248,14 @@ function handleGlobalKeyDown(e: KeyboardEvent) {
 	// 用 e.code(物理按键)判断，不受 Caps Lock / 输入法 / 键盘布局导致的大小写影响
 	if ((e.ctrlKey || e.metaKey) && e.code === "KeyK") {
 		e.preventDefault();
+		if (!aiSearchPublicConfig.enabled) {
+			if (visible) {
+				close();
+			} else {
+				open();
+			}
+			return;
+		}
 		const aiOpen = !!window.__aiSearchOpen;
 		if (aiOpen) {
 			// AI 搜索已打开 → 关闭它

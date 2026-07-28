@@ -14,7 +14,12 @@ import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
 import MobileDock from "@components/layout/MobileDock.astro";
 import FloatingDock from "@/components/controls/FloatingDock.astro";
 
-import { expressiveCodeConfig, homeConfig, siteConfig } from "@/config";
+import {
+	aiSearchConfig,
+	expressiveCodeConfig,
+	homeConfig,
+	siteConfig,
+} from "@/config";
 import { PAGE_WIDTH } from "@/constants/constants";
 import { defaultFavicons } from "@/constants/icon";
 import type { Favicon } from "@/types/config";
@@ -38,6 +43,7 @@ const { title, description, setOGTypeArticle, postSlug } = Astro.props;
 let { lang } = Astro.props;
 
 const configHue = siteConfig.themeColor.hue;
+const aiSearchEnabled = aiSearchConfig.enabled;
 
 let pageTitle: string;
 if (title) {
@@ -209,7 +215,7 @@ const siteLang = lang.replace("_", "-");
     {/* 全局持久化组件 — Swup 容器外，所有页面共享（CLAUDE.md 4.2） */}
     <FloatingDock />
     <MobileDock />
-    <div id="ai-search-root"></div>
+    {aiSearchEnabled && <div id="ai-search-root"></div>}
     <div id="search-modal-root"></div>
     <PrivacyModal />
     <UserAgreementModal />
@@ -223,6 +229,7 @@ const siteLang = lang.replace("_", "-");
 </script>
 
 <script>
+  import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
   import {
     requestSearchModalToggle,
     SEARCH_MODAL_TOGGLE_EVENT,
@@ -233,34 +240,14 @@ const siteLang = lang.replace("_", "-");
     "输入关键词开始搜索",
     "试试搜索「Astro」或「Svelte」",
     "按 ESC 关闭搜索面板",
-    "Ctrl+K 快速切换AI搜索/普通搜索",
+    ...(aiSearchPublicConfig.enabled
+      ? ["Ctrl+K 快速切换AI搜索/普通搜索"]
+      : []),
   ];
 
   if (!window.__searchLoadersReady) {
     window.__searchLoadersReady = true;
-    let aiMountPromise: Promise<void> | null = null;
     let searchMountPromise: Promise<void> | null = null;
-    let pendingAiToggles = 0;
-
-    const mountAiSearch = () => {
-      if (window.__aiSearchMounted) return Promise.resolve();
-      if (!aiMountPromise) {
-        aiMountPromise = Promise.all([
-          import("svelte"),
-          import("@/components/controls/ai-search/AISearch.svelte"),
-        ]).then(async ([{ mount, tick }, { default: AISearch }]) => {
-          const target = document.getElementById("ai-search-root");
-          if (!target) throw new Error("AI search root is missing");
-          mount(AISearch, { target });
-          await tick();
-          window.__aiSearchMounted = true;
-        }).catch((error) => {
-          aiMountPromise = null;
-          console.error("Failed to load AI search:", error);
-        });
-      }
-      return aiMountPromise;
-    };
 
     const mountSearchModal = () => {
       if (window.__searchModalMounted) return Promise.resolve();
@@ -282,19 +269,44 @@ const siteLang = lang.replace("_", "-");
       return searchMountPromise;
     };
 
-    window.addEventListener("toggle-ai-search", (event) => {
-      if (window.__aiSearchMounted) return;
-      event.stopImmediatePropagation();
-      pendingAiToggles += 1;
-      if (pendingAiToggles > 1 || aiMountPromise) return;
-      void mountAiSearch().then(() => {
-        const shouldToggle = pendingAiToggles % 2 === 1;
-        pendingAiToggles = 0;
-        if (shouldToggle && window.__aiSearchMounted) {
-          window.dispatchEvent(new CustomEvent("toggle-ai-search"));
+    if (aiSearchPublicConfig.enabled) {
+      let aiMountPromise: Promise<void> | null = null;
+      let pendingAiToggles = 0;
+
+      const mountAiSearch = () => {
+        if (window.__aiSearchMounted) return Promise.resolve();
+        if (!aiMountPromise) {
+          aiMountPromise = Promise.all([
+            import("svelte"),
+            import("@/components/controls/ai-search/AISearch.svelte"),
+          ]).then(async ([{ mount, tick }, { default: AISearch }]) => {
+            const target = document.getElementById("ai-search-root");
+            if (!target) throw new Error("AI search root is missing");
+            mount(AISearch, { target });
+            await tick();
+            window.__aiSearchMounted = true;
+          }).catch((error) => {
+            aiMountPromise = null;
+            console.error("Failed to load AI search:", error);
+          });
         }
+        return aiMountPromise;
+      };
+
+      window.addEventListener("toggle-ai-search", (event) => {
+        if (window.__aiSearchMounted) return;
+        event.stopImmediatePropagation();
+        pendingAiToggles += 1;
+        if (pendingAiToggles > 1 || aiMountPromise) return;
+        void mountAiSearch().then(() => {
+          const shouldToggle = pendingAiToggles % 2 === 1;
+          pendingAiToggles = 0;
+          if (shouldToggle && window.__aiSearchMounted) {
+            window.dispatchEvent(new CustomEvent("toggle-ai-search"));
+          }
+        });
       });
-    });
+    }
 
     window.addEventListener(SEARCH_MODAL_TOGGLE_EVENT, () => {
       void mountSearchModal();

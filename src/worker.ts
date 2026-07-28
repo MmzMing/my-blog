@@ -1,3 +1,4 @@
+import { aiSearchConfig } from "./config/aiSearchConfig";
 import { handleCloudflareAiSearch } from "./workers/cloudflare/ai-search/runtime";
 import { handlePosterImage } from "./workers/cloudflare/poster-image/handler";
 
@@ -77,6 +78,9 @@ export default {
 	async fetch(request, env): Promise<Response> {
 		const url = new URL(request.url);
 		if (url.pathname === "/api/ai-chat") {
+			if (!aiSearchConfig.enabled) {
+				return Response.json({ error: "Not Found" }, { status: 404 });
+			}
 			return handleCloudflareAiSearch(request, env);
 		}
 		if (url.pathname === "/api/poster-image") {

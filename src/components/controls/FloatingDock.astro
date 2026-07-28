@@ -7,6 +7,7 @@ import Icon from "@components/common/Icon.astro";
  */
 import MusicPlayer from "@/components/features/MusicPlayer.astro";
 import { announcementConfig, spineModelConfig } from "@/config";
+import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import { musicPlayerConfig } from "@/config/musicConfig";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -17,10 +18,12 @@ const tags = await getTagList();
 ---
 
 <div class="floating-dock" id="floating-dock">
-	<button class="dock-btn dock-btn-ai-search" id="dock-ai-search-btn" aria-label="AI 搜索" type="button" data-tooltip="AI 搜索">
-		<span class="dock-btn-icon"><Icon name="ri:ai" class="text-3xl" /></span>
-		<span class="dock-btn-label">AI 搜索</span>
-	</button>
+	{aiSearchPublicConfig.enabled && (
+		<button class="dock-btn dock-btn-ai-search" id="dock-ai-search-btn" aria-label="AI 搜索" type="button" data-tooltip="AI 搜索">
+			<span class="dock-btn-icon"><Icon name="ri:ai" class="text-3xl" /></span>
+			<span class="dock-btn-label">AI 搜索</span>
+		</button>
+	)}
 
 	{musicPlayerConfig.showInNavbar !== false && (
 		<button class="dock-btn dock-btn-music" id="dock-music-btn" aria-label={i18n(I18nKey.music)} type="button" data-tooltip={i18n(I18nKey.music)}>
