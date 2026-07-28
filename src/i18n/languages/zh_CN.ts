@@ -9,13 +9,21 @@ export const zh_CN: Translation = {
 	[Key.githubHeatmap]: "GitHub 贡献",
 	[Key.githubContributions]: "次贡献",
 	[Key.githubCommits]: "次提交",
-	[Key.archiveStatsGithub]: "本年 GitHub 贡献",
 	[Key.archiveStatsTotalPosts]: "全部文章",
 	[Key.archiveStatsYearPosts]: "今年文章",
+	[Key.archiveStatsMonthPosts]: "本月文章",
+	[Key.archiveStatsWritingSpan]: "创作跨度（天）",
+	[Key.archiveStatsEvaluationAhead]:
+		"今年的更新节奏明显领先计划，距离年度目标仅剩 {remaining} 篇；余下 {months} 个月保持每月约 {pace} 篇即可从容完成，可以把更多精力放在内容质量上。",
+	[Key.archiveStatsEvaluationOnTrack]:
+		"今年的更新节奏与计划基本一致，距离年度目标还差 {remaining} 篇；余下 {months} 个月保持每月约 {pace} 篇，按当前状态稳步推进即可。",
+	[Key.archiveStatsEvaluationBehind]:
+		"今年的更新节奏暂时落后于计划，距离年度目标还差 {remaining} 篇；余下 {months} 个月平均每月需要完成约 {pace} 篇，后半程需要更稳定的输出。",
+	[Key.archiveStatsEvaluationComplete]:
+		"今年的年度目标已经完成，接下来不必追求数量，可以把重心放在内容质量、系列整理和长期沉淀上。",
 	[Key.archiveStatsCategoryPosts]: "本分类文章",
 	[Key.archiveStatsTagPosts]: "本标签文章",
 	[Key.archiveStatsProgress]: "年进度",
-	[Key.archiveStatsLoading]: "正在获取 GitHub 数据",
 	[Key.archiveStatsUnavailable]: "--",
 	[Key.archiveStatsGoal]: "年度目标",
 	[Key.search]: "搜索",

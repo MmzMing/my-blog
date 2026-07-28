@@ -9,13 +9,21 @@ export const ja: Translation = {
 	[Key.githubHeatmap]: "GitHub コントリビューション",
 	[Key.githubContributions]: "コントリビューション",
 	[Key.githubCommits]: "コミット",
-	[Key.archiveStatsGithub]: "今年のGitHubコントリビューション",
 	[Key.archiveStatsTotalPosts]: "全記事",
 	[Key.archiveStatsYearPosts]: "今年の記事",
+	[Key.archiveStatsMonthPosts]: "今月の記事",
+	[Key.archiveStatsWritingSpan]: "執筆期間（日）",
+	[Key.archiveStatsEvaluationAhead]:
+		"今年の更新ペースは計画を上回っています。残り {remaining} 件を {months} か月で進めるには、月約 {pace} 件で余裕を持って達成できます。",
+	[Key.archiveStatsEvaluationOnTrack]:
+		"今年の更新ペースはほぼ計画通りです。残り {remaining} 件を、今後 {months} か月は月約 {pace} 件のペースで進めましょう。",
+	[Key.archiveStatsEvaluationBehind]:
+		"今年の更新ペースは現在計画を下回っています。残り {remaining} 件を達成するには、今後 {months} か月で月約 {pace} 件が必要です。",
+	[Key.archiveStatsEvaluationComplete]:
+		"今年の年間目標は達成済みです。今後は量よりも品質やシリーズの整理、長期的な蓄積に注力できます。",
 	[Key.archiveStatsCategoryPosts]: "このカテゴリの記事",
 	[Key.archiveStatsTagPosts]: "このタグの記事",
 	[Key.archiveStatsProgress]: "年間進捗",
-	[Key.archiveStatsLoading]: "GitHubデータを取得中",
 	[Key.archiveStatsUnavailable]: "--",
 	[Key.archiveStatsGoal]: "年間目標",
 	[Key.search]: "検索",

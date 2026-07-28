@@ -141,10 +141,6 @@ export type SiteConfig = {
 	// 归档统计配置
 	archiveStats?: {
 		annualPostGoal: number; // 年度文章目标
-		github?: {
-			enabled: boolean; // 是否启用 GitHub 贡献统计
-			username: string; // GitHub 用户名，为空则不渲染
-		};
 	};
 
 	// 图片优化配置

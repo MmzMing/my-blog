@@ -47,11 +47,12 @@
 	color: color-mix(in oklch, var(--deep-text) 42%, transparent);
 }
 
-.archive-stats__status {
-	display: block;
-	margin-top: 1rem;
-	font-size: 0.75rem;
-	color: color-mix(in oklch, var(--deep-text) 50%, transparent);
+.archive-stats__evaluation {
+	max-width: 42rem;
+	margin: 1rem 0 0;
+	font-size: 0.82rem;
+	line-height: 1.7;
+	color: color-mix(in oklch, var(--deep-text) 52%, transparent);
 }
 
 @media (max-width: 768px) {

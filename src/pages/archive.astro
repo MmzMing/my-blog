@@ -12,26 +12,37 @@ const sortedPostsList = await getSortedPostsList();
 const title = i18n(I18nKey.archive);
 const archiveStatsConfig = siteConfig.archiveStats;
 const timezone = siteConfig.timezone ?? "UTC";
-const currentYear = Number(
-	new Intl.DateTimeFormat("en-US", {
-		timeZone: timezone,
-		year: "numeric",
-	}).format(new Date()),
+const yearMonthFormatter = new Intl.DateTimeFormat("en-US", {
+	timeZone: timezone,
+	year: "numeric",
+	month: "numeric",
+});
+function getYearMonth(date: Date): { year: number; month: number } {
+	const parts = yearMonthFormatter.formatToParts(date);
+	return {
+		year: Number(parts.find((part) => part.type === "year")?.value),
+		month: Number(parts.find((part) => part.type === "month")?.value),
+	};
+}
+const currentYearMonth = getYearMonth(new Date());
+const { currentYearPosts, currentMonthPosts } = sortedPostsList.reduce(
+	(counts, post) => {
+		const publishedYearMonth = getYearMonth(post.data.published);
+		if (publishedYearMonth.year === currentYearMonth.year) {
+			counts.currentYearPosts += 1;
+			if (publishedYearMonth.month === currentYearMonth.month) {
+				counts.currentMonthPosts += 1;
+			}
+		}
+		return counts;
+	},
+	{ currentYearPosts: 0, currentMonthPosts: 0 },
 );
-const currentYearPosts = sortedPostsList.filter(
-	(post) =>
-		Number(
-			new Intl.DateTimeFormat("en-US", {
-				timeZone: timezone,
-				year: "numeric",
-			}).format(post.data.published),
-		) === currentYear,
-).length;
 const archivePostSummaries = sortedPostsList.map((post) => ({
 	category: post.data.category ?? null,
 	tags: post.data.tags,
+	published: post.data.published.getTime(),
 }));
-const githubConfig = archiveStatsConfig?.github;
 ---
 
 <MainGridLayout title={title}>
@@ -46,19 +57,22 @@ const githubConfig = archiveStatsConfig?.github;
       <ArchiveStats
         totalPosts={sortedPostsList.length}
         currentYearPosts={currentYearPosts}
+        currentMonthPosts={currentMonthPosts}
+        currentMonthNumber={currentYearMonth.month}
         postSummaries={archivePostSummaries}
         annualPostGoal={archiveStatsConfig?.annualPostGoal ?? 0}
-        githubEnabled={githubConfig?.enabled ?? false}
-        githubUsername={githubConfig?.username ?? ""}
-        timezone={timezone}
         totalPostsLabel={i18n(I18nKey.archiveStatsTotalPosts)}
-        githubLabel={i18n(I18nKey.archiveStatsGithub)}
+        monthPostsLabel={i18n(I18nKey.archiveStatsMonthPosts)}
+        writingSpanLabel={i18n(I18nKey.archiveStatsWritingSpan)}
         categoryPostsLabel={i18n(I18nKey.archiveStatsCategoryPosts)}
         tagPostsLabel={i18n(I18nKey.archiveStatsTagPosts)}
         progressLabel={i18n(I18nKey.archiveStatsProgress)}
         goalLabel={i18n(I18nKey.archiveStatsGoal)}
-        loadingLabel={i18n(I18nKey.archiveStatsLoading)}
         unavailableLabel={i18n(I18nKey.archiveStatsUnavailable)}
+        evaluationAheadTemplate={i18n(I18nKey.archiveStatsEvaluationAhead)}
+        evaluationOnTrackTemplate={i18n(I18nKey.archiveStatsEvaluationOnTrack)}
+        evaluationBehindTemplate={i18n(I18nKey.archiveStatsEvaluationBehind)}
+        evaluationCompleteTemplate={i18n(I18nKey.archiveStatsEvaluationComplete)}
         client:load
       />
       <ArchivePanel sortedPosts={sortedPostsList} client:load />

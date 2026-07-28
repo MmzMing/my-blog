@@ -9,13 +9,21 @@ export const ru: Translation = {
 	[Key.githubHeatmap]: "Вклад в GitHub",
 	[Key.githubContributions]: "вкладов",
 	[Key.githubCommits]: "коммитов",
-	[Key.archiveStatsGithub]: "Вклад GitHub за год",
 	[Key.archiveStatsTotalPosts]: "Все публикации",
 	[Key.archiveStatsYearPosts]: "Публикации за год",
+	[Key.archiveStatsMonthPosts]: "Публикации за месяц",
+	[Key.archiveStatsWritingSpan]: "Период публикаций (дни)",
+	[Key.archiveStatsEvaluationAhead]:
+		"Темп публикаций заметно опережает план. Осталось {remaining} публикаций и {months} месяцев — около {pace} публикаций в месяц достаточно для уверенного выполнения цели.",
+	[Key.archiveStatsEvaluationOnTrack]:
+		"Темп публикаций соответствует плану. Осталось {remaining} публикаций и {months} месяцев; сохраняйте темп около {pace} публикаций в месяц.",
+	[Key.archiveStatsEvaluationBehind]:
+		"Темп публикаций пока отстаёт от плана. Для оставшихся {remaining} публикаций за {months} месяцев потребуется около {pace} публикаций в месяц.",
+	[Key.archiveStatsEvaluationComplete]:
+		"Годовая цель выполнена. Теперь можно сосредоточиться на качестве материалов, сериях и долгосрочной ценности.",
 	[Key.archiveStatsCategoryPosts]: "Публикации в категории",
 	[Key.archiveStatsTagPosts]: "Публикации с тегом",
 	[Key.archiveStatsProgress]: "Годовой прогресс",
-	[Key.archiveStatsLoading]: "Загрузка данных GitHub",
 	[Key.archiveStatsUnavailable]: "--",
 	[Key.archiveStatsGoal]: "Годовая цель",
 	[Key.search]: "Поиск",

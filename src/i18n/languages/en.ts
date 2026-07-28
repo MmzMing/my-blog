@@ -9,13 +9,21 @@ export const en: Translation = {
 	[Key.githubHeatmap]: "GitHub Contributions",
 	[Key.githubContributions]: "contributions",
 	[Key.githubCommits]: "commits",
-	[Key.archiveStatsGithub]: "GitHub contributions this year",
 	[Key.archiveStatsTotalPosts]: "All posts",
 	[Key.archiveStatsYearPosts]: "Posts this year",
+	[Key.archiveStatsMonthPosts]: "Posts this month",
+	[Key.archiveStatsWritingSpan]: "Writing span (days)",
+	[Key.archiveStatsEvaluationAhead]:
+		"Publishing is well ahead of plan. With {remaining} posts left and {months} months remaining, about {pace} posts per month will comfortably reach the annual goal.",
+	[Key.archiveStatsEvaluationOnTrack]:
+		"Publishing is broadly on schedule. With {remaining} posts left and {months} months remaining, maintain about {pace} posts per month.",
+	[Key.archiveStatsEvaluationBehind]:
+		"Publishing is currently behind plan. With {remaining} posts left and {months} months remaining, about {pace} posts per month are needed for a stronger finish.",
+	[Key.archiveStatsEvaluationComplete]:
+		"The annual goal is complete. The focus can now shift from volume to quality, stronger series, and long-term value.",
 	[Key.archiveStatsCategoryPosts]: "Posts in category",
 	[Key.archiveStatsTagPosts]: "Posts with tag",
 	[Key.archiveStatsProgress]: "Annual progress",
-	[Key.archiveStatsLoading]: "Loading GitHub data",
 	[Key.archiveStatsUnavailable]: "--",
 	[Key.archiveStatsGoal]: "Annual goal",
 	[Key.search]: "Search",
