@@ -2,6 +2,7 @@
 import Icon from "@components/common/Icon.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
+import diagramPanZoomScript from "../../plugins/diagram-panzoom-script.js?raw";
 import { encryptContent } from "@utils/crypto-utils";
 
 interface Props {
@@ -71,6 +72,8 @@ const labels = {
   <div id="decrypted-content" class="hidden"></div>
 </div>
 
+<script is:inline set:html={diagramPanZoomScript}></script>
+
 <script is:inline>
 (function() {
   var ITERATIONS = 100000;
@@ -134,11 +137,51 @@ const labels = {
       'data-fancybox': true,
       'data-caption': true
     };
+    var blockedDiagramSvgTags = {
+      script: true,
+      foreignobject: true,
+      iframe: true,
+      object: true,
+      embed: true,
+      link: true,
+      meta: true,
+      form: true,
+      input: true,
+      button: true,
+      math: true
+    };
 
     var elements = template.content.querySelectorAll('*');
     for (var i = 0; i < elements.length; i++) {
       var el = elements[i];
       var tagName = el.tagName.toLowerCase();
+      var generatedDiagram = el.closest('[data-generated-diagram="mermaid"]');
+      var isGeneratedDiagramSvg = generatedDiagram &&
+        el.namespaceURI === 'http://www.w3.org/2000/svg';
+
+      if (isGeneratedDiagramSvg) {
+        if (blockedDiagramSvgTags[tagName]) {
+          el.remove();
+          continue;
+        }
+
+        for (var svgAttrIndex = el.attributes.length - 1; svgAttrIndex >= 0; svgAttrIndex--) {
+          var svgAttr = el.attributes[svgAttrIndex];
+          var svgAttrName = svgAttr.name.toLowerCase();
+          if (svgAttrName.indexOf('on') === 0 || svgAttrName === 'srcdoc') {
+            el.removeAttribute(svgAttr.name);
+            continue;
+          }
+          if (
+            (svgAttrName === 'href' || svgAttrName === 'xlink:href') &&
+            !isSafeUrl(svgAttr.value)
+          ) {
+            el.removeAttribute(svgAttr.name);
+          }
+        }
+        continue;
+      }
+
       if (blockedTags[tagName]) {
         el.remove();
         continue;
@@ -176,11 +219,6 @@ const labels = {
     contentEl.innerHTML = sanitizeDecryptedHtml(html);
     contentEl.classList.remove('hidden');
     ui.classList.add('hidden');
-    // Scripts injected via innerHTML are inert — re-create them so they execute
-    // Reset mermaid singleton so its render script re-initializes after decryption
-    if (typeof window.mermaidInitialized !== 'undefined') {
-      window.mermaidInitialized = false;
-    }
     // Re-init TOC after content is in DOM
     setTimeout(function() {
       document.dispatchEvent(new CustomEvent('password:decrypted'));

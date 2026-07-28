@@ -641,3 +641,209 @@ a.card-github.fetch-error
     width: 32px
     height: 32px
     font-size: 16px
+
+// Shared Mermaid / PlantUML interaction layer
+.diagram-container
+  position: relative
+  margin: 1rem 0
+  border-radius: 0.75rem
+  overflow: hidden
+  background: var(--card-bg)
+  touch-action: pan-y pinch-zoom
+  transition: box-shadow 0.3s ease, background 0.3s ease
+
+  &:hover
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1)
+
+    .diagram-controls
+      opacity: 1
+
+.diagram-wrapper
+  padding: 1.5rem
+  display: flex
+  justify-content: center
+  align-items: center
+  min-height: 100px
+  max-height: 420px
+  overflow: hidden
+
+.mermaid-wrapper
+  width: 100%
+
+.mermaid-svg-light,
+.mermaid-svg-dark
+  display: flex
+  justify-content: center
+  align-items: center
+  overflow: hidden
+  width: 100%
+
+  svg
+    display: block
+    max-width: 100%
+    max-height: 420px
+    height: auto
+    border-radius: 0.5rem
+    filter: none !important
+    user-select: none
+    transition: none
+    shape-rendering: geometricPrecision
+    text-rendering: geometricPrecision
+
+.mermaid-svg-dark
+  display: none
+
+.dark .mermaid-svg-light
+  display: none
+
+.dark .mermaid-svg-dark
+  display: flex
+
+.mermaid-fallback-code
+  text-align: left
+  font-family: monospace
+  font-size: 0.85rem
+  white-space: pre-wrap
+  overflow-x: auto
+  max-height: 20rem
+  padding: 0.75rem
+  margin: 0.5rem 0 0
+  background: var(--codeblock-bg)
+
+.plantuml-image
+  max-width: 100%
+  max-height: 420px
+  height: auto
+  display: block
+  user-select: none
+  -webkit-user-drag: none
+  transition: transform 0.12s ease-out
+  will-change: transform
+
+.diagram-controls
+  position: absolute
+  top: 8px
+  right: 8px
+  display: flex
+  gap: 4px
+  opacity: 0.5
+  transition: opacity 0.2s ease
+  z-index: 10
+
+  &:hover,
+  &:focus-within
+    opacity: 1
+
+.diagram-ctrl-btn
+  width: 28px
+  height: 28px
+  border: none
+  border-radius: 6px
+  background: var(--btn-regular-bg)
+  color: var(--btn-content)
+  font-size: 14px
+  line-height: 28px
+  text-align: center
+  cursor: pointer
+  padding: 0
+  display: flex
+  align-items: center
+  justify-content: center
+  transition: background 0.15s ease, transform 0.15s ease
+  backdrop-filter: blur(8px)
+
+  &:hover
+    background: var(--btn-regular-bg-hover)
+    transform: translateY(-1px)
+
+  &:active
+    background: var(--btn-regular-bg-active)
+    transform: translateY(0)
+
+  &:focus-visible
+    outline: 2px solid var(--primary)
+    outline-offset: 2px
+
+.diagram-fullscreen-overlay
+  position: fixed
+  inset: 0
+  width: 100vw
+  height: 100vh
+  background: rgba(0, 0, 0, 0.85)
+  z-index: 9999
+  display: flex
+  align-items: center
+  justify-content: center
+
+.diagram-fs-content
+  width: 90vw
+  height: 85vh
+  cursor: grab
+  display: flex
+  align-items: center
+  justify-content: center
+  overflow: hidden
+  touch-action: none
+  background: transparent
+
+  &:active
+    cursor: grabbing
+
+  svg,
+  img
+    display: block
+    max-width: 100%
+    max-height: 100%
+    user-select: none
+    -webkit-user-drag: none
+
+  svg
+    transition: none
+    shape-rendering: geometricPrecision
+    text-rendering: geometricPrecision
+
+  img
+    will-change: transform
+
+.diagram-fs-controls
+  position: fixed
+  top: 16px
+  right: 16px
+  display: flex
+  gap: 6px
+  z-index: 10000
+  background: rgba(255, 255, 255, 0.1)
+  backdrop-filter: blur(12px)
+  padding: 6px
+  border-radius: 8px
+
+  .diagram-ctrl-btn
+    width: 36px
+    height: 36px
+    font-size: 18px
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.15)
+    color: #fff
+
+    &:hover
+      background: rgba(255, 255, 255, 0.3)
+
+    &:active
+      background: rgba(255, 255, 255, 0.2)
+
+@media (max-width: 768px)
+  .diagram-wrapper
+    padding: 1rem
+
+  .mermaid-svg-light svg,
+  .mermaid-svg-dark svg,
+  .plantuml-image
+    max-height: 400px
+
+  .diagram-controls
+    opacity: 0.8
+
+  .diagram-ctrl-btn
+    width: 32px
+    height: 32px
+    font-size: 16px

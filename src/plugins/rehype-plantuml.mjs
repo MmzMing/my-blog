@@ -87,14 +87,16 @@ export function rehypePlantuml() {
 			const wrapper = h(
 				"div",
 				{
-					class: "plantuml-wrapper",
+					class: "diagram-wrapper plantuml-wrapper",
 					id: diagramId,
 				},
 				[img],
 			);
 
 			node.tagName = "div";
-			node.properties = { class: "plantuml-diagram-container" };
+			node.properties = {
+				class: "diagram-container plantuml-diagram-container",
+			};
 			node.children = [wrapper];
 
 			foundAny = true;
