@@ -6,7 +6,7 @@
    ============================================ */
 
 .friend-card-link {
-	/* Cute Doodle Palette — 来自 variables.styl，亮暗主题共用 */
+	/* Cute Doodle Palette — 来自 variables.styl，按主题切换 */
 	--fc-surface: var(--fc-paper-bg);
 	--fc-line: var(--fc-paper-line);
 	--fc-coral: var(--fc-accent-coral);
@@ -27,12 +27,12 @@
 	background:
 		linear-gradient(var(--fc-surface) 1.5em, transparent 1.5em) 0 0 / 100% 1.6em,
 		linear-gradient(var(--fc-line) 0.08em, transparent 0.08em) 0 1.5em / 100% 1.6em var(--fc-surface);
-	border: 0.25em solid var(--fc-ink);
+	border: 0.25em solid var(--fc-outline);
 	/* 原型图同款手绘感不规则圆角 */
 	border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
 	/* 原型图阴影：偏移硬阴影 + 内发光 */
 	box-shadow:
-		0.5em 0.5em 0 var(--fc-ink),
+		0.5em 0.5em 0 var(--fc-shadow),
 		inset 0 0 1.2em rgba(0, 0, 0, 0.03);
 	transition:
 		transform 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275),
@@ -42,14 +42,14 @@
 .friend-card-link:hover {
 	/* 原型图 hover 状态：圆角翻转 + 上移旋转 + 阴影加深 */
 	box-shadow:
-		0.7em 0.9em 0 var(--fc-ink),
+		0.7em 0.9em 0 var(--fc-shadow),
 		inset 0 0 1.2em rgba(0, 0, 0, 0.03);
 	border-radius: 15px 255px 15px 225px / 255px 15px 225px 15px;
 	transform: translateY(-0.8em) rotate(1deg);
 }
 
 .friend-card-link:focus-visible {
-	outline: 2px dashed var(--fc-ink);
+	outline: 2px dashed var(--fc-outline);
 	outline-offset: 4px;
 }
 
@@ -106,7 +106,7 @@
 	font-size: 0.6875rem;
 	font-weight: 700;
 	letter-spacing: 0.08em;
-	color: var(--fc-ink);
+	color: var(--fc-tape-text);
 	background: var(--fc-tape);
 	border: 0.1em solid rgba(0, 0, 0, 0.1);
 	border-radius: 2px 4px 2px 5px;
@@ -132,7 +132,7 @@
 	height: 4.5rem;
 	flex-shrink: 0;
 	border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
-	border: 0.2em solid var(--fc-ink);
+	border: 0.2em solid var(--fc-outline);
 	box-shadow: 0.3em 0.3em 0 var(--fc-coral);
 	overflow: hidden;
 	background: var(--fc-surface);
@@ -165,9 +165,9 @@
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
-	background: var(--fc-ink);
+	background: var(--fc-text);
 	box-shadow:
-		25px 0 0 var(--fc-ink),
+		25px 0 0 var(--fc-text),
 		-4px 10px 3px var(--fc-blush),
 		30px 10px 3px var(--fc-blush);
 }
@@ -186,7 +186,7 @@
 	width: 15px;
 	height: 13px;
 	border: 2px solid transparent;
-	border-bottom-color: var(--fc-ink);
+	border-bottom-color: var(--fc-text);
 	border-radius: 50%;
 }
 
@@ -217,7 +217,7 @@
 	max-width: 100%;
 	font-size: 1rem;
 	font-weight: 700;
-	color: var(--fc-ink);
+	color: var(--fc-text);
 	text-align: center;
 	line-height: 1.3;
 	overflow: hidden;
@@ -229,11 +229,11 @@
 .friend-card-intro {
 	width: 100%;
 	padding: 0.45rem 0.7rem;
-	background: var(--fc-mint);
-	border: 0.15em solid var(--fc-ink);
+	background: var(--fc-intro-bg);
+	border: 0.15em solid var(--fc-outline);
 	border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
 	/* 手绘偏移硬阴影，同参考稿徽章 */
-	box-shadow: 0.2em 0.2em 0 var(--fc-ink);
+	box-shadow: 0.2em 0.2em 0 var(--fc-shadow);
 	overflow: hidden;
 	height: 2.2rem;
 }
@@ -242,7 +242,7 @@
 	margin: 0;
 	font-size: 0.75rem;
 	line-height: 1.5;
-	color: var(--fc-ink);
+	color: var(--fc-intro-text);
 	text-align: center;
 	/* 默认只显示一行 */
 	display: -webkit-box;

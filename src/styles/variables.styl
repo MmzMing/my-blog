@@ -208,9 +208,15 @@
 
   --color-selection-bar: linear-gradient(to right, oklch(0.85 0 0), oklch(0.55 0 0), oklch(0.25 0 0))
 
-/* ===== 友链卡片彩色调色板（Cute Doodle Palette）—— 亮暗主题共用 ===== */
+/* ===== 友链卡片彩色调色板（Cute Doodle Palette） ===== */
 :root
   --fc-ink: #2c2c2c
+  --fc-text: var(--fc-ink)
+  --fc-outline: var(--fc-ink)
+  --fc-shadow: var(--fc-ink)
+  --fc-intro-bg: #c6e377
+  --fc-intro-text: var(--fc-ink)
+  --fc-tape-text: var(--fc-ink)
   --fc-accent-coral: #ff8ba7
   --fc-accent-mint: #c6e377
   --fc-accent-lavender: #c0bbfe
@@ -220,14 +226,20 @@
   --fc-paper-line: #ddd2b8
 
 :root.dark
-  --fc-ink: #2c2c2c
-  --fc-accent-coral: #ff8ba7
-  --fc-accent-mint: #c6e377
-  --fc-accent-lavender: #c0bbfe
-  --fc-accent-yellow: #ffdf6c
-  --fc-tape-color: rgba(255, 221, 161, 0.85)
-  --fc-paper-bg: #f5edd6
-  --fc-paper-line: #ddd2b8
+  --fc-ink: #f3eff8
+  --fc-text: var(--fc-ink)
+  --fc-outline: #777187
+  --fc-shadow: #15131c
+  --fc-intro-bg: #3d4a41
+  --fc-intro-text: #eff5ec
+  --fc-tape-text: #f3eff8
+  --fc-accent-coral: #d7839c
+  --fc-accent-mint: #8fae7b
+  --fc-accent-lavender: #a79add
+  --fc-accent-yellow: #d8b965
+  --fc-tape-color: #7d6647
+  --fc-paper-bg: #242331
+  --fc-paper-line: #37354a
 
 /* ===== 阴影变量（仅保留实际使用的） ===== */
 :root
