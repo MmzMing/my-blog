@@ -160,6 +160,8 @@ const tags = await getTagList();
 <!-- 样式已迁移至 src/styles/components/floating-dock.css -->
 
 <script>
+	import { getStoredTheme, setTheme } from "@/utils/setting-utils";
+
 	(function initFloatingDock() {
 		const dockAbortController = new AbortController();
 		const dockSignal = dockAbortController.signal;
@@ -294,15 +296,13 @@ const tags = await getTagList();
 
 			themeBtn.addEventListener("click", (e) => {
 				e.stopPropagation();
-				import("@/utils/setting-utils").then(({ setTheme, getStoredTheme }) => {
-					const current = getStoredTheme();
-					const resolved = current === "system"
-						? (document.documentElement.classList.contains("dark") ? "dark" : "light")
-						: current;
-					const next = resolved === "light" ? "dark" : "light";
-					setTheme(next as any);
-					updateThemeIcon();
-				});
+				const current = getStoredTheme();
+				const resolved = current === "system"
+					? (document.documentElement.classList.contains("dark") ? "dark" : "light")
+					: current;
+				const next = resolved === "light" ? "dark" : "light";
+				setTheme(next);
+				updateThemeIcon();
 			});
 
 			updateThemeIcon();

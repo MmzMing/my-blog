@@ -20,7 +20,7 @@ export const galleryConfig: GalleryConfig = {
 			location: "gpt",
 			date: "2026-05-24",
 			tags: ["AI", "GPT生图"],
-		}
+		},
 	],
 
 	// 瀑布流最小列宽(px)，浏览器根据容器宽度自动计算列数，默认 240

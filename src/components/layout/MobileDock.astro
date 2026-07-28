@@ -106,6 +106,7 @@ const showSpine = !!spineModelConfig?.enable;
 
 <script>
 	import { requestSearchModalToggle } from "@/utils/search-modal-controller";
+	import { getStoredTheme, setTheme } from "@/utils/setting-utils";
 
 	(function initMobileDock() {
 		const dockEl = document.getElementById("mobile-dock");
@@ -153,15 +154,13 @@ const showSpine = !!spineModelConfig?.enable;
 
 		themeBtn?.addEventListener("click", (e) => {
 			e.stopPropagation();
-			import("@/utils/setting-utils").then(({ setTheme, getStoredTheme }) => {
-				const current = getStoredTheme();
-				const resolved = current === "system"
-					? (document.documentElement.classList.contains("dark") ? "dark" : "light")
-					: current;
-				const next = resolved === "light" ? "dark" : "light";
-				setTheme(next as "light" | "dark");
-				updateThemeIcon();
-			});
+			const current = getStoredTheme();
+			const resolved = current === "system"
+				? (document.documentElement.classList.contains("dark") ? "dark" : "light")
+				: current;
+			const next = resolved === "light" ? "dark" : "light";
+			setTheme(next);
+			updateThemeIcon();
 		});
 
 		updateThemeIcon();

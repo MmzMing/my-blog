@@ -9,6 +9,8 @@
 	// 记录当前主题状态，避免不必要的重新渲染
 	let currentTheme = null;
 	let isRendering = false; // 防止并发渲染
+	let renderQueued = false;
+	let renderFrameId = null;
 	let retryCount = 0;
 	const MAX_RETRIES = 3;
 	const RETRY_DELAY = 1000; // 1秒
@@ -23,6 +25,23 @@
 			return true;
 		}
 		return false;
+	}
+
+	// 合并同一帧内的主题/页面事件；若渲染期间主题再次变化，保留最后一次重绘。
+	function scheduleMermaidRender() {
+		renderQueued = true;
+		if (isRendering || renderFrameId !== null) {
+			return;
+		}
+
+		renderFrameId = requestAnimationFrame(async () => {
+			renderFrameId = null;
+			if (!renderQueued) {
+				return;
+			}
+			renderQueued = false;
+			await renderMermaidDiagrams();
+		});
 	}
 
 	// 等待 Mermaid 库加载完成
@@ -61,8 +80,7 @@
 
 					if (wasDark !== isDark) {
 						if (hasThemeChanged()) {
-							// 延迟渲染，避免主题切换时的闪烁
-							setTimeout(() => renderMermaidDiagrams(), 150);
+							scheduleMermaidRender();
 						}
 					}
 				}
@@ -85,14 +103,7 @@
 			currentTheme = null;
 			retryCount = 0; // 重置重试计数
 			if (hasThemeChanged()) {
-				setTimeout(() => renderMermaidDiagrams(), 100);
-			}
-		});
-
-		// 监听页面可见性变化，页面重新可见时重新渲染
-		document.addEventListener("visibilitychange", () => {
-			if (!document.hidden) {
-				setTimeout(() => renderMermaidDiagrams(), 200);
+				scheduleMermaidRender();
 			}
 		});
 	}
@@ -141,21 +152,17 @@
 
 		isRendering = true;
 
-		// 主题切换前销毁旧的 pan-zoom 实例
-		destroyAllPanZoom();
-
 		try {
 			const mermaidElements = document.querySelectorAll(
 				".mermaid[data-mermaid-code]",
 			);
 
 			if (mermaidElements.length === 0) {
-				isRendering = false;
 				return;
 			}
 
-			// 延迟检测主题，确保 DOM 已经更新
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			// 仅在确认存在图表后销毁旧的 pan-zoom 实例。
+			destroyAllPanZoom();
 
 			const htmlElement = document.documentElement;
 			const isDark = htmlElement.classList.contains("dark");
@@ -188,13 +195,13 @@
 				if (!code) return;
 
 				element.id = element.id || `mermaid-${Date.now()}-${index}`;
-				// 恢复纯文本图表定义供 run() 读取
+				// run() 会跳过带 data-processed 的节点；主题重绘前必须清除。
+				element.removeAttribute("data-processed");
 				element.textContent = code;
 				elementsToRender.push(element);
 			});
 
 			if (elementsToRender.length === 0) {
-				isRendering = false;
 				return;
 			}
 
@@ -244,6 +251,9 @@
 			}
 		} finally {
 			isRendering = false;
+			if (renderQueued) {
+				scheduleMermaidRender();
+			}
 		}
 	}
 
