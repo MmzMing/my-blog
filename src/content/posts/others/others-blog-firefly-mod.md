@@ -56,16 +56,18 @@ Q1: 为什么不直接用[fuwari](https://github.com/saicaca/fuwari)啊，为啥
 
 ## 3、分类标签
 
-分类标签都做成了图表，分类玫瑰图和标签关系图谱。
+分类页现在只保留标签关系图谱：标签是节点，同一篇文章中同时出现的标签会连成边，边越粗表示共现次数越多。
 
 | 技术栈 | 版本 | 作用 |
 | --- | --- | --- |
 | Astro Content Collections | `6.4.6` | 在构建时校验文章元数据并生成归档、分类和标签数据 |
 | Markdown Frontmatter | Markdown 标准能力 | 维护 `category`、`tags` 和发布日期 |
 | URLSearchParams | 浏览器原生 API | 读取标签和分类筛选参数 |
-| （核心）ECharts | `5.6.0` | 动态绘制分类玫瑰图和标签关系图谱 |
-| （核心）ECharts Graph Series | `5.6.0` | 使用力导向布局展示标签共同出现关系，支持缩放、拖拽与节点跳转 |
-| MutationObserver、Resize 事件 | 浏览器原生 API | 在主题切换和容器尺寸变化后更新图表颜色与尺寸 |
+| （核心）D3.js | `7.9.0` | 使用 `d3-force` 计算力导向布局，使用 `d3-zoom` 处理缩放与拖拽 |
+| Canvas 2D API | 浏览器原生 API | 绘制节点、连线、标签和悬停高亮，避免大量 SVG 节点带来的渲染压力 |
+| ResizeObserver、IntersectionObserver、MutationObserver | 浏览器原生 API | 在容器尺寸、可见性和主题变化时分别调整图谱尺寸、暂停动画和刷新配色 |
+
+实现上，构建阶段会遍历所有文章的 `tags`：每个标签生成一个节点，并记录它关联的文章；同一篇文章内的任意两个标签生成一条共现边，边的权重就是它们共同出现的次数。客户端按连通关系给节点分组，再交给 D3 力导向模拟进行排布；Canvas 根据模拟结果逐帧绘制图谱。节点大小由文章数量决定，边的透明度和粗细由共现权重决定。用户可以缩放、拖拽节点、悬停查看关联文章，点击或按回车跳转到对应标签页；同时支持键盘选择、减少动态效果偏好和亮暗主题切换。
 
 ## 4、留言
 
@@ -283,68 +285,12 @@ fetch("https://timor.tech/api/holiday/year/2026")
 
 ## 7、归档
 
-归档页按年、月和文章组织时间线，支持分类和标签筛选，显示年度文章进度，并按需读取 GitHub 年度贡献数据。
+归档页按年、月和文章组织时间线，支持分类和标签筛选，并显示年度文章进度。所有统计均在构建时根据文章元数据生成，不依赖额外的动态接口。
 
 | 技术栈 | 版本 | 作用 |
 | --- | --- | --- |
-| Astro Content Collections | `6.4.6` | 在构建时读取文章发布日期、分类和标签，生成归档基础数据 |
 | SVG | 浏览器标准 | 绘制年份、月份与文章节点之间的高亮连接线 |
-| Intl.DateTimeFormat | 浏览器原生 API | 按站点时区计算当前年度，用于年度文章统计和 GitHub 请求参数 |
-| Fetch API、Cloudflare Workers | 浏览器原生 API、Wrangler `4.110.0` | 调用 GitHub 贡献汇总接口，避免在浏览器暴露 GitHub Token |
-
-### 7.1 GitHub 动态贡献数据
-
-浏览器通过博客自己的 Worker 接口间接获取 GitHub 贡献数据，避免在客户端暴露 GitHub Token。Worker 内部调用 GitHub GraphQL API，聚合后返回简化摘要。
-
-#### 7.1.1 接口列表
-
-```ts
-// --------------------------------------------------------------------------
-
-// GET /api/github-contributions?username=<string>&year=<number>
-// Headers: Accept: application/json
-// 浏览器 → Worker — 获取指定用户指定年份的贡献摘要，自动缓存 6 小时
-fetchGithubContributionSummary(
-  username: string,   // GitHub 用户名（如 "MmzMing"）
-  year: number,       // 年份（如 2026，范围 2008 ~ 当前年）
-  signal?: AbortSignal,
-)
-// Response: { year: number, totalContributions: number, activeDays: number }
-
-// --------------------------------------------------------------------------
-
-// POST https://api.github.com/graphql
-// Headers: Authorization: Bearer <GITHUB_TOKEN>
-//          Content-Type: application/json
-//          Accept: application/json
-//          User-Agent: my-blog-github-contributions
-// Worker → GitHub — 仅 Worker 内部调用，浏览器不可见
-{
-  query: `query ContributionCalendar($login: String!, $from: DateTime!, $to: DateTime!) {
-    user(login: $login) {
-      contributionsCollection(from: $from, to: $to) {
-        contributionCalendar {
-          weeks { contributionDays { date contributionCount } }
-        }
-      }
-    }
-  }`,
-  variables: { login: string, from: string, to: string },
-}
-// 请求示例:
-// variables: { login: "MmzMing", from: "2026-01-01T00:00:00.000Z", to: "2026-12-31T00:00:00.000Z" }
-```
-
-**Worker 可能的错误响应：**
-| HTTP 状态 | error 字段 | 原因 |
-|---|---|---|
-| 400 | `invalid_username` | 用户名格式不正确 |
-| 400 | `invalid_year` | 年份超出 2008 ~ 当前年范围 |
-| 404 | `github_user_not_found` | GitHub 用户不存在 |
-| 502 | `github_upstream_error` | GitHub API 返回错误 |
-| 502 | `github_invalid_response` | GitHub 响应格式异常 |
-| 502 | `github_unavailable` | Worker 请求 GitHub 超时或网络异常 |
-| 503 | `github_not_configured` | Worker 未配置 GITHUB_TOKEN |
+| Intl.DateTimeFormat | 浏览器原生 API | 按站点时区计算当前年度，用于年度文章统计 |
 
 ## 8、其他
 
@@ -353,66 +299,54 @@ fetchGithubContributionSummary(
 3. 添加了日历功能，按文章发布日期展示内容，不需要外部数据源。
 4. 删除了追番功能，避免相关数据请求和资源处理进入构建流程。
 5. 使用 Pagefind `1.5.2` 构建本地全文索引；使用 Cloudflare Vectorize、Workers AI 和 Durable Objects 提供可选的 AI 语义搜索与限流。
-6. 使用 Cloudflare Workers 运行时承担 GitHub 贡献数据、AI 搜索和随机封面代理等动态接口；静态文章、图片和 Pagefind 索引仍由静态资源服务返回。
+6. 使用 Cloudflare Workers 运行时承担可选的 AI 搜索和随机封面代理等动态接口；静态文章、图片和 Pagefind 索引仍由静态资源服务返回。
 
 # 二、部署流程
 
 ## 1、本地部署
 
 1. 安装依赖：安装 Node.js 22 和 pnpm 9，然后执行 `pnpm install`。
-2. 配置环境变量，主要用于获取github贡献和AI搜索功能：
-  - 创建 `.env` 文件，复制 `.env.example` 内容到里面，填写 `GITHUB_TOKEN` 和 `AI_API_KEY`（详情看下方环境变量获取说明）
-  - 创建 `.env.cf` 文件，复制 `.env.cf.example` 内容到里面，填写 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。
-3. 到目录 `src/config` 下，一个个配置里面的配置信息，我都加了注释的，尤其页脚备案那块。
-4. 构建 `pnpm build` ，运行 `pnpm dev`,查看 `http://localhost:4321/`（这个是不带获取数据的就是上方环境变量那些数据）
-5. 以下是测试是否能使用AI搜索功能和github贡献数据：
+2. 到目录 `src/config` 下，一个个配置里面的配置信息，我都加了注释的，尤其页脚备案那块。AI 搜索默认关闭，因此普通本地预览和部署不需要额外环境变量。
+3. 构建 `pnpm build` ，运行 `pnpm dev`,查看 `http://localhost:4321/`。
+4. 只有需要启用 AI 搜索时，才按下面的“AI 搜索配置”完成配置：
+  - 在 `src/config/aiSearchConfig.ts` 中将 `enabled` 设为 `true`。
+  - 创建 `.env.cf` 文件，复制 `.env.cf.example` 内容并填写 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`，用于创建和写入 Vectorize 索引。
+  - 如果使用第三方 Embedding / Chat API，再创建 `.env` 并填写 `AI_API_KEY`；不配置时会回退到 Workers AI。
   - 登录cloudflare `npx wrangler login` ，第一次运行可能会有点长
-  - 构建向量索引 `pnpm build-index` 。我忘记第一次是否要开辟空间，如果你执行失败则尝试`wrangler vectorize create --name blog-ai-search --dimensions 1024 --metric cosine`这条指令，你可以理解为新建文件夹。
+  - 创建向量索引：`npx wrangler vectorize create blog-ai-search --dimensions 1024 --metric cosine`。
+  - 构建向量索引：`pnpm build-index`。
   - 运行 `npx wrangler dev --port 8088`。查看 `http://localhost:8088/` 即可。
-6. 上方都没问题后，可以参考下方视频部署到cloudflare workers，下方视频是firefly的部署方式（因为这是魔改的firefly，部署方式其实一致，只需要额外配置`.env`这里的环境变量），来着顾十七的视频。
+5. 上方都没问题后，可以参考下方视频部署到cloudflare workers，下方视频是firefly的部署方式。启用 AI 搜索时，还需要在 Cloudflare 中配置对应的 Vectorize、Workers AI 和 Durable Objects 绑定；使用第三方 API 时再设置 `AI_API_KEY` Secret。
 
-<iframe width="100%" height="468"
-  src="//player.bilibili.com/player.html?bvid=BV17Njb6nEH8&p=1&autoplay=0"
-  scrolling="no" border="0" frameborder="no"
-  framespacing="0" allowfullscreen="true">
-</iframe>
+<iframe width="100%" height="468"   src="//player.bilibili.com/player.html?bvid=BV17Njb6nEH8&p=1&autoplay=0"   scrolling="no" border="0" frameborder="no"   framespacing="0" allowfullscreen="true"> </iframe>
 
+## 2、AI 搜索配置（可选）
 
-## 2、环境变量获取说明
+以下配置仅在 `src/config/aiSearchConfig.ts` 中开启 AI 搜索后需要。未开启时无需创建这些环境变量或向量索引。
 
 | 变量 | 用途 | 存放位置 |
-|---|---|---|
-| `GITHUB_TOKEN` | Worker 调用 GitHub GraphQL API 查询贡献数据 | `.env`（本地）/ Cloudflare Secret（生产） |
-| `AI_API_KEY` | 第三方 Embedding / Chat API（不配则回退 Workers AI 免费模型） | `.env`（本地/构建）/ Cloudflare Secret（生产） |
+| --- | --- | --- |
+| `AI_API_KEY`（可选） | 调用第三方 Embedding / Chat API；不配则回退 Workers AI | `.env`（本地/构建）/ Cloudflare Secret（生产） |
 | `CLOUDFLARE_API_TOKEN` | 构建脚本上传向量到 Vectorize | `.env.cf` |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 账户标识，供构建脚本使用 | `.env.cf` |
 
-### 2.1 GITHUB_TOKEN
-
-1. 登录 GitHub → 右上角头像 → **Settings** → **Developer settings**（左侧底部）
-2. **Personal access tokens** → **Fine-grained tokens** → **Generate new token**
-3. 填写名称、过期时间（推荐 30~90 天），**Repository access** 选 **Public repositories** 即可
-4. **Permissions** 无需勾选任何仓库权限（仅查询公开贡献数据）
-5. 创建后**立即复制** Token（只显示一次），粘贴到 `.env` 的 `GITHUB_TOKEN=`
-6. **部署后也要在 Cloudflare 设置同名 Secret**：`npx wrangler secret put GITHUB_TOKEN`
-
-### 2.2 AI_API_KEY
+### 2.1 AI\_API\_KEY（可选）
 
 1. 登录 [魔搭社区 ModelScope](https://modelscope.cn)
 2. 右上角头像 → **API-KEY 管理** → **创建 API Key**
 3. 复制 Key，粘贴到 `.env` 的 `AI_API_KEY=`
 4. 部署后同样设置 Cloudflare Secret：`npx wrangler secret put AI_API_KEY`
 
-### 2.3 CLOUDFLARE_API_TOKEN
+### 2.2 CLOUDFLARE\_API\_TOKEN
 
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. 右上角头像 → **My Profile** → **API Tokens** → **Create Token**
 3. 选择 **Custom token**，权限勾选：
-   - **Account > Vectorize > Edit**
-   - **Account > Workers AI > Use**
+  - **Account > Vectorize > Edit**
+  - **Account > Workers AI > Use**
 4. 创建后复制 Token，粘贴到 `.env.cf` 的 `CLOUDFLARE_API_TOKEN=`
 
-### 2.4 CLOUDFLARE_ACCOUNT_ID
+### 2.3 CLOUDFLARE\_ACCOUNT\_ID
 
 1. Cloudflare Dashboard → 任意域名概览页
 2. 右侧栏 **API** 区域 → **Account ID**（或直接从 URL `https://dash.cloudflare.com/<account_id>/...` 复制）
@@ -423,13 +357,15 @@ fetchGithubContributionSummary(
 # 三、用到的AI模型
 
 - MIMO V2.5/PRO（送的百亿补贴）
-- claude opus 4.6\4.7\4.8\fable 5
+- claude opus 4.64.74.8fable 5
 - GPT 5.5/5.6
 - antigravity的gemini 3.1/3.5
 - TRAE上的 GLM/豆包/KIMI/QWEN/DeepSeek（都是拿来测试性能好在工作上确定是否实用）
 - codeBuddy
 
-共耗费30块左右，主打一个薅羊毛，新手一定不要在TRAE、codeBuddy这些平台上写代码。也不是不好吧，是能跑出来，但是我拆分了很久的任务跑了都有问题，这30块消耗都是拿顶模去修复trae给我留的屎。
+共耗费30块左右，主打一个薅羊毛，新手一定不要在TRAE、codeBuddy这些平台上写代码。
+
+也不是不好吧，是能跑出来，但是我拆分了很久的任务跑了都有问题，这30块消耗都是拿顶模去修复trae给我留的屎。
 
 我不确定是模型问题还是平台，用来写的代码BUG是真的多。
 

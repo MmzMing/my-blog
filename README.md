@@ -24,18 +24,18 @@ PC端
 
 ## 项目概述
 
-Firefly-Mod 是从 [Firefly](https://github.com/CuteLeaf/Firefly) 分支出的个性化魔改版本，已脱离原分支独立演进。
+Firefly-Mod 是个性化魔改版本，已独立演进。
 
 基于 Firefly 魔改新增以下特性：
 
 - 重构整体UI，黑白简约风格，组件可交互为主，删除背景图片。
 - 首页更偏向于展示个人能力爱好，不展示最新文章，删除侧边栏。
-- 新增 AI 语义搜索（RAG）功能，基于 Cloudflare Vectorize 向量索引。
+- 可选的 AI 语义搜索（RAG）功能，基于 Cloudflare Vectorize 向量索引。
 - QQ 群聊风格留言板，直接复用 Waline 登录、审核与评论数据，不依赖项目 Worker 或 KV。
 - 新增日历页面，展示文章发布时间。
 - 关于页面，注重交互。
 - 删除动漫这些影响构建速度的功能。
-- 文章分类更注重视觉排版分类。
+- 分类页使用 D3.js 力导向布局与 Canvas 绘制标签关系图谱：构建时根据文章标签生成节点与共现边，客户端支持缩放、拖拽、悬停和键盘跳转。
 
 ## 常用命令
 
@@ -53,17 +53,24 @@ Firefly-Mod 是从 [Firefly](https://github.com/CuteLeaf/Firefly) 分支出的�
 | 重新生成图标 | `pnpm icons` |
 | 构建/更新 AI 向量索引 | `pnpm build-index` |
 
-## AI 搜索向量索引
-```bash
-# 配置好.env文件后，执行以下命令：
+## AI 搜索（可选）
 
-# 登录 Cloudflare（需要先删掉CLOUDFLARE_API_TOKEN环境变量）
+AI 搜索默认关闭。只有在 `src/config/aiSearchConfig.ts` 中将 `enabled` 设为 `true` 后，才需要创建向量索引和配置以下凭证：
+
+- `.env.cf`：`CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`，用于创建和更新 Vectorize 索引。
+- `.env`：`AI_API_KEY`，仅在使用第三方 Embedding / Chat API 时需要；不配置时会回退到 Workers AI。
+
+```bash
+# 登录 Cloudflare
 npx wrangler login
 
-# 构建/更新 AI 搜索向量索引（增量）（登录后需要配置CLOUDFLARE_API_TOKEN环境变量）
+# 首次启用时创建索引；向量维度需与 aiSearchConfig.ts 保持一致
+npx wrangler vectorize create blog-ai-search --dimensions 1024 --metric cosine
+
+# 构建/更新 AI 搜索向量索引（增量）
 pnpm build-index
 
-# 强制全量重建 AI 搜索向量索引（登录后需要配置CLOUDFLARE_API_TOKEN环境变量）
+# 强制全量重建 AI 搜索向量索引
 pnpm build-index -- --force
 ```
 
@@ -109,26 +116,22 @@ pnpm build-index -- --force
 ## 部署清单
 
 粗略编写了一下部署清单，包括以下内容：
-如果有缺失的，请在 Issue 中报告。
+如有缺失，请按项目实际需求补充配置。
 
 | 检查项 | 说明 |
 |--------|------|
-| 托管平台 | 支持任何静态托管：Cloudflare Pages、Vercel、Netlify、GitHub Pages、Nginx 等 |
+| 托管平台 | 支持任何静态托管：Cloudflare Pages、Vercel、Netlify、Nginx 等 |
 | 评论服务 | 若启用评论，需自行部署对应后端（Waline / Twikoo / Artalk 等） |
 | 留言板 | 留言板固定使用 Waline `/guestbook/` 频道；启用前需在 `src/config/commentConfig.ts` 中配置 Waline，无需 Cloudflare KV 或项目 Worker 路由 |
 | 统计服务 | 站点访问统计通过 Umami 获取（`siteConfig.ts` 中配置 `analytics.umamiAnalytics`，Worker 中配置 `UMAMI_TOKEN` Secret） |
-| AI 搜索 | 需 Cloudflare Vectorize 索引；构建索引需 `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`；LLM/Embedding 默认走 Workers AI，也可在 `aiSearchConfig.ts` 中配置第三方 API（如魔搭社区）并设置 `AI_API_KEY` |
+| AI 搜索（可选） | 仅在 `aiSearchConfig.ts` 开启后配置：需 Cloudflare Vectorize 索引；构建索引需 `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`；LLM/Embedding 默认走 Workers AI，也可配置第三方 API 并设置 `AI_API_KEY` |
 | 图片上传（可选） | 留言板默认将不超过 128 KB 的图片内嵌到 Waline 留言；如需上传不超过 5 MB 的图片，可在 `commentConfig.waline.imageUploadURL` 中配置兼容的自建上传接口。文章图片仍建议使用独立图床 |
 
 ## Cloudflare Pages 部署方案
 
-因为是魔改[Firefly](https://github.com/CuteLeaf/Firefly)，所以部署方案与 Firefly 相同。
+静态内容可通过 Cloudflare Pages 部署；需要 AI 搜索、随机封面代理等运行时接口时，使用项目的 Cloudflare Worker 部署配置。
 
-其他与 Firefly 相同，除了以下几点：
-
-创建 AI 搜索向量索引：
-   - 索引名称需与 `src/config/aiSearchConfig.ts` 中的 `indexName` 一致（默认 `blog-ai-search`）
-   - 使用 wrangler 创建：`wrangler vectorize create --name blog-ai-search --dimensions 1024 --metric cosine`
+AI 搜索保持关闭时，无需创建 Vectorize 索引或配置 AI 相关环境变量。启用后请按上方“AI 搜索（可选）”完成索引与凭证配置。
 
 ## Live2D 版权声明
 
