@@ -1,13 +1,12 @@
 <script lang="ts">
 import {
-	ChevronLeft,
 	ChevronRight,
-	CircleHelp,
 	ExternalLink,
 	List as ListIcon,
 	Map as MapIcon,
 	Search,
 	TrainFront,
+	X,
 } from "lucide-svelte";
 import { onDestroy, tick } from "svelte";
 import type { FriendLink } from "@/types/config";
@@ -15,6 +14,8 @@ import FriendPlatformScene from "./FriendPlatformScene.svelte";
 
 type ViewMode = "map" | "directory";
 type ArrivalPhase = "idle" | "arriving" | "opening" | "open";
+
+const ROUTE_COLORS = ["#a51f45", "#005b96", "#d86613", "#008c67"];
 
 interface Props {
 	items: FriendLink[];
@@ -26,6 +27,7 @@ let { items, allLabel = "全部", applyEnabled = false }: Props = $props();
 
 let query = $state("");
 let activeTag = $state("all");
+let dialogTag = $state("all");
 let viewMode = $state<ViewMode>("map");
 let mobileRoute = $state(0);
 let selected = $state<FriendLink | null>(null);
@@ -33,6 +35,8 @@ let arrivalPhase = $state<ArrivalPhase>("idle");
 let arrivalRun = $state(0);
 let avatarFailed = $state(false);
 let platformEl = $state<HTMLElement | null>(null);
+let routesDialog: HTMLDialogElement;
+let applyTrigger: HTMLButtonElement;
 let arrivalTimer: ReturnType<typeof setTimeout> | undefined;
 let openingTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -44,10 +48,12 @@ let normalizedQuery = $derived(query.trim().toLocaleLowerCase());
 let filteredItems = $derived.by(() =>
 	items.filter((friend) => matchesFriend(friend)),
 );
-let mobileItems = $derived(
-	normalizedQuery || activeTag !== "all"
-		? filteredItems
-		: (routes[mobileRoute] ?? []),
+let sceneRoute = $derived(displayRoute(routes[mobileRoute] ?? [], mobileRoute));
+let sceneRouteColor = $derived(routeColorFor(mobileRoute));
+let enabledSceneUrls = $derived(
+	sceneRoute
+		.filter((friend) => matchesFriend(friend))
+		.map((friend) => friend.siteurl),
 );
 let arrivalLabel = $derived.by(() => {
 	if (!selected) return "请选择上方站点，等待列车进站";
@@ -69,12 +75,27 @@ function displayRoute(route: FriendLink[], routeIndex: number): FriendLink[] {
 	return routeIndex % 2 === 1 ? route.slice().reverse() : route;
 }
 
+function routeColorFor(routeIndex: number): string {
+	return ROUTE_COLORS[routeIndex % ROUTE_COLORS.length] ?? ROUTE_COLORS[0];
+}
+
 function matchesFriend(friend: FriendLink): boolean {
 	const matchesTag =
 		activeTag === "all" || (friend.tags ?? []).includes(activeTag);
 	if (!matchesTag) return false;
 	if (!normalizedQuery) return true;
 
+	return [friend.title, friend.desc, ...(friend.tags ?? [])]
+		.join(" ")
+		.toLocaleLowerCase()
+		.includes(normalizedQuery);
+}
+
+function matchesDialogFriend(friend: FriendLink): boolean {
+	const matchesTag =
+		dialogTag === "all" || (friend.tags ?? []).includes(dialogTag);
+	if (!matchesTag) return false;
+	if (!normalizedQuery) return true;
 	return [friend.title, friend.desc, ...(friend.tags ?? [])]
 		.join(" ")
 		.toLocaleLowerCase()
@@ -136,6 +157,9 @@ function setView(mode: ViewMode): void {
 
 async function openFriend(friend: FriendLink): Promise<void> {
 	clearArrivalTimers();
+	if (routesDialog?.open) routesDialog.close();
+	const routeIndex = Math.floor(items.indexOf(friend) / 8);
+	if (routeIndex >= 0) mobileRoute = routeIndex;
 	if (viewMode !== "map") {
 		viewMode = "map";
 		await tick();
@@ -191,12 +215,27 @@ function handleStationKeydown(event: KeyboardEvent): void {
 	stations[nextIndex]?.focus();
 }
 
-function previousRoute(): void {
-	mobileRoute = Math.max(0, mobileRoute - 1);
+function openRoutesDialog(): void {
+	dialogTag = activeTag;
+	if (!routesDialog.open) routesDialog.showModal();
 }
 
-function nextRoute(): void {
-	mobileRoute = Math.min(routes.length - 1, mobileRoute + 1);
+function closeRoutesDialog(): void {
+	routesDialog.close();
+}
+
+function selectRoute(routeIndex: number): void {
+	mobileRoute = routeIndex;
+	clearSelection();
+	closeRoutesDialog();
+}
+
+function handleRoutesBackdrop(event: MouseEvent): void {
+	if (event.target === routesDialog) closeRoutesDialog();
+}
+
+function openApplyDialog(): void {
+	applyTrigger?.click();
 }
 
 onDestroy(clearArrivalTimers);
@@ -277,97 +316,36 @@ onDestroy(clearArrivalTimers);
 				aria-busy={arrivalPhase === "arriving" || arrivalPhase === "opening"}
 			>
 				<span class="sr-only" aria-live="polite">{arrivalLabel}</span>
+				{#if applyEnabled}
+					<button bind:this={applyTrigger} class="sr-only" type="button" tabindex="-1" data-open-friend-rules>
+						加入线路
+					</button>
+				{/if}
 
 				<div class="platform-scene-wrap">
-					<section class="route-signboard" aria-label="友链线路标牌">
-						<header class="signboard-header">
-							<span class="signboard-roundel" aria-hidden="true">
-								<span></span>
-							</span>
-							<div class="station-title">
-								<strong>友链中央站</strong>
-								<small>FRIEND LINK CENTRAL</small>
-							</div>
-							<div class="current-station">
-								<small>当前车站</small>
-								<strong>CENTRAL · 中央站</strong>
-							</div>
-							{#if applyEnabled}
-								<button type="button" class="station-service" data-open-friend-rules>
-									<CircleHelp size={17} strokeWidth={1.8} aria-hidden="true" />
-									<span>友链登记</span>
-								</button>
-							{/if}
-						</header>
-
-						<div class="desktop-route-map" data-station-scope>
-							{#each routes as route, routeIndex (`route-${routeIndex}`)}
-								<div class="route-row" class:reverse={routeIndex % 2 === 1}>
-									<span class="route-code">L{routeIndex + 1}</span>
-									<div class="route-stations">
-										{#each displayRoute(route, routeIndex) as friend (friend.siteurl)}
-											<button
-												type="button"
-												class="station-button"
-												class:dimmed={!matchesFriend(friend)}
-												class:selected={selected?.siteurl === friend.siteurl}
-												disabled={!matchesFriend(friend)}
-												data-station
-												aria-label={`${friend.title}，${friend.desc}`}
-												onclick={() => openFriend(friend)}
-												onkeydown={handleStationKeydown}
-											>
-												<span class="station-name" title={friend.title}>{shortLabel(friend.title)}</span>
-												<span class={`station-marker ${markerClass(friend)}`} aria-hidden="true"></span>
-											</button>
-										{/each}
-									</div>
-								</div>
-							{/each}
-						</div>
-
-						<div class="mobile-route-map">
-							{#if !normalizedQuery && activeTag === "all"}
-								<div class="mobile-route-nav">
-									<button type="button" aria-label="上一条线路" disabled={mobileRoute === 0} onclick={previousRoute}>
-										<ChevronLeft size={18} aria-hidden="true" />
-									</button>
-									<strong>L{mobileRoute + 1} 线</strong>
-									<span>{mobileRoute + 1} / {routes.length}</span>
-									<button type="button" aria-label="下一条线路" disabled={mobileRoute >= routes.length - 1} onclick={nextRoute}>
-										<ChevronRight size={18} aria-hidden="true" />
-									</button>
-								</div>
-							{/if}
-
-							<div class="mobile-station-list" data-station-scope>
-								{#each mobileItems as friend (friend.siteurl)}
-									<button
-										type="button"
-										class:selected={selected?.siteurl === friend.siteurl}
-										data-station
-										onclick={() => openFriend(friend)}
-										onkeydown={handleStationKeydown}
-									>
-										<span class={`station-marker ${markerClass(friend)}`} aria-hidden="true"></span>
-										<span>{friend.title}</span>
-									</button>
-								{/each}
-							</div>
-						</div>
-
-						{#if filteredItems.length === 0}
-							<div class="terminal-empty">
-								<TrainFront size={28} strokeWidth={1.5} aria-hidden="true" />
-								<strong>没有驶往该条件的列车</strong>
-								<span>请更换关键词或标签</span>
-							</div>
-						{/if}
-					</section>
-
 					<div class="scene-canvas-layer">
-						<FriendPlatformScene phase={arrivalPhase} runId={arrivalRun} statusText={arrivalLabel} />
+						<FriendPlatformScene
+							phase={arrivalPhase}
+							runId={arrivalRun}
+							statusText={arrivalLabel}
+							routeCode={`L${mobileRoute + 1}`}
+							routeColor={sceneRouteColor}
+							stations={sceneRoute}
+							enabledUrls={enabledSceneUrls}
+							selectedUrl={selected?.siteurl ?? ""}
+							{applyEnabled}
+							onStationSelect={openFriend}
+							onMore={openRoutesDialog}
+							onApply={openApplyDialog}
+						/>
 					</div>
+					{#if filteredItems.length === 0}
+						<div class="terminal-empty">
+							<TrainFront size={28} strokeWidth={1.5} aria-hidden="true" />
+							<strong>没有驶往该条件的列车</strong>
+							<span>请更换关键词或标签</span>
+						</div>
+					{/if}
 					{#if selected}
 						<div class="cabin-info" class:revealed={arrivalPhase === "open"} aria-hidden={arrivalPhase !== "open"}>
 							<div class="arrival-avatar">
@@ -397,12 +375,6 @@ onDestroy(clearArrivalTimers);
 								访问站点 <ExternalLink size={17} strokeWidth={1.8} aria-hidden="true" />
 							</a>
 						</div>
-					{:else}
-						<div class="empty-platform-prompt" aria-hidden="true">
-							<TrainFront size={34} strokeWidth={1.35} />
-							<strong>WAITING FOR TRAIN</strong>
-							<span>从上方线路标牌选择一座站点</span>
-						</div>
 					{/if}
 				</div>
 			</section>
@@ -421,6 +393,78 @@ onDestroy(clearArrivalTimers);
 			{#if filteredItems.length === 0}<div class="directory-empty">没有找到匹配的友链</div>{/if}
 		</div>
 	{/if}
+
+	<dialog bind:this={routesDialog} class="routes-dialog" aria-labelledby="routes-dialog-title" onclick={handleRoutesBackdrop}>
+		<div class="routes-dialog-panel">
+			<header class="routes-dialog-header">
+				<div>
+					<small>FRIEND LINK CENTRAL</small>
+					<h2 id="routes-dialog-title">全部线路</h2>
+				</div>
+				<button type="button" aria-label="关闭全部线路" onclick={closeRoutesDialog}>
+					<X size={20} strokeWidth={1.8} aria-hidden="true" />
+				</button>
+			</header>
+			<nav class="routes-dialog-tabs" aria-label="线路类型筛选">
+				<button
+					type="button"
+					class:active={dialogTag === "all"}
+					aria-pressed={dialogTag === "all"}
+					onclick={() => (dialogTag = "all")}
+				>
+					{allLabel}
+				</button>
+				{#each tags as tag (tag)}
+					<button
+						type="button"
+						class:active={dialogTag === tag}
+						aria-pressed={dialogTag === tag}
+						onclick={() => (dialogTag = tag)}
+					>
+						{tag}
+					</button>
+				{/each}
+			</nav>
+			<div class="routes-dialog-map" data-station-scope>
+				{#each routes as route, routeIndex (`dialog-route-${routeIndex}`)}
+					<div
+						class="route-row"
+						class:reverse={routeIndex % 2 === 1}
+						class:active-route={mobileRoute === routeIndex}
+						style={`--dialog-route-color: ${routeColorFor(routeIndex)}`}
+					>
+						<button
+							type="button"
+							class="route-code"
+							aria-label={`切换到 L${routeIndex + 1} 线路`}
+							aria-pressed={mobileRoute === routeIndex}
+							onclick={() => selectRoute(routeIndex)}
+						>
+							L{routeIndex + 1}
+						</button>
+						<div class="route-stations">
+							{#each displayRoute(route, routeIndex) as friend (friend.siteurl)}
+								<button
+									type="button"
+									class="station-button"
+									class:dimmed={!matchesDialogFriend(friend)}
+									class:selected={selected?.siteurl === friend.siteurl}
+									disabled={!matchesDialogFriend(friend)}
+									data-station
+									aria-label={`${friend.title}，${friend.desc}`}
+									onclick={() => openFriend(friend)}
+									onkeydown={handleStationKeydown}
+								>
+									<span class="station-name" title={friend.title}>{shortLabel(friend.title)}</span>
+									<span class={`station-marker ${markerClass(friend)}`} aria-hidden="true"></span>
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	</dialog>
 </section>
 
 <style>
@@ -431,6 +475,8 @@ onDestroy(clearArrivalTimers);
 		--terminal-muted: var(--content-meta, #5f6368);
 		--terminal-line: var(--line-color, #c8c8c8);
 		--terminal-accent: var(--primary, #2563eb);
+		--terminal-safety: #e0b400;
+		--terminal-safety-ink: #111111;
 		--terminal-inverse: #ffffff;
 		--terminal-solid-paper: #ffffff;
 		position: relative;
@@ -440,6 +486,7 @@ onDestroy(clearArrivalTimers);
 	:global(.dark) .friend-terminal {
 		--terminal-inverse: #050505;
 		--terminal-solid-paper: #050505;
+		--terminal-safety: #f2c94c;
 	}
 
 	.sr-only {
@@ -538,6 +585,7 @@ onDestroy(clearArrivalTimers);
 	.mobile-station-list button:focus-visible,
 	.directory-ticket:focus-visible,
 	.station-service:focus-visible,
+	.routes-dialog button:focus-visible,
 	.arrival-visit:focus-visible {
 		outline: 2px solid var(--terminal-accent);
 		outline-offset: 3px;
@@ -572,47 +620,90 @@ onDestroy(clearArrivalTimers);
 	.route-signboard {
 		position: relative;
 		z-index: 4;
-		width: calc(100% - clamp(2rem, 5vw, 4.5rem));
+		width: 100%;
 		box-sizing: border-box;
-		margin: clamp(1.1rem, 2vw, 1.7rem) auto 0;
+		margin: 0;
 		background:
 			linear-gradient(180deg, color-mix(in oklab, #ffffff 7%, transparent), transparent 20%),
 			var(--terminal-paper);
-		border: 2px solid var(--terminal-ink);
-		box-shadow:
-			0.55rem 0.7rem 0 color-mix(in oklab, var(--terminal-ink) 15%, transparent),
-			inset 0 -0.3rem 0 color-mix(in oklab, var(--terminal-ink) 7%, transparent);
-		transform: perspective(90rem) rotateX(-1.4deg) rotateY(-0.8deg);
-		transform-origin: center top;
-		transform-style: preserve-3d;
+		border: 0;
+		border-bottom: 2px solid var(--terminal-ink);
+		box-shadow: inset 0 -0.3rem 0 color-mix(in oklab, var(--terminal-ink) 7%, transparent);
 	}
 
-	.route-signboard::before,
-	.route-signboard::after {
+	.platform-direction-band {
+		position: relative;
+		z-index: 3;
+		display: grid;
+		min-height: 3.3rem;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+		align-items: center;
+		gap: 1rem;
+		padding: 0.45rem 1.25rem;
+		color: var(--terminal-safety-ink);
+		background: var(--terminal-safety);
+		border-top: 2px solid var(--terminal-ink);
+		border-bottom: 3px solid var(--terminal-ink);
+		box-shadow: inset 0 -0.25rem 0 color-mix(in oklab, #000000 10%, transparent);
+	}
+
+	.platform-direction-band::before,
+	.platform-direction-band::after {
 		content: "";
 		position: absolute;
-		z-index: -1;
+		top: 100%;
+		width: 1rem;
+		height: 5.75rem;
+		box-sizing: border-box;
 		background: var(--terminal-paper);
 		border: 2px solid var(--terminal-ink);
+		border-top: 0;
 		pointer-events: none;
 	}
 
-	.route-signboard::before {
-		top: 0.45rem;
-		right: -0.65rem;
-		bottom: -0.7rem;
-		width: 0.65rem;
-		transform: skewY(45deg);
-		transform-origin: left top;
+	.platform-direction-band::before { left: 1.1rem; }
+	.platform-direction-band::after { right: 1.1rem; }
+
+	.direction-end,
+	.direction-current,
+	.direction-current > span {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
 	}
 
-	.route-signboard::after {
-		left: 0.45rem;
-		right: -0.65rem;
-		bottom: -0.7rem;
-		height: 0.7rem;
-		transform: skewX(45deg);
-		transform-origin: left top;
+	.direction-end small,
+	.direction-current small {
+		font: 750 0.54rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+	}
+
+	.direction-end strong,
+	.direction-current strong {
+		overflow: hidden;
+		font-size: 0.74rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.direction-next { align-items: flex-end; text-align: right; }
+	.direction-current {
+		align-items: center;
+		flex-direction: row;
+		gap: 0.65rem;
+		padding: 0 1.15rem;
+		border-inline: 2px solid var(--terminal-safety-ink);
+	}
+
+	.direction-current i {
+		display: grid;
+		width: 2rem;
+		height: 2rem;
+		flex: 0 0 auto;
+		place-items: center;
+		color: var(--terminal-safety);
+		background: var(--terminal-safety-ink);
+		border-radius: 50%;
+		font: normal 850 0.8rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
 	}
 
 	.signboard-header {
@@ -909,10 +1000,26 @@ onDestroy(clearArrivalTimers);
 		isolation: isolate;
 	}
 
+	.routes-dialog-header button {
+		display: inline-flex;
+		min-height: 2.75rem;
+		align-items: center;
+		justify-content: center;
+		gap: 0.45rem;
+		padding: 0 0.7rem;
+		color: var(--terminal-ink);
+		background: transparent;
+		border: 0;
+		font-size: 0.72rem;
+		font-weight: 750;
+		cursor: pointer;
+		transition: color 180ms ease, background-color 180ms ease;
+	}
+
 	.scene-canvas-layer {
 		position: relative;
 		z-index: 1;
-		margin-top: -4.75rem;
+		margin-top: -0.15rem;
 	}
 
 	.cabin-info {
@@ -958,33 +1065,6 @@ onDestroy(clearArrivalTimers);
 		pointer-events: auto;
 		transform: translateX(-50%) perspective(55rem) rotateY(-5deg) scale(1);
 	}
-
-	.empty-platform-prompt {
-		position: absolute;
-		z-index: 4;
-		left: 50%;
-		bottom: 12%;
-		display: flex;
-		align-items: center;
-		flex-direction: column;
-		gap: 0.4rem;
-		padding: 0.75rem 1rem;
-		transform: translateX(-50%) perspective(36rem) rotateX(8deg);
-		color: var(--terminal-muted);
-		background: color-mix(in oklab, var(--terminal-solid-paper) 92%, transparent);
-		border: 1.5px solid var(--terminal-ink);
-		box-shadow: 0.25rem 0.3rem 0 var(--terminal-ink);
-		text-align: center;
-		pointer-events: none;
-	}
-
-	.empty-platform-prompt strong {
-		color: var(--terminal-ink);
-		font: 800 0.68rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-		letter-spacing: 0.13em;
-	}
-
-	.empty-platform-prompt span { font-size: 0.72rem; }
 
 	.platform-doorway {
 		position: relative;
@@ -1266,6 +1346,161 @@ onDestroy(clearArrivalTimers);
 	.ticket-copy small { color: var(--terminal-muted); font-size: 0.72rem; }
 	.directory-empty { grid-column: 1 / -1; padding: 3rem 1rem; color: var(--terminal-muted); border: 1.5px dashed var(--terminal-line); text-align: center; }
 
+	.routes-dialog {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		width: min(70rem, calc(100vw - 2rem));
+		max-width: none;
+		max-height: min(48rem, calc(100vh - 2rem));
+		margin: 0;
+		padding: 0;
+		color: var(--terminal-ink);
+		background: transparent;
+		border: 0;
+		overflow: visible;
+		transform: translate(-50%, -50%);
+	}
+
+	.routes-dialog::backdrop { background: color-mix(in oklab, #000000 58%, transparent); backdrop-filter: blur(3px); }
+
+	.routes-dialog-panel {
+		display: grid;
+		max-height: min(48rem, calc(100vh - 2rem));
+		grid-template-rows: auto auto minmax(0, 1fr);
+		overflow: hidden;
+		background: var(--terminal-solid-paper);
+		border: 2px solid var(--terminal-ink);
+		border-radius: 0.45rem;
+		box-shadow: 0.65rem 0.75rem 0 color-mix(in oklab, var(--terminal-ink) 28%, transparent);
+	}
+
+	.routes-dialog-header {
+		display: flex;
+		min-height: 4.4rem;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.65rem 1rem 0.65rem 1.25rem;
+		border-bottom: 1px solid var(--terminal-line);
+	}
+
+	.routes-dialog-header h2 { margin: 0.12rem 0 0; font-size: 1.05rem; letter-spacing: 0; }
+	.routes-dialog-header small { color: var(--terminal-muted); font: 700 0.57rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+	.routes-dialog-header button { width: 2.75rem; padding: 0; border: 1px solid var(--terminal-line); }
+	.routes-dialog-header button:hover { color: var(--terminal-inverse); background: var(--terminal-ink); border-color: var(--terminal-ink); }
+
+	.routes-dialog-tabs {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		overflow-x: auto;
+		padding: 0.55rem 0.75rem;
+		background: color-mix(in oklab, var(--terminal-paper) 94%, var(--terminal-line));
+		border-bottom: 1px solid var(--terminal-line);
+	}
+
+	.routes-dialog-tabs button {
+		min-height: 2.45rem;
+		flex: 0 0 auto;
+		padding: 0 0.85rem;
+		color: var(--terminal-muted);
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: 999px;
+		font-size: 0.75rem;
+		font-weight: 750;
+		cursor: pointer;
+	}
+
+	.routes-dialog-tabs button:hover,
+	.routes-dialog-tabs button.active {
+		color: #ffffff;
+		background: #a51f45;
+		border-color: #a51f45;
+	}
+
+	.routes-dialog-map {
+		display: grid;
+		overflow: auto;
+		padding: 0.7rem 1rem 1rem;
+		background: var(--terminal-paper);
+	}
+
+	.routes-dialog-map .route-row {
+		--dialog-route-color: #a51f45;
+		--route-axis: 1.54rem;
+		grid-template-columns: 3.8rem minmax(0, 1fr);
+		min-height: 7rem;
+	}
+
+	.routes-dialog-map .route-row:not(:last-child)::after { display: none; }
+
+	.routes-dialog-map .route-code {
+		width: 2.65rem;
+		height: 2.65rem;
+		color: #ffffff;
+		background: var(--dialog-route-color);
+		border: 0;
+		box-shadow: none;
+		cursor: pointer;
+		transition: box-shadow 180ms ease, transform 180ms ease;
+	}
+
+	.routes-dialog-map .route-code:hover,
+	.routes-dialog-map .route-code:focus-visible,
+	.routes-dialog-map .route-code[aria-pressed="true"] {
+		box-shadow: 0 0 0 0.24rem var(--terminal-solid-paper), 0 0 0 0.42rem var(--dialog-route-color);
+		transform: scale(1.05);
+	}
+
+	.routes-dialog-map .route-stations::before {
+		left: 3%;
+		right: 3%;
+		bottom: calc(var(--route-axis) - 0.36rem);
+		height: 0.72rem;
+		background: var(--dialog-route-color);
+		border: 0;
+	}
+
+	.routes-dialog-map .station-button:not(:last-child)::after {
+		bottom: var(--route-axis);
+		width: 0.9rem;
+		height: 0.9rem;
+		box-sizing: border-box;
+		color: #ffffff;
+		background: var(--dialog-route-color);
+		border: 0.16rem solid var(--terminal-solid-paper);
+		font-size: 0.58rem;
+		transform: translateY(50%);
+	}
+
+	.routes-dialog-map .station-marker,
+	.routes-dialog-map .marker-square,
+	.routes-dialog-map .marker-diamond,
+	.routes-dialog-map .marker-orbit {
+		width: 1.55rem;
+		height: 1.55rem;
+		background: var(--terminal-solid-paper);
+		border: 0.32rem solid var(--dialog-route-color);
+		border-radius: 50%;
+		box-shadow: none;
+		transform: translate(-50%, 50%);
+	}
+
+	.routes-dialog-map .station-button .station-marker { bottom: var(--route-axis); }
+
+	.routes-dialog-map .station-button:hover:not(:disabled) .station-marker,
+	.routes-dialog-map .station-button:focus-visible .station-marker,
+	.routes-dialog-map .station-button.selected .station-marker {
+		background: var(--dialog-route-color);
+		border-color: var(--dialog-route-color);
+		box-shadow: inset 0 0 0 0.28rem var(--terminal-solid-paper), 0 0 0 0.18rem var(--dialog-route-color);
+		transform: translate(-50%, 50%) scale(1.12);
+	}
+
+	.routes-dialog-map .station-button.dimmed { opacity: 0.16; }
+
 	@media (max-width: 980px) {
 		.terminal-toolbar { grid-template-columns: 1fr auto; }
 		.terminal-filters { grid-column: 1 / -1; grid-row: 2; justify-self: start; flex-wrap: wrap; }
@@ -1283,12 +1518,9 @@ onDestroy(clearArrivalTimers);
 		.terminal-filters button { flex: 1 1 auto; }
 		.status-hint { display: none; }
 
-		.route-signboard { width: calc(100% - 1.25rem); transform: perspective(60rem) rotateX(-0.8deg); }
-		.signboard-header { grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.75rem; padding-inline: 0.85rem; }
-		.signboard-roundel { width: 2.25rem; height: 2.25rem; }
-		.current-station { display: none; }
-		.desktop-route-map { display: none; }
-		.mobile-route-map { display: block; padding: 0.9rem; background: var(--terminal-paper); }
+		.routes-dialog { width: calc(100vw - 1rem); }
+		.routes-dialog-map { padding-inline: 0.6rem; }
+		.routes-dialog-map .route-row { min-width: 43rem; }
 
 		.mobile-route-nav {
 			display: grid;
@@ -1329,7 +1561,7 @@ onDestroy(clearArrivalTimers);
 
 		.platform-doorway { min-height: 29rem; }
 		.door-top-rail span:last-child { display: none; }
-		.scene-canvas-layer { margin-top: -3.25rem; }
+		.scene-canvas-layer { margin-top: 0; }
 		.cabin-info { bottom: 8%; width: min(76%, 29rem); grid-template-columns: 1fr; align-content: center; justify-items: center; gap: 0.65rem; padding: 1rem; text-align: center; transform: translateX(-50%) perspective(40rem) rotateY(-3deg) scale(0.9); }
 		.cabin-info.revealed { transform: translateX(-50%) perspective(40rem) rotateY(-3deg) scale(1); }
 		.carriage-fixtures { left: 5%; right: 5%; }
@@ -1350,10 +1582,7 @@ onDestroy(clearArrivalTimers);
 
 	@media (max-width: 430px) {
 		.terminal-search input { font-size: 1rem; }
-		.mobile-station-list { grid-template-columns: 1fr; }
 		.platform-doorway { min-height: 31rem; }
-		.signboard-header { min-height: 4.25rem; }
-		.station-title strong { font-size: 0.95rem; }
 	}
 
 	@media (prefers-reduced-motion: reduce) {

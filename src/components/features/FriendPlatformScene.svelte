@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onDestroy, onMount } from "svelte";
 import * as THREE from "three";
+import type { FriendLink } from "@/types/config";
 
 type ArrivalPhase = "idle" | "arriving" | "opening" | "open";
 
@@ -8,9 +9,31 @@ interface Props {
 	phase: ArrivalPhase;
 	runId: number;
 	statusText: string;
+	routeCode: string;
+	routeColor: string;
+	stations: FriendLink[];
+	enabledUrls: string[];
+	selectedUrl: string;
+	applyEnabled: boolean;
+	onStationSelect: (friend: FriendLink) => void;
+	onMore: () => void;
+	onApply: () => void;
 }
 
-let { phase, runId, statusText }: Props = $props();
+let {
+	phase,
+	runId,
+	statusText,
+	routeCode,
+	routeColor,
+	stations,
+	enabledUrls,
+	selectedUrl,
+	applyEnabled,
+	onStationSelect,
+	onMore,
+	onApply,
+}: Props = $props();
 let container: HTMLDivElement;
 
 let scene: THREE.Scene;
@@ -35,7 +58,6 @@ let trainDoorLeft: THREE.Group;
 let trainDoorRight: THREE.Group;
 let platformClockHand: THREE.Line;
 let scanLight: THREE.Line;
-const hangingHandles: THREE.Group[] = [];
 const lineMaterial = new THREE.LineBasicMaterial({ color: 0x111111 });
 const fillMaterial = new THREE.MeshBasicMaterial({
 	color: 0xffffff,
@@ -44,14 +66,18 @@ const fillMaterial = new THREE.MeshBasicMaterial({
 	polygonOffsetUnits: 2,
 });
 const glassMaterial = new THREE.MeshBasicMaterial({
-	color: 0xffffff,
+	color: 0xd7d7d7,
 	transparent: true,
-	opacity: 0.12,
+	opacity: 0.2,
 	depthWrite: false,
 	side: THREE.DoubleSide,
 });
+const safetyMaterial = new THREE.MeshBasicMaterial({ color: 0xe0b400 });
 const pointer = new THREE.Vector2();
 const cameraTarget = new THREE.Vector3();
+const raycaster = new THREE.Raycaster();
+const ROUTE_BOARD_WIDTH = 15.8;
+const ROUTE_BOARD_HEIGHT = 2.65;
 type TextSurface = {
 	canvas: HTMLCanvasElement;
 	context: CanvasRenderingContext2D;
@@ -61,6 +87,11 @@ type TextSurface = {
 };
 const textSurfaces: TextSurface[] = [];
 let overheadStatusSurface: TextSurface | undefined;
+let routeBoardCanvas: HTMLCanvasElement | undefined;
+let routeBoardContext: CanvasRenderingContext2D | undefined;
+let routeBoardTexture: THREE.CanvasTexture | undefined;
+let routeBoardDisplay: THREE.Mesh | undefined;
+let hoveredRouteTarget = "";
 
 $effect(() => {
 	currentPhase = phase;
@@ -69,6 +100,14 @@ $effect(() => {
 		resetInteraction();
 	}
 	updateOverheadStatus(statusText);
+	paintRouteBoard(
+		routeCode,
+		routeColor,
+		stations,
+		enabledUrls,
+		selectedUrl,
+		applyEnabled,
+	);
 });
 
 function easeOutCubic(value: number): number {
@@ -160,28 +199,53 @@ function createDoorPanel(width = 3.05): THREE.Group {
 			[width / 2, -0.5, 0.08],
 		]),
 	);
+
+	const safetyStripe = new THREE.Mesh(
+		new THREE.BoxGeometry(width - 0.18, 0.18, 0.08),
+		safetyMaterial,
+	);
+	safetyStripe.position.set(0, -0.22, 0.1);
+	panel.add(safetyStripe);
 	return panel;
 }
 
-function createHandle(): THREE.Group {
-	const handle = new THREE.Group();
-	handle.add(
+function createFixedScreenPanel(width: number): THREE.Group {
+	const panel = new THREE.Group();
+	panel.add(wireBox(width, 5.35, 0.16));
+
+	const glass = new THREE.Mesh(
+		new THREE.PlaneGeometry(width - 0.3, 3.65),
+		glassMaterial,
+	);
+	glass.position.set(0, 0.52, 0.09);
+	panel.add(glass);
+
+	const lower = outlinedBox(width - 0.1, 1.02, 0.12);
+	lower.position.set(0, -2.08, 0.02);
+	panel.add(lower);
+
+	for (const x of [-width / 4, 0, width / 4]) {
+		panel.add(
+			line([
+				[x, -2.66, 0.1],
+				[x, 2.66, 0.1],
+			]),
+		);
+	}
+	panel.add(
 		line([
-			[0, 0, 0],
-			[0, -0.72, 0],
+			[-width / 2, -0.5, 0.1],
+			[width / 2, -0.5, 0.1],
 		]),
 	);
-	const ringPoints: Array<[number, number, number]> = [];
-	for (let index = 0; index < 28; index += 1) {
-		const angle = (index / 28) * Math.PI * 2;
-		ringPoints.push([
-			Math.cos(angle) * 0.19,
-			-0.92 + Math.sin(angle) * 0.25,
-			0,
-		]);
-	}
-	handle.add(loop(ringPoints));
-	return handle;
+
+	const safetyStripe = new THREE.Mesh(
+		new THREE.BoxGeometry(width - 0.2, 0.18, 0.08),
+		safetyMaterial,
+	);
+	safetyStripe.position.set(0, -0.22, 0.12);
+	panel.add(safetyStripe);
+	return panel;
 }
 
 function paintTextSurface(
@@ -244,6 +308,219 @@ function textPlane(
 	);
 }
 
+function routeStationX(index: number, count: number): number {
+	if (count <= 1) return 930;
+	return 300 + (index / (count - 1)) * 1240;
+}
+
+function shortRouteLabel(value: string): string {
+	const glyphs = Array.from(value.trim());
+	return glyphs.length > 9 ? `${glyphs.slice(0, 8).join("")}…` : value;
+}
+
+function roundedRectPath(
+	context: CanvasRenderingContext2D,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	radius: number,
+): void {
+	const safeRadius = Math.min(radius, width / 2, height / 2);
+	context.beginPath();
+	context.moveTo(x + safeRadius, y);
+	context.lineTo(x + width - safeRadius, y);
+	context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+	context.lineTo(x + width, y + height - safeRadius);
+	context.quadraticCurveTo(
+		x + width,
+		y + height,
+		x + width - safeRadius,
+		y + height,
+	);
+	context.lineTo(x + safeRadius, y + height);
+	context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+	context.lineTo(x, y + safeRadius);
+	context.quadraticCurveTo(x, y, x + safeRadius, y);
+	context.closePath();
+}
+
+function paintRouteBoard(
+	code: string,
+	boardRouteColor: string,
+	boardStations: FriendLink[],
+	enabled: string[],
+	selected: string,
+	canApply: boolean,
+): void {
+	if (!routeBoardCanvas || !routeBoardContext || !routeBoardTexture) return;
+	const context = routeBoardContext;
+	const dark = isDarkTheme();
+	const paper = dark ? "#050505" : "#ffffff";
+	const ink = dark ? "#ffffff" : "#111111";
+	const muted = dark ? "#8f8f8f" : "#777777";
+	const disabledColor = dark ? "#5d5d5d" : "#a0a0a0";
+
+	context.clearRect(0, 0, routeBoardCanvas.width, routeBoardCanvas.height);
+	context.fillStyle = paper;
+	context.fillRect(0, 0, routeBoardCanvas.width, routeBoardCanvas.height);
+	context.strokeStyle = ink;
+	context.lineWidth = 12;
+	context.strokeRect(
+		6,
+		6,
+		routeBoardCanvas.width - 12,
+		routeBoardCanvas.height - 12,
+	);
+
+	context.fillStyle = boardRouteColor;
+	context.beginPath();
+	context.arc(92, 250, 48, 0, Math.PI * 2);
+	context.fill();
+	context.fillStyle = "#ffffff";
+	context.font = "800 34px ui-monospace, SFMono-Regular, Menlo, monospace";
+	context.textAlign = "center";
+	context.textBaseline = "middle";
+	context.fillText(code, 92, 250);
+
+	context.fillStyle = ink;
+	context.font = "800 29px system-ui, sans-serif";
+	context.textAlign = "left";
+	context.fillText("友链中央站", 44, 52);
+	context.fillStyle = muted;
+	context.font = "700 18px ui-monospace, SFMono-Regular, Menlo, monospace";
+	context.fillText("FRIEND LINK CENTRAL", 44, 82);
+
+	const routeY = 250;
+	const firstX = boardStations.length
+		? routeStationX(0, boardStations.length)
+		: 300;
+	const lastX = boardStations.length
+		? routeStationX(boardStations.length - 1, boardStations.length)
+		: 1540;
+	context.strokeStyle = boardRouteColor;
+	context.lineWidth = 34;
+	context.lineCap = "round";
+	context.beginPath();
+	context.moveTo(firstX, routeY);
+	context.lineTo(lastX, routeY);
+	context.stroke();
+
+	for (const [index, station] of boardStations.entries()) {
+		const x = routeStationX(index, boardStations.length);
+		const isEnabled = enabled.includes(station.siteurl);
+		const isSelected = selected === station.siteurl;
+		const isHovered = hoveredRouteTarget === `station:${index}`;
+		const stationColor = isEnabled ? boardRouteColor : disabledColor;
+
+		context.save();
+		context.translate(x - 12, 177);
+		context.rotate(-0.64);
+		context.fillStyle = isEnabled ? ink : muted;
+		context.font = `${isSelected ? "800" : "700"} 27px system-ui, sans-serif`;
+		context.textAlign = "left";
+		context.fillText(shortRouteLabel(station.title), 0, 0);
+		context.restore();
+
+		if (isSelected) {
+			context.fillStyle = paper;
+			context.strokeStyle = stationColor;
+			context.lineWidth = 13;
+			context.beginPath();
+			context.arc(x, routeY, 38, 0, Math.PI * 2);
+			context.fill();
+			context.stroke();
+		}
+
+		context.fillStyle = isSelected ? stationColor : paper;
+		context.strokeStyle = stationColor;
+		context.lineWidth = isHovered ? 13 : 10;
+		context.beginPath();
+		context.arc(x, routeY, isHovered ? 30 : 26, 0, Math.PI * 2);
+		context.fill();
+		context.stroke();
+		if (isSelected) {
+			context.fillStyle = "#ffffff";
+			context.beginPath();
+			context.arc(x, routeY, 9, 0, Math.PI * 2);
+			context.fill();
+		}
+	}
+
+	context.strokeStyle = ink;
+	context.lineWidth = 5;
+	context.beginPath();
+	context.moveTo(1648, 24);
+	context.lineTo(1648, 360);
+	context.stroke();
+
+	const drawAction = (
+		key: string,
+		label: string,
+		x: number,
+		y: number,
+		width: number,
+		height: number,
+	): void => {
+		const hovered = hoveredRouteTarget === key;
+		roundedRectPath(context, x, y, width, height, 12);
+		context.fillStyle = hovered ? boardRouteColor : paper;
+		context.fill();
+		context.strokeStyle = hovered ? boardRouteColor : ink;
+		context.lineWidth = 4;
+		context.stroke();
+		context.fillStyle = hovered ? "#ffffff" : ink;
+		context.font = "800 28px system-ui, sans-serif";
+		context.textAlign = "center";
+		context.textBaseline = "middle";
+		context.fillText(label, x + width / 2, y + height / 2);
+	};
+
+	if (canApply) {
+		drawAction("more", "查看更多", 1690, 48, 310, 126);
+		drawAction("apply", "+  加入线路", 1690, 210, 310, 126);
+	} else {
+		drawAction("more", "查看更多", 1690, 74, 310, 236);
+	}
+
+	routeBoardTexture.needsUpdate = true;
+}
+
+function buildInteractiveRouteBoard(): void {
+	routeBoardCanvas = document.createElement("canvas");
+	routeBoardCanvas.width = 2048;
+	routeBoardCanvas.height = 384;
+	routeBoardContext = routeBoardCanvas.getContext("2d") ?? undefined;
+	if (!routeBoardContext) throw new Error("2D canvas is unavailable");
+	routeBoardTexture = new THREE.CanvasTexture(routeBoardCanvas);
+	routeBoardTexture.colorSpace = THREE.SRGBColorSpace;
+	routeBoardTexture.anisotropy = Math.min(
+		4,
+		renderer.capabilities.getMaxAnisotropy(),
+	);
+
+	const board = new THREE.Group();
+	board.add(outlinedBox(16, 2.85, 0.22));
+	routeBoardDisplay = new THREE.Mesh(
+		new THREE.PlaneGeometry(ROUTE_BOARD_WIDTH, ROUTE_BOARD_HEIGHT),
+		new THREE.MeshBasicMaterial({ map: routeBoardTexture }),
+	);
+	routeBoardDisplay.position.z = 0.13;
+	routeBoardDisplay.renderOrder = 3;
+	board.add(routeBoardDisplay);
+
+	addAt(board, 0, 6.32, -0.88);
+	board.rotation.y = -0.025;
+	paintRouteBoard(
+		routeCode,
+		routeColor,
+		stations,
+		enabledUrls,
+		selectedUrl,
+		applyEnabled,
+	);
+}
+
 function isDarkTheme(): boolean {
 	return document.documentElement.classList.contains("dark");
 }
@@ -252,12 +529,21 @@ function applyTheme(): void {
 	const dark = isDarkTheme();
 	lineMaterial.color.set(dark ? 0xffffff : 0x111111);
 	fillMaterial.color.set(dark ? 0x050505 : 0xffffff);
-	glassMaterial.color.set(dark ? 0x050505 : 0xffffff);
+	glassMaterial.color.set(dark ? 0x252525 : 0xd7d7d7);
+	safetyMaterial.color.set(dark ? 0xf2c94c : 0xe0b400);
 	for (const surface of textSurfaces) paintTextSurface(surface, dark);
+	paintRouteBoard(
+		routeCode,
+		routeColor,
+		stations,
+		enabledUrls,
+		selectedUrl,
+		applyEnabled,
+	);
 }
 
 function buildRoomShell(): void {
-	const floor = outlinedBox(18, 0.12, 12);
+	const floor = outlinedBox(19, 0.12, 12);
 	addAt(floor, 0, -0.08, 0);
 
 	for (let z = -5; z <= 5.5; z += 0.8) {
@@ -283,31 +569,54 @@ function buildRoomShell(): void {
 		);
 	}
 
-	addAt(outlinedBox(18, 7.2, 0.18), 0, 3.55, -5.85);
-	addAt(outlinedBox(0.18, 7.2, 12), -9, 3.55, 0);
-	addAt(outlinedBox(18, 0.18, 0.3), 0, 7.05, -1.2);
-	addAt(outlinedBox(18, 0.16, 0.2), 0, 6.55, -5.6);
+	addAt(outlinedBox(19, 7.2, 0.18), 0, 3.55, -5.85);
+	addAt(outlinedBox(0.22, 7.2, 12), -9.5, 3.55, 0);
+	addAt(outlinedBox(0.22, 7.2, 12), 9.5, 3.55, 0);
+	addAt(outlinedBox(19, 0.18, 0.3), 0, 7.05, -1.2);
+	addAt(outlinedBox(19, 0.16, 0.2), 0, 6.55, -5.6);
 
-	for (const x of [-7.7, -3.2, 3.2, 7.7]) {
-		addAt(outlinedBox(0.18, 6.3, 0.28), x, 3.15, -1.3);
+	for (const x of [-8.35, -3.15, 0, 3.15, 8.35]) {
+		addAt(outlinedBox(0.22, 6.35, 0.34), x, 3.18, -1.3);
 	}
-	addAt(outlinedBox(15.6, 0.22, 0.35), 0, 6.32, -1.3);
-	addAt(outlinedBox(15.6, 0.16, 0.25), 0, 0.34, -1.3);
+	addAt(outlinedBox(16.9, 0.28, 0.42), 0, 6.17, -1.3);
+	addAt(outlinedBox(16.9, 0.18, 0.3), 0, 0.34, -1.3);
 
-	const fixedLeft = wireBox(4.28, 5.35, 0.12);
-	const fixedRight = wireBox(4.28, 5.35, 0.12);
-	addAt(fixedLeft, -5.4, 3.35, -1.3);
-	addAt(fixedRight, 5.4, 3.35, -1.3);
+	const fixedLeft = createFixedScreenPanel(5.12);
+	const fixedRight = createFixedScreenPanel(5.12);
+	addAt(fixedLeft, -5.74, 3.35, -1.3);
+	addAt(fixedRight, 5.74, 3.35, -1.3);
 
 	screenDoorLeft = createDoorPanel();
 	screenDoorRight = createDoorPanel();
 	addAt(screenDoorLeft, -1.53, 3.35, -1.22);
 	addAt(screenDoorRight, 1.53, 3.35, -1.22);
+	buildInteractiveRouteBoard();
 
-	const overheadSign = textPlane(statusText, 7.6, 1.05, 47);
+	const overheadSign = textPlane(statusText, 7.2, 0.84, 45);
 	overheadStatusSurface = textSurfaces[textSurfaces.length - 1];
-	addAt(overheadSign, 0.7, 5.72, -0.96);
-	overheadSign.rotation.y = -0.045;
+	addAt(overheadSign, 0.25, 4.65, -0.92);
+
+	const routeStripe = new THREE.Mesh(
+		new THREE.BoxGeometry(16.85, 0.16, 0.16),
+		safetyMaterial,
+	);
+	addAt(routeStripe, 0, 6.02, -1.08);
+
+	for (const [label, x] of [
+		["05", -2.72],
+		["06", 2.72],
+	] as const) {
+		const numberPlate = textPlane(label, 0.62, 0.42, 78);
+		addAt(numberPlate, x, 5.72, -1.02);
+	}
+
+	for (const x of [-8.72, 8.72]) {
+		addAt(outlinedBox(0.72, 6.45, 4.75), x, 3.22, -3.48);
+	}
+
+	for (const x of [-6.8, -3.4, 0, 3.4, 6.8]) {
+		addAt(outlinedBox(2.35, 0.08, 0.62), x, 6.94, -2.75);
+	}
 
 	const floorWarning = textPlane(
 		"CAUTION / 小心站台间隙 / MIND THE GAP",
@@ -318,13 +627,11 @@ function buildRoomShell(): void {
 	addAt(floorWarning, 0.4, 0.03, 0.05);
 	floorWarning.rotation.x = -Math.PI / 2;
 
-	for (const [index, x] of [-5.4, -2.7, 0, 2.7, 5.4].entries()) {
-		const handle = createHandle();
-		addAt(handle, x, 6.95, -0.35);
-		handle.rotation.y = -0.08;
-		handle.userData.phase = index * 0.85;
-		hangingHandles.push(handle);
-	}
+	const safetyLine = new THREE.Mesh(
+		new THREE.BoxGeometry(18.3, 0.035, 0.2),
+		safetyMaterial,
+	);
+	addAt(safetyLine, 0, 0.04, 1.05);
 
 	const clockFace: Array<[number, number, number]> = [];
 	for (let index = 0; index < 40; index += 1) {
@@ -410,19 +717,91 @@ function resize(): void {
 	const width = Math.max(1, container.clientWidth);
 	const height = Math.max(1, container.clientHeight);
 	camera.aspect = width / height;
+	camera.fov = camera.aspect < 0.82 ? 48 : camera.aspect < 1.25 ? 42 : 38;
 	camera.updateProjectionMatrix();
 	renderer.setSize(width, height, false);
 }
 
 function handlePointerMove(event: PointerEvent): void {
-	if (reducedMotion) return;
 	const rect = container.getBoundingClientRect();
 	pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-	pointer.y = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+	pointer.y = 1 - ((event.clientY - rect.top) / rect.height) * 2;
+	const nextTarget = routeTargetAtPointer();
+	if (nextTarget !== hoveredRouteTarget) {
+		hoveredRouteTarget = nextTarget;
+		container.style.cursor = nextTarget ? "pointer" : "crosshair";
+		paintRouteBoard(
+			routeCode,
+			routeColor,
+			stations,
+			enabledUrls,
+			selectedUrl,
+			applyEnabled,
+		);
+	}
 }
 
 function handlePointerLeave(): void {
 	pointer.set(0, 0);
+	hoveredRouteTarget = "";
+	container.style.cursor = "crosshair";
+	paintRouteBoard(
+		routeCode,
+		routeColor,
+		stations,
+		enabledUrls,
+		selectedUrl,
+		applyEnabled,
+	);
+}
+
+function routeTargetAtPointer(): string {
+	if (!camera || !routeBoardDisplay) return "";
+	scene.updateMatrixWorld(true);
+	camera.updateMatrixWorld(true);
+	raycaster.setFromCamera(pointer, camera);
+	const hit = raycaster.intersectObject(routeBoardDisplay, false)[0];
+	if (!hit?.uv) return "";
+	const canvasX = hit.uv.x * 2048;
+	const canvasY = (1 - hit.uv.y) * 384;
+
+	if (canvasX >= 1648) {
+		if (!applyEnabled) return "more";
+		if (canvasY >= 40 && canvasY <= 185) return "more";
+		if (canvasY >= 195 && canvasY <= 350) return "apply";
+		return "";
+	}
+	if (canvasY < 92 || canvasY > 310) return "";
+	for (const [index, station] of stations.entries()) {
+		const stationX = routeStationX(index, stations.length);
+		if (
+			Math.abs(canvasX - stationX) <= 76 &&
+			enabledUrls.includes(station.siteurl)
+		) {
+			return `station:${index}`;
+		}
+	}
+	return "";
+}
+
+function handleClick(event: MouseEvent): void {
+	const rect = container.getBoundingClientRect();
+	pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+	pointer.y = 1 - ((event.clientY - rect.top) / rect.height) * 2;
+	const target = routeTargetAtPointer();
+	if (!target) return;
+	if (target === "more") {
+		onMore();
+		return;
+	}
+	if (target === "apply" && applyEnabled) {
+		onApply();
+		return;
+	}
+	const stationIndex = Number(target.split(":")[1]);
+	const station = stations[stationIndex];
+	if (station && enabledUrls.includes(station.siteurl))
+		onStationSelect(station);
 }
 
 function updateInteraction(delta: number, elapsed: number): void {
@@ -459,25 +838,25 @@ function updateInteraction(delta: number, elapsed: number): void {
 
 function updateAmbientMotion(delta: number, elapsed: number): void {
 	if (!reducedMotion) {
-		for (const handle of hangingHandles) {
-			handle.rotation.z =
-				Math.sin(elapsed * 0.72 + Number(handle.userData.phase)) * 0.035;
-			handle.rotation.x =
-				Math.cos(elapsed * 0.55 + Number(handle.userData.phase)) * 0.018;
-		}
 		platformClockHand.rotation.z = -elapsed * 0.22;
 		scanLight.position.x = -7 + ((elapsed * 1.15) % 14);
 	}
 
 	const breath = reducedMotion ? 0 : Math.sin(elapsed * 0.38) * 0.055;
-	const targetX = 7.4 + pointer.x * 0.42 * (1 - focusProgress * 0.65);
-	const targetY = 6.7 - pointer.y * 0.22 + breath;
-	const targetZ = THREE.MathUtils.lerp(14.2, 12.7, focusProgress);
+	const narrow = camera.aspect < 0.82;
+	const compact = camera.aspect >= 0.82 && camera.aspect < 1.25;
+	const baseX = narrow ? 3.6 : compact ? 5.1 : 6.8;
+	const baseZ = narrow ? 20.5 : compact ? 17.2 : 15.2;
+	const pointerX = reducedMotion ? 0 : pointer.x;
+	const pointerY = reducedMotion ? 0 : pointer.y;
+	const targetX = baseX + pointerX * 0.42 * (1 - focusProgress * 0.65);
+	const targetY = 6.7 - pointerY * 0.22 + breath;
+	const targetZ = THREE.MathUtils.lerp(baseZ, baseZ - 1.2, focusProgress);
 	camera.position.x += (targetX - camera.position.x) * Math.min(1, delta * 2.2);
 	camera.position.y += (targetY - camera.position.y) * Math.min(1, delta * 2.2);
 	camera.position.z += (targetZ - camera.position.z) * Math.min(1, delta * 2.2);
 	cameraTarget.set(
-		pointer.x * 0.16 * (1 - focusProgress),
+		pointerX * 0.16 * (1 - focusProgress),
 		THREE.MathUtils.lerp(2.75, 2.95, focusProgress),
 		THREE.MathUtils.lerp(-2.25, -2.7, focusProgress),
 	);
@@ -502,7 +881,7 @@ function init(): void {
 	reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 	scene = new THREE.Scene();
 	camera = new THREE.PerspectiveCamera(38, 1, 0.1, 120);
-	camera.position.set(7.4, 6.7, 14.2);
+	camera.position.set(6.8, 6.7, 15.2);
 	camera.lookAt(0, 2.75, -2.25);
 
 	renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -553,6 +932,7 @@ function cleanup(): void {
 	for (const geometry of geometries) geometry.dispose();
 	for (const material of materials) material.dispose();
 	for (const surface of textSurfaces) surface.texture.dispose();
+	routeBoardTexture?.dispose();
 	renderer?.dispose();
 	if (renderer && container && renderer.domElement.parentNode === container) {
 		container.removeChild(renderer.domElement);
@@ -570,9 +950,11 @@ onDestroy(cleanup);
 <div
 	bind:this={container}
 	class="friend-platform-scene"
-	aria-hidden="true"
+	role="group"
+	aria-label="交互式友链站台，可点击线路牌选择站点"
 	onpointermove={handlePointerMove}
 	onpointerleave={handlePointerLeave}
+	onclick={handleClick}
 ></div>
 
 <style>
