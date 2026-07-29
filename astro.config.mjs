@@ -61,13 +61,6 @@ export default defineConfig({
 		layout: "constrained",
 	},
 
-	experimental: {
-		// Rust 编译器以提升构建性能（实验性），部分平台可能会导致构建失败，可以根据需要启用或禁用
-		rustCompiler: false,
-		// 队列渲染以优化性能（实验性）
-		queuedRendering: { enabled: true },
-	},
-
 	integrations: [
 		swup({
 			theme: false,
@@ -273,11 +266,6 @@ export default defineConfig({
 				drop: ["console", "debugger"],
 			},
 			rollupOptions: {
-				// @astrojs/mdx@6.0.3 在 dist/satteri/ 中静态引用了 satteri 与
-				// @astrojs/markdown-satteri（均为其 devDependencies，未随包发布）。
-				// 仅在使用 Sätteri 处理器时才会动态加载，本项目使用默认 unified 处理器，
-				// 故将其标记为 external 以避免 Rollup 预解析失败。
-				external: ["satteri", "@astrojs/markdown-satteri"],
 				output: {
 					manualChunks(id) {
 						if (id.includes("node_modules")) {
