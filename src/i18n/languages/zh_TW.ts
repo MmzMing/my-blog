@@ -230,9 +230,6 @@ export const zh_TW: Translation = {
 	[Key.postEncrypted]: "本文已加密",
 
 	// 文章佈局
-	[Key.postListLayout]: "文章佈局",
-	[Key.postListLayoutList]: "清單",
-	[Key.postListLayoutGrid]: "網格",
 
 	// 贊助頁面
 	[Key.sponsor]: "贊助",

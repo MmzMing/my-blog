@@ -1,82 +1,17 @@
 ---
-import { getImage } from "astro:assets";
 import { render } from "astro:content";
-import * as path from "node:path";
-import type { ImageMetadata } from "astro";
 import PageTitle from "@/components/common/PageTitle.astro";
-import AnimatedTabs from "@/components/controls/AnimatedTabs.svelte";
-import ArticleVirtualList from "@/components/pages/ArticleVirtualList.svelte";
+import ArticleList from "@/components/pages/ArticleList.svelte";
 import { siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
-import "@/styles/pages/article-list.css";
-import "@/styles/components/animated-tabs.css";
 import { getSortedPosts } from "@/utils/content-utils";
-import {
-	getApiUrlList,
-	getImageQuality,
-	processCoverImageSync,
-	shouldAddNoReferrer,
-} from "@/utils/image-utils";
-import {
-	getCategoryUrl,
-	getFileDirFromPath,
-	getPostUrlBySlug,
-	getTagUrl,
-	url,
-} from "@/utils/url-utils";
+import { getCategoryUrl, getPostUrlBySlug, getTagUrl } from "@/utils/url-utils";
 
 const title = "文章列表";
 const description = "按整页滚动浏览所有文章。";
 const posts = await getSortedPosts();
-const articleCoverSizes = [
-	{ width: 320, height: 180 },
-	{ width: 640, height: 360 },
-] as const;
-const articleCoverFormats = ["avif", "webp"] as const;
-const articleImageFiles = import.meta.glob<ImageMetadata>(
-	"../**/*.{png,jpg,jpeg,webp,avif}",
-	{
-		import: "default",
-	},
-);
-
-async function optimizeArticleCover(image: ImageMetadata) {
-	const sources = await Promise.all(
-		articleCoverFormats.map(async (format) => {
-			const variants = await Promise.all(
-				articleCoverSizes.map(async ({ width, height }) => ({
-					width,
-					image: await getImage({
-						src: image,
-						width,
-						height,
-						format,
-						quality: getImageQuality(),
-						fit: "cover",
-						position: "center",
-					}),
-				})),
-			);
-
-			return {
-				type: `image/${format}`,
-				srcset: variants
-					.map(({ width, image: optimized }) => `${optimized.src} ${width}w`)
-					.join(", "),
-				fallbackUrl: variants.at(-1)?.image.src || image.src,
-			};
-		}),
-	);
-
-	return {
-		imageUrl:
-			sources.find((source) => source.type === "image/webp")?.fallbackUrl ||
-			image.src,
-		imageSources: sources.map(({ type, srcset }) => ({ type, srcset })),
-	};
-}
 
 const dateFormatter = new Intl.DateTimeFormat(
 	siteConfig.lang.replace("_", "-"),
@@ -87,67 +22,9 @@ const dateFormatter = new Intl.DateTimeFormat(
 	},
 );
 
-async function resolveArticleImage(entry: (typeof posts)[number]) {
-	const processedImage = processCoverImageSync(entry.data.image, entry.id);
-	const imageApiUrls = getApiUrlList(entry.data.image, entry.id);
-
-	if (!processedImage) {
-		return {
-			imageUrl: "",
-			imageSources: [],
-			imageApiUrls,
-			imageReferrerPolicy: "",
-		};
-	}
-
-	const isLocal = !(
-		processedImage.startsWith("/") ||
-		processedImage.startsWith("http") ||
-		processedImage.startsWith("https") ||
-		processedImage.startsWith("data:")
-	);
-
-	if (isLocal) {
-		const basePath = getFileDirFromPath(entry.filePath || "");
-		const normalizedPath = path
-			.normalize(path.join("../", basePath, processedImage))
-			.replace(/\\/g, "/");
-		const imageFile = articleImageFiles[normalizedPath];
-
-		if (!imageFile) {
-			return {
-				imageUrl: "",
-				imageSources: [],
-				imageApiUrls,
-				imageReferrerPolicy: "",
-			};
-		}
-
-		const image = await imageFile();
-		const optimizedCover = await optimizeArticleCover(image);
-		return {
-			...optimizedCover,
-			imageApiUrls,
-			imageReferrerPolicy: "",
-		};
-	}
-
-	const imageUrl = processedImage.startsWith("/")
-		? url(processedImage)
-		: processedImage;
-
-	return {
-		imageUrl,
-		imageSources: [],
-		imageApiUrls,
-		imageReferrerPolicy: shouldAddNoReferrer(imageUrl) ? "no-referrer" : "",
-	};
-}
-
 const articleListPosts = await Promise.all(
 	posts.map(async (entry) => {
 		const { remarkPluginFrontmatter } = await render(entry);
-		const articleImage = await resolveArticleImage(entry);
 		const rawCategory = entry.data.category?.trim();
 		const category = rawCategory || i18n(I18nKey.uncategorized);
 		const tags = (entry.data.tags || [])
@@ -163,6 +40,7 @@ const articleListPosts = await Promise.all(
 			title: entry.data.title,
 			url: getPostUrlBySlug(entry.id),
 			publishedIso: entry.data.published.toISOString(),
+			publishedTimestamp: entry.data.published.getTime(),
 			publishedText: dateFormatter.format(entry.data.published),
 			category,
 			categoryUrl: getCategoryUrl(entry.data.category || null),
@@ -170,19 +48,13 @@ const articleListPosts = await Promise.all(
 			description:
 				entry.data.description ||
 				remarkPluginFrontmatter.excerpt ||
-				"暂无文章简介，点击卡片查看完整内容。",
-			imageUrl: articleImage.imageUrl,
-			imageSources: articleImage.imageSources,
-			imageApiUrls: articleImage.imageApiUrls,
-			imageReferrerPolicy: articleImage.imageReferrerPolicy,
+				"暂无文章简介，点击查看完整内容。",
 			pinned: !!entry.data.pinned,
 			password: !!entry.data.password,
 		};
 	}),
 );
 
-const defaultLayout = siteConfig.postListLayout.defaultMode || "list";
-const allowLayoutSwitch = siteConfig.postListLayout.allowSwitch;
 const umamiConfig = siteConfig.analytics?.umamiAnalytics;
 const umamiPageviews = {
 	enabled:
@@ -197,26 +69,12 @@ const umamiPageviews = {
 <MainGridLayout title={title} description={description}>
 	<section class="article-list-page">
 		<header class="article-list-page__header">
-			<div class="article-list-page__header-left">
-				<PageTitle
-					title={title}
-				/>
-				<div class="article-list-page__controls">
-					<div class:list={["article-list-page__tabs", { "is-hidden": !allowLayoutSwitch }]}>
-						<AnimatedTabs client:load activeTab={defaultLayout === "grid" ? "grid" : "list"} />
-					</div>
-					<div class="article-list-page__total" aria-label={`共 ${articleListPosts.length} 篇文章`}>
-						<span class="article-list-page__total-number">{articleListPosts.length}</span>
-						<span class="article-list-page__total-label">篇文章</span>
-					</div>
-				</div>
-			</div>
+			<PageTitle title={title} />
 		</header>
 
-		<ArticleVirtualList
+		<ArticleList
 			client:load
 			posts={articleListPosts}
-			defaultView={defaultLayout === "grid" ? "grid" : "list"}
 			postsPerPage={siteConfig.pagination.postsPerPage}
 			umamiPageviews={umamiPageviews}
 		/>

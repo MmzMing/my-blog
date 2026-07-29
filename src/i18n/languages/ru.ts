@@ -237,9 +237,6 @@ export const ru: Translation = {
 	[Key.postEncrypted]: "Эта статья зашифрована",
 
 	// Макет списка сообщений
-	[Key.postListLayout]: "Макет списка сообщений",
-	[Key.postListLayoutList]: "Список",
-	[Key.postListLayoutGrid]: "Сетка",
 
 	// Страница спонсоров
 	[Key.sponsor]: "Спонсор",

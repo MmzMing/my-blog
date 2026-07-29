@@ -78,22 +78,6 @@ export type SiteConfig = {
 	// 分类导航栏开关
 	categoryBar?: boolean;
 
-	// 文章列表布局配置
-	postListLayout: {
-		defaultMode: "list" | "grid"; // 默认布局模式：list=列表模式，grid=网格模式
-		mobileDefaultMode?: "list" | "grid"; // 移动端默认布局模式（视口宽度<780px时使用），不设置则跟随 defaultMode
-		showTags: boolean; // 是否在文章列表中显示标签
-		descriptionLines?: number; // 文章简介显示行数，0 表示不截断，默认 2
-		allowSwitch: boolean; // 是否允许用户切换布局
-		grid: {
-			// 网格布局配置，仅在 defaultMode 为 "grid" 或允许切换布局时生效
-			// 是否开启瀑布流布局
-			masonry: boolean;
-			// 网格模式卡片最小宽度(px)，浏览器根据容器宽度自动计算列数，默认 320
-			columnWidth?: number;
-		};
-	};
-
 	// 分页配置
 	pagination: {
 		postsPerPage: number; // 每页显示的文章数量

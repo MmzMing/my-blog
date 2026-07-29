@@ -1,12 +1,11 @@
+import { getImage } from "astro:assets";
 import rss, { type RSSFeedItem } from "@astrojs/rss";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { getSortedPosts } from "@utils/content-utils";
 import { formatDateI18nWithTime } from "@utils/date-utils";
 import { url } from "@utils/url-utils";
-import type { ImageMetadata } from "astro";
-import type { APIContext } from "astro";
-import { getImage } from "astro:assets";
+import type { APIContext, ImageMetadata } from "astro";
 import { marked, Renderer, type Tokens } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { siteConfig } from "@/config";
@@ -42,7 +41,10 @@ function normalizeModulePath(path: string): string {
 	return segments.join("/");
 }
 
-function resolvePostImage(postId: string, source: string): ImageMetadata | null {
+function resolvePostImage(
+	postId: string,
+	source: string,
+): ImageMetadata | null {
 	if (
 		!source ||
 		source.startsWith("/") ||
@@ -73,7 +75,9 @@ async function createImageUrlMap(
 	site: URL,
 ): Promise<Map<string, string>> {
 	const sources = new Set<string>();
-	for (const match of markdown.matchAll(/!\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)/g)) {
+	for (const match of markdown.matchAll(
+		/!\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)/g,
+	)) {
 		sources.add(match[1]);
 	}
 
@@ -153,14 +157,11 @@ async function renderRssContent(
 
 function wrapContentInCdata(xml: string, contents: string[]): string {
 	let index = 0;
-	return xml.replace(
-		/<content:encoded>[\s\S]*?<\/content:encoded>/g,
-		() => {
-			const content = contents[index++] ?? "";
-			const cdataSafeContent = content.replaceAll("]]>", "]]]]><![CDATA[>");
-			return `<content:encoded><![CDATA[${cdataSafeContent}]]></content:encoded>`;
-		},
-	);
+	return xml.replace(/<content:encoded>[\s\S]*?<\/content:encoded>/g, () => {
+		const content = contents[index++] ?? "";
+		const cdataSafeContent = content.replaceAll("]]>", "]]]]><![CDATA[>");
+		return `<content:encoded><![CDATA[${cdataSafeContent}]]></content:encoded>`;
+	});
 }
 
 export async function GET(context: APIContext): Promise<Response> {
@@ -184,12 +185,7 @@ export async function GET(context: APIContext): Promise<Response> {
 			pubDate: post.data.published,
 			description: post.data.description || "",
 			link: postUrl.toString(),
-			content: await renderRssContent(
-				post.id,
-				post.body ?? "",
-				postUrl,
-				site,
-			),
+			content: await renderRssContent(post.id, post.body ?? "", postUrl, site),
 		});
 	}
 	const response = await rss({

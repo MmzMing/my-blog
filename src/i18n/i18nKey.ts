@@ -205,9 +205,6 @@ enum I18nKey {
 	postEncrypted = "postEncrypted",
 
 	// 文章布局
-	postListLayout = "postListLayout",
-	postListLayoutList = "postListLayoutList",
-	postListLayoutGrid = "postListLayoutGrid",
 
 	// 赞助页面
 	sponsor = "sponsor",

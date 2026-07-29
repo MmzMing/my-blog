@@ -236,9 +236,6 @@ export const en: Translation = {
 	[Key.postEncrypted]: "This post is encrypted",
 
 	// Post List Layout
-	[Key.postListLayout]: "Post List Layout",
-	[Key.postListLayoutList]: "List",
-	[Key.postListLayoutGrid]: "Grid",
 
 	// Sponsor Page
 	[Key.sponsor]: "Sponsor",

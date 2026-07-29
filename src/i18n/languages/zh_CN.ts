@@ -229,9 +229,6 @@ export const zh_CN: Translation = {
 	[Key.postEncrypted]: "本文已加密",
 
 	// 文章布局
-	[Key.postListLayout]: "文章布局",
-	[Key.postListLayoutList]: "列表",
-	[Key.postListLayoutGrid]: "网格",
 
 	// 赞助页面
 	[Key.sponsor]: "赞助",

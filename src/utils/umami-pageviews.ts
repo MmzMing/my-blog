@@ -80,6 +80,10 @@ export function buildUmamiPageviewLookup(
 	return lookup;
 }
 
+export function createEmptyUmamiPageviewLookup(): Map<string, number> {
+	return new Map<string, number>();
+}
+
 async function fetchShare(
 	apiBase: string,
 	shareId: string,
