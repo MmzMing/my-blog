@@ -14,6 +14,7 @@ import FriendPlatformScene from "./FriendPlatformScene.svelte";
 
 type ViewMode = "map" | "directory";
 type ArrivalPhase = "idle" | "arriving" | "opening" | "open";
+type DepartureDirection = "left" | "right";
 
 const ROUTE_COLORS = ["#a51f45", "#005b96", "#d86613", "#008c67"];
 
@@ -39,6 +40,11 @@ let routesDialog: HTMLDialogElement;
 let applyTrigger: HTMLButtonElement;
 let arrivalTimer: ReturnType<typeof setTimeout> | undefined;
 let openingTimer: ReturnType<typeof setTimeout> | undefined;
+let tourTimer: ReturnType<typeof setTimeout> | undefined;
+let tourRun = 0;
+let tourActive = $state(false);
+let departureDirection = $state<DepartureDirection>("right");
+let tourNextStation = $state<FriendLink | null>(null);
 
 let tags = $derived(
 	Array.from(new Set(items.flatMap((item) => item.tags ?? []))).sort(),
@@ -133,7 +139,20 @@ function clearArrivalTimers(): void {
 	openingTimer = undefined;
 }
 
+function clearTourTimer(): void {
+	if (tourTimer) clearTimeout(tourTimer);
+	tourTimer = undefined;
+}
+
+function stopAutoTour(): void {
+	tourRun += 1;
+	tourActive = false;
+	tourNextStation = null;
+	clearTourTimer();
+}
+
 function clearSelection(): void {
+	stopAutoTour();
 	clearArrivalTimers();
 	selected = null;
 	arrivalPhase = "idle";
@@ -155,8 +174,12 @@ function setView(mode: ViewMode): void {
 	clearSelection();
 }
 
-async function openFriend(friend: FriendLink): Promise<void> {
+async function beginArrival(
+	friend: FriendLink,
+	onOpen?: () => void,
+): Promise<void> {
 	clearArrivalTimers();
+	departureDirection = "right";
 	if (routesDialog?.open) routesDialog.close();
 	const routeIndex = Math.floor(items.indexOf(friend) / 8);
 	if (routeIndex >= 0) mobileRoute = routeIndex;
@@ -176,14 +199,65 @@ async function openFriend(friend: FriendLink): Promise<void> {
 		block: "nearest",
 	});
 
-	if (arrivalPhase === "open") return;
+	if (arrivalPhase === "open") {
+		onOpen?.();
+		return;
+	}
 
 	arrivalTimer = setTimeout(() => {
 		arrivalPhase = "opening";
 	}, 950);
 	openingTimer = setTimeout(() => {
 		arrivalPhase = "open";
+		onOpen?.();
 	}, 1480);
+}
+
+async function openFriend(friend: FriendLink): Promise<void> {
+	stopAutoTour();
+	await beginArrival(friend);
+}
+
+function closeArrival(): void {
+	clearArrivalTimers();
+	departureDirection = "left";
+	selected = null;
+	arrivalPhase = "idle";
+	avatarFailed = false;
+}
+
+function dismissArrival(): void {
+	stopAutoTour();
+	closeArrival();
+}
+
+function startAutoTour(): void {
+	const stops = sceneRoute.filter((friend) => matchesFriend(friend));
+	if (!stops.length || tourActive) return;
+
+	stopAutoTour();
+	tourActive = true;
+	const run = ++tourRun;
+	const visit = (index: number): void => {
+		if (run !== tourRun) return;
+		const station = stops[index];
+		if (!station) return;
+		tourNextStation = null;
+		void beginArrival(station, () => {
+			if (run !== tourRun) return;
+			tourTimer = setTimeout(() => {
+				if (run !== tourRun) return;
+				closeArrival();
+				if (index + 1 >= stops.length) {
+					tourActive = false;
+					return;
+				}
+				tourNextStation = stops[index + 1] ?? null;
+				tourTimer = setTimeout(() => visit(index + 1), 3000);
+			}, 5000);
+		});
+	};
+	visit(0);
 }
 
 function handleStationKeydown(event: KeyboardEvent): void {
@@ -238,7 +312,10 @@ function openApplyDialog(): void {
 	applyTrigger?.click();
 }
 
-onDestroy(clearArrivalTimers);
+onDestroy(() => {
+	clearArrivalTimers();
+	clearTourTimer();
+});
 </script>
 
 <section class="friend-terminal" aria-label="友链中央站">
@@ -333,8 +410,16 @@ onDestroy(clearArrivalTimers);
 							stations={sceneRoute}
 							enabledUrls={enabledSceneUrls}
 							selectedUrl={selected?.siteurl ?? ""}
+							routeCount={routes.length}
+							stationCount={items.length}
+							visibleStationCount={filteredItems.length}
+							filterLabel={activeTag === "all" ? allLabel : activeTag}
+							tourActive={tourActive}
+							nextStation={tourNextStation}
+							{departureDirection}
 							{applyEnabled}
 							onStationSelect={openFriend}
+							onStartTour={startAutoTour}
 							onMore={openRoutesDialog}
 							onApply={openApplyDialog}
 						/>
@@ -348,6 +433,15 @@ onDestroy(clearArrivalTimers);
 					{/if}
 					{#if selected}
 						<div class="cabin-info" class:revealed={arrivalPhase === "open"} aria-hidden={arrivalPhase !== "open"}>
+							<button
+								class="arrival-close"
+								type="button"
+								aria-label="关闭站票并让列车离站"
+								tabindex={arrivalPhase === "open" ? 0 : -1}
+								onclick={dismissArrival}
+							>
+								<X size={18} strokeWidth={2.2} aria-hidden="true" />
+							</button>
 							<div class="arrival-avatar">
 								{#if !avatarFailed}
 									<img src={selected.imgurl} alt="" loading="lazy" onerror={() => (avatarFailed = true)} />
@@ -1064,6 +1158,34 @@ onDestroy(clearArrivalTimers);
 		opacity: 1;
 		pointer-events: auto;
 		transform: translateX(-50%) perspective(55rem) rotateY(-5deg) scale(1);
+	}
+
+	.arrival-close {
+		position: absolute;
+		top: 0.65rem;
+		right: 0.75rem;
+		display: inline-flex;
+		width: 2.35rem;
+		height: 2.35rem;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		color: var(--terminal-ink);
+		background: var(--terminal-solid-paper);
+		border: 1.5px solid var(--terminal-ink);
+		border-radius: 0.2rem;
+		cursor: pointer;
+		transition: color 180ms ease, background-color 180ms ease;
+	}
+
+	.arrival-close:hover {
+		color: var(--terminal-solid-paper);
+		background: var(--terminal-ink);
+	}
+
+	.arrival-close:focus-visible {
+		outline: 3px solid var(--terminal-ink);
+		outline-offset: 3px;
 	}
 
 	.platform-doorway {

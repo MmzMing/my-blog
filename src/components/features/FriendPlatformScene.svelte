@@ -4,6 +4,7 @@ import * as THREE from "three";
 import type { FriendLink } from "@/types/config";
 
 type ArrivalPhase = "idle" | "arriving" | "opening" | "open";
+type DepartureDirection = "left" | "right";
 
 interface Props {
 	phase: ArrivalPhase;
@@ -14,8 +15,16 @@ interface Props {
 	stations: FriendLink[];
 	enabledUrls: string[];
 	selectedUrl: string;
+	routeCount: number;
+	stationCount: number;
+	visibleStationCount: number;
+	filterLabel: string;
+	tourActive: boolean;
+	nextStation: FriendLink | null;
+	departureDirection: DepartureDirection;
 	applyEnabled: boolean;
 	onStationSelect: (friend: FriendLink) => void;
+	onStartTour: () => void;
 	onMore: () => void;
 	onApply: () => void;
 }
@@ -29,8 +38,16 @@ let {
 	stations,
 	enabledUrls,
 	selectedUrl,
+	routeCount,
+	stationCount,
+	visibleStationCount,
+	filterLabel,
+	tourActive,
+	nextStation,
+	departureDirection,
 	applyEnabled,
 	onStationSelect,
+	onStartTour,
 	onMore,
 	onApply,
 }: Props = $props();
@@ -48,7 +65,6 @@ let currentPhase: ArrivalPhase = "idle";
 let activeRun = -1;
 let arrivalProgress = 0;
 let doorProgress = 0;
-let focusProgress = 0;
 let lastTime = 0;
 let reducedMotion = false;
 let trainGroup: THREE.Group;
@@ -56,8 +72,16 @@ let screenDoorLeft: THREE.Group;
 let screenDoorRight: THREE.Group;
 let trainDoorLeft: THREE.Group;
 let trainDoorRight: THREE.Group;
+let platformClock: THREE.Group;
 let platformClockHand: THREE.Line;
 let scanLight: THREE.Line;
+let routeStripe: THREE.Mesh;
+let ticketTerminalSurface: TextSurface | undefined;
+let ticketTerminalTexture: THREE.CanvasTexture | undefined;
+let lineFocused = false;
+let clockStationFocus = false;
+const interactiveObjects: THREE.Object3D[] = [];
+type SceneTarget = "clock" | "line" | "terminal";
 const lineMaterial = new THREE.LineBasicMaterial({ color: 0x111111 });
 const fillMaterial = new THREE.MeshBasicMaterial({
 	color: 0xffffff,
@@ -92,6 +116,8 @@ let routeBoardContext: CanvasRenderingContext2D | undefined;
 let routeBoardTexture: THREE.CanvasTexture | undefined;
 let routeBoardDisplay: THREE.Mesh | undefined;
 let hoveredRouteTarget = "";
+let routeBoardPulse = 0;
+let lastRouteBoardPulseFrame = -1;
 
 $effect(() => {
 	currentPhase = phase;
@@ -108,6 +134,7 @@ $effect(() => {
 		selectedUrl,
 		applyEnabled,
 	);
+	paintTicketTerminal();
 });
 
 function easeOutCubic(value: number): number {
@@ -281,6 +308,124 @@ function updateOverheadStatus(text: string): void {
 	paintTextSurface(overheadStatusSurface, isDarkTheme());
 }
 
+function selectedStation(): FriendLink | undefined {
+	return stations.find((station) => station.siteurl === selectedUrl);
+}
+
+function clockStation(): FriendLink | undefined {
+	return (
+		selectedStation() ??
+		stations.find((station) => enabledUrls.includes(station.siteurl))
+	);
+}
+
+function clockFocusedUrl(): string {
+	return clockStationFocus ? (clockStation()?.siteurl ?? "") : "";
+}
+
+function registerInteractiveObject(
+	object: THREE.Object3D,
+	target: SceneTarget,
+): void {
+	object.traverse((child) => {
+		child.userData.sceneTarget = target;
+	});
+	interactiveObjects.push(object);
+}
+
+function transparentHitPlane(width: number, height: number): THREE.Mesh {
+	return new THREE.Mesh(
+		new THREE.PlaneGeometry(width, height),
+		new THREE.MeshBasicMaterial({
+			transparent: true,
+			opacity: 0.001,
+			depthWrite: false,
+			side: THREE.DoubleSide,
+		}),
+	);
+}
+
+function paintTicketTerminal(): void {
+	if (!ticketTerminalSurface) return;
+	const { canvas, context, texture } = ticketTerminalSurface;
+	const dark = isDarkTheme();
+	const paper = dark ? "#050505" : "#ffffff";
+	const ink = dark ? "#ffffff" : "#111111";
+	const muted = dark ? "#a3a3a3" : "#686868";
+	const selected = selectedStation();
+
+	context.clearRect(0, 0, canvas.width, canvas.height);
+	context.fillStyle = paper;
+	context.fillRect(0, 0, canvas.width, canvas.height);
+	context.strokeStyle = ink;
+	context.lineWidth = 12;
+	context.strokeRect(6, 6, canvas.width - 12, canvas.height - 12);
+	context.fillStyle = routeColor;
+	context.fillRect(28, 30, canvas.width - 56, 14);
+	context.fillStyle = ink;
+	context.font = "800 42px ui-monospace, SFMono-Regular, Menlo, monospace";
+	context.textAlign = "left";
+	context.fillText(
+		nextStation && !selected
+			? "NEXT STOP"
+			: tourActive
+				? "ROUTE RUNNING"
+				: selected
+					? "TICKET ISSUED"
+					: "STATION INFO",
+		30,
+		100,
+	);
+	context.fillStyle = muted;
+	context.font = "700 27px ui-monospace, SFMono-Regular, Menlo, monospace";
+	context.fillText(
+		selected ? "DETAILS READY" : `${routeCode} · ${routeCount} LINES`,
+		30,
+		142,
+	);
+
+	context.fillStyle = ink;
+	context.font = "800 38px system-ui, sans-serif";
+	const primary = selected
+		? shortRouteLabel(selected.title)
+		: nextStation
+			? shortRouteLabel(nextStation.title)
+			: `${visibleStationCount} / ${stationCount} STOPS`;
+	context.fillText(primary, 30, 214);
+	context.fillStyle = muted;
+	context.font = "700 25px system-ui, sans-serif";
+	const detail = selected
+		? (selected.tags ?? ["Friend Link"]).slice(0, 2).join(" · ")
+		: nextStation
+			? (nextStation.tags ?? ["Friend Link"]).slice(0, 2).join(" · ")
+			: lineFocused
+				? `${routeCode} GUIDE ACTIVE`
+				: tourActive
+					? "AUTOMATIC TOUR"
+					: `FILTER · ${filterLabel}`;
+	context.fillText(shortRouteLabel(detail), 30, 262);
+	context.fillStyle = routeColor;
+	context.font = "800 23px ui-monospace, SFMono-Regular, Menlo, monospace";
+	if (nextStation) {
+		const angle = routeBoardPulse * Math.PI * 2;
+		context.strokeStyle = routeColor;
+		context.lineWidth = 7;
+		context.beginPath();
+		context.arc(canvas.width - 68, 322, 22, angle, angle + Math.PI * 1.4);
+		context.stroke();
+	}
+	context.fillText(
+		nextStation
+			? "NEXT · APPROACHING"
+			: tourActive
+				? "TOUR · IN PROGRESS"
+				: "TAP · START ROUTE",
+		30,
+		330,
+	);
+	texture.needsUpdate = true;
+}
+
 function textPlane(
 	text: string,
 	width: number,
@@ -406,11 +551,15 @@ function paintRouteBoard(
 	context.lineTo(lastX, routeY);
 	context.stroke();
 
+	const focusedUrl = clockFocusedUrl();
 	for (const [index, station] of boardStations.entries()) {
 		const x = routeStationX(index, boardStations.length);
 		const isEnabled = enabled.includes(station.siteurl);
 		const isSelected = selected === station.siteurl;
 		const isHovered = hoveredRouteTarget === `station:${index}`;
+		const isFocused =
+			focusedUrl === station.siteurl || (lineFocused && isEnabled);
+		const isLoading = !selected && nextStation?.siteurl === station.siteurl;
 		const stationColor = isEnabled ? boardRouteColor : disabledColor;
 
 		context.save();
@@ -434,11 +583,24 @@ function paintRouteBoard(
 
 		context.fillStyle = isSelected ? stationColor : paper;
 		context.strokeStyle = stationColor;
-		context.lineWidth = isHovered ? 13 : 10;
+		context.lineWidth = isHovered || isFocused ? 13 : 10;
 		context.beginPath();
-		context.arc(x, routeY, isHovered ? 30 : 26, 0, Math.PI * 2);
+		context.arc(x, routeY, isHovered || isFocused ? 30 : 26, 0, Math.PI * 2);
 		context.fill();
 		context.stroke();
+		if (isLoading) {
+			context.strokeStyle = boardRouteColor;
+			context.lineWidth = 6;
+			context.beginPath();
+			context.arc(
+				x,
+				routeY,
+				42,
+				routeBoardPulse * Math.PI * 2,
+				routeBoardPulse * Math.PI * 2 + Math.PI * 1.35,
+			);
+			context.stroke();
+		}
 		if (isSelected) {
 			context.fillStyle = "#ffffff";
 			context.beginPath();
@@ -519,6 +681,40 @@ function buildInteractiveRouteBoard(): void {
 		selectedUrl,
 		applyEnabled,
 	);
+	paintTicketTerminal();
+}
+
+function buildTicketTerminal(): void {
+	const terminal = outlinedBox(3.1, 2.1, 0.18);
+	const canvas = document.createElement("canvas");
+	canvas.width = 720;
+	canvas.height = 400;
+	const context = canvas.getContext("2d");
+	if (!context) throw new Error("2D canvas is unavailable");
+	const texture = new THREE.CanvasTexture(canvas);
+	texture.colorSpace = THREE.SRGBColorSpace;
+	texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+	ticketTerminalTexture = texture;
+	ticketTerminalSurface = {
+		canvas,
+		context,
+		texture,
+		text: "",
+		fontSize: 0,
+	};
+	const display = new THREE.Mesh(
+		new THREE.PlaneGeometry(2.78, 1.65),
+		new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }),
+	);
+	display.position.z = 0.11;
+	terminal.add(display);
+	addAt(terminal, -6.85, 3.35, -1.1);
+
+	const hitArea = transparentHitPlane(3.35, 2.35);
+	hitArea.position.z = 0.14;
+	terminal.add(hitArea);
+	registerInteractiveObject(hitArea, "terminal");
+	paintTicketTerminal();
 }
 
 function isDarkTheme(): boolean {
@@ -540,6 +736,7 @@ function applyTheme(): void {
 		selectedUrl,
 		applyEnabled,
 	);
+	paintTicketTerminal();
 }
 
 function buildRoomShell(): void {
@@ -575,11 +772,14 @@ function buildRoomShell(): void {
 	addAt(outlinedBox(19, 0.18, 0.3), 0, 7.05, -1.2);
 	addAt(outlinedBox(19, 0.16, 0.2), 0, 6.55, -5.6);
 
-	for (const x of [-8.35, -3.15, 0, 3.15, 8.35]) {
+	// Keep the doorway free of fixed framing when either set of doors is open.
+	for (const x of [-8.35, -3.15, 3.15, 8.35]) {
 		addAt(outlinedBox(0.22, 6.35, 0.34), x, 3.18, -1.3);
 	}
 	addAt(outlinedBox(16.9, 0.28, 0.42), 0, 6.17, -1.3);
-	addAt(outlinedBox(16.9, 0.18, 0.3), 0, 0.34, -1.3);
+	for (const x of [-5.8, 5.8]) {
+		addAt(outlinedBox(5.3, 0.18, 0.3), x, 0.34, -1.3);
+	}
 
 	const fixedLeft = createFixedScreenPanel(5.12);
 	const fixedRight = createFixedScreenPanel(5.12);
@@ -591,16 +791,17 @@ function buildRoomShell(): void {
 	addAt(screenDoorLeft, -1.53, 3.35, -1.22);
 	addAt(screenDoorRight, 1.53, 3.35, -1.22);
 	buildInteractiveRouteBoard();
+	buildTicketTerminal();
 
 	const overheadSign = textPlane(statusText, 7.2, 0.84, 45);
 	overheadStatusSurface = textSurfaces[textSurfaces.length - 1];
 	addAt(overheadSign, 0.25, 4.65, -0.92);
 
-	const routeStripe = new THREE.Mesh(
+	const routeHeaderStripe = new THREE.Mesh(
 		new THREE.BoxGeometry(16.85, 0.16, 0.16),
 		safetyMaterial,
 	);
-	addAt(routeStripe, 0, 6.02, -1.08);
+	addAt(routeHeaderStripe, 0, 6.02, -1.08);
 
 	for (const [label, x] of [
 		["05", -2.72],
@@ -627,31 +828,55 @@ function buildRoomShell(): void {
 	addAt(floorWarning, 0.4, 0.03, 0.05);
 	floorWarning.rotation.x = -Math.PI / 2;
 
-	const safetyLine = new THREE.Mesh(
+	routeStripe = new THREE.Mesh(
 		new THREE.BoxGeometry(18.3, 0.035, 0.2),
 		safetyMaterial,
 	);
-	addAt(safetyLine, 0, 0.04, 1.05);
+	addAt(routeStripe, 0, 0.04, 1.05);
+	const routeStripeHitArea = transparentHitPlane(18.3, 0.72);
+	routeStripeHitArea.rotation.x = -Math.PI / 2;
+	addAt(routeStripeHitArea, 0, 0.07, 1.05);
+	registerInteractiveObject(routeStripeHitArea, "line");
 
 	const clockFace: Array<[number, number, number]> = [];
 	for (let index = 0; index < 40; index += 1) {
 		const angle = (index / 40) * Math.PI * 2;
 		clockFace.push([Math.cos(angle) * 0.48, Math.sin(angle) * 0.48, 0]);
 	}
-	const clockGroup = new THREE.Group();
-	clockGroup.add(loop(clockFace));
-	clockGroup.add(
+	platformClock = new THREE.Group();
+	const clockFill = new THREE.Mesh(
+		new THREE.CircleGeometry(0.48, 40),
+		fillMaterial,
+	);
+	clockFill.position.z = -0.02;
+	platformClock.add(clockFill);
+	platformClock.add(loop(clockFace));
+	for (let index = 0; index < 12; index += 1) {
+		const angle = (index / 12) * Math.PI * 2;
+		const outer = 0.43;
+		const inner = index % 3 === 0 ? 0.31 : 0.35;
+		platformClock.add(
+			line([
+				[Math.cos(angle) * outer, Math.sin(angle) * outer, 0.03],
+				[Math.cos(angle) * inner, Math.sin(angle) * inner, 0.03],
+			]),
+		);
+	}
+	platformClock.add(
 		line([
 			[0, 0, 0],
 			[0, 0.31, 0],
 		]),
 	);
 	platformClockHand = line([
-		[0, -0.06, 0],
-		[0, 0.4, 0],
+		[0, -0.06, 0.05],
+		[0, 0.4, 0.05],
 	]);
-	clockGroup.add(platformClockHand);
-	addAt(clockGroup, 7, 5.45, -1.05);
+	platformClock.add(platformClockHand);
+	addAt(platformClock, 7, 4.3, -0.98);
+	const clockHitArea = transparentHitPlane(1.45, 1.45);
+	addAt(clockHitArea, 7, 4.3, -0.75);
+	registerInteractiveObject(clockHitArea, "clock");
 
 	scanLight = line([
 		[-0.65, 0, 0],
@@ -703,9 +928,12 @@ function buildTrain(): void {
 function resetInteraction(): void {
 	arrivalProgress = currentPhase === "open" && reducedMotion ? 1 : 0;
 	doorProgress = currentPhase === "open" && reducedMotion ? 1 : 0;
-	focusProgress = 0;
 	if (!trainGroup || !screenDoorLeft || !screenDoorRight) return;
-	trainGroup.position.x = arrivalProgress ? 0 : 14;
+	trainGroup.position.x = arrivalProgress
+		? 0
+		: departureDirection === "left"
+			? -14
+			: 14;
 	screenDoorLeft.position.x = doorProgress ? -4.1 : -1.53;
 	screenDoorRight.position.x = doorProgress ? 4.1 : 1.53;
 	trainDoorLeft.position.x = doorProgress ? -2.1 : -1.03;
@@ -723,10 +951,11 @@ function resize(): void {
 }
 
 function handlePointerMove(event: PointerEvent): void {
+	if (event.pointerType !== "mouse") return;
 	const rect = container.getBoundingClientRect();
 	pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
 	pointer.y = 1 - ((event.clientY - rect.top) / rect.height) * 2;
-	const nextTarget = routeTargetAtPointer();
+	const nextTarget = sceneTargetAtPointer();
 	if (nextTarget !== hoveredRouteTarget) {
 		hoveredRouteTarget = nextTarget;
 		container.style.cursor = nextTarget ? "pointer" : "crosshair";
@@ -784,12 +1013,61 @@ function routeTargetAtPointer(): string {
 	return "";
 }
 
+function sceneTargetAtPointer(): string {
+	if (!camera) return "";
+	scene.updateMatrixWorld(true);
+	camera.updateMatrixWorld(true);
+	raycaster.setFromCamera(pointer, camera);
+	const hit = raycaster.intersectObjects(interactiveObjects, true)[0];
+	if (hit) {
+		let object: THREE.Object3D | null = hit.object;
+		while (object) {
+			const target = object.userData.sceneTarget as SceneTarget | undefined;
+			if (target) return target;
+			object = object.parent;
+		}
+	}
+	return routeTargetAtPointer();
+}
+
 function handleClick(event: MouseEvent): void {
 	const rect = container.getBoundingClientRect();
 	pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
 	pointer.y = 1 - ((event.clientY - rect.top) / rect.height) * 2;
-	const target = routeTargetAtPointer();
+	const target = sceneTargetAtPointer();
 	if (!target) return;
+	if (target === "clock") {
+		clockStationFocus = !clockStationFocus;
+		platformClock.scale.setScalar(clockStationFocus ? 1.16 : 1);
+		paintRouteBoard(
+			routeCode,
+			routeColor,
+			stations,
+			enabledUrls,
+			selectedUrl,
+			applyEnabled,
+		);
+		paintTicketTerminal();
+		return;
+	}
+	if (target === "line") {
+		lineFocused = !lineFocused;
+		routeStripe.scale.y = lineFocused ? 1.8 : 1;
+		paintRouteBoard(
+			routeCode,
+			routeColor,
+			stations,
+			enabledUrls,
+			selectedUrl,
+			applyEnabled,
+		);
+		paintTicketTerminal();
+		return;
+	}
+	if (target === "terminal") {
+		onStartTour();
+		return;
+	}
 	if (target === "more") {
 		onMore();
 		return;
@@ -802,6 +1080,41 @@ function handleClick(event: MouseEvent): void {
 	const station = stations[stationIndex];
 	if (station && enabledUrls.includes(station.siteurl))
 		onStationSelect(station);
+}
+
+function handleSceneKeydown(event: KeyboardEvent): void {
+	if (event.key === "c" || event.key === "C") {
+		event.preventDefault();
+		clockStationFocus = !clockStationFocus;
+		platformClock.scale.setScalar(clockStationFocus ? 1.16 : 1);
+		paintRouteBoard(
+			routeCode,
+			routeColor,
+			stations,
+			enabledUrls,
+			selectedUrl,
+			applyEnabled,
+		);
+		paintTicketTerminal();
+	}
+	if (event.key === "l" || event.key === "L") {
+		event.preventDefault();
+		lineFocused = !lineFocused;
+		routeStripe.scale.y = lineFocused ? 1.8 : 1;
+		paintRouteBoard(
+			routeCode,
+			routeColor,
+			stations,
+			enabledUrls,
+			selectedUrl,
+			applyEnabled,
+		);
+		paintTicketTerminal();
+	}
+	if (event.key === "Enter") {
+		event.preventDefault();
+		onStartTour();
+	}
 }
 
 function updateInteraction(delta: number, elapsed: number): void {
@@ -822,7 +1135,10 @@ function updateInteraction(delta: number, elapsed: number): void {
 
 	const arrivalEase = easeOutCubic(arrivalProgress);
 	const doorEase = easeInOutCubic(doorProgress);
-	trainGroup.position.x = 14 * (1 - arrivalEase);
+	trainGroup.position.x =
+		currentPhase === "idle" && departureDirection === "left"
+			? -14 * (1 - arrivalEase)
+			: 14 * (1 - arrivalEase);
 	trainGroup.position.y =
 		currentPhase === "open" && !reducedMotion
 			? Math.sin(elapsed * 1.7) * 0.018
@@ -831,9 +1147,6 @@ function updateInteraction(delta: number, elapsed: number): void {
 	screenDoorRight.position.x = THREE.MathUtils.lerp(1.53, 4.1, doorEase);
 	trainDoorLeft.position.x = THREE.MathUtils.lerp(-1.03, -2.1, doorEase);
 	trainDoorRight.position.x = THREE.MathUtils.lerp(1.03, 2.1, doorEase);
-
-	const focusTarget = currentPhase === "idle" ? 0 : 1;
-	focusProgress += (focusTarget - focusProgress) * Math.min(1, delta * 2.4);
 }
 
 function updateAmbientMotion(delta: number, elapsed: number): void {
@@ -841,25 +1154,35 @@ function updateAmbientMotion(delta: number, elapsed: number): void {
 		platformClockHand.rotation.z = -elapsed * 0.22;
 		scanLight.position.x = -7 + ((elapsed * 1.15) % 14);
 	}
+	if (nextStation && !selectedUrl) {
+		const pulseFrame = Math.floor(elapsed * 12);
+		if (pulseFrame !== lastRouteBoardPulseFrame) {
+			lastRouteBoardPulseFrame = pulseFrame;
+			routeBoardPulse = elapsed % 1;
+			paintRouteBoard(
+				routeCode,
+				routeColor,
+				stations,
+				enabledUrls,
+				selectedUrl,
+				applyEnabled,
+			);
+			paintTicketTerminal();
+		}
+	}
 
-	const breath = reducedMotion ? 0 : Math.sin(elapsed * 0.38) * 0.055;
 	const narrow = camera.aspect < 0.82;
 	const compact = camera.aspect >= 0.82 && camera.aspect < 1.25;
-	const baseX = narrow ? 3.6 : compact ? 5.1 : 6.8;
-	const baseZ = narrow ? 20.5 : compact ? 17.2 : 15.2;
-	const pointerX = reducedMotion ? 0 : pointer.x;
-	const pointerY = reducedMotion ? 0 : pointer.y;
-	const targetX = baseX + pointerX * 0.42 * (1 - focusProgress * 0.65);
-	const targetY = 6.7 - pointerY * 0.22 + breath;
-	const targetZ = THREE.MathUtils.lerp(baseZ, baseZ - 1.2, focusProgress);
+	const baseX = narrow ? 0.75 : compact ? 5.1 : 6.8;
+	const baseY = narrow ? 6.25 : 6.7;
+	const baseZ = narrow ? 23 : compact ? 19.5 : 17.2;
+	const targetX = baseX;
+	const targetY = baseY;
+	const targetZ = baseZ;
 	camera.position.x += (targetX - camera.position.x) * Math.min(1, delta * 2.2);
 	camera.position.y += (targetY - camera.position.y) * Math.min(1, delta * 2.2);
 	camera.position.z += (targetZ - camera.position.z) * Math.min(1, delta * 2.2);
-	cameraTarget.set(
-		pointerX * 0.16 * (1 - focusProgress),
-		THREE.MathUtils.lerp(2.75, 2.95, focusProgress),
-		THREE.MathUtils.lerp(-2.25, -2.7, focusProgress),
-	);
+	cameraTarget.set(0, 2.75, -2.25);
 	camera.lookAt(cameraTarget);
 }
 
@@ -881,7 +1204,7 @@ function init(): void {
 	reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 	scene = new THREE.Scene();
 	camera = new THREE.PerspectiveCamera(38, 1, 0.1, 120);
-	camera.position.set(6.8, 6.7, 15.2);
+	camera.position.set(6.8, 6.7, 17.2);
 	camera.lookAt(0, 2.75, -2.25);
 
 	renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -932,6 +1255,7 @@ function cleanup(): void {
 	for (const geometry of geometries) geometry.dispose();
 	for (const material of materials) material.dispose();
 	for (const surface of textSurfaces) surface.texture.dispose();
+	ticketTerminalTexture?.dispose();
 	routeBoardTexture?.dispose();
 	renderer?.dispose();
 	if (renderer && container && renderer.domElement.parentNode === container) {
@@ -951,10 +1275,12 @@ onDestroy(cleanup);
 	bind:this={container}
 	class="friend-platform-scene"
 	role="group"
-	aria-label="交互式友链站台，可点击线路牌选择站点"
+	tabindex="0"
+	aria-label="交互式友链站台。点击时钟聚焦站点，点击地面线路灯带切换导览，点击票务终端查看线路。"
 	onpointermove={handlePointerMove}
 	onpointerleave={handlePointerLeave}
 	onclick={handleClick}
+	onkeydown={handleSceneKeydown}
 ></div>
 
 <style>
@@ -974,11 +1300,16 @@ onDestroy(cleanup);
 		height: 100%;
 	}
 
+	.friend-platform-scene:focus-visible {
+		outline: 3px solid var(--terminal-ink);
+		outline-offset: 3px;
+	}
+
 	@media (max-width: 760px) {
-		.friend-platform-scene { height: 32rem; }
+		.friend-platform-scene { height: clamp(29rem, 128vw, 32rem); }
 	}
 
 	@media (max-width: 430px) {
-		.friend-platform-scene { height: 34rem; }
+		.friend-platform-scene { height: clamp(28rem, 132vw, 31rem); }
 	}
 </style>
