@@ -334,6 +334,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "小鱼钓猫🐱",
+		imgurl: "https://img.z2m.store/file/public/1778862620159_g.png",
+		desc: "技术成长、生活随笔",
+		siteurl: "https://blog.z2m.store/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
