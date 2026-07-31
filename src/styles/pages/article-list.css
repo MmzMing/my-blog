@@ -140,7 +140,6 @@
 
 .article-list-card__article-link:hover,
 .article-list-card__article-link:focus-visible {
-	color: var(--link-hover);
 	text-decoration-line: underline;
 	text-decoration-color: currentColor;
 }

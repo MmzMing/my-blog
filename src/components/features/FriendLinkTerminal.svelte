@@ -13,10 +13,17 @@ import type { FriendLink } from "@/types/config";
 import FriendPlatformScene from "./FriendPlatformScene.svelte";
 
 type ViewMode = "map" | "directory";
-type ArrivalPhase = "idle" | "arriving" | "opening" | "open";
+type ArrivalPhase = "idle" | "departing" | "arriving" | "opening" | "open";
 type DepartureDirection = "left" | "right";
+type ArrivalRequest = {
+	friend: FriendLink;
+	onOpen?: () => void;
+};
 
 const ROUTE_COLORS = ["#a51f45", "#005b96", "#d86613", "#008c67"];
+const DEPARTURE_DURATION_MS = 180;
+const ARRIVAL_DURATION_MS = 280;
+const OPENING_DURATION_MS = 140;
 
 interface Props {
 	items: FriendLink[];
@@ -40,11 +47,15 @@ let routesDialog: HTMLDialogElement;
 let applyTrigger: HTMLButtonElement;
 let arrivalTimer: ReturnType<typeof setTimeout> | undefined;
 let openingTimer: ReturnType<typeof setTimeout> | undefined;
+let departureTimer: ReturnType<typeof setTimeout> | undefined;
 let tourTimer: ReturnType<typeof setTimeout> | undefined;
 let tourRun = 0;
+let cycleRun = 0;
 let tourActive = $state(false);
 let departureDirection = $state<DepartureDirection>("right");
 let tourNextStation = $state<FriendLink | null>(null);
+let pendingArrival: ArrivalRequest | null = null;
+let activeArrivalOnOpen: (() => void) | undefined;
 
 let tags = $derived(
 	Array.from(new Set(items.flatMap((item) => item.tags ?? []))).sort(),
@@ -63,6 +74,7 @@ let enabledSceneUrls = $derived(
 );
 let arrivalLabel = $derived.by(() => {
 	if (!selected) return "请选择上方站点，等待列车进站";
+	if (arrivalPhase === "departing") return `${selected.title} · 列车驶离中`;
 	if (arrivalPhase === "arriving")
 		return `开往 ${selected.title} 的列车正在进站`;
 	if (arrivalPhase === "opening") return "列车已到站，车门开启中";
@@ -135,8 +147,10 @@ function prefersReducedMotion(): boolean {
 function clearArrivalTimers(): void {
 	if (arrivalTimer) clearTimeout(arrivalTimer);
 	if (openingTimer) clearTimeout(openingTimer);
+	if (departureTimer) clearTimeout(departureTimer);
 	arrivalTimer = undefined;
 	openingTimer = undefined;
+	departureTimer = undefined;
 }
 
 function clearTourTimer(): void {
@@ -153,7 +167,11 @@ function stopAutoTour(): void {
 
 function clearSelection(): void {
 	stopAutoTour();
+	cycleRun += 1;
 	clearArrivalTimers();
+	pendingArrival = null;
+	activeArrivalOnOpen = undefined;
+	departureDirection = "left";
 	selected = null;
 	arrivalPhase = "idle";
 	avatarFailed = false;
@@ -174,25 +192,34 @@ function setView(mode: ViewMode): void {
 	clearSelection();
 }
 
-async function beginArrival(
-	friend: FriendLink,
-	onOpen?: () => void,
-): Promise<void> {
-	clearArrivalTimers();
-	departureDirection = "right";
+function applyArrivalTarget(request: ArrivalRequest): void {
+	const { friend, onOpen } = request;
 	if (routesDialog?.open) routesDialog.close();
 	const routeIndex = Math.floor(items.indexOf(friend) / 8);
 	if (routeIndex >= 0) mobileRoute = routeIndex;
-	if (viewMode !== "map") {
-		viewMode = "map";
-		await tick();
-	}
-
+	if (viewMode !== "map") viewMode = "map";
 	selected = friend;
+	activeArrivalOnOpen = onOpen;
 	avatarFailed = false;
+}
+
+function finishArrival(run: number): void {
+	if (run !== cycleRun) return;
+	const onOpen = activeArrivalOnOpen;
+	activeArrivalOnOpen = undefined;
+	onOpen?.();
+}
+
+async function startIncoming(request: ArrivalRequest, run: number): Promise<void> {
+	if (run !== cycleRun) return;
+	clearArrivalTimers();
+	pendingArrival = null;
+	departureDirection = "right";
+	applyArrivalTarget(request);
 	arrivalRun += 1;
 	arrivalPhase = prefersReducedMotion() ? "open" : "arriving";
 	await tick();
+	if (run !== cycleRun) return;
 
 	platformEl?.scrollIntoView({
 		behavior: prefersReducedMotion() ? "auto" : "smooth",
@@ -200,30 +227,93 @@ async function beginArrival(
 	});
 
 	if (arrivalPhase === "open") {
-		onOpen?.();
+		finishArrival(run);
 		return;
 	}
 
 	arrivalTimer = setTimeout(() => {
+		arrivalTimer = undefined;
+		if (run !== cycleRun) return;
 		arrivalPhase = "opening";
-	}, 950);
+	}, ARRIVAL_DURATION_MS);
 	openingTimer = setTimeout(() => {
+		openingTimer = undefined;
+		if (run !== cycleRun) return;
 		arrivalPhase = "open";
-		onOpen?.();
-	}, 1480);
+		finishArrival(run);
+	}, ARRIVAL_DURATION_MS + OPENING_DURATION_MS);
 }
 
-async function openFriend(friend: FriendLink): Promise<void> {
-	stopAutoTour();
-	await beginArrival(friend);
-}
-
-function closeArrival(): void {
-	clearArrivalTimers();
-	departureDirection = "left";
+function completeDeparture(run: number): void {
+	if (run !== cycleRun) return;
+	departureTimer = undefined;
+	const nextArrival = pendingArrival;
+	pendingArrival = null;
+	activeArrivalOnOpen = undefined;
 	selected = null;
 	arrivalPhase = "idle";
 	avatarFailed = false;
+	if (nextArrival) void startIncoming(nextArrival, run);
+}
+
+function startDeparture(run: number): void {
+	clearArrivalTimers();
+	departureDirection = "left";
+	activeArrivalOnOpen = undefined;
+	arrivalPhase = "departing";
+	if (prefersReducedMotion()) {
+		void tick().then(() => completeDeparture(run));
+		return;
+	}
+	departureTimer = setTimeout(
+		() => completeDeparture(run),
+		DEPARTURE_DURATION_MS,
+	);
+}
+
+function requestArrival(friend: FriendLink, onOpen?: () => void): void {
+	const request = { friend, onOpen } satisfies ArrivalRequest;
+	if (arrivalPhase === "open" && selected?.siteurl === friend.siteurl) {
+		onOpen?.();
+		return;
+	}
+	if (arrivalPhase === "departing") {
+		pendingArrival = request;
+		return;
+	}
+	if (arrivalPhase === "arriving" || arrivalPhase === "opening") {
+		applyArrivalTarget(request);
+		return;
+	}
+
+	const run = ++cycleRun;
+	clearArrivalTimers();
+	if (arrivalPhase === "open" && selected) {
+		pendingArrival = request;
+		startDeparture(run);
+		return;
+	}
+	pendingArrival = null;
+	void startIncoming(request, run);
+}
+
+function openFriend(friend: FriendLink): void {
+	stopAutoTour();
+	requestArrival(friend);
+}
+
+function closeArrival(): void {
+	pendingArrival = null;
+	if (arrivalPhase === "departing") return;
+	if (!selected) {
+		cycleRun += 1;
+		clearArrivalTimers();
+		arrivalPhase = "idle";
+		return;
+	}
+	const run = ++cycleRun;
+	clearArrivalTimers();
+	startDeparture(run);
 }
 
 function dismissArrival(): void {
@@ -242,18 +332,18 @@ function startAutoTour(): void {
 		if (run !== tourRun) return;
 		const station = stops[index];
 		if (!station) return;
-		tourNextStation = null;
-		void beginArrival(station, () => {
+		requestArrival(station, () => {
 			if (run !== tourRun) return;
+			tourNextStation = null;
 			tourTimer = setTimeout(() => {
 				if (run !== tourRun) return;
-				closeArrival();
 				if (index + 1 >= stops.length) {
+					closeArrival();
 					tourActive = false;
 					return;
 				}
 				tourNextStation = stops[index + 1] ?? null;
-				tourTimer = setTimeout(() => visit(index + 1), 3000);
+				visit(index + 1);
 			}, 5000);
 		});
 	};
@@ -313,6 +403,10 @@ function openApplyDialog(): void {
 }
 
 onDestroy(() => {
+	cycleRun += 1;
+	tourRun += 1;
+	pendingArrival = null;
+	activeArrivalOnOpen = undefined;
 	clearArrivalTimers();
 	clearTourTimer();
 });
@@ -390,7 +484,7 @@ onDestroy(() => {
 				bind:this={platformEl}
 				data-phase={arrivalPhase}
 				aria-label="友链列车停靠区"
-				aria-busy={arrivalPhase === "arriving" || arrivalPhase === "opening"}
+				aria-busy={arrivalPhase !== "idle" && arrivalPhase !== "open"}
 			>
 				<span class="sr-only" aria-live="polite">{arrivalLabel}</span>
 				{#if applyEnabled}
@@ -432,7 +526,12 @@ onDestroy(() => {
 						</div>
 					{/if}
 					{#if selected}
-						<div class="cabin-info" class:revealed={arrivalPhase === "open"} aria-hidden={arrivalPhase !== "open"}>
+						<div
+							class="cabin-info"
+							class:revealed={arrivalPhase === "opening" || arrivalPhase === "open"}
+							class:interactive={arrivalPhase === "open"}
+							aria-hidden={arrivalPhase !== "open"}
+						>
 							<button
 								class="arrival-close"
 								type="button"
@@ -1138,7 +1237,7 @@ onDestroy(() => {
 		pointer-events: none;
 		transform: translateX(-50%) perspective(55rem) rotateY(-5deg) scale(0.9);
 		transform-origin: center;
-		transition: opacity 220ms ease, transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+		transition: opacity 140ms ease, transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 
 	.cabin-info::before,
@@ -1156,9 +1255,10 @@ onDestroy(() => {
 
 	.cabin-info.revealed {
 		opacity: 1;
-		pointer-events: auto;
 		transform: translateX(-50%) perspective(55rem) rotateY(-5deg) scale(1);
 	}
+
+	.cabin-info.interactive { pointer-events: auto; }
 
 	.arrival-close {
 		position: absolute;

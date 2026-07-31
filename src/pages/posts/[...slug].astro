@@ -55,6 +55,9 @@ const bannerPostMeta = {
 
 // 处理随机图：如果image为"api"，则从配置的API获取随机图
 const processedImage = processCoverImageSync(entry.data.image, entry.id);
+const posterFallbackCoverUrl = coverImageConfig.randomCoverImage.fallback
+	? url(coverImageConfig.randomCoverImage.fallback)
+	: null;
 
 let posterCoverUrl = processedImage;
 if (processedImage) {
@@ -217,6 +220,7 @@ const serializedJsonLd = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
             description={entry.data.description || entry.data.title}
             pubDate={formatDateToYYYYMMDD(entry.data.published)}
             coverImage={posterCoverUrl}
+            fallbackCoverImage={posterFallbackCoverUrl}
             url={Astro.url.href}
             siteTitle={siteConfig.title}
             avatar={posterAvatarUrl}

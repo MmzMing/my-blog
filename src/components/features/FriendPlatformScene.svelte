@@ -3,7 +3,7 @@ import { onDestroy, onMount } from "svelte";
 import * as THREE from "three";
 import type { FriendLink } from "@/types/config";
 
-type ArrivalPhase = "idle" | "arriving" | "opening" | "open";
+type ArrivalPhase = "idle" | "departing" | "arriving" | "opening" | "open";
 type DepartureDirection = "left" | "right";
 
 interface Props {
@@ -64,6 +64,8 @@ let visible = true;
 let currentPhase: ArrivalPhase = "idle";
 let activeRun = -1;
 let arrivalProgress = 0;
+let departureProgress = 0;
+let departureStartX = 0;
 let doorProgress = 0;
 let lastTime = 0;
 let reducedMotion = false;
@@ -102,6 +104,9 @@ const cameraTarget = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
 const ROUTE_BOARD_WIDTH = 15.8;
 const ROUTE_BOARD_HEIGHT = 2.65;
+const TRAIN_DEPARTURE_DURATION_SECONDS = 0.16;
+const TRAIN_ARRIVAL_DURATION_SECONDS = 0.26;
+const DOOR_DURATION_SECONDS = 0.12;
 type TextSurface = {
 	canvas: HTMLCanvasElement;
 	context: CanvasRenderingContext2D;
@@ -120,7 +125,12 @@ let routeBoardPulse = 0;
 let lastRouteBoardPulseFrame = -1;
 
 $effect(() => {
-	currentPhase = phase;
+	const nextPhase = phase;
+	if (nextPhase === "departing" && currentPhase !== "departing") {
+		departureStartX = trainGroup?.position.x ?? 0;
+		departureProgress = 0;
+	}
+	currentPhase = nextPhase;
 	if (activeRun !== runId) {
 		activeRun = runId;
 		resetInteraction();
@@ -889,8 +899,8 @@ function buildTrain(): void {
 	trainGroup = new THREE.Group();
 	addAt(trainGroup, 14, 0, 0);
 
-	const body = outlinedBox(13.7, 5.15, 0.9);
-	body.position.set(0, 3.15, -3.7);
+	const body = outlinedBox(13.7, 5.15, 0.08);
+	body.position.set(0, 3.15, -3.29);
 	trainGroup.add(body);
 
 	for (const x of [-5.15, -3.45, 3.45, 5.15]) {
@@ -906,10 +916,6 @@ function buildTrain(): void {
 	trainDoorLeft.position.set(-1.03, 3.1, -3.15);
 	trainDoorRight.position.set(1.03, 3.1, -3.15);
 	trainGroup.add(trainDoorLeft, trainDoorRight);
-
-	const belt = outlinedBox(13.9, 0.32, 0.13);
-	belt.position.set(0, 1.4, -3.13);
-	trainGroup.add(belt);
 
 	for (const x of [-5.2, 5.2]) {
 		const lightPoints: Array<[number, number, number]> = [];
@@ -927,13 +933,11 @@ function buildTrain(): void {
 
 function resetInteraction(): void {
 	arrivalProgress = currentPhase === "open" && reducedMotion ? 1 : 0;
+	departureProgress = 0;
+	departureStartX = 0;
 	doorProgress = currentPhase === "open" && reducedMotion ? 1 : 0;
 	if (!trainGroup || !screenDoorLeft || !screenDoorRight) return;
-	trainGroup.position.x = arrivalProgress
-		? 0
-		: departureDirection === "left"
-			? -14
-			: 14;
+	trainGroup.position.x = arrivalProgress ? 0 : 14;
 	screenDoorLeft.position.x = doorProgress ? -4.1 : -1.53;
 	screenDoorRight.position.x = doorProgress ? 4.1 : 1.53;
 	trainDoorLeft.position.x = doorProgress ? -2.1 : -1.03;
@@ -1119,26 +1123,56 @@ function handleSceneKeydown(event: KeyboardEvent): void {
 
 function updateInteraction(delta: number, elapsed: number): void {
 	if (reducedMotion) {
-		arrivalProgress = currentPhase === "idle" ? 0 : 1;
+		arrivalProgress =
+			currentPhase === "arriving" ||
+			currentPhase === "opening" ||
+			currentPhase === "open"
+				? 1
+				: 0;
+		departureProgress = currentPhase === "departing" ? 1 : 0;
 		doorProgress =
 			currentPhase === "opening" || currentPhase === "open" ? 1 : 0;
 	} else if (currentPhase === "idle") {
-		arrivalProgress = Math.max(0, arrivalProgress - delta * 2.5);
-		doorProgress = Math.max(0, doorProgress - delta * 3);
+		arrivalProgress = 0;
+		departureProgress = departureDirection === "left" ? 1 : 0;
+		doorProgress = 0;
+	} else if (currentPhase === "departing") {
+		departureProgress = Math.min(
+			1,
+			departureProgress + delta / TRAIN_DEPARTURE_DURATION_SECONDS,
+		);
+		doorProgress = Math.max(
+			0,
+			doorProgress - delta / DOOR_DURATION_SECONDS,
+		);
 	} else if (currentPhase === "arriving") {
-		arrivalProgress = Math.min(1, arrivalProgress + delta / 0.9);
-		doorProgress = Math.max(0, doorProgress - delta * 3);
+		arrivalProgress = Math.min(
+			1,
+			arrivalProgress + delta / TRAIN_ARRIVAL_DURATION_SECONDS,
+		);
+		doorProgress = Math.max(
+			0,
+			doorProgress - delta / DOOR_DURATION_SECONDS,
+		);
 	} else {
 		arrivalProgress = 1;
-		doorProgress = Math.min(1, doorProgress + delta / 0.5);
+		doorProgress = Math.min(
+			1,
+			doorProgress + delta / DOOR_DURATION_SECONDS,
+		);
 	}
 
 	const arrivalEase = easeOutCubic(arrivalProgress);
+	const departureEase = easeInOutCubic(departureProgress);
 	const doorEase = easeInOutCubic(doorProgress);
 	trainGroup.position.x =
-		currentPhase === "idle" && departureDirection === "left"
-			? -14 * (1 - arrivalEase)
-			: 14 * (1 - arrivalEase);
+		currentPhase === "departing"
+			? THREE.MathUtils.lerp(departureStartX, -14, departureEase)
+			: currentPhase === "idle"
+				? departureDirection === "left"
+					? -14
+					: 14
+				: 14 * (1 - arrivalEase);
 	trainGroup.position.y =
 		currentPhase === "open" && !reducedMotion
 			? Math.sin(elapsed * 1.7) * 0.018

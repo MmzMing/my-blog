@@ -13,6 +13,7 @@ export let coverImage: string | null = null;
 export let url: string;
 export let siteTitle: string;
 export let avatar: string | null = null;
+export let fallbackCoverImage: string | null = null;
 
 let showModal = false;
 let posterImage: string | null = null;
@@ -46,36 +47,27 @@ onDestroy(() => {
 	document.removeEventListener("astro:page-load", handlePageTransition);
 });
 
-function isRemoteImage(src: string): boolean {
-	try {
-		const url = new URL(src);
-		return url.protocol === "http:" || url.protocol === "https:";
-	} catch {
-		return false;
-	}
-}
-
-function getPosterImageProxyUrl(src: string): string {
-	return `/api/poster-image?url=${encodeURIComponent(src)}`;
-}
-
-function loadImage(
-	src: string,
-	usePosterImageProxy = false,
-): Promise<HTMLImageElement | null> {
+function loadImage(src: string): Promise<HTMLImageElement | null> {
 	return new Promise((resolve) => {
 		const img = new Image();
 		img.crossOrigin = "anonymous";
 		img.onload = () => resolve(img);
-		img.onerror = () => {
-			if (usePosterImageProxy && isRemoteImage(src)) {
-				loadImage(getPosterImageProxyUrl(src)).then(resolve);
-				return;
-			}
-			resolve(null);
-		};
+		img.onerror = () => resolve(null);
 		img.src = src;
 	});
+}
+
+async function loadCoverImage(): Promise<HTMLImageElement | null> {
+	if (coverImage) {
+		const primaryCover = await loadImage(coverImage);
+		if (primaryCover) return primaryCover;
+	}
+
+	if (fallbackCoverImage && fallbackCoverImage !== coverImage) {
+		return loadImage(fallbackCoverImage);
+	}
+
+	return null;
 }
 
 function getLines(
@@ -142,7 +134,7 @@ async function generatePoster() {
 		});
 		const [qrImg, coverImg, avatarImg] = await Promise.all([
 			loadImage(qrCodeUrl),
-			coverImage ? loadImage(coverImage, true) : Promise.resolve(null),
+			loadCoverImage(),
 			avatar ? loadImage(avatar) : Promise.resolve(null),
 		]);
 
@@ -160,7 +152,7 @@ async function generatePoster() {
 		let currentY = 0;
 
 		// Cover
-		const coverHeight = (coverImage ? 200 : 120) * scale;
+		const coverHeight = (coverImg ? 200 : 120) * scale;
 		currentY += coverHeight;
 		currentY += padding; // Gap after cover
 

@@ -1,6 +1,5 @@
 import { aiSearchConfig } from "./config/aiSearchConfig";
 import { handleCloudflareAiSearch } from "./workers/cloudflare/ai-search/runtime";
-import { handlePosterImage } from "./workers/cloudflare/poster-image/handler";
 
 export { RateLimiter } from "./workers/cloudflare/ai-search/durable-rate-limiter";
 
@@ -83,10 +82,6 @@ export default {
 			}
 			return handleCloudflareAiSearch(request, env);
 		}
-		if (url.pathname === "/api/poster-image") {
-			return handlePosterImage(request);
-		}
-
 		if (env.ASSETS) {
 			return withStaticSecurityHeaders(await env.ASSETS.fetch(request));
 		}
