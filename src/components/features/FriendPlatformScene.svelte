@@ -1141,25 +1141,16 @@ function updateInteraction(delta: number, elapsed: number): void {
 			1,
 			departureProgress + delta / TRAIN_DEPARTURE_DURATION_SECONDS,
 		);
-		doorProgress = Math.max(
-			0,
-			doorProgress - delta / DOOR_DURATION_SECONDS,
-		);
+		doorProgress = Math.max(0, doorProgress - delta / DOOR_DURATION_SECONDS);
 	} else if (currentPhase === "arriving") {
 		arrivalProgress = Math.min(
 			1,
 			arrivalProgress + delta / TRAIN_ARRIVAL_DURATION_SECONDS,
 		);
-		doorProgress = Math.max(
-			0,
-			doorProgress - delta / DOOR_DURATION_SECONDS,
-		);
+		doorProgress = Math.max(0, doorProgress - delta / DOOR_DURATION_SECONDS);
 	} else {
 		arrivalProgress = 1;
-		doorProgress = Math.min(
-			1,
-			doorProgress + delta / DOOR_DURATION_SECONDS,
-		);
+		doorProgress = Math.min(1, doorProgress + delta / DOOR_DURATION_SECONDS);
 	}
 
 	const arrivalEase = easeOutCubic(arrivalProgress);

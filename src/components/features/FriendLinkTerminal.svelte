@@ -210,7 +210,10 @@ function finishArrival(run: number): void {
 	onOpen?.();
 }
 
-async function startIncoming(request: ArrivalRequest, run: number): Promise<void> {
+async function startIncoming(
+	request: ArrivalRequest,
+	run: number,
+): Promise<void> {
 	if (run !== cycleRun) return;
 	clearArrivalTimers();
 	pendingArrival = null;
