@@ -8,6 +8,8 @@ import "@/styles/pages/404.css";
 ---
 
 <MainGridLayout title={i18n(I18nKey.notFound)} description={i18n(I18nKey.notFoundDescription)}>
+	<meta slot="head" name="robots" content="noindex, nofollow" />
+
 	<div class="page-404 card-base">
 		<div class="page-404__glow" aria-hidden="true"></div>
 
