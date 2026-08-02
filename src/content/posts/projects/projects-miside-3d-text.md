@@ -16,7 +16,7 @@ draft: false
 ![](./image/projects-miside-3d-text.assets/projects-miside-3d-text-20260801214136.webp)
 
 > [!NOTE] 提示
-> 具体可以到上方主站那尝试，gif显示掉落可能有点慢
+> 具体可以点击上方 [个人主站](https://www.mmzhiku.xyz/) 尝试，文章种的gif显示掉落可能有点慢
 > 
 > 还有部分米塔字体是有些先往上抬动再掉落的，我是没做这部分，如果需要也可以按本文思路自行调整
 

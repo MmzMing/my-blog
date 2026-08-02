@@ -343,6 +343,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "拾光小筑",
+		imgurl: "https://img.devcoding.me/2026/07/dc71afa20797ccb6848a36ab60c86fc9.jpg",
+		desc: "一个工程师与写作者的小角落，记录代码、设计、生活与思考",
+		siteurl: "https://devcoding.me/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序

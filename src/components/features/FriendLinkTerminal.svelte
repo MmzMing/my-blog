@@ -347,7 +347,7 @@ function startAutoTour(): void {
 				}
 				tourNextStation = stops[index + 1] ?? null;
 				visit(index + 1);
-			}, 5000);
+			}, 2500);
 		});
 	};
 	visit(0);
