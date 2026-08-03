@@ -1,8 +1,8 @@
 ---
-title: 前端UI | 网页仿米塔3D字体
+title: 米塔3D字体网页端实现
 published: 2026-08-01
 description: 本文详细讲解如何在 React Three Fiber 场景中实现仿米塔（Miside）3D 字体物理效果：逐字打字显现、保持、逐个释放、物理坠落消失。核心架构分为三层——纯函数层（core.ts）负责字形分割、排版布局、确定性随机与四阶段状态机；物理渲染层（physics.tsx）基于 Rapier 引擎驱动刚体碰撞与坠落；懒加载门面层（layer.tsx）实现动态导入与错误降级。涵盖 Intl.Segmenter 分割、SDF 字体渲染、相机朝向视差、移动端适配及性能优化等关键技术点。 
-tags: [React, 前端, 米塔 , 3D]
+tags: [React, Three, 米塔 , 3D]
 category: 设计文档
 draft: false
 ---
@@ -11,9 +11,9 @@ draft: false
 > 在 React Three Fiber 场景中，使文本以"miside"物理效果出现：逐字打字显现 → 保持 → 逐个释放 → 物理坠落 → 消失。
 > 核心思路是将每个字形视为独立的物理刚体，由 Rapier 引擎驱动碰撞与运动。
 
-![](./image/projects-miside-3d-text.assets/projects-miside-3d-text-20260801213840.webp)
+![仿米塔 3D 字体物理坠落效果演示：逐字打字显现后物理掉落](./image/projects-miside-3d-text.assets/projects-miside-3d-text-20260801213840.webp)
 
-![](./image/projects-miside-3d-text.assets/projects-miside-3d-text-20260801214136.webp)
+![3D 字体释放阶段：字形随机顺序脱离锚点并受重力影响坠落](./image/projects-miside-3d-text.assets/projects-miside-3d-text-20260801214136.webp)
 
 > [!NOTE] 提示
 > 具体可以点击上方 [个人主站](https://www.mmzhiku.xyz/) 尝试，文章种的gif显示掉落可能有点慢

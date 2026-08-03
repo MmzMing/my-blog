@@ -23,6 +23,7 @@ import {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import PostFooterActions from "@/components/misc/PostFooterActions.astro";
+import RelatedPosts from "@/components/misc/RelatedPosts.astro";
 import { coverImageConfig } from "@/config/coverImageConfig";
 import { homeConfig } from "@/config/homeConfig";
 import { siteConfig } from "@/config/siteConfig";
@@ -160,6 +161,13 @@ const serializedJsonLd = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
   postSlug={entry.id}
   postCategory={entry.data.category || undefined}
   bannerPostMeta={bannerPostMeta}
+  articleMeta={{
+    published: entry.data.published,
+    updated: entry.data.updated,
+    author: entry.data.author || homeConfig.name,
+    category: entry.data.category || undefined,
+    tags: entry.data.tags,
+  }}
 >
   <!-- KaTeX 按需加载 - 仅在文章页面 -->
   <KatexManager slot="head" />
@@ -273,12 +281,12 @@ const serializedJsonLd = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
     })()
   }
 
-  <!-- Layer 3: Cover image -->
+  {/* Layer 3: Cover image */}
   {coverImageConfig.enableInPost && posterCoverUrl && (
     <div class="post-cover mb-2">
       <img
         src={posterCoverUrl}
-        alt=""
+        alt={`${entry.data.title} - 封面图`}
         loading="eager"
         fetchpriority="high"
       />
@@ -302,6 +310,11 @@ const serializedJsonLd = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
             licenseName={entry.data.licenseName}
             licenseUrl={entry.data.licenseUrl}
           />
+          <RelatedPosts
+            currentId={entry.id}
+            tags={entry.data.tags}
+            category={entry.data.category || undefined}
+          />
         </EncryptedPost>
       ) : (
         <>
@@ -317,6 +330,11 @@ const serializedJsonLd = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
             sourceLink={entry.data.sourceLink}
             licenseName={entry.data.licenseName}
             licenseUrl={entry.data.licenseUrl}
+          />
+          <RelatedPosts
+            currentId={entry.id}
+            tags={entry.data.tags}
+            category={entry.data.category || undefined}
           />
         </>
       )}

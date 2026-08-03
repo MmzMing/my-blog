@@ -1,5 +1,5 @@
 ---
-title: 登录 | 魔法链接
+title: 邮箱链接登录前后的实现方案
 published: 2026-05-01
 description: 魔法链接登录的完整技术方案，基于 Cloudflare Turnstile 人机校验 + Redis Token 缓存 + 邮件回调验证，实现无密码自动登录。
 tags: [认证, 登录, 安全]

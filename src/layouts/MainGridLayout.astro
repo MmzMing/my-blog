@@ -36,6 +36,13 @@ interface Props {
 		words?: number;
 		minutes?: number;
 	};
+	articleMeta?: {
+		published?: Date;
+		updated?: Date;
+		author?: string;
+		category?: string;
+		tags?: string[];
+	};
 }
 
 const {
@@ -47,6 +54,7 @@ const {
 	postSlug,
 	postCategory,
 	bannerPostMeta: _bannerPostMeta,
+	articleMeta,
 } = Astro.props;
 
 const isPostPage = !!postSlug;
@@ -59,7 +67,7 @@ const navLinks = navBarConfig.links.map((item) => {
 });
 ---
 
-<Layout title={title} banner={banner} description={description} lang={lang} setOGTypeArticle={setOGTypeArticle} postSlug={postSlug}>
+<Layout title={title} banner={banner} description={description} lang={lang} setOGTypeArticle={setOGTypeArticle} postSlug={postSlug} articleMeta={articleMeta}>
 	<slot slot="head" name="head"></slot>
 
 	<div
@@ -85,7 +93,8 @@ const navLinks = navBarConfig.links.map((item) => {
 			<main id="swup-container" class="transition-swup-main" data-current-post-category={postCategory || ""}>
 				{isPostPage && <ArticleOutlineRail />}
 				{shouldRenderCategoryBar && <div id="category-bar-wrapper"><CategoryBar title={title} postSlug={postSlug} postCategory={postCategory} /></div>}
-				<h1 class="sr-only">{title}</h1>
+				{/* 文章页有 post-hero 的可视 H1，跳过 sr-only 兜底避免重复 H1 */}
+				{!isPostPage && <h1 class="sr-only">{title}</h1>}
 
 				<div id="content-wrapper" class="onload-animation">
 					<slot></slot>

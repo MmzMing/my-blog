@@ -1,5 +1,5 @@
 ---
-title: 线程池 | 配置指南
+title: JAVA线程池配置指南
 published: 2026-05-07
 description: Java ThreadPoolExecutor 核心参数、线程数估算、队列选型与拒绝策略，附带企业级监控与动态调优方案。
 tags: [Java, 线程池, 并发编程]

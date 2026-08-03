@@ -1,5 +1,5 @@
 ---
-title: firefly | 魔改总结
+title: Firefly魔改总结
 published: 2026-07-23
 description: 基于 Astro、Svelte 和 Cloudflare Workers 的 Firefly 二次开发记录。
 tags: [博客, 二开, firefly]

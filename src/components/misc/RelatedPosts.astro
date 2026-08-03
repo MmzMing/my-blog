@@ -1,0 +1,66 @@
+---
+import { getSortedPosts } from "@utils/content-utils";
+import { getPostUrlBySlug } from "@utils/url-utils";
+import { formatDateToYYYYMMDD } from "@/utils/date-utils";
+import "@/styles/components/related-posts.css";
+
+export interface Props {
+	/** 当前文章 id（slug），用于排除自身 */
+	currentId: string;
+	/** 当前文章标签，用于匹配相关度 */
+	tags?: string[];
+	/** 当前文章分类，用于匹配相关度 */
+	category?: string;
+	/** 返回相关文章数量，默认 3 */
+	limit?: number;
+}
+
+const { currentId, tags = [], category, limit = 3 } = Astro.props;
+
+const allPosts = await getSortedPosts();
+
+// 相关度评分：tag 命中 +2，category 命中 +1，排除自身与草稿
+const scored = allPosts
+	.filter((p) => p.id !== currentId)
+	.map((p) => {
+		let score = 0;
+		const commonTags = (p.data.tags ?? []).filter((t) =>
+			tags.map((s) => s.trim()).includes(t.trim()),
+		);
+		score += commonTags.length * 2;
+		if (category && p.data.category === category) score += 1;
+		return { post: p, score };
+	})
+	.filter((item) => item.score > 0)
+	.sort((a, b) => {
+		// 同分按发布时间倒序
+		if (b.score !== a.score) return b.score - a.score;
+		return new Date(b.post.data.published) > new Date(a.post.data.published)
+			? 1
+			: -1;
+	});
+
+const related = scored.slice(0, limit).map((item) => item.post);
+---
+
+{related.length > 0 && (
+	<section class="related-posts mb-6 onload-animation" aria-label="相关文章">
+		<h2 class="related-posts__title">相关文章</h2>
+		<ul class="related-posts__list">
+			{related.map((post) => (
+				<li class="related-posts__item">
+					<a
+						href={getPostUrlBySlug(post.id)}
+						class="related-posts__link"
+					>
+						<span class="related-posts__post-title">{post.data.title}</span>
+						<span class="related-posts__post-meta">
+							{post.data.category && <span class="related-posts__post-category">#{post.data.category}</span>}
+							<span class="related-posts__post-date">{formatDateToYYYYMMDD(post.data.published)}</span>
+						</span>
+					</a>
+				</li>
+			))}
+		</ul>
+	</section>
+)}

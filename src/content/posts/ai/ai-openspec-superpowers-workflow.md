@@ -1,5 +1,5 @@
 ---
-title:  OpenSpec + Superpowers
+title:  OpenSpec+Superpowers实现流水线开发
 published: 2026-06-03
 description: OpenSpec 规范驱动开发与 Superpowers 工程化工作流的协同实践，建立"规范驱动规划 + 流程驱动执行"的 AI 编程闭环。
 tags: [AI, Skill, 工作流]
@@ -16,7 +16,7 @@ draft: false
 
 # 一、介绍
 
-![](./image/ai-openspec-superpowers-workflow.assets/ai-openspec-superpowers-workflow-20260620163505.png)
+![OpenSpec + Superpowers 协同工作流：规范驱动规划与流程驱动执行的闭环](./image/ai-openspec-superpowers-workflow.assets/ai-openspec-superpowers-workflow-20260620163505.png)
 
 ## 1、Superpowers
 

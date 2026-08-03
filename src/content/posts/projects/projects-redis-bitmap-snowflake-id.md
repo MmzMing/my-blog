@@ -1,5 +1,5 @@
 ---
-title: Redis | Bitmap、雪花ID、分布式
+title: Redis中Bitmap、雪花ID、分布式的坑
 published: 2026-05-06
 description: Redis Bitmap 结合雪花 ID 在分布式场景下的三大陷阱：首次写入 O(offset) 卡顿、哈希碰撞风险、单线程阻塞，最终给出 String+Set 替代方案。
 tags: [Redis, Bitmap, 分布式, 性能优化]

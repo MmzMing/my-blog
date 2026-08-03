@@ -1,5 +1,5 @@
 ---
-title: 登录 | 第三方登录
+title: OAuth2第三方登录
 published: 2026-05-03
 description: GitHub、微信、QQ 三种第三方登录的 OAuth2 授权码流程设计，涵盖回调处理、策略模式代码结构及多环境配置。
 tags: [OAuth2, 认证, 登录]

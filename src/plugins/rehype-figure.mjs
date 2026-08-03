@@ -39,6 +39,13 @@ export default function rehypeFigure() {
 
 			// 如果没有 alt 属性或 alt 为空字符串，则只更新属性并保持原样
 			if (!alt || alt.trim() === "") {
+				// SEO 提醒：空 alt 既无障碍不友好，也无法被图片搜索引擎索引
+				// 仅在开发环境打印，避免污染 CI 日志
+				if (import.meta.env?.DEV) {
+					console.warn(
+						`[rehype-figure] 图片缺少 alt：${imgProps.src || "(未知 src)"}`,
+					);
+				}
 				node.properties = imgProps;
 				return;
 			}

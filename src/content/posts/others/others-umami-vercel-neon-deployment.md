@@ -1,5 +1,5 @@
 ---
-title: Umami | Vercel + Neon 部署
+title: Umami通过Vercel+Neon部署方案
 published: 2026-05-07
 description: 使用 Vercel + Neon 免费部署 Umami 网站统计，记录 Prisma 7 适配、自定义域名绑定及通过 Share API 拉取站点 UV/PV 的接入方式。
 tags: [Umami, 部署, Vercel]
@@ -44,7 +44,7 @@ Cloudflare D1 基于 SQLite，Umami 仅支持 PostgreSQL，无法兼容。
 3. 进入 **Dashboard → Connection String → 选择 Prisma → 进入 .env 复制**
 4. 复制 `DATABASE_URL` 连接字符串
 
-![](./image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-20260512042258.png)
+![Neon 项目 Dashboard，复制 Prisma 连接字符串作为 DATABASE_URL](./image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-20260512042258.png)
 
 ---
 

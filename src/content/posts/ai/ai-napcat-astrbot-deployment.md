@@ -1,5 +1,5 @@
 ---
-title: QQ 机器人 | NapCat + AstrBot
+title: NapCat+AstrBot部署QQ机器人
 published: 2026-05-12
 description: 使用 Docker Compose 一站式部署 NapCat + AstrBot，从零搭建 AI QQ 机器人，含 OneBot 11 协议对接与风控替代方案。
 tags: [AI, Bot, 部署]
@@ -135,26 +135,26 @@ docker compose logs napcat
 > 这里采用 1Panel 作为演示，你可以根据需求选择其他面板。
 
 ## 1、建目录
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001508.png)
+![1Panel 面板中新建 astrbot-napcat 项目目录](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001508.png)
 
 ## 2、新建文件
 
 名字为：`docker-compose.yml`，复制上方compose的内容到这个文件去
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001833.png)
+![在 1Panel 文件管理器中创建 docker-compose.yml 文件](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001833.png)
 
 ## 3、编排
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001953.png)
+![1Panel 容器编排界面，点击创建并启动 NapCat + AstrBot 容器](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001953.png)
 
 等待
 ## 4、校验
 
 成功后检查网络是否联通、容器是否启动
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002127.png)
+![容器列表显示 napcat 与 astrbot 均为 running 运行状态](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002127.png)
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002159.png)
+![容器详情页检查端口映射与日志输出正常](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002159.png)
 
 # 六、NapCat 相关配置
 
@@ -198,7 +198,7 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 
 ## 4、NapCat 配置文件位置（部署忽略，这里只是补充说明）
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001254.png)
+![NapCat 配置文件目录结构，config.json 为主要配置入口](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529001254.png)
 
 
 # 七、AstrBot 相关配置
@@ -240,7 +240,7 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 
 ### 4.1 Agnes
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260612031123.png)
+![Agnes 平台免费模型列表，显示 glm-4.5 等模型可免费调用](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260612031123.png)
 
 从数据上看可以发现完全不弱！还是免费！！因为是新模型博主还没体验怎么样，感兴趣可以试试，小小尝试了速度非常慢
 
@@ -256,26 +256,26 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 
 注意：免费推理API由阿里云提供算力支持，**要求的ModelScope账号必须首先[绑定阿里云账号](https://www.modelscope.cn/docs/accounts/aliyun-binding-and-authorization)**。同时为了防止滥用，对应云账号需已通过[**实名认证**](https://help.aliyun.com/zh/account/real-name-authentication)后，才可正常使用API-Inference。
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260513003730.png)
+![魔搭社区模型库，提供 2000 次/日免费 API-Inference 调用额度](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260513003730.png)
 
 [模型库首页 · 魔搭社区](https://www.modelscope.cn/models)
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260513003757.png)
+![魔搭模型库首页，按任务类型筛选可用的开源模型](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260513003757.png)
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260513003940.png)
+![模型详情页，显示 API 调用示例与单模型每日额度信息](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260513003940.png)
 
 
 ## 5、普通设置
 
 记得保存！记得保存！记得保存！
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002347.png)
+![AstrBot 普通设置页面，配置默认模型、提示词等参数](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002347.png)
 
 ## 6、平台设置
 
 记得保存！记得保存！记得保存！
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002454.png)
+![AstrBot 消息平台配置页，管理 OneBot 11 等适配器连接](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260529002454.png)
 
 ## 7、扩展功能
 
@@ -440,9 +440,9 @@ npx skills add alchaincyf/nuwa-skill
 
 ## 1、如图
 
-![](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260512233150.png)
+![AstrBot 插件市场页面，可一键安装联网搜索、画图等扩展](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260512233150.png)
 
-![697](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260512233158.png)
+![AstrBot 已安装插件列表，展示插件名称、版本与启用开关](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260512233158.png)
 
 ## 2、为什么我不用记忆呢
 

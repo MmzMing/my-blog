@@ -1,0 +1,75 @@
+/* 相关文章模块 - 文章页底部按 tag/category 关联的内链入口 */
+.related-posts {
+	padding: 1rem 1.25rem;
+	border-radius: var(--radius-large);
+	background: var(--card-bg);
+	border: 1px solid var(--line-divider);
+}
+
+.related-posts__title {
+	font-size: 1.05rem;
+	font-weight: 600;
+	color: var(--deep-text);
+	margin: 0 0 0.75rem;
+	padding-bottom: 0.5rem;
+	border-bottom: 1px solid var(--line-divider);
+}
+
+.related-posts__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.related-posts__item {
+	margin: 0;
+}
+
+.related-posts__link {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	padding: 0.6rem 0.75rem;
+	border-radius: var(--radius-medium);
+	transition: background-color 0.2s ease;
+}
+
+.related-posts__link:hover {
+	background: var(--btn-plain-bg-hover);
+}
+
+.related-posts__post-title {
+	font-size: 0.95rem;
+	font-weight: 500;
+	color: var(--deep-text);
+	line-height: 1.4;
+}
+
+.related-posts__post-meta {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.78rem;
+	color: var(--meta-divider);
+}
+
+.related-posts__post-category {
+	color: var(--primary);
+}
+
+.related-posts__post-date {
+	color: var(--meta-divider);
+}
+
+@media (max-width: 768px) {
+	.related-posts {
+		padding: 0.85rem 1rem;
+	}
+
+	.related-posts__title {
+		font-size: 1rem;
+	}
+}

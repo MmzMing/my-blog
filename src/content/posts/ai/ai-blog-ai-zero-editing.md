@@ -14,9 +14,9 @@ draft: false
 
 你是否这样子做过
 
-![](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260626122346.webp)
+![反面案例：直接让 AI 写代码导致结果混乱的示意图](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260626122346.webp)
 
-![](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260626122316.webp)
+![反面案例：未规划流程时 AI 产出与预期偏差的对比](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260626122316.webp)
 ## 1、正确流程
 
 先说结论
@@ -27,7 +27,7 @@ draft: false
 4. 代码必须各种红绿测试
 5. 持续优化
 
-![](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260626124924.webp)
+![AI 搭建博客的正确流程图：定风格→原型图→代码规范→测试→优化](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260626124924.webp)
 ## 2、原型图
 
 咋先说不是什么设计大师，也不是按企业规范。新手就不用在 Figma / Google AI Studio / Google Stitch 和 IDE 之间反复对齐。
@@ -103,7 +103,7 @@ draft: false
 
 ### 3.2 TDD是神
 
-![](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260620163427.webp)
+![TDD 测试驱动开发流程示意：先写测试再写实现，红绿循环推进](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260620163427.webp)
 
 ## 4、开发
 
@@ -172,6 +172,6 @@ draft: false
 
 保持博客风格统一：文章页面专注阅读，相册首页专注视觉，各司其职，互不干扰。
 
-![](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260626125933.webp)
+![本站首页与文章页风格对比：首页展示 AI 绘画，文章页专注阅读](./image/ai-blog-ai-zero-editing.assets/ai-blog-ai-zero-editing-20260626125933.webp)
 
 也希望各位读者能喜欢本站的设计风格，也能在设计自己的博客时参考本站的设计原则。

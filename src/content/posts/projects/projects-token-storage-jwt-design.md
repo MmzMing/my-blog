@@ -1,5 +1,5 @@
 ---
-title: 登录 | 前后端 token 存储方案
+title: 前后端登录Token存储方案
 published: 2026-05-04
 description: ZSK-Cloud 从单 Token 演进为 Access+Refresh 双令牌的认证体系设计，采用 HttpOnly Cookie 存储 + Redis 白名单吊销机制。
 tags: [JWT, 认证, 安全]

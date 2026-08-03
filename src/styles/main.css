@@ -26,6 +26,7 @@
 @import './components/live2d-widget.css';
 @import './components/guestbook-chat.css';
 @import './components/article-outline-rail.css';
+@import './components/related-posts.css';
 
 /* === 侧边栏组件层 === */
 @import './widgets/calendar.css';
