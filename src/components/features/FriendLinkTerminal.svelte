@@ -1,6 +1,5 @@
 <script lang="ts">
 import {
-	ChevronRight,
 	ExternalLink,
 	List as ListIcon,
 	Map as MapIcon,
@@ -127,6 +126,12 @@ function shortLabel(title: string): string {
 
 function initialOf(title: string): string {
 	return Array.from(title.trim())[0] ?? "?";
+}
+
+function handleDirectoryAvatarError(event: Event): void {
+	const image = event.currentTarget as HTMLImageElement;
+	image.hidden = true;
+	image.nextElementSibling?.removeAttribute("hidden");
 }
 
 function markerClass(friend: FriendLink): string {
@@ -577,12 +582,22 @@ onDestroy(() => {
 		</div>
 	{:else}
 		<div class="terminal-directory" role="list" aria-label="友链目录">
-			{#each filteredItems as friend, index (friend.siteurl)}
+			{#each filteredItems as friend (friend.siteurl)}
 				<button type="button" class="directory-ticket" role="listitem" onclick={() => openFriend(friend)}>
-					<span class="ticket-index">{String(index + 1).padStart(2, "0")}</span>
-					<span class={`station-marker ${markerClass(friend)}`} aria-hidden="true"></span>
+					<span class="ticket-avatar" aria-hidden="true">
+						<img
+							src={friend.imgurl}
+							alt=""
+							loading="lazy"
+							decoding="async"
+							onerror={handleDirectoryAvatarError}
+						/>
+						<span class="ticket-avatar-fallback" hidden>{initialOf(friend.title)}</span>
+					</span>
 					<span class="ticket-copy"><strong>{friend.title}</strong><small>{friend.desc}</small></span>
-					<ChevronRight size={18} strokeWidth={1.6} aria-hidden="true" />
+					<span class="ticket-link-icon" aria-hidden="true">
+						<ExternalLink size={18} strokeWidth={1.8} aria-hidden="true" />
+					</span>
 				</button>
 			{/each}
 
@@ -1541,16 +1556,17 @@ onDestroy(() => {
 
 	.terminal-directory {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 0.75rem;
 		padding: 0.35rem 0 0.75rem;
 	}
 
 	.directory-ticket {
 		display: grid;
-		grid-template-columns: auto auto minmax(0, 1fr) auto;
+		grid-template-columns: auto minmax(0, 1fr) auto;
 		align-items: center;
 		gap: 0.75rem;
+		min-width: 0;
 		min-height: 5rem;
 		padding: 0.75rem 0.9rem;
 		color: var(--terminal-ink);
@@ -1563,12 +1579,41 @@ onDestroy(() => {
 	}
 
 	.directory-ticket:hover { border-color: var(--terminal-ink); box-shadow: 0.32rem 0.32rem 0 color-mix(in oklab, var(--terminal-ink) 12%, transparent); transform: translateY(-2px); }
-	.ticket-index { color: var(--terminal-muted); font: 700 0.68rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+	.ticket-avatar {
+		display: grid;
+		width: 3rem;
+		height: 3rem;
+		flex-shrink: 0;
+		place-items: center;
+		overflow: hidden;
+		color: var(--terminal-inverse);
+		background: var(--terminal-ink);
+		border: 1.5px solid var(--terminal-ink);
+		border-radius: 50%;
+		font: 800 0.9rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+	}
+	.ticket-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+	.ticket-avatar-fallback { display: grid; width: 100%; height: 100%; place-items: center; }
 	.ticket-copy { display: flex; min-width: 0; flex-direction: column; gap: 0.15rem; }
 	.ticket-copy strong,
 	.ticket-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.ticket-copy strong { font-size: 0.9rem; }
 	.ticket-copy small { color: var(--terminal-muted); font-size: 0.72rem; }
+	.ticket-link-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--terminal-muted);
+		opacity: 0;
+		transform: translateX(-0.2rem);
+		transition: color 180ms ease, opacity 180ms ease, transform 180ms ease;
+	}
+	.directory-ticket:hover .ticket-link-icon,
+	.directory-ticket:focus-visible .ticket-link-icon {
+		color: var(--terminal-ink);
+		opacity: 1;
+		transform: translateX(0);
+	}
 	.directory-empty { grid-column: 1 / -1; padding: 3rem 1rem; color: var(--terminal-muted); border: 1.5px dashed var(--terminal-line); text-align: center; }
 
 	.routes-dialog {
@@ -1732,6 +1777,7 @@ onDestroy(() => {
 		.terminal-view-switch { grid-column: 2; grid-row: 1; }
 		.cabin-info { width: min(66%, 38rem); grid-template-columns: auto minmax(0, 1fr); }
 		.arrival-visit { grid-column: 1 / -1; justify-self: stretch; }
+		.terminal-directory { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
 
 	@media (max-width: 760px) {

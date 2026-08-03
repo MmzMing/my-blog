@@ -5,7 +5,6 @@ interface OutlineHeading {
 	level: OutlineLevel;
 	text: string;
 	element: HTMLElement;
-	path: Partial<Record<OutlineLevel, OutlineHeading>>;
 	absoluteTop: number;
 	sectionEnd: number;
 }
@@ -13,11 +12,14 @@ interface OutlineHeading {
 const READING_OFFSET = 80;
 const MINIMAP_TICK_BUDGET = 48;
 const MAX_TICKS_PER_SECTION = 12;
-const COLLAPSE_DELAY = 250;
+const COLLAPSE_DELAY = 320;
 const MIN_HEADING_MARK_WIDTH = 1.5;
 const MAX_HEADING_MARK_WIDTH = 4;
 const HEADING_MARK_WIDTH_PER_CHARACTER = 0.16;
 const SUMMARY_EDGE_GUTTER = 64;
+const SCROLL_SETTLE_DELAY = 140;
+const BAR_CHARGE_DURATION = 260;
+const BAR_CHARGE_STEP = 14;
 
 function clamp(value: number, minimum: number, maximum: number): number {
 	return Math.min(Math.max(value, minimum), maximum);
@@ -52,6 +54,7 @@ export class ArticleOutlineRailController {
 	private readonly root: HTMLElement;
 	private readonly abortController = new AbortController();
 	private readonly detailPanel: HTMLElement | null;
+	private readonly detailTitleSlots: HTMLElement[];
 	private readonly minimap: HTMLElement | null;
 	private readonly browsePanel: HTMLElement | null;
 	private readonly browseList: HTMLElement | null;
@@ -59,22 +62,31 @@ export class ArticleOutlineRailController {
 	private readonly progressLabel: HTMLElement | null;
 	private article: HTMLElement | null = null;
 	private headings: OutlineHeading[] = [];
+	private railBarsByHeading: HTMLElement[][] = [];
+	private railBarCentersByHeading: number[][] = [];
 	private activeIndex = -1;
 	private activeRailBar: HTMLElement | null = null;
+	private isScrolling = false;
 	private articleStart = 0;
 	private articleEnd = 0;
-	private railStart = 0;
-	private railEnd = 0;
 	private railHeight = 0;
 	private lastProgressPercent = -1;
 	private animationFrame: number | null = null;
 	private measureFrame: number | null = null;
 	private collapseTimer: ReturnType<typeof setTimeout> | null = null;
+	private scrollSettleTimer: ReturnType<typeof setTimeout> | null = null;
+	private chargeTimer: ReturnType<typeof setTimeout> | null = null;
+	private titleUpdateFrame: number | null = null;
+	private pendingTitle: string | null = null;
+	private activeTitleSlot = 0;
 	private resizeObserver: ResizeObserver | null = null;
 
 	constructor(root: HTMLElement) {
 		this.root = root;
 		this.detailPanel = root.querySelector("[data-outline-details]");
+		this.detailTitleSlots = Array.from(
+			root.querySelectorAll<HTMLElement>("[data-outline-detail-title]"),
+		);
 		this.minimap = root.querySelector("[data-outline-minimap]");
 		this.browsePanel = root.querySelector("[data-outline-browse]");
 		this.browseList = root.querySelector("[data-outline-browse-list]");
@@ -97,7 +109,7 @@ export class ArticleOutlineRailController {
 		this.bindInteractions();
 		this.resizeObserver = new ResizeObserver(() => this.scheduleMeasure());
 		this.resizeObserver.observe(this.article);
-		window.addEventListener("scroll", () => this.scheduleUpdate(), {
+		window.addEventListener("scroll", () => this.handleScroll(), {
 			passive: true,
 			signal: this.abortController.signal,
 		});
@@ -118,15 +130,23 @@ export class ArticleOutlineRailController {
 		if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
 		if (this.measureFrame !== null) cancelAnimationFrame(this.measureFrame);
 		if (this.collapseTimer) clearTimeout(this.collapseTimer);
+		if (this.scrollSettleTimer) clearTimeout(this.scrollSettleTimer);
+		if (this.chargeTimer) clearTimeout(this.chargeTimer);
+		if (this.titleUpdateFrame !== null)
+			cancelAnimationFrame(this.titleUpdateFrame);
 		this.animationFrame = null;
 		this.measureFrame = null;
 		this.collapseTimer = null;
+		this.scrollSettleTimer = null;
+		this.chargeTimer = null;
+		this.titleUpdateFrame = null;
+		this.pendingTitle = null;
+		this.isScrolling = false;
 	}
 
 	private collectHeadings(): boolean {
 		if (!this.article) return false;
 
-		const path: Partial<Record<OutlineLevel, OutlineHeading>> = {};
 		this.headings = Array.from(
 			this.article.querySelectorAll<HTMLElement>("h1, h2, h3"),
 		).map((element, index) => {
@@ -139,19 +159,9 @@ export class ArticleOutlineRailController {
 				level,
 				text: getHeadingText(element),
 				element,
-				path: {},
 				absoluteTop: 0,
 				sectionEnd: 0,
 			};
-
-			path[level] = heading;
-			if (level === 1) {
-				delete path[2];
-				delete path[3];
-			} else if (level === 2) {
-				delete path[3];
-			}
-			heading.path = { ...path };
 			return heading;
 		});
 
@@ -180,6 +190,8 @@ export class ArticleOutlineRailController {
 
 		const totalLength = Math.max(1, this.articleEnd - this.articleStart);
 		const fragment = document.createDocumentFragment();
+		const allBars: HTMLElement[] = [];
+		this.railBarsByHeading = [];
 		let rowCount = 0;
 		this.headings.forEach((heading) => {
 			const sectionLength = Math.max(
@@ -205,6 +217,7 @@ export class ArticleOutlineRailController {
 				getHeadingMarkWidth(heading.text),
 			);
 			segment.appendChild(marker);
+			const bars: HTMLElement[] = [marker];
 
 			const bodyTicks = document.createElement("span");
 			bodyTicks.className = "article-outline-rail__body-ticks";
@@ -213,39 +226,60 @@ export class ArticleOutlineRailController {
 				tick.className = "article-outline-rail__body-tick";
 				tick.dataset.outlineLevel = "4";
 				bodyTicks.appendChild(tick);
+				bars.push(tick);
 			}
 			segment.appendChild(bodyTicks);
 			fragment.appendChild(segment);
+			this.railBarsByHeading.push(bars);
+			allBars.push(...bars);
 		});
+		this.assignBarChargeOrder(allBars);
 
 		this.minimap.style.setProperty(
 			"--article-outline-row-count",
 			String(rowCount),
 		);
 		this.minimap.replaceChildren(fragment);
+		this.railBarCentersByHeading = [];
 		this.activeRailBar = null;
+	}
+
+	private assignBarChargeOrder(bars: HTMLElement[]): void {
+		const center = (bars.length - 1) / 2;
+		const order = bars
+			.map((_, index) => index)
+			.sort(
+				(left, right) =>
+					Math.abs(left - center) - Math.abs(right - center) || left - right,
+			);
+
+		order.forEach((barIndex, chargeIndex) => {
+			bars[barIndex]?.style.setProperty(
+				"--article-outline-charge-index",
+				String(chargeIndex),
+			);
+		});
 	}
 
 	private cacheRailGeometry(): void {
 		if (!this.minimap) return;
 
-		const bars = this.minimap.querySelectorAll<HTMLElement>(
-			".article-outline-rail__heading-mark, .article-outline-rail__body-tick",
-		);
-		const firstBar = bars.item(0);
-		const lastBar = bars.item(bars.length - 1);
 		const minimapRect = this.minimap.getBoundingClientRect();
 		this.railHeight = minimapRect.height;
-		if (!firstBar || !lastBar) {
-			this.railStart = 0;
-			this.railEnd = 0;
+		this.railBarCentersByHeading = this.railBarsByHeading.map((bars) =>
+			bars.map((bar) => {
+				const rect = bar.getBoundingClientRect();
+				return rect.top - minimapRect.top + rect.height / 2;
+			}),
+		);
+
+		const firstBarCenter = this.railBarCentersByHeading[0]?.[0];
+		const lastBarCenters =
+			this.railBarCentersByHeading[this.railBarCentersByHeading.length - 1];
+		const lastBarCenter = lastBarCenters?.[lastBarCenters.length - 1];
+		if (firstBarCenter === undefined || lastBarCenter === undefined) {
 			return;
 		}
-
-		const firstRect = firstBar.getBoundingClientRect();
-		const lastRect = lastBar.getBoundingClientRect();
-		this.railStart = firstRect.top - minimapRect.top + firstRect.height / 2;
-		this.railEnd = lastRect.top - minimapRect.top + lastRect.height / 2;
 	}
 
 	private renderBrowseList(): void {
@@ -255,7 +289,6 @@ export class ArticleOutlineRailController {
 		this.headings.forEach((heading) => {
 			const item = document.createElement("a");
 			item.className = "article-outline-rail__browse-item";
-			item.style.borderRadius = "0.5rem";
 			item.dataset.outlineTarget = String(heading.index);
 			item.dataset.outlineLevel = String(heading.level);
 			item.href = heading.element.id
@@ -296,6 +329,34 @@ export class ArticleOutlineRailController {
 		});
 	}
 
+	private handleScroll(): void {
+		if (!this.isScrolling) {
+			this.isScrolling = true;
+			this.root.classList.add("is-scrolling");
+			this.syncDetailAccessibility();
+		}
+
+		if (this.scrollSettleTimer) clearTimeout(this.scrollSettleTimer);
+		this.scrollSettleTimer = setTimeout(
+			() => this.settleScroll(),
+			SCROLL_SETTLE_DELAY,
+		);
+		this.scheduleUpdate();
+	}
+
+	private settleScroll(): void {
+		this.scrollSettleTimer = null;
+		this.update();
+		this.isScrolling = false;
+		this.root.classList.remove("is-scrolling");
+		this.syncDetailAccessibility();
+
+		const activeHeading = this.headings[this.activeIndex];
+		if (!activeHeading) return;
+		this.syncActiveHeading(activeHeading);
+		this.syncActiveRailBar(activeHeading);
+	}
+
 	private scheduleMeasure(): void {
 		if (this.measureFrame !== null) return;
 		this.measureFrame = requestAnimationFrame(() => {
@@ -318,25 +379,15 @@ export class ArticleOutlineRailController {
 		const nextActiveIndex = this.getActiveIndex();
 		if (nextActiveIndex !== this.activeIndex) {
 			this.activeIndex = nextActiveIndex;
-			this.syncActiveHeading(this.headings[nextActiveIndex]);
+			if (!this.isScrolling || this.root.classList.contains("is-expanded")) {
+				this.syncActiveHeading(this.headings[nextActiveIndex]);
+			}
 		}
 		this.syncActiveRailBar(this.headings[nextActiveIndex]);
 	}
 
 	private syncReadingProgress(progress: number): void {
-		const readerCenter =
-			this.railStart + (this.railEnd - this.railStart) * progress;
-		const summaryPosition = clamp(
-			readerCenter,
-			SUMMARY_EDGE_GUTTER,
-			Math.max(SUMMARY_EDGE_GUTTER, this.railHeight - SUMMARY_EDGE_GUTTER),
-		);
-
 		this.root.style.setProperty("--article-outline-progress", String(progress));
-		this.root.style.setProperty(
-			"--article-outline-summary-y",
-			`${summaryPosition}px`,
-		);
 
 		const progressPercent = Math.round(progress * 100);
 		if (progressPercent === this.lastProgressPercent) return;
@@ -348,18 +399,9 @@ export class ArticleOutlineRailController {
 	}
 
 	private syncActiveRailBar(activeHeading: OutlineHeading): void {
-		if (!this.minimap) return;
-		const segment = this.minimap.querySelector<HTMLElement>(
-			`.article-outline-rail__segment[data-outline-index="${activeHeading.index}"]`,
-		);
-		if (!segment) return;
-
-		const bars = Array.from(
-			segment.querySelectorAll<HTMLElement>(
-				".article-outline-rail__heading-mark, .article-outline-rail__body-tick",
-			),
-		);
-		if (!bars.length) return;
+		const bars = this.railBarsByHeading[activeHeading.index];
+		const centers = this.railBarCentersByHeading[activeHeading.index];
+		if (!bars?.length || !centers?.length) return;
 
 		const readingPosition = window.scrollY + READING_OFFSET;
 		const sectionProgress = clamp(
@@ -373,11 +415,30 @@ export class ArticleOutlineRailController {
 			Math.floor(sectionProgress * bars.length),
 		);
 		const nextActiveRailBar = bars[activeBarIndex];
-		if (nextActiveRailBar === this.activeRailBar) return;
+		const activeBarCenter = centers?.[activeBarIndex];
+		if (activeBarCenter === undefined) return;
+
+		if (nextActiveRailBar === this.activeRailBar) {
+			if (!this.isScrolling) this.syncSummaryPosition(activeBarCenter);
+			return;
+		}
 
 		this.activeRailBar?.classList.remove("is-active");
 		nextActiveRailBar.classList.add("is-active");
 		this.activeRailBar = nextActiveRailBar;
+		if (!this.isScrolling) this.syncSummaryPosition(activeBarCenter);
+	}
+
+	private syncSummaryPosition(position: number): void {
+		const summaryPosition = clamp(
+			position,
+			SUMMARY_EDGE_GUTTER,
+			Math.max(SUMMARY_EDGE_GUTTER, this.railHeight - SUMMARY_EDGE_GUTTER),
+		);
+		this.root.style.setProperty(
+			"--article-outline-summary-y",
+			`${summaryPosition}px`,
+		);
 	}
 
 	private getProgress(): number {
@@ -421,24 +482,37 @@ export class ArticleOutlineRailController {
 				if (isActive) item.setAttribute("aria-current", "location");
 				else item.removeAttribute("aria-current");
 			});
+		this.syncDetailTitle(activeHeading.text);
+	}
 
-		([1, 2, 3] as const).forEach((level) => {
-			const line = this.root.querySelector<HTMLElement>(
-				`[data-outline-detail="${level}"]`,
-			);
-			const title = line?.querySelector<HTMLElement>(
-				"[data-outline-detail-title]",
-			);
-			const heading = activeHeading.path[level];
-			if (!line || !title) return;
+	private syncDetailTitle(text: string): void {
+		if (this.detailTitleSlots.length < 2) return;
 
-			line.classList.toggle("is-empty", !heading);
-			line.classList.toggle(
-				"is-active",
-				heading?.index === activeHeading.index,
-			);
-			title.textContent = heading?.text ?? "";
-			title.title = heading?.text ?? "";
+		const currentSlot = this.detailTitleSlots[this.activeTitleSlot];
+		if (currentSlot?.textContent === text && this.pendingTitle === null) return;
+
+		this.pendingTitle = text;
+		if (this.titleUpdateFrame !== null) return;
+
+		this.titleUpdateFrame = requestAnimationFrame(() => {
+			this.titleUpdateFrame = null;
+			const nextTitle = this.pendingTitle;
+			this.pendingTitle = null;
+			if (nextTitle === null) return;
+
+			const currentIndex = this.activeTitleSlot;
+			const nextIndex = currentIndex === 0 ? 1 : 0;
+			const currentSlot = this.detailTitleSlots[currentIndex];
+			const nextSlot = this.detailTitleSlots[nextIndex];
+			if (!currentSlot || !nextSlot) return;
+
+			nextSlot.textContent = nextTitle;
+			nextSlot.title = nextTitle;
+			nextSlot.setAttribute("aria-hidden", "false");
+			currentSlot.setAttribute("aria-hidden", "true");
+			nextSlot.classList.add("is-current");
+			currentSlot.classList.remove("is-current");
+			this.activeTitleSlot = nextIndex;
 		});
 	}
 
@@ -468,17 +542,25 @@ export class ArticleOutlineRailController {
 	private expand(): void {
 		if (this.collapseTimer) clearTimeout(this.collapseTimer);
 		this.collapseTimer = null;
+		this.cancelBarCharge();
 		this.root.classList.add("is-expanded");
-		this.detailPanel?.setAttribute("aria-hidden", "true");
 		this.browsePanel?.setAttribute("aria-hidden", "false");
+		this.syncDetailAccessibility();
+	}
+
+	private syncDetailAccessibility(): void {
+		const hidden =
+			this.isScrolling || this.root.classList.contains("is-expanded");
+		this.detailPanel?.setAttribute("aria-hidden", String(hidden));
 	}
 
 	private scheduleCollapse(): void {
 		if (this.collapseTimer) clearTimeout(this.collapseTimer);
 		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
 			this.root.classList.remove("is-expanded");
-			this.detailPanel?.setAttribute("aria-hidden", "false");
 			this.browsePanel?.setAttribute("aria-hidden", "true");
+			this.cancelBarCharge();
+			this.syncDetailAccessibility();
 			return;
 		}
 		this.collapseTimer = setTimeout(() => {
@@ -487,10 +569,36 @@ export class ArticleOutlineRailController {
 				return;
 			}
 			this.root.classList.remove("is-expanded");
-			this.detailPanel?.setAttribute("aria-hidden", "false");
 			this.browsePanel?.setAttribute("aria-hidden", "true");
+			this.startBarCharge();
+			this.syncDetailAccessibility();
 			this.collapseTimer = null;
 		}, COLLAPSE_DELAY);
+	}
+
+	private startBarCharge(): void {
+		this.cancelBarCharge();
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+		const barCount = this.minimap?.querySelectorAll<HTMLElement>(
+			".article-outline-rail__heading-mark, .article-outline-rail__body-tick",
+		).length;
+		if (!barCount) return;
+
+		this.root.classList.add("is-charging");
+		this.chargeTimer = setTimeout(
+			() => {
+				this.root.classList.remove("is-charging");
+				this.chargeTimer = null;
+			},
+			BAR_CHARGE_DURATION + (barCount - 1) * BAR_CHARGE_STEP,
+		);
+	}
+
+	private cancelBarCharge(): void {
+		if (this.chargeTimer) clearTimeout(this.chargeTimer);
+		this.chargeTimer = null;
+		this.root.classList.remove("is-charging");
 	}
 }
 

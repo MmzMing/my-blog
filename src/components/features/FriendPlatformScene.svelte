@@ -52,6 +52,7 @@ let {
 	onApply,
 }: Props = $props();
 let container: HTMLDivElement;
+let sceneReady = $state(false);
 
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
@@ -1289,8 +1290,14 @@ function cleanup(): void {
 }
 
 onMount(() => {
-	init();
-	animationId = requestAnimationFrame(animate);
+	let initializationFrame = requestAnimationFrame(() => {
+		initializationFrame = requestAnimationFrame(() => {
+			init();
+			sceneReady = true;
+			animationId = requestAnimationFrame(animate);
+		});
+	});
+	return () => cancelAnimationFrame(initializationFrame);
 });
 
 onDestroy(cleanup);
@@ -1306,10 +1313,21 @@ onDestroy(cleanup);
 	onpointerleave={handlePointerLeave}
 	onclick={handleClick}
 	onkeydown={handleSceneKeydown}
-></div>
+>
+	<div
+		class="friend-platform-scene__loading"
+		class:friend-platform-scene__loading--hidden={sceneReady}
+		role="status"
+		aria-live="polite"
+		aria-hidden={sceneReady}
+	>
+		3D友链车站正在加载
+	</div>
+</div>
 
 <style>
 	.friend-platform-scene {
+		position: relative;
 		width: 100%;
 		height: clamp(28rem, 48vw, 38rem);
 		background:
@@ -1318,6 +1336,25 @@ onDestroy(cleanup);
 		cursor: crosshair;
 		touch-action: pan-y;
 	}
+
+	.friend-platform-scene__loading {
+		position: absolute;
+		z-index: 1;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		box-sizing: border-box;
+		padding: 1rem;
+		color: var(--terminal-ink);
+		font: 650 clamp(0.9rem, 1.6vw, 1.1rem) / 1.5 system-ui, sans-serif;
+		letter-spacing: 0.04em;
+		pointer-events: none;
+		user-select: none;
+		opacity: 1;
+		transition: opacity 180ms ease;
+	}
+
+	.friend-platform-scene__loading--hidden { opacity: 0; }
 
 	.friend-platform-scene :global(canvas) {
 		display: block;
@@ -1328,6 +1365,10 @@ onDestroy(cleanup);
 	.friend-platform-scene:focus-visible {
 		outline: 3px solid var(--terminal-ink);
 		outline-offset: 3px;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.friend-platform-scene__loading { transition-duration: 0s; }
 	}
 
 	@media (max-width: 760px) {
