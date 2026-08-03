@@ -12,9 +12,9 @@ draft: false
 
 ---
 
-# 一、通用 OAuth2 授权码流程
+## 一、通用 OAuth2 授权码流程
 
-## 1、流程图
+### 1、流程图
 
 ```mermaid
 sequenceDiagram
@@ -64,7 +64,7 @@ sequenceDiagram
     Frontend->>Frontend: 读取 Cookie 中的 token，跳转首页
 ```
 
-## 2、核心代码结构
+### 2、核心代码结构
 
 | 文件 | 职责 |
 |------|------|
@@ -76,7 +76,7 @@ sequenceDiagram
 | `QQUserInfoStrategy.java` | QQ 策略实现 |
 | `AuthController.java` | 回调入口（`/{platform}/callback`） |
 
-## 3、关键技术点
+### 3、关键技术点
 
 ```
 1. State 防 CSRF：每次生成授权 URL 时随机生成 state，存入 Redis，回调时校验，验证后删除（防重放）
@@ -88,9 +88,9 @@ sequenceDiagram
 
 ---
 
-# 二、GitHub 登录
+## 二、GitHub 登录
 
-## 1、平台特性
+### 1、平台特性
 
 | 配置项 | 值 |
 |--------|-----|
@@ -102,7 +102,7 @@ sequenceDiagram
 | 支持 localhost | 是 |
 | 内网穿透 | 不需要 |
 
-## 2、回调处理流程
+### 2、回调处理流程
 
 ```
 用户授权 → GitHub 302 重定向到 http://localhost:8080/api/auth/github/callback?code=xxx&state=xxx
@@ -125,7 +125,7 @@ sequenceDiagram
     5. 生成 JWT Token，写入 Cookie，302 重定向到前端
 ```
 
-## 3、GitHub 后台配置
+### 3、GitHub 后台配置
 
 **地址**：https://github.com/settings/developers → OAuth Apps → New OAuth App / 编辑已有应用
 
@@ -135,7 +135,7 @@ sequenceDiagram
 | Homepage URL | `http://localhost:8080` | `https://your-domain.com` |
 | Authorization callback URL | `http://localhost:8080/api/auth/github/callback` | `https://your-domain.com/api/auth/github/callback` |
 
-## 4、Nacos 配置
+### 4、Nacos 配置
 
 ```yaml
 # zsk-auth-dev.yml (开发环境)
@@ -159,7 +159,7 @@ security:
       - /api/auth/github/callback
 ```
 
-## 5、注意事项
+### 5、注意事项
 
 ```
 1. GitHub 支持 localhost 回调，开发环境无需内网穿透
@@ -170,9 +170,9 @@ security:
 
 ---
 
-# 三、微信登录（网站应用）
+## 三、微信登录（网站应用）
 
-## 1、平台特性
+### 1、平台特性
 
 | 配置项 | 值 |
 |--------|-----|
@@ -184,7 +184,7 @@ security:
 | 支持 localhost | 授权回调域需填域名，不支持 localhost |
 | 内网穿透 | 开发环境需要（hosts 映射或 frp） |
 
-## 2、回调处理流程
+### 2、回调处理流程
 
 ```
 用户扫码 → 微信 302 重定向到 http://your-domain.com/api/auth/wechat/callback?code=xxx&state=xxx
@@ -205,7 +205,7 @@ security:
     5. 生成 JWT Token，写入 Cookie，302 重定向到前端
 ```
 
-## 3、微信开放平台配置
+### 3、微信开放平台配置
 
 **地址**：https://open.weixin.qq.com/ → 管理中心 → 网站应用 → 创建/编辑应用
 
@@ -216,7 +216,7 @@ security:
 | AppID | wx1234567890abcdef | 生产 AppID |
 | AppSecret | 开发 Secret | 生产 Secret |
 
-## 4、Nacos 配置
+### 4、Nacos 配置
 
 ```yaml
 # zsk-auth-dev.yml (开发环境)
@@ -246,7 +246,7 @@ security:
       - /api/auth/wechat/callback
 ```
 
-## 5、开发环境绕过方案（无域名时）
+### 5、开发环境绕过方案（无域名时）
 
 ```
 方案 A：hosts 映射（推荐）
@@ -263,7 +263,7 @@ security:
 注意：微信网站应用不支持 localhost 作为授权回调域，必须使用域名
 ```
 
-## 6、注意事项
+### 6、注意事项
 
 ```
 1. 微信开放平台需要企业认证才能创建网站应用
@@ -274,9 +274,9 @@ security:
 
 ---
 
-# 四、QQ 登录
+## 四、QQ 登录
 
-## 1、平台特性
+### 1、平台特性
 
 | 配置项 | 值 |
 |--------|-----|
@@ -288,7 +288,7 @@ security:
 | 支持 localhost | 是 |
 | 内网穿透 | 不需要 |
 
-## 2、回调处理流程
+### 2、回调处理流程
 
 ```
 用户授权 → QQ 302 重定向到 http://localhost:8080/api/auth/qq/callback?code=xxx&state=xxx
@@ -316,7 +316,7 @@ security:
     5. 生成 JWT Token，写入 Cookie，302 重定向到前端
 ```
 
-## 3、QQ 互联平台配置
+### 3、QQ 互联平台配置
 
 **地址**：https://connect.qq.com/ → 应用管理 → 创建/编辑网站应用
 
@@ -328,7 +328,7 @@ security:
 | AppID | 100000000 | 生产 AppID |
 | AppKey | 开发 Key | 生产 Key |
 
-## 4、Nacos 配置
+### 4、Nacos 配置
 
 ```yaml
 # zsk-auth-dev.yml (开发环境)
@@ -352,7 +352,7 @@ security:
       - /api/auth/qq/callback
 ```
 
-## 5、注意事项
+### 5、注意事项
 
 ```
 1. QQ 互联支持 localhost 回调
@@ -363,9 +363,9 @@ security:
 
 ---
 
-# 五、多环境配置清单
+## 五、多环境配置清单
 
-## 1、需要配置的地方（完整清单）
+### 1、需要配置的地方（完整清单）
 
 每个第三方平台在切换环境时，需要修改 **4 个地方**：
 
@@ -376,9 +376,9 @@ security:
 | 3 | Gateway 白名单 | zsk-gateway-dev.yml / zsk-gateway-prod.yml | localhost 回调路径 | 生产域名回调路径 |
 | 4 | 前端跳转地址 | Nacos third-party.redirect-url | http://localhost:3000 | https://your-domain.com |
 
-## 2、各平台配置对比表
+### 2、各平台配置对比表
 
-### 2.1 GitHub
+#### 2.1 GitHub
 
 | 配置项 | 开发环境 | 生产环境 |
 |--------|---------|---------|
@@ -389,7 +389,7 @@ security:
 | Nacos third-party.redirect-url | `http://localhost:3000` | `https://your-domain.com` |
 | Gateway 白名单 | `/api/auth/github/callback` | `/api/auth/github/callback` |
 
-### 2.2 微信（网站应用）
+#### 2.2 微信（网站应用）
 
 | 配置项 | 开发环境 | 生产环境 |
 |--------|---------|---------|
@@ -400,7 +400,7 @@ security:
 | Nacos third-party.redirect-url | `http://dev.your-domain.com:3000` | `https://your-domain.com` |
 | Gateway 白名单 | `/api/auth/wechat/callback` | `/api/auth/wechat/callback` |
 
-### 2.3 QQ
+#### 2.3 QQ
 
 | 配置项 | 开发环境 | 生产环境 |
 |--------|---------|---------|
@@ -411,7 +411,7 @@ security:
 | Nacos third-party.redirect-url | `http://localhost:3000` | `https://your-domain.com` |
 | Gateway 白名单 | `/api/auth/qq/callback` | `/api/auth/qq/callback` |
 
-## 3、完整 Nacos 配置模板
+### 3、完整 Nacos 配置模板
 
 ```yaml
 # ============ 开发环境：zsk-auth-dev.yml ============
@@ -451,7 +451,7 @@ third-party:
   redirect-url: https://your-domain.com
 ```
 
-## 4、完整 Gateway 白名单模板
+### 4、完整 Gateway 白名单模板
 
 ```yaml
 # ============ zsk-gateway-dev.yml 或 zsk-gateway-prod.yml ============
@@ -473,7 +473,7 @@ security:
       - /api/auth/magic-link/**
 ```
 
-## 5、生产环境部署检查清单
+### 5、生产环境部署检查清单
 
 ```
 □ GitHub
@@ -508,9 +508,9 @@ security:
 
 ---
 
-# 六、常见问题
+## 六、常见问题
 
-## 1、redirect_uri is not associated with this application
+### 1、redirect_uri is not associated with this application
 
 **原因**：第三方平台后台配置的回调地址与实际请求地址不一致。
 
@@ -520,7 +520,7 @@ security:
 3. 重启 auth 服务使 Nacos 配置生效
 4. 确认 Gateway 路由转发正确（StripPrefix=1 后路径匹配）
 
-## 2、微信开发环境无法使用 localhost
+### 2、微信开发环境无法使用 localhost
 
 **原因**：微信开放平台网站应用不支持 localhost 作为授权回调域。
 
@@ -528,13 +528,13 @@ security:
 - 方案 A：hosts 映射 `127.0.0.1 dev.your-domain.com`，回调域填 `dev.your-domain.com`
 - 方案 B：使用 frp/ngrok 内网穿透，映射到公网域名
 
-## 3、回调后没有跳转到前端
+### 3、回调后没有跳转到前端
 
 **原因**：回调方法返回 JSON 而非重定向。
 
 **解决**：确认回调方法返回 `ResponseEntity<Void>` 并使用 302 重定向（代码中 `handleThirdPartyCallback` 已实现）。
 
-## 4、生产环境是否需要内网穿透
+### 4、生产环境是否需要内网穿透
 
 ```
 答案：不需要。
@@ -545,7 +545,7 @@ OAuth 回调是用户浏览器自己在跳转，不是第三方服务器访问�
 - 微信：需要域名（可用 hosts 映射），开发不需要穿透，生产用正式域名
 ```
 
-## 5、不同平台用户的用户名会冲突吗
+### 5、不同平台用户的用户名会冲突吗
 
 ```
 答案：不会。
@@ -561,9 +561,9 @@ OAuth 回调是用户浏览器自己在跳转，不是第三方服务器访问�
 
 ---
 
-# 七、前端对接说明
+## 七、前端对接说明
 
-## 1、前端发起登录
+### 1、前端发起登录
 
 ```javascript
 // 1. 获取授权 URL
@@ -574,7 +574,7 @@ const { data: authUrl } = await response.json()
 window.location.href = authUrl
 ```
 
-## 2、前端接收回调
+### 2、前端接收回调
 
 ```javascript
 // 用户授权后，第三方平台 302 重定向到后端回调地址
@@ -595,7 +595,7 @@ if (token) {
 }
 ```
 
-## 3、后续请求携带 Token
+### 3、后续请求携带 Token
 
 ```javascript
 // 方式 1：从 localStorage 读取
@@ -610,9 +610,9 @@ fetch('/api/system/user/info', {
 
 ---
 
-# 八、数据库相关
+## 八、数据库相关
 
-## 1、用户表第三方登录字段
+### 1、用户表第三方登录字段
 
 用户表 `sys_user` 需要以下字段支持第三方登录：
 
@@ -621,7 +621,7 @@ fetch('/api/system/user/info', {
 | `third_party_type` | VARCHAR(20) | 第三方平台类型：github/wechat/qq |
 | `third_party_id` | VARCHAR(100) | 第三方平台用户唯一标识 |
 
-## 2、查询逻辑
+### 2、查询逻辑
 
 ```sql
 -- 按第三方 ID 查询用户
@@ -632,7 +632,7 @@ WHERE third_party_type = 'github'
 
 ---
 
-# 九、代码文件清单
+## 九、代码文件清单
 
 | 文件路径 | 说明 |
 |---------|------|

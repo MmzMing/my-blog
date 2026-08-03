@@ -12,9 +12,9 @@ draft: false
 
 ---
 
-# 一、背景与问题
+## 一、背景与问题
 
-## 1、当前系统现状
+### 1、当前系统现状
 
 ZSK-Cloud 当前采用单 Access Token 方案：
 
@@ -33,7 +33,7 @@ ZSK-Cloud 当前采用单 Access Token 方案：
 | 跨服务共享鉴权信息 | 各业务服务需重复查询用户权限 | P1 |
 | 移动端 / App 集成困难 | Cookie 机制对非浏览器客户端不友好 | P2 |
 
-## 2、目标
+### 2、目标
 
 本次方案目标：
 
@@ -55,9 +55,9 @@ ZSK-Cloud 当前采用单 Access Token 方案：
 
 ---
 
-# 二、核心设计
+## 二、核心设计
 
-## 1、双 Token 分层存储
+### 1、双 Token 分层存储
 
 [配图：ZSK-Cloud Token 分层存储架构图]
 
@@ -105,7 +105,7 @@ flowchart TD
 - Refresh Token 长有效期（7 d）减少用户重新登录频率。
 - Refresh Token 仅用于换取 Access Token，不能直接访问业务 API。
 
-## 2、RS256 非对称签名
+### 2、RS256 非对称签名
 
 [配图：RS256 私钥签名、公钥验证流程]
 
@@ -120,7 +120,7 @@ flowchart LR
 - 网关与业务服务仅持有公钥，本地即可验证签名，无需调用认证服务。
 - 私钥泄露可造成全局伪造风险，需通过密钥管理系统（KMS / Vault）存储，禁止硬编码。
 
-## 3、Redis 白名单
+### 3、Redis 白名单
 
 纯 JWT 的缺陷是“签发后无法撤回”。本方案通过 Redis Set 维护 Token 白名单：
 
@@ -132,9 +132,9 @@ flowchart LR
 
 ---
 
-# 三、技术选型
+## 三、技术选型
 
-## 1、Session vs JWT
+### 1、Session vs JWT
 
 | 维度 | Session | JWT | 胜出方 |
 |------|---------|-----|--------|
@@ -149,7 +149,7 @@ flowchart LR
 
 ZSK-Cloud 基于 Spring Cloud 微服务，网关与多个业务服务独立部署。JWT 使各服务无需共享 Session Store，网关解析 Token 后通过 Header 注入用户信息，业务服务无状态运行。
 
-## 2、前端存储对比
+### 2、前端存储对比
 
 | 维度 | Cookie (HttpOnly) | localStorage | Pinia (内存) |
 |------|-------------------|-------------|-------------|
@@ -167,7 +167,7 @@ ZSK-Cloud 基于 Spring Cloud 微服务，网关与多个业务服务独立部�
 - Pinia 负责持有用户状态：响应式驱动 UI，页面刷新后通过 `/auth/user-info` 重新获取。
 - localStorage 仅用于非敏感偏好设置（主题、语言、布局）。
 
-## 3、核心取舍
+### 3、核心取舍
 
 **选择 Cookie 而非 localStorage 存储 Token 的取舍**：
 
@@ -181,9 +181,9 @@ ZSK-Cloud 基于 Spring Cloud 微服务，网关与多个业务服务独立部�
 
 ---
 
-# 四、详细实现
+## 四、详细实现
 
-## 1、服务端：Token 签发
+### 1、服务端：Token 签发
 
 ```java
 @Override
@@ -245,7 +245,7 @@ JWT Claims 定义：
 | `nick_name` | 是 | 否 | 用户昵称 |
 | `token_type` | `access` | `refresh` | 区分 Token 类型，防止 Refresh Token 被用于访问 API |
 
-## 2、服务端：Token 刷新
+### 2、服务端：Token 刷新
 
 ```java
 @Override
@@ -295,9 +295,9 @@ public RefreshResponse refreshAccessToken(String refreshToken) {
 }
 ```
 
-## 3、服务端：退出与吊销
+### 3、服务端：退出与吊销
 
-### 3.1 单设备退出
+#### 3.1 单设备退出
 
 ```java
 @Override
@@ -336,7 +336,7 @@ public void logout(HttpServletRequest request) {
 }
 ```
 
-### 3.2 密码修改 / 重置后全局吊销
+#### 3.2 密码修改 / 重置后全局吊销
 
 ```java
 @Override
@@ -348,7 +348,7 @@ public void revokeAllTokens(Long userId) {
 }
 ```
 
-## 4、网关：Token 校验
+### 4、网关：Token 校验
 
 ```java
 private String getToken(ServerHttpRequest request) {
@@ -403,7 +403,7 @@ public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
 }
 ```
 
-## 5、前端：Pinia 状态管理
+### 5、前端：Pinia 状态管理
 
 ```typescript
 import { defineStore } from "pinia";
@@ -468,7 +468,7 @@ export const useUserStore = defineStore("user", () => {
 });
 ```
 
-## 6、前端：Axios 拦截器
+### 6、前端：Axios 拦截器
 
 ```typescript
 import axios, { type InternalAxiosRequestConfig } from "axios";
@@ -533,7 +533,7 @@ api.interceptors.response.use(
 );
 ```
 
-## 7、Redis 存储结构
+### 7、Redis 存储结构
 
 | Key | 类型 | 说明 | TTL |
 |-----|------|------|-----|
@@ -550,9 +550,9 @@ Key 命名规范说明：
 
 ---
 
-# 五、安全设计
+## 五、安全设计
 
-## 1、Cookie 安全属性
+### 1、Cookie 安全属性
 
 Cookie 下发时必须同时设置以下属性：
 
@@ -570,7 +570,7 @@ Cookie 下发时必须同时设置以下属性：
 
 ZSK-Cloud 默认使用 `Lax`，后台管理类高敏感场景可单独配置为 `Strict`。
 
-## 2、纵深防御体系
+### 2、纵深防御体系
 
 [配图：五层纵深防御体系]
 
@@ -582,7 +582,7 @@ ZSK-Cloud 默认使用 `Lax`，后台管理类高敏感场景可单独配置为 
 | 第 4 层：行为监控 | 即使攻击者成功使用，也能发现 | 异地登录告警、并发使用检测、审计日志 |
 | 第 5 层：应急响应 | 发现异常后快速止损 | 单设备踢出、全局吊销、用户自助安全中心 |
 
-## 3、多设备登录管理
+### 3、多设备登录管理
 
 单个用户最多允许 5 个设备同时持有 Refresh Token。超过限制时，淘汰最早登录的设备：
 
@@ -613,7 +613,7 @@ key: zsk:login:refresh:{userId} → ZSet
 
 新增设备时，若 `ZCARD >= 5`，则 `ZREMRANGEBYRANK key 0 0` 删除最旧的设备。
 
-## 4、安全事件响应
+### 4、安全事件响应
 
 | 触发场景 | 响应动作 | 用户体验 |
 |----------|----------|----------|
@@ -625,9 +625,9 @@ key: zsk:login:refresh:{userId} → ZSet
 
 ---
 
-# 六、配置示例
+## 六、配置示例
 
-## 1、Gateway CORS 配置
+### 1、Gateway CORS 配置
 
 跨域场景下，Cookie 下发需要服务端显式允许凭证：
 
@@ -647,7 +647,7 @@ public CorsWebFilter corsWebFilter() {
 }
 ```
 
-## 2、Nginx 反向代理
+### 2、Nginx 反向代理
 
 若网关前部署 Nginx，需确保以下 Header 正确透传：
 
@@ -670,7 +670,7 @@ server {
 }
 ```
 
-## 3、Cookie 构建工具
+### 3、Cookie 构建工具
 
 ```java
 private Cookie buildCookie(String name, String value, int maxAge,
@@ -688,9 +688,9 @@ private Cookie buildCookie(String name, String value, int maxAge,
 
 ---
 
-# 七、迁移路径
+## 七、迁移路径
 
-## 1、当前状态与目标状态
+### 1、当前状态与目标状态
 
 | 维度 | 当前状态 | 目标状态 |
 |------|----------|----------|
@@ -701,7 +701,7 @@ private Cookie buildCookie(String name, String value, int maxAge,
 | 前端存储 | 不统一 | Cookie + Pinia |
 | 吊销能力 | 单设备退出 | 单设备退出 + 全局吊销 |
 
-## 2、迁移步骤
+### 2、迁移步骤
 
 **Phase 1：后端双 Token 改造**
 
@@ -740,9 +740,9 @@ private Cookie buildCookie(String name, String value, int maxAge,
 
 ---
 
-# 八、性能调优
+## 八、性能调优
 
-## 1、Redis 性能
+### 1、Redis 性能
 
 每次请求需执行一次 `SISMEMBER`，复杂度为 O(1)。以单机 Redis 为例，单节点 QPS 可达 50,000+，不会成为瓶颈。
 
@@ -752,7 +752,7 @@ private Cookie buildCookie(String name, String value, int maxAge,
 2. **Pipeline**：批量请求场景下使用 Pipeline 减少 RTT。
 3. **本地缓存**：网关可对 Token 解析结果做短期本地缓存（如 Caffeine，TTL 5 min），避免重复验签；但白名单校验必须命中 Redis。
 
-## 2、网关性能
+### 2、网关性能
 
 JWT 验签是 CPU 密集型操作。建议：
 
@@ -760,7 +760,7 @@ JWT 验签是 CPU 密集型操作。建议：
 2. 公钥缓存到 JVM 内存，启动时从配置中心加载，避免每次验签都读取文件。
 3. 网关层面跳过静态资源、登录 / 刷新 / 健康检查等白名单路径。
 
-## 3、前端体验
+### 3、前端体验
 
 1. **并发刷新控制**：通过 `isRefreshing` 标志 + 请求队列，避免多个 401 同时触发多次 `/auth/refresh`。
 2. **预刷新策略**：在 Access Token 过期前 1–2 min 主动调用刷新接口，减少用户操作被 401 中断的概率。
@@ -768,9 +768,9 @@ JWT 验签是 CPU 密集型操作。建议：
 
 ---
 
-# 九、常见问题
+## 九、常见问题
 
-## 1、Q1：HttpOnly Cookie 是否完全防御 XSS？
+### 1、Q1：HttpOnly Cookie 是否完全防御 XSS？
 
 HttpOnly 阻断 JavaScript 读取 Cookie，但 XSS 仍可发起已认证请求（Cookie 会自动携带）。因此需配合：
 
@@ -778,23 +778,23 @@ HttpOnly 阻断 JavaScript 读取 Cookie，但 XSS 仍可发起已认证请求�
 - 业务接口对敏感操作增加二次验证（短信 / 邮箱 / 支付密码）。
 - 输出编码与 CSP 策略从根源上减少 XSS 漏洞。
 
-## 2、Q2：Cookie 4 KB 限制是否足够？
+### 2、Q2：Cookie 4 KB 限制是否足够？
 
 RS256 签名的 JWT 通常在 500–800 B，远小于 4 KB。若 Claims 过多导致超限，应精简 Claims，禁止在 JWT 中存放角色 / 权限列表。
 
-## 3、Q3：为什么不在 JWT Claims 中存放角色和权限？
+### 3、Q3：为什么不在 JWT Claims 中存放角色和权限？
 
 1. **Token 体积**：角色 / 权限列表可能显著增加 JWT 长度。
 2. **实时性**：角色 / 权限变更后，旧 Token 仍携带旧权限，造成权限漂移。
 3. **方案选择**：角色 / 权限存入 Redis，网关读取后通过 Header 注入下游服务，变更即时生效。
 
-## 4、Q4：Refresh Token 被窃取后如何应对？
+### 4、Q4：Refresh Token 被窃取后如何应对？
 
 - Refresh Token 存在 HttpOnly Cookie 中，XSS 无法直接窃取。
 - 若通过中间人 / 恶意扩展泄露，影响有限：Refresh Token 只能换取 Access Token。
 - 增强方案：绑定设备指纹 + Refresh Token 一次性轮换，异常使用时触发全局吊销。
 
-## 5、Q5：跨域场景下 Cookie 为何不生效？
+### 5、Q5：跨域场景下 Cookie 为何不生效？
 
 常见原因：
 
@@ -803,7 +803,7 @@ RS256 签名的 JWT 通常在 500–800 B，远小于 4 KB。若 Claims 过多�
 3. 前端 Axios 未设置 `withCredentials: true`。
 4. Cookie 的 `Domain` 或 `Path` 与请求路径不匹配。
 
-## 6、Q6：多标签页如何同步登录状态？
+### 6、Q6：多标签页如何同步登录状态？
 
 Pinia 状态仅存于内存，各标签页独立。推荐方案：
 
@@ -811,7 +811,7 @@ Pinia 状态仅存于内存，各标签页独立。推荐方案：
 2. 其他标签页收到消息后刷新页面或重新获取用户信息。
 3. 避免将 Token 放入 localStorage 以换取多标签页同步。
 
-## 7、Q7：移动端 / 原生 App 如何接入？
+### 7、Q7：移动端 / 原生 App 如何接入？
 
 原生 App 无法使用浏览器 Cookie 机制，推荐方案：
 
@@ -821,7 +821,7 @@ Pinia 状态仅存于内存，各标签页独立。推荐方案：
 
 ---
 
-# 十、总结
+## 十、总结
 
 本方案将 ZSK-Cloud 的认证体系从单 Token + Response Body 演进为 Access Token + Refresh Token 双令牌 + HttpOnly Cookie：
 
@@ -838,7 +838,7 @@ Pinia 状态仅存于内存，各标签页独立。推荐方案：
 
 ---
 
-# 十一、参考资料
+## 十一、参考资料
 
 - [RFC 7519: JSON Web Token (JWT)](https://tools.ietf.org/html/rfc7519)
 - [RFC 6749: OAuth 2.0 Authorization Framework](https://tools.ietf.org/html/rfc6749)

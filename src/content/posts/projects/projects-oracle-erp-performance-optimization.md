@@ -10,7 +10,7 @@ draft: false
 
 ---
 
-# 一、背景
+## 一、背景
 
 DBA 对 MRP 相关表执行了 SHRINK 操作：
 
@@ -26,9 +26,9 @@ ALTER TABLE xxxxx DISABLE ROW MOVEMENT;      -- 禁用行移动保护 ROWID
 
 ---
 
-# 二、根本原因：聚簇因子（Clustering Factor）恶化
+## 二、根本原因：聚簇因子（Clustering Factor）恶化
 
-## 1、什么是聚簇因子
+### 1、什么是聚簇因子
 
 聚簇因子衡量**索引键值顺序**与**表物理行存储顺序**的吻合程度。
 
@@ -39,18 +39,18 @@ ALTER TABLE xxxxx DISABLE ROW MOVEMENT;      -- 禁用行移动保护 ROWID
 
 记忆规则：**索引范围扫描 + 扫描行数多 + CF 大 → 需要访问的块越多 → 越慢**。
 
-## 2、SHRINK 为什么会恶化 CF
+### 2、SHRINK 为什么会恶化 CF
 
 SHRINK 在压缩数据时会物理移动行（ROWID 改变），导致行的存储顺序与索引键值顺序不再对应。原本顺序读 2 个块，移动后每行都可能落在不同块，索引范围扫描变成随机跳块读，CR 暴增。
 
-## 3、恶化后的等待事件
+### 3、恶化后的等待事件
 
 | 等待事件 | 场景 | 原因 |
 |---|---|---|
 | `latch cache buffer chain` | 单节点 / RAC | 随机块访问过多，Buffer Get 过高，latch 成为瓶颈 |
 | `GC buffer busy` | RAC 集群 | 跨节点传输散乱数据块，Global Cache 争用 |
 
-## 4、聚簇因子检测
+### 4、聚簇因子检测
 
 ```sql
 -- 先收集统计信息
@@ -75,9 +75,9 @@ SELECT *
 
 ---
 
-# 三、分析方法
+## 三、分析方法
 
-## 1、工具链
+### 1、工具链
 
 | 工具 | 用途 |
 |---|---|
@@ -86,7 +86,7 @@ SELECT *
 | SQL 执行计划 | 确认访问路径（INDEX RANGE SCAN、FULL SCAN 等）|
 | `v$session_wait` | 实时等待事件观察 |
 
-## 2、关键指标
+### 2、关键指标
 
 | 指标 | 含义 |
 |---|---|
@@ -95,7 +95,7 @@ SELECT *
 | `elapsed` | SQL 总耗时 |
 | `executions` | 执行次数，高频低耗的 SQL 累计影响同样不可忽视 |
 
-## 3、定位流程
+### 3、定位流程
 
 ```
 AWR Top Wait Events
@@ -109,9 +109,9 @@ AWR Top Wait Events
 
 ---
 
-# 四、优化方案
+## 四、优化方案
 
-## 1、在线表重定义（降低聚簇因子）
+### 1、在线表重定义（降低聚簇因子）
 
 **核心原理：** 按特定索引键列顺序重建表的物理存储顺序，等效于：
 
@@ -123,7 +123,7 @@ CREATE TABLE new_table AS SELECT * FROM old_table ORDER BY <目标索引列>;
 
 ---
 
-### 1.1 BOM_COMPONENTS_B — 优化等级：🔴 高
+#### 1.1 BOM_COMPONENTS_B — 优化等级：🔴 高
 
 **问题定位：**
 
@@ -153,7 +153,7 @@ INDEX RANGE SCAN BOM_COMPONENTS_B_N2 (cr=89869 pr=0 pw=0 time=320951 us cost=2 c
 
 ---
 
-### 1.2 BOM_STRUCTURES_B — 优化等级：🔴 高
+#### 1.2 BOM_STRUCTURES_B — 优化等级：🔴 高
 
 **问题定位：**
 
@@ -170,7 +170,7 @@ INDEX RANGE SCAN BOM_STRUCTURES_B_N2 (cr=9336 pr=0 pw=0 time=57158 us cost=2 car
 
 ---
 
-### 1.3 MRP_SCHEDULE_DATES — 优化等级：🟡 低
+#### 1.3 MRP_SCHEDULE_DATES — 优化等级：🟡 低
 
 ```
 INDEX RANGE SCAN MRP_SCHEDULE_DATES_N3 (cr=2300 pr=45 time=291062 us)
@@ -183,7 +183,7 @@ INDEX RANGE SCAN MRP_SCHEDULE_DATES_N3 (cr=5598 pr=0  time=486020 us)
 
 ---
 
-### 1.4 MRP_SOURCING_HISTORY — 优化等级：🟡 低
+#### 1.4 MRP_SOURCING_HISTORY — 优化等级：🟡 低
 
 ```
 INDEX RANGE SCAN MRP_SOURCING_HISTORY_N1 (cr=3 pr=0 time=17 us cost=3 card=1)
@@ -193,7 +193,7 @@ INDEX RANGE SCAN MRP_SOURCING_HISTORY_N1 (cr=3 pr=0 time=17 us cost=3 card=1)
 
 ---
 
-### 1.5 MRP_SYSTEM_ITEMS — 优化等级：🔴 高
+#### 1.5 MRP_SYSTEM_ITEMS — 优化等级：🔴 高
 
 ```
 INDEX RANGE SCAN MRP_SYSTEM_ITEMS_N1 (cr=2684 pr=0 time=22149 us cost=71 card=14577)
@@ -206,7 +206,7 @@ INDEX RANGE SCAN MRP_SYSTEM_ITEMS_N1 (cr=2684 pr=0 time=22149 us cost=71 card=14
 
 ---
 
-### 1.6 MTL_ITEM_REVISIONS_B — 优化等级：⚫ 非常低
+#### 1.6 MTL_ITEM_REVISIONS_B — 优化等级：⚫ 非常低
 
 ```
 INDEX RANGE SCAN MTL_ITEM_REVISIONS_B_N1 (cr=9773142 pr=0 time=10366045 us cost=3 card=1)
@@ -217,7 +217,7 @@ INDEX RANGE SCAN MTL_ITEM_REVISIONS_B_N1 (cr=9773142 pr=0 time=10366045 us cost=
 
 ---
 
-### 1.7 MTL_ITEM_REVISIONS_TL — 优化等级：🔴 高
+#### 1.7 MTL_ITEM_REVISIONS_TL — 优化等级：🔴 高
 
 ```
 INDEX UNIQUE SCAN MTL_ITEM_REVISIONS_TL_U1 (cr=7279966 pr=0 time=7849002 us cost=1 card=1)
@@ -230,7 +230,7 @@ INDEX UNIQUE SCAN MTL_ITEM_REVISIONS_TL_U1 (cr=7279966 pr=0 time=7849002 us cost
 
 ---
 
-### 1.8 MTL_SYSTEM_ITEMS_B — 优化等级：🟡 低
+#### 1.8 MTL_SYSTEM_ITEMS_B — 优化等级：🟡 低
 
 ```
 INDEX UNIQUE SCAN MTL_SYSTEM_ITEMS_B_U1 (cr=485300 pr=0 time=333503 us cost=2 card=1)
@@ -241,7 +241,7 @@ INDEX UNIQUE SCAN MTL_SYSTEM_ITEMS_B_U1 (cr=485300 pr=0 time=333503 us cost=2 ca
 
 ---
 
-### 1.9 RCV_SHIPMENT_LINES — 优化等级：⚫ 非常低
+#### 1.9 RCV_SHIPMENT_LINES — 优化等级：⚫ 非常低
 
 ```
 INDEX RANGE SCAN RCV_SHIPMENT_LINES_N1 (cr=4 pr=0 time=13 us cost=3 card=71)
@@ -252,9 +252,9 @@ INDEX RANGE SCAN RCV_SHIPMENT_LINES_N1 (cr=4 pr=0 time=13 us cost=3 card=71)
 
 ---
 
-## 2、修改索引
+### 2、修改索引
 
-### 2.1 RCV_TRANSACTIONS 添加新索引
+#### 2.1 RCV_TRANSACTIONS 添加新索引
 
 **高频关联 SQL：**
 
@@ -295,7 +295,7 @@ Fetch    16309   23.44     27.19     46  12044152        0       0
 
 ---
 
-## 3、修改存储参数（MRP_SOURCING_HISTORY）
+### 3、修改存储参数（MRP_SOURCING_HISTORY）
 
 **背景：** mrp_get_sourcing_history 存储过程执行 16,309 次，每次为自治事务，包含频繁的增删操作。
 
@@ -318,7 +318,7 @@ ALTER INDEX MRP.MRP_SOURCING_HISTORY_N1 INITRANS 20;    -- 原 11
 
 ---
 
-## 4、核心表缓存至 Keep Pool
+### 4、核心表缓存至 Keep Pool
 
 **操作：** 将 2 个核心高频全表扫描的表（合计约 1.2 GB）固定缓存至 Keep Buffer Pool（保留池）。
 
@@ -333,9 +333,9 @@ ALTER INDEX MRP.MRP_SOURCING_HISTORY_N1 INITRANS 20;    -- 原 11
 
 ---
 
-# 五、深度分析
+## 五、深度分析
 
-## 1、MRP_SCHEDULE_DATES 频繁增删导致聚簇持续退化
+### 1、MRP_SCHEDULE_DATES 频繁增删导致聚簇持续退化
 
 **问题现象：** 每次 MRP 排产对 MRP_SCHEDULE_DATES 执行大批量 DELETE + INSERT（schedule_level=3 数据全量删除重建），每批次限 75,000 行循环执行。
 
@@ -382,7 +382,7 @@ SELECT inventory_item_id, reference_schedule_id, organization_id,
 
 ---
 
-## 2、SQL 高频执行累计消耗大
+### 2、SQL 高频执行累计消耗大
 
 **相关 SQL：**
 
@@ -437,7 +437,7 @@ CREATE INDEX PO_HEADERS_ALL_FN1 ON PO_HEADERS_ALL (NVL(VENDOR_SITE_ID, -99), VEN
 
 ---
 
-## 3、自治事务频繁提交导致 log file sync 等待
+### 3、自治事务频繁提交导致 log file sync 等待
 
 **统计信息：**
 
@@ -481,7 +481,7 @@ Execute  16309    30.16     34.79     46   12120936    166836    16309
 
 ---
 
-## 4、视图替代基表导致全表扫描
+### 4、视图替代基表导致全表扫描
 
 **问题 SQL（执行一次耗时 57 秒）：**
 
@@ -531,7 +531,7 @@ Fetch    1477     54.64     57.21    30019   26034502     28    147556
 
 ---
 
-# 六、优化效果汇总
+## 六、优化效果汇总
 
 | 优化手段 | 涉及对象 | 优化等级 | 状态 | 核心收益 |
 |---|---|:---:|:---:|---|
@@ -551,11 +551,11 @@ Fetch    1477     54.64     57.21    30019   26034502     28    147556
 
 ---
 
-# 七、MRP 性能优化扩展框架
+## 七、MRP 性能优化扩展框架
 
 基于 Oracle Support 官方调优指南（Doc 100956.1 / 100964.1），结合本次优化实践，整理完整优化框架如下：
 
-## 1、数据库基础资源层
+### 1、数据库基础资源层
 
 | 检查项 | 说明 | 本次涉及 |
 |---|---|:---:|
@@ -566,7 +566,7 @@ Fetch    1477     54.64     57.21    30019   26034502     28    147556
 | SSD vs 机械硬盘 | SSD 无寻道延迟，适合随机 I/O 密集场景 | — |
 | PGA 排序区 | 多趟排序（`sort disk`）表明 PGA 不足，可提高 `PGA_AGGREGATE_TARGET` | — |
 
-## 2、缓存与共享池层
+### 2、缓存与共享池层
 
 | 检查项 | 说明 | 本次涉及 |
 |---|---|:---:|
@@ -577,7 +577,7 @@ Fetch    1477     54.64     57.21    30019   26034502     28    147556
 | 数据字典缓存命中率 | `V$ROWCACHE` 中 GETS/MISSES 比 | — |
 | DBWR 进程数 | 脏块写入速度跟不上时增加 `DB_WRITER_PROCESSES` | — |
 
-## 3、索引与表设计层
+### 3、索引与表设计层
 
 | 检查项 | 说明 | 本次涉及 |
 |---|---|:---:|
@@ -588,7 +588,7 @@ Fetch    1477     54.64     57.21    30019   26034502     28    147556
 | 列组统计信息 | 多列联合过滤时，单列统计不准，需创建列组统计 | — |
 | 高水位（HWM） | 有全表扫描时需关注；无全表扫描则影响有限 | ✅（已通过重定义降低）|
 
-## 4、SQL 执行计划层
+### 4、SQL 执行计划层
 
 | 检查项 | 说明 | 本次涉及 |
 |---|---|:---:|
@@ -598,7 +598,7 @@ Fetch    1477     54.64     57.21    30019   26034502     28    147556
 | 相关子查询转换 | 相关子查询往往可改写为 JOIN 提升效率 | — |
 | 执行次数 × 单次耗时 | 高频低耗 SQL 累计影响同样不可忽视 | ✅ |
 
-## 5、并发与事务层
+### 5、并发与事务层
 
 | 检查项 | 说明 | 本次涉及 |
 |---|---|:---:|
@@ -607,7 +607,7 @@ Fetch    1477     54.64     57.21    30019   26034502     28    147556
 | RAC GC 等待 | 跨节点数据块传输开销 | ✅ |
 | 锁争用 | 行锁、表锁分析 | — |
 
-## 6、应用配置层
+### 6、应用配置层
 
 | 检查项 | 说明 | 本次涉及 |
 |---|---|:---:|
@@ -618,13 +618,13 @@ Fetch    1477     54.64     57.21    30019   26034502     28    147556
 
 ---
 
-# 八、总结
+## 八、总结
 
-## 1、项目一句话定位
+### 1、项目一句话定位
 
 Oracle EBS MRP 核心排产链路性能优化，从 50 分钟降至可接受范围，核心手段是通过 Trace/AWR 定位根因后综合运用表重定义、索引优化、Redo 调优和 Keep Pool。
 
-## 2、逻辑链（这是整个项目的叙事骨架）
+### 2、逻辑链（这是整个项目的叙事骨架）
 
 ```
 DBA 执行 SHRINK
@@ -638,7 +638,7 @@ DBA 执行 SHRINK
 
 这条链讲清楚了，整个项目的技术深度就到位了。面试时不管从哪个环节问，都能顺着链条向前和向后延伸。
 
-## 3、几个值得强调的细节
+### 3、几个值得强调的细节
 
 **重定义为什么按主键排序而不是按业务索引排序。** 按业务索引排序只优化那一个索引的 CF，其他索引会变差；按主键排序是恢复数据自然写入状态，是全局最优平衡。
 
@@ -652,7 +652,7 @@ DBA 执行 SHRINK
 
 ---
 
-# 九、参考资料
+## 九、参考资料
 
 | 文档 | 说明 |
 |---|---|

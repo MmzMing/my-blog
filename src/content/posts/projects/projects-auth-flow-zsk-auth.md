@@ -11,7 +11,7 @@ draft: false
 详细代码地址[zsk-cloud](https://github.com/MmzMing/zsk-cloud)
 主要实现：滑块验证码（防刷） -> RSA 加密传输（防窃听） -> BCrypt 哈希存储（防拖库） -> 邮箱验证码（身份核验）
 
-# 一、流程图（不包含异常处理）
+## 一、流程图（不包含异常处理）
 ```mermaid
 sequenceDiagram
     participant User as 用户
@@ -58,7 +58,7 @@ sequenceDiagram
         Auth-->>Frontend: 生成 JWT Token(携带用户信息、权限等)
     end
 ```
-# 二、流程图 (包含异常处理版)
+## 二、流程图 (包含异常处理版)
 ```mermaid
 sequenceDiagram
     participant User as 用户
@@ -173,7 +173,7 @@ sequenceDiagram
         end
     end
 ```
-# 三、技术栈 (Tech Stack)
+## 三、技术栈 (Tech Stack)
 
 本模块基于 Spring Cloud Alibaba 微服务架构，核心技术组件如下：
 
@@ -248,7 +248,7 @@ sequenceDiagram
         </dependency>
     </dependencies>
 ```
-# 四、核心类说明
+## 四、核心类说明
 
 | 类名 | 路径 | 说明 |
 | :--- | :--- | :--- |
@@ -263,9 +263,9 @@ sequenceDiagram
 
 ---
 
-# 五、滑块验证码流程 (Slider Captcha)
+## 五、滑块验证码流程 (Slider Captcha)
 
-## 1、流程概述
+### 1、流程概述
 滑块验证码用于人机识别，防止恶意刷接口。
 1.  **生成验证码 (`GET /captcha`)**:
     *   生成随机背景图和拼图块。
@@ -278,7 +278,7 @@ sequenceDiagram
     *   验证通过后，生成 `verifyToken` 存入 Redis (Key: `captcha_verified:{token}`)，有效期 5 分钟。
     *   返回 `verifyToken`，后续发送短信/邮件验证码时需携带此 Token。
 
-## 2、核心代码
+### 2、核心代码
 
 **响应对象：CaptchaResponse.java**
 ```java
@@ -347,9 +347,9 @@ public String validateCaptcha(String uuid, String code) {
 
 ---
 
-# 六、邮箱验证码流程 (Email Verification)
+## 六、邮箱验证码流程 (Email Verification)
 
-## 1、流程概述
+### 1、流程概述
 用于注册、登录或找回密码时的身份验证。
 1.  **发送验证码 (`POST /email/code`)**:
     *   **前置校验**：必须携带 `captchaVerification` (滑块验证通过凭证)。
@@ -358,7 +358,7 @@ public String validateCaptcha(String uuid, String code) {
     2.  **业务校验 (内部调用)**:
     *   在注册或登录接口中，调用 `emailService.validateEmailCode` 校验用户输入的验证码是否匹配且未过期。
 
-## 2、核心代码
+### 2、核心代码
 
 **发送入口：AuthController.java**
 ```java
@@ -417,9 +417,9 @@ public void validateEmailCode(String email, String code) {
 
 ---
 
-# 七、注册流程 (Register)
+## 七、注册流程 (Register)
 
-## 1、流程概述
+### 1、流程概述
 1.  **接收请求**：`AuthController` 接收 `POST /register` 请求。
 2.  **参数校验**：Spring Validation 校验基础参数格式（非空、长度、邮箱格式等）。
 3.  **业务处理** (`AuthServiceImpl.register`)：
@@ -430,7 +430,7 @@ public void validateEmailCode(String email, String code) {
     *   **密码哈希**：使用 `SecurityUtils.encryptPassword` (BCrypt) 对密码进行哈希处理。
     *   **创建用户**：构建 `SysUserApi` 对象，调用远程服务创建新用户。
 
-## 2、核心代码
+### 2、核心代码
 
 **请求对象：RegisterBody.java**
 ```java
@@ -515,9 +515,9 @@ public void register(RegisterBody registerBody) {
 
 ---
 
-# 八、登录流程 (Login)
+## 八、登录流程 (Login)
 
-## 1、流程概述
+### 1、流程概述
 1.  **接收请求**：`AuthController` 接收 `POST /login` 请求，并通过 `@RateLimit` 进行限流。
 2.  **分发逻辑**：`AuthServiceImpl` 根据 `loginType` (password/email/third-party) 分发到不同的处理方法。
 3.  **密码登录 (`passwordLogin`)**：
@@ -528,7 +528,7 @@ public void register(RegisterBody registerBody) {
     *   **状态检查**：检查账号是否被停用。
     *   **生成令牌**：生成 JWT Token 返回。
 
-## 2、核心代码
+### 2、核心代码
 **请求对象：RegisterBody.java**
 ```java
 @Data
@@ -635,11 +635,11 @@ private LoginResponse passwordLogin(LoginRequest request) {
 
 ---
 
-# 九、安全加密机制 (Security & Encryption)
+## 九、安全加密机制 (Security & Encryption)
 
 本系统采用 **RSA + BCrypt** 双重加密机制，确保用户密码在传输和存储过程中的安全性。
 
-## 1、传输层加密 (RSA)
+### 1、传输层加密 (RSA)
 前端在发送密码前，先获取服务端下发的 RSA 公钥进行加密，后端使用私钥解密。这防止了密码在网络传输中被明文截获。
 
 *   **前端**：调用 `/public-key` 获取公钥 -> 使用 `JSEncrypt` 等库加密密码。
@@ -669,7 +669,7 @@ public String decrypt(String encryptedData) {
 }
 ```
 
-## 2、存储层加密 (BCrypt)
+### 2、存储层加密 (BCrypt)
 解密后的原始密码**绝不**直接存储到数据库。系统使用 **BCrypt** 算法对密码进行哈希处理。BCrypt 自动加盐，即使相同的密码每次生成的哈希值也不同。
 
 *   **注册/重置密码**：使用 `SecurityUtils.encryptPassword` 生成哈希值存入数据库。
@@ -699,15 +699,15 @@ public class SecurityUtils {
     }
 }
 ```
-# 十、限流机制 (Rate Limiting)
+## 十、限流机制 (Rate Limiting)
 
 本系统实现了多维度的流量控制机制，结合 **Sentinel** 和 **Redis** 满足不同场景的需求。
 
-## 1、策略概述
+### 1、策略概述
 1.  **接口全局限流 (Sentinel)**: 适用于对某个接口的总并发量或 QPS 进行限制，保护系统不过载。
 2.  **业务维度限流 (Redis)**: 适用于针对特定用户、IP 或业务 ID 的频率限制（例如：限制某用户每分钟只能尝试登录 10 次）。
 
-## 2、部分核心代码
+### 2、部分核心代码
 
 **限流注解：RateLimit.java**
 ```java

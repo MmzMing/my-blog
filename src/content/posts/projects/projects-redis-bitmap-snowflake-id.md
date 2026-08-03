@@ -12,7 +12,7 @@ draft: false
 
 ---
 
-# 一、案发现场
+## 一、案发现场
 
 用户首次点击"收藏"按钮，接口响应 **1.5 秒**，再次点击只需 **20ms**。Redis 中多出了一个占用 **256 KB** 的 Key。
 
@@ -43,7 +43,7 @@ SETBIT collect:bit:1:2051776854918803458 987654321 1
 
 ---
 
-# 二、问题现象
+## 二、问题现象
 
 使用 Redis Bitmap 存储用户交互状态（点赞/收藏/关注）时，**首次写入某个 Key 极慢**（数秒甚至超时），后续操作正常。
 
@@ -69,9 +69,9 @@ public static long toOffset(Long userId) {
 
 ---
 
-# 三、从 Bitmap 本身分析
+## 三、从 Bitmap 本身分析
 
-## 1、SETBIT 的时间复杂度陷阱
+### 1、SETBIT 的时间复杂度陷阱
 
 Redis 官方文档对 SETBIT 的复杂度定义：
 
@@ -82,7 +82,7 @@ Redis 官方文档对 SETBIT 的复杂度定义：
 
 这是问题的直接原因：Redis Bitmap 底层是一个原始 bit 数组，首次 SETBIT 时必须把 0 到 offset 之间的所有字节都分配出来并清零。
 
-## 2、内存分配量化
+### 2、内存分配量化
 
 offset 经哈希取模后均匀分布在 0 ~ 42.9 亿之间，期望值约 21.4 亿。
 
@@ -94,11 +94,11 @@ offset 经哈希取模后均匀分布在 0 ~ 42.9 亿之间，期望值约 21.4 
 | 21.4 亿（期望值） | ~256 MB | **数秒** |
 | 42.9 亿（最坏） | ~512 MB | **超时风险** |
 
-## 3、为什么后续操作快？
+### 3、为什么后续操作快？
 
 Key 一旦存在，内存已分配完毕，后续 SETBIT/GETBIT 都是 O(1)，所以第二次及之后操作正常。这也解释了为什么问题容易被忽视——开发/测试时第二次操作就正常了，只有"首次"才会暴露。
 
-## 4、能否缩小 Offset 范围？
+### 4、能否缩小 Offset 范围？
 
 直觉方案：把取模上限从 `2^32` 缩小到 `2^20`（约 100 万），首次写入只需分配 128 KB。
 
@@ -124,9 +124,9 @@ Key 一旦存在，内存已分配完毕，后续 SETBIT/GETBIT 都是 O(1)，�
 
 ---
 
-# 四、从雪花 ID 角度分析
+## 四、从雪花 ID 角度分析
 
-## 1、雪花 ID 的结构决定了它不适合做 Bitmap offset
+### 1、雪花 ID 的结构决定了它不适合做 Bitmap offset
 
 雪花 ID（64 bit）的结构：
 
@@ -142,7 +142,7 @@ Key 一旦存在，内存已分配完毕，后续 SETBIT/GETBIT 都是 O(1)，�
 
 **核心矛盾**：Bitmap offset 的有效范围是 `0 ~ 2^32 - 1`（约 42.9 亿），而雪花 ID 的值域是 `0 ~ 2^63 - 1`（约 9.2 × 10^18），**差了 20 亿倍**。
 
-## 2、哈希取模是"治标不治本"的妥协
+### 2、哈希取模是"治标不治本"的妥协
 
 ```
 userId → hash64() 散列 → % (2^32 - 1) → offset
@@ -158,7 +158,7 @@ userId → hash64() 散列 → % (2^32 - 1) → offset
 
 取模是压缩映射，必然存在多对一关系。两个不同的 userId 可能映射到同一个 offset，导致数据错误。
 
-## 3、雪花 ID 的"时间递增"特性也无法利用
+### 3、雪花 ID 的"时间递增"特性也无法利用
 
 有人可能想：雪花 ID 是递增的，早期用户的 ID 较小，offset 不会太大？
 
@@ -172,7 +172,7 @@ userId=100       → hash64 → 0xFEDCBA0987654321 → % 2^32 → 987,654,321
 
 即使 userId 很小，hash 后的 offset 仍然可能很大。**递增特性被哈希完全破坏了。**
 
-## 4、如果不用哈希，直接用雪花 ID 做 offset 呢？
+### 4、如果不用哈希，直接用雪花 ID 做 offset 呢？
 
 更糟——雪花 ID 本身就是 19 位数字（~2^61），远超 Bitmap offset 上限 2^32，直接用会报错：
 
@@ -180,7 +180,7 @@ userId=100       → hash64 → 0xFEDCBA0987654321 → % 2^32 → 987,654,321
 ERR bit offset is not an integer or out of range
 ```
 
-## 5、从 ID 生成策略角度的替代方案
+### 5、从 ID 生成策略角度的替代方案
 
 如果一定要用 Bitmap，需要让 ID 变小：
 
@@ -193,7 +193,7 @@ ERR bit offset is not an integer or out of range
 
 **结论**：在雪花 ID 体系下，没有好的办法让 ID 变小到适合 Bitmap。**换数据结构比换 ID 方案成本更低。**
 
-## 6、雪花 ID 角度的本质
+### 6、雪花 ID 角度的本质
 
 ```
 雪花 ID 的本质：全局唯一、趋势递增、64 bit
@@ -208,9 +208,9 @@ Bitmap offset 的本质：紧凑整数、0~2^32、bit 位映射
 
 ---
 
-# 五、从分布式角度分析
+## 五、从分布式角度分析
 
-## 1、Redis 单线程阻塞：一个慢操作拖垮整个节点
+### 1、Redis 单线程阻塞：一个慢操作拖垮整个节点
 
 Redis 是单线程模型（命令串行执行），一个 `SETBIT key 2147483648 1` 需要分配 256 MB 并清零，**在此期间该 Redis 节点无法响应任何其他请求**。
 
@@ -226,7 +226,7 @@ t5  客户端 B/C/D 的命令才开始执行
 
 **影响范围**：不仅是收藏操作本身慢，同一 Redis 节点上的**所有业务**（登录、查询、计数）都会被阻塞。
 
-## 2、Redis Cluster 数据倾斜
+### 2、Redis Cluster 数据倾斜
 
 Redis Cluster 按 Key 的 hash slot 分配到不同节点。Bitmap 方案下：
 
@@ -244,7 +244,7 @@ collect:bit:2:10086  → slot C → 节点 3
 
 而其他节点完全空闲——**典型的数据倾斜**。
 
-## 3、KEYS 命令的集群隐患
+### 3、KEYS 命令的集群隐患
 
 同步任务中通常使用 `KEYS collect:bit:*` 扫描所有 Bitmap Key：
 
@@ -257,7 +257,7 @@ Collection<String> keys = redisTemplate.keys("collect:bit:*");
 - `KEYS` 是 O(N) 操作，会阻塞当前节点
 - 大量 Bitmap Key 时，同步任务本身也可能成为性能瓶颈
 
-## 4、Bitmap 大 Key 的运维风险
+### 4、Bitmap 大 Key 的运维风险
 
 | 运维操作 | 影响 |
 |:---|:---|
@@ -267,7 +267,7 @@ Collection<String> keys = redisTemplate.keys("collect:bit:*");
 | 主从同步 | 全量同步时大 Key 传输耗时，从节点长时间处于"加载中"状态 |
 | `maxmemory` | 单个 Key 占用数百 MB，可能触发淘汰策略误杀其他 Key |
 
-## 5、分布式角度的结论
+### 5、分布式角度的结论
 
 | 问题 | Bitmap 方案 | Set 方案 |
 |:---|:---|:---|
@@ -279,9 +279,9 @@ Collection<String> keys = redisTemplate.keys("collect:bit:*");
 
 ---
 
-# 六、RoaringBitmap 能解决吗？
+## 六、RoaringBitmap 能解决吗？
 
-## 1、原理
+### 1、原理
 
 RoaringBitmap 是压缩位图，将 32 位整数空间分成 65536 个桶，每桶按数据稀疏程度选择容器：
 
@@ -293,9 +293,9 @@ RoaringBitmap 是压缩位图，将 32 位整数空间分成 65536 个桶，每�
 
 设置 offset=20 亿时，只需在对应桶里加一个元素（Array Container，2 bytes），**不会分配 250 MB**。
 
-## 2、三种使用方式对比
+### 2、三种使用方式对比
 
-### 2.1 方式 A：RedisBloom 模块（RB.* 命令）
+#### 2.1 方式 A：RedisBloom 模块（RB.* 命令）
 
 ```java
 RB.SETBIT key 2000000000 1    -- O(1)，不预分配
@@ -308,7 +308,7 @@ RB.GETBIT key 2000000000      -- O(1)
 | 原子性 | ✅ Redis 单线程保证 |
 | **致命问题** | ❌ 需要安装 RedisBloom 模块，云 Redis 不一定支持 |
 
-### 2.2 方式 B：客户端序列化（Read-Modify-Write）
+#### 2.2 方式 B：客户端序列化（Read-Modify-Write）
 
 ```java
 byte[] data = redisTemplate.opsForValue().get(key);
@@ -325,11 +325,11 @@ redisTemplate.opsForValue().set(key, bitmap.serialize());
 | **致命问题 2** | ❌ 必须加分布式锁，延迟 5~15ms |
 | **致命问题 3** | ❌ 每次操作全量序列化/反序列化，数据量大时很慢 |
 
-### 2.3 方式 C：Lua 脚本
+#### 2.3 方式 C：Lua 脚本
 
 不可行——Redis 内置 Lua 不支持 RoaringBitmap 库。
 
-## 3、RoaringBitmap 结论
+### 3、RoaringBitmap 结论
 
 | 方案 | 首次写入 | 原子性 | 内存效率 | 额外依赖 | 推荐度 |
 |:---|:---|:---|:---|:---|:---|
@@ -341,9 +341,9 @@ redisTemplate.opsForValue().set(key, bitmap.serialize());
 
 ---
 
-# 七、正确方案：String + Set（用户维度）
+## 七、正确方案：String + Set（用户维度）
 
-## 1、Key 设计
+### 1、Key 设计
 
 ```
 # 1. 操作总数（内容维度）—— String
@@ -353,7 +353,7 @@ like:count:{targetType}:{targetId}    →  INCR / DECR
 like:user:{userId}:{targetType}       →  SADD / SREM / SISMEMBER
 ```
 
-## 2、为什么用用户维度而不是内容维度的 Set？
+### 2、为什么用用户维度而不是内容维度的 Set？
 
 | 方案 | Key | 问题 |
 |:---|:---|:---|
@@ -362,7 +362,7 @@ like:user:{userId}:{targetType}       →  SADD / SREM / SISMEMBER
 
 用户维度的 Set 天然上限合理，加 TTL（如 7 天）冷数据自动淘汰。
 
-## 3、操作流程
+### 3、操作流程
 
 ```java
 // 点赞
@@ -387,7 +387,7 @@ Boolean isLiked = redisTemplate.opsForSet().isMember(
     "like:user:" + userId + ":1", String.valueOf(targetId));
 ```
 
-## 4、缓存冷启动（Redis 无数据时）
+### 4、缓存冷启动（Redis 无数据时）
 
 ```java
 Boolean isLiked = redisTemplate.opsForSet().isMember(key, String.valueOf(targetId));
@@ -408,7 +408,7 @@ if (isLiked == null) {
 }
 ```
 
-## 5、方案对比
+### 5、方案对比
 
 | 维度 | Bitmap + Hash（旧方案） | String + Set（新方案） |
 |:---|:---|:---|
@@ -421,7 +421,7 @@ if (isLiked == null) {
 | 分布式友好度 | ❌ 大 Key 阻塞单节点 | ✅ 小 Key 天然分散 |
 | 原子性 | ✅ SETBIT 返回旧值 | ✅ SADD/SREM 原子 |
 
-## 6、前端注意事项：雪花 ID 精度丢失
+### 6、前端注意事项：雪花 ID 精度丢失
 
 雪花 ID 约 19 位数字，超过 JS `Number.MAX_SAFE_INTEGER`（2^53 ≈ 16 位），JSON 序列化会丢精度：
 
@@ -451,9 +451,9 @@ public ObjectMapper objectMapper() {
 
 ---
 
-# 八、总结
+## 八、总结
 
-## 1、三维问题全景
+### 1、三维问题全景
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -475,7 +475,7 @@ public ObjectMapper objectMapper() {
 └──────────────┴──────────────────────────────────────────────────────┘
 ```
 
-## 2、问题-方案对照表
+### 2、问题-方案对照表
 
 | 问题 | 原因 | 方案 |
 |:---|:---|:---|
@@ -489,13 +489,13 @@ public ObjectMapper objectMapper() {
 | 雪花 ID 不兼容 Bitmap | 64 bit vs 32 bit offset，差 20 亿倍 | 承认不兼容，换数据结构 |
 | 前端 ID 精度丢失 | 雪花 ID > JS MAX_SAFE_INTEGER | Long 序列化为 String |
 
-## 3、最终选型
+### 3、最终选型
 
 **String（计数）+ Set（用户维度，判断是否已操作）+ 异步写库。**
 
 不用 Bitmap（雪花 ID 太大），不用内容维度 Set（爆款 Key 太大），不用 RoaringBitmap（原子性难保证）。
 
-## 4、什么时候 Bitmap 仍然适用？
+### 4、什么时候 Bitmap 仍然适用？
 
 Bitmap 并非一无是处，以下场景仍然是最优选择：
 

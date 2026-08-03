@@ -20,7 +20,7 @@ draft: false
 > 
 > 还有部分米塔字体是有些先往上抬动再掉落的，我是没做这部分，如果需要也可以按本文思路自行调整
 
-# 技术栈
+## 技术栈
 
 | 类别 | 技术 | 用途 |
 |---|---|---|
@@ -32,7 +32,7 @@ draft: false
 | 状态管理 | Zustand room-store | 短语触发、清除、计数 |
 | 测试 | Vitest | 纯函数层单元测试 |
 
-# 架构总览
+## 架构总览
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -51,9 +51,9 @@ draft: false
 └─────────────────────────────────────────────────────┘
 ```
 
-# 核心实现原理
+## 核心实现原理
 
-## 1. 字形分割 — Intl.Segmenter
+### 1. 字形分割 — Intl.Segmenter
 
 使用浏览器原生 `Intl.Segmenter` 按书写单位分割文本，确保中文单字、拉丁字母、emoji 序列（如 👨‍👩‍👧‍👦）不被拆散。
 
@@ -64,7 +64,7 @@ function segmentGraphemes(value: string) {
 }
 ```
 
-## 2. 确定性随机 — 种子哈希 + Fisher-Yates
+### 2. 确定性随机 — 种子哈希 + Fisher-Yates
 
 同一短语每次生成完全一致的动画序列，保证可复现。使用 FNV-1a 哈希将短语转为种子，再用线性同余生成器产生伪随机数。
 
@@ -81,7 +81,7 @@ flowchart LR
     F --> H
 ```
 
-## 3. 排版 — 锚点居中 + 自动换行
+### 3. 排版 — 锚点居中 + 自动换行
 
 每个短语以一个 3D 空间锚点为中心，字形按行向左右均匀展开，上下居中。支持宽窄字符（如 `i` 与 `W` 宽度不同）和自动换行。
 
@@ -96,7 +96,7 @@ return line.map((glyph) => {
 });
 ```
 
-## 4. 时序状态机 — 四阶段生命周期
+### 4. 时序状态机 — 四阶段生命周期
 
 每个字形经历四个阶段，由 `advanceTimelineGlyph` 纯函数驱动：
 
@@ -112,7 +112,7 @@ hidden ──(showAt)──→ held ──(releaseAt)──→ dynamic ──(cl
 - **held → dynamic**：Fisher-Yates 打乱释放顺序，实现凌乱飘散效果
 - **dynamic → clearing**：触发条件：超出边界（y < -2.2）、物理休眠（settle）、短语数量超限、手动 clear
 
-## 5. 物理模拟 — Rapier 集成
+### 5. 物理模拟 — Rapier 集成
 
 使用 `@react-three/rapier` 将每个字形作为独立刚体，释放时施加冲量和角速度。
 
@@ -128,7 +128,7 @@ friction: 0.72           // 摩擦力
 <CuboidCollider args={[10, 0.06, 8.5]} position={[0, -0.91, 0]} />  // 地板
 ```
 
-## 6. 相机朝向
+### 6. 相机朝向
 
 字形始终面向相机（通过 `Quaternion` 继承相机旋转），但保持自身在锚点周围的局部偏移量，随相机旋转产生视差效果。
 
@@ -143,7 +143,7 @@ const position = new Vector3(...anchor)
   .addScaledVector(up, plan.y);
 ```
 
-## 7. 响应式与可访问性
+### 7. 响应式与可访问性
 
 | 场景 | 限制 | 行为 |
 |---|---|---|
@@ -151,7 +151,7 @@ const position = new Vector3(...anchor)
 | 移动端 (<720px) | 2 条短语 / 42 字形 | 缩小字号范围 |
 | prefers-reduced-motion | 无限制 | 跳过物理，直接 held 后 clearing |
 
-## 8. 懒加载与错误边界
+### 8. 懒加载与错误边界
 
 `layer.tsx` 使用动态 `import()` 延迟加载 physics 模块，ErrorBoundary 捕获字体/WebGL 加载失败，优雅降级。
 
@@ -164,9 +164,9 @@ function loadPhysicsModule() {
 }
 ```
 
-# 完整代码
+## 完整代码
 
-## core.ts — 纯函数层
+### core.ts — 纯函数层
 
 ```typescript
 // 移动端断点：小于此宽度启用移动端限制
@@ -450,7 +450,7 @@ export function oldestOverflowIds(
 }
 ```
 
-## layer.tsx — 懒加载门面
+### layer.tsx — 懒加载门面
 
 ```typescript
 import {
@@ -540,7 +540,7 @@ export function DollWordLayer({ onReady }: { onReady: () => void }) {
 }
 ```
 
-## physics.tsx — 物理渲染层
+### physics.tsx — 物理渲染层
 
 ```typescript
 import { Text } from '@react-three/drei';
@@ -1097,7 +1097,7 @@ export default function DollWordPhysics({ onReady }: { onReady: () => void }) {
 }
 ```
 
-## 集成方式
+### 集成方式
 
 在对应的 3D 房间场景中引入 `Layer` 组件，并传入 `onReady` 回调：
 
@@ -1127,32 +1127,32 @@ interface RoomState {
 }
 ```
 
-# 踩坑点 & 注意事项
+## 踩坑点 & 注意事项
 
-## 1. Intl.Segmenter 兼容性
+### 1. Intl.Segmenter 兼容性
 
 Firefox 和 Safari 较旧版本不支持 `Intl.Segmenter`。代码中做了 fallback，回退到 `Array.from(value)`，但 emoji 序列（如 👨‍👩‍👧‍👦）在回退模式下会被拆散。
 
-## 2. Rapier 物理性能
+### 2. Rapier 物理性能
 
 - 每个字形是一个独立 `RigidBody`，同时存在过多时（>72）可能影响性能
 - 使用 `canSleep` 让静止的刚体自动休眠
 - 超出边界的字形直接移除，不等待清除动画
 - 使用 `softCcdPrediction` 避免高速穿透
 
-## 3. 字体预热
+### 3. 字体预热
 
 `<Text>` 组件首次渲染时会加载字体并生成 SDF 纹理，这会导致卡顿。使用不可见 `<group visible={false}>` 在加载阶段即预热所有用到的字形。
 
-## 4. Camera 与布局
+### 4. Camera 与布局
 
 字形位置是相对于锚点的局部偏移，但朝向跟随相机。这导致旋转相机时字形产生视差，需要确保 `camera.updateMatrixWorld()` 在计算前被调用。
 
-## 5. 状态更新的竞态
+### 5. 状态更新的竞态
 
 `setGlyphs` 在多个 `useEffect` 中同时触发，使用 `queueMicrotask` 延迟到微任务队列执行，避免 React 的批量更新问题。同时用 `cancelled` flag 防止组件卸载后更新。
 
-# 性能对比
+## 性能对比
 
 | 指标 | 旧版 CSS 实现 | 新版 3D 物理实现 |
 |---|---|---|
@@ -1163,7 +1163,7 @@ Firefox 和 Safari 较旧版本不支持 `Intl.Segmenter`。代码中做了 fall
 | 单次性能 | 轻量 | 约 0.3-0.8ms 每帧（72 字形） |
 | 最大并发 | 无限（CSS） | 72 字形（硬限制） |
 
-# 总结
+## 总结
 
 - 核心在于将**排版布局**、**时序控制**、**物理模拟**三层解耦，纯函数层（core.ts）不含任何 Three.js 或 React 依赖，可独立测试
 - 确定性随机保证同一短语每次播放效果一致，Seed 基于短语内容哈希，适合需要回放或录制的场景

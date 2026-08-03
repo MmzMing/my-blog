@@ -2,6 +2,9 @@ import sitemap from "@astrojs/sitemap";
 import svelte from "@astrojs/svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { setMaxListeners } from "node:events";
+import fs from "node:fs";
+import path from "node:path";
+import matter from "gray-matter";
 import { pluginCollapsibleSections } from "@expressive-code/plugin-collapsible-sections";
 import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
 import swup from "@swup/astro";
@@ -46,6 +49,25 @@ import { unified } from "@astrojs/markdown-remark";
 
 if (process.env.NODE_ENV === "development") {
 	setMaxListeners(20);
+}
+
+// 读取文章 frontmatter 的 published/updated 字段，用于 sitemap lastmod
+const postsDir = path.resolve("./src/content/posts");
+const postLastmodCache = new Map();
+function getPostLastmod(postId) {
+	if (postLastmodCache.has(postId)) return postLastmodCache.get(postId);
+	const filePath = path.join(postsDir, `${postId}.md`);
+	let lastmod = null;
+	if (fs.existsSync(filePath)) {
+		try {
+			const { data } = matter.read(filePath);
+			lastmod = data.updated || data.published || null;
+		} catch {
+			// frontmatter 解析失败时返回 null
+		}
+	}
+	postLastmodCache.set(postId, lastmod);
+	return lastmod;
 }
 
 // https://astro.build/config
@@ -157,6 +179,10 @@ export default defineConfig({
 				const url = new URL(page);
 				const pathname = url.pathname;
 
+				// 搜索页不应被搜索引擎索引（Google 明确建议屏蔽搜索结果页）
+				if (pathname === "/search/") {
+					return false;
+				}
 				if (pathname === "/friends/" && !siteConfig.pages.friends) {
 					return false;
 				}
@@ -174,6 +200,38 @@ export default defineConfig({
 				}
 
 				return true;
+			},
+			serialize: (item) => {
+				const pathname = new URL(item.url).pathname;
+
+				if (pathname === "/") {
+					// 首页：最高优先级，每周更新
+					item.priority = 1.0;
+					item.changefreq = "weekly";
+				} else if (pathname.startsWith("/posts/")) {
+					// 文章页：高优先级，基于 frontmatter 的 updated/published 设置 lastmod
+					const postId = pathname
+						.replace(/^\/posts\//, "")
+						.replace(/\/$/, "");
+					const lastmod = getPostLastmod(postId);
+					if (lastmod) {
+						item.lastmod = new Date(lastmod).toISOString();
+					}
+					item.priority = 0.8;
+					item.changefreq = "monthly";
+				} else if (
+					["/archive/", "/categories/", "/tags/"].includes(pathname)
+				) {
+					// 归档/分类/标签列表页：中优先级，有新文章时会更新
+					item.priority = 0.6;
+					item.changefreq = "weekly";
+				} else {
+					// 其他功能页（about/friends/gallery 等）：低优先级
+					item.priority = 0.5;
+					item.changefreq = "monthly";
+				}
+
+				return item;
 			},
 		}),
 		mdx(),

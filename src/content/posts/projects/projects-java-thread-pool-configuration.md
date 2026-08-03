@@ -10,7 +10,7 @@ draft: false
 
 > 本文面向需要在生产环境配置 Java 线程池的开发者。核心目标：将 `ThreadPoolExecutor` 的七个参数、任务调度流程、CPU/IO 场景差异、线程数估算方法、队列选型原则、监控指标与动态调优方案整理为可执行的工程规范。重点审查项：线程数是否受下游资源约束、拒绝策略是否可观测、容器环境是否正确读取 CPU 核数。
 
-# 一、核心摘要
+## 一、核心摘要
 
 - **问题**：手动创建线程存在资源失控、创建开销大、缺乏背压与降级机制三类风险。
 - **方案**：使用 `ThreadPoolExecutor` 显式配置核心线程数、最大线程数、队列、拒绝策略与线程工厂，并通过监控指标闭环调优。
@@ -19,7 +19,7 @@ draft: false
 
 ---
 
-# 二、为什么需要线程池
+## 二、为什么需要线程池
 
 手动为每个请求创建线程，存在以下三类问题：
 
@@ -37,7 +37,7 @@ draft: false
 
 ---
 
-# 三、ThreadPoolExecutor 核心参数
+## 三、ThreadPoolExecutor 核心参数
 
 `ThreadPoolExecutor` 的构造函数包含七个参数，必须整体理解：
 
@@ -53,7 +53,7 @@ new ThreadPoolExecutor(
 );
 ```
 
-## 1、corePoolSize 与 maximumPoolSize
+### 1、corePoolSize 与 maximumPoolSize
 
 | 参数 | 含义 | 行为 |
 | --- | --- | --- |
@@ -65,16 +65,16 @@ new ThreadPoolExecutor(
 - **固定大小**：`corePoolSize = maximumPoolSize`。无弹性，依赖队列缓冲流量波动。
 - **弹性伸缩**：`corePoolSize < maximumPoolSize`。队列满后扩容，空闲线程超时回收。
 
-## 2、keepAliveTime 与 TimeUnit
+### 2、keepAliveTime 与 TimeUnit
 
 - 控制非核心线程的空闲回收时间。
 - 建议值 30~120 秒。过短导致线程频繁创建销毁，引起 CPU 抖动；过长导致资源闲置。
 
-## 3、工作队列
+### 3、工作队列
 
 队列类型决定排队行为与弹性空间，必须与线程数一起决策。详见第六章。
 
-## 4、线程工厂
+### 4、线程工厂
 
 生产环境必须自定义线程工厂，原因：
 
@@ -101,7 +101,7 @@ public class CustomThreadFactory implements ThreadFactory {
 }
 ```
 
-## 5、拒绝策略
+### 5、拒绝策略
 
 当工作队列满且线程数达到 `maximumPoolSize` 时，新任务触发拒绝策略：
 
@@ -116,7 +116,7 @@ public class CustomThreadFactory implements ThreadFactory {
 
 ---
 
-# 四、任务提交与执行流程
+## 四、任务提交与执行流程
 
 ```mermaid
 flowchart TD
@@ -136,11 +136,11 @@ flowchart TD
 
 ---
 
-# 五、CPU 密集型与 IO 密集型任务
+## 五、CPU 密集型与 IO 密集型任务
 
 线程池大小最核心的决策依据是**阻塞比（W/C）**，即等待时间与计算时间的比值。
 
-## 1、CPU 密集型
+### 1、CPU 密集型
 
 **典型场景**：加密解密、数据压缩、图像处理、复杂排序、JSON 序列化。
 
@@ -149,7 +149,7 @@ flowchart TD
 - 线程切换是纯损耗，不会提升吞吐。
 - **线程数建议**：`N_cpu + 1`。
 
-## 2、IO 密集型
+### 2、IO 密集型
 
 **典型场景**：数据库查询、HTTP 远程调用、文件读写、消息队列消费。
 
@@ -158,7 +158,7 @@ flowchart TD
 - CPU 空闲期间可调度更多线程，提升资源利用率。
 - **线程数建议**：根据 Goetz 公式估算，并受下游连接池约束。
 
-## 3、混合型任务
+### 3、混合型任务
 
 典型 Web 请求链路示例：
 
@@ -174,9 +174,9 @@ flowchart TD
 
 ---
 
-# 六、线程数估算方法
+## 六、线程数估算方法
 
-## 1、Little's Law
+### 1、Little's Law
 
 系统稳态下的基本关系：
 
@@ -192,7 +192,7 @@ N_threads ≥ λ × T_response
 
 **示例**：峰值 QPS = 500，平均 RT = 200ms = 0.2s，则最低需要 `500 × 0.2 = 100` 个并发线程维持吞吐。
 
-## 2、Brian Goetz 公式
+### 2、Brian Goetz 公式
 
 出处：《Java 并发编程实战》
 
@@ -211,13 +211,13 @@ N_threads = N_cpu × U_cpu × (1 + W/C)
 - W/C = 200 / 20 = 10
 - N = 8 × 0.8 × (1 + 10) = 70.4，取 **72**
 
-## 3、公式的局限
+### 3、公式的局限
 
 1. **阻塞比难以准确测量**：不同流量时段、不同数据量下差异巨大，单次测量值可能误导。
 2. **忽略下游瓶颈**：数据库连接池上限 50 时，设 200 个线程只会造成大量线程等待连接，反而劣化延迟。
 3. **假设任务同质**：同一池处理轻量查询与重量报表时，平均 W/C 失去意义。
 
-## 4、估算流程
+### 4、估算流程
 
 ```text
 1. 用 Goetz 公式或 Little's Law 得出理论初始值
@@ -226,7 +226,7 @@ N_threads = N_cpu × U_cpu × (1 + W/C)
 4. 以该值作为压测起点，做阶梯加压验证
 ```
 
-## 5、常见场景参考值
+### 5、常见场景参考值
 
 | 场景 | corePoolSize | maximumPoolSize | 说明 |
 | --- | --- | --- | --- |
@@ -238,7 +238,7 @@ N_threads = N_cpu × U_cpu × (1 + W/C)
 
 ---
 
-# 七、工作队列选型
+## 七、工作队列选型
 
 | 队列类型 | 容量 | 行为特征 | 适配场景 | 配套线程数策略 |
 | --- | --- | --- | --- | --- |
@@ -255,9 +255,9 @@ N_threads = N_cpu × U_cpu × (1 + W/C)
 
 ---
 
-# 八、常见反模式
+## 八、常见反模式
 
-## 1、全局共用一个线程池
+### 1、全局共用一个线程池
 
 核心链路与非核心链路共享线程池时，非核心任务突发会挤占核心任务资源。
 
@@ -274,19 +274,19 @@ ThreadPoolExecutor payment() { ... }
 ThreadPoolExecutor log() { ... }
 ```
 
-## 2、不考虑下游限制盲目设大
+### 2、不考虑下游限制盲目设大
 
 下游 MySQL 连接池上限 50 时，设 500 个线程会导致 450 个线程空等连接，增加上下文切换与排队延迟。
 
 **正确做法**：`corePoolSize ≤ 下游最小连接池上限`。
 
-## 3、keepAliveTime 设置过短
+### 3、keepAliveTime 设置过短
 
 流量波动场景下，`keepAliveTime` 过短（如 1 秒）会导致非核心线程频繁创建销毁，造成 CPU 与内存抖动。
 
 **正确做法**：建议 30~120 秒。
 
-## 4、任务中嵌套提交任务
+### 4、任务中嵌套提交任务
 
 ```java
 // 危险：父任务等待子任务，子任务无法入队 → 死锁
@@ -298,7 +298,7 @@ executor.submit(() -> {
 
 **正确做法**：使用 `ForkJoinPool` 处理父子依赖任务，或为子任务使用独立线程池。
 
-## 5、容器环境不修正 CPU 核数
+### 5、容器环境不修正 CPU 核数
 
 Docker 容器限制 2 核时，旧版 JDK 的 `Runtime.getRuntime().availableProcessors()` 可能返回宿主机 32 核，导致线程数虚高。
 
@@ -323,15 +323,15 @@ private int getCpuCores() {
 }
 ```
 
-## 6、线程未命名
+### 6、线程未命名
 
 `jstack` 中 `"pool-1-thread-1"` 无法判断业务归属，应使用 `"order-exec-1"` 等命名。
 
 ---
 
-# 九、企业级配置案例
+## 九、企业级配置案例
 
-## 1、需求分析清单
+### 1、需求分析清单
 
 配置线程池前必须明确：
 
@@ -340,7 +340,7 @@ private int getCpuCores() {
 3. SLA 要求：能否丢任务？允许多大延迟？
 4. 容器 / Pod 分配的 CPU 核数是多少？
 
-## 2、订单查询服务配置示例
+### 2、订单查询服务配置示例
 
 **场景**：8 核 Pod，DB 查询 60ms，本地计算 5ms，W/C ≈ 12，目标 CPU 利用率 80%，DB 连接池上限 50。
 
@@ -405,7 +405,7 @@ public class MetricsRejectedHandler implements RejectedExecutionHandler {
 }
 ```
 
-## 3、压测验证方案
+### 3、压测验证方案
 
 阶梯加压节奏：
 
@@ -429,9 +429,9 @@ pool.getTaskCount();            // 提交的总任务数
 
 ---
 
-# 十、动态线程池
+## 十、动态线程池
 
-## 1、动态调整原理
+### 1、动态调整原理
 
 `ThreadPoolExecutor` 支持运行时修改核心参数：
 
@@ -442,7 +442,7 @@ executor.setMaximumPoolSize(newMaxSize);
 
 结合 Apollo / Nacos 配置中心可实现秒级热更新。
 
-## 2、实现示例
+### 2、实现示例
 
 ```java
 @Component
@@ -472,7 +472,7 @@ public class DynamicThreadPoolManager {
 }
 ```
 
-## 3、队列容量动态修改
+### 3、队列容量动态修改
 
 标准 `BlockingQueue` 容量在构造时固定。如需动态队列，可选：
 
@@ -483,9 +483,9 @@ public class DynamicThreadPoolManager {
 
 ---
 
-# 十一、可观测性：监控与告警
+## 十一、可观测性：监控与告警
 
-## 1、Prometheus 指标暴露
+### 1、Prometheus 指标暴露
 
 ```java
 public static void registerToPrometheus(ThreadPoolExecutor pool, String name) {
@@ -509,7 +509,7 @@ public static void registerToPrometheus(ThreadPoolExecutor pool, String name) {
 }
 ```
 
-## 2、AlertManager 告警规则
+### 2、AlertManager 告警规则
 
 ```yaml
 groups:
@@ -548,7 +548,7 @@ groups:
           summary: "线程池 {{ $labels.pool }} 线程数触达最大值，持续 3 分钟"
 ```
 
-## 3、告警阈值参考
+### 3、告警阈值参考
 
 | 指标 | Warning | Critical | 含义 |
 | --- | --- | --- | --- |
@@ -559,28 +559,28 @@ groups:
 
 ---
 
-# 十二、性能调优建议
+## 十二、性能调优建议
 
-## 1、线程数调优
+### 1、线程数调优
 
 - **初始值**：使用 Goetz 公式或历史 QPS/RT 数据估算。
 - **约束校验**：确保 `corePoolSize ≤ min(DB 连接池, HTTP 连接池, 内存可承载线程数)`。
 - **压测验证**：以阶梯加压找到吞吐拐点，将 `corePoolSize` 设置在拐点并发量的 70%~80%。
 - **动态调整**：流量波动明显的服务接入动态线程池。
 
-## 2、队列深度调优
+### 2、队列深度调优
 
 - 队列容量不宜过大：过大会隐藏延迟问题，导致 P99 劣化。
 - 经验公式：`queueCapacity = corePoolSize × 平均 RT（秒） × 安全系数（2~3）`。
 - 需要背压的场景使用有界队列，拒绝策略选择 `CallerRunsPolicy` 或自定义策略。
 
-## 3、GC 与内存调优
+### 3、GC 与内存调优
 
 - 关注线程栈内存占用：默认 1MB/线程，可通过 `-Xss` 调整。
 - 高频创建/销毁线程会增加 Native Memory 分配压力，尽量复用线程。
 - 容器环境开启 `-XX:+UseContainerSupport`（JDK 8u191+）。
 
-## 4、上下文切换调优
+### 4、上下文切换调优
 
 - 当 `cs（上下文切换次数）/ 任务数` 持续升高时，说明线程数过多。
 - 使用 `vmstat`、`pidstat -w` 监控上下文切换频率。
@@ -588,13 +588,13 @@ groups:
 
 ---
 
-# 十三、常见问题解答（FAQ）
+## 十三、常见问题解答（FAQ）
 
-## 1、Q1：`corePoolSize` 和 `maximumPoolSize` 应该设成一样吗？
+### 1、Q1：`corePoolSize` 和 `maximumPoolSize` 应该设成一样吗？
 
 **A**：不一定。固定大小（core = max）适合负载稳定的场景，实现简单；弹性伸缩（core < max）适合流量波动大、需要应对突发的场景。生产环境更推荐后者，配合有界队列使用。
 
-## 2、Q2：为什么线程池达到了 `maximumPoolSize` 但 CPU 使用率仍然很低？
+### 2、Q2：为什么线程池达到了 `maximumPoolSize` 但 CPU 使用率仍然很低？
 
 **A**：可能原因：
 
@@ -604,11 +604,11 @@ groups:
 
 应通过 APM 或 Profiler 定位具体阻塞点，而不是简单增加线程数。
 
-## 3、Q3：任务被拒绝时应该选择哪种策略？
+### 3、Q3：任务被拒绝时应该选择哪种策略？
 
 **A**：核心链路推荐 `AbortPolicy` 或自定义策略（记录指标 + 抛异常），让调用方感知并降级；非核心但不可丢任务的场景可选 `CallerRunsPolicy`；可丢弃的非关键任务可选 `DiscardPolicy` 或 `DiscardOldestPolicy`。
 
-## 4、Q4：使用 `CompletableFuture` 时如何指定自定义线程池？
+### 4、Q4：使用 `CompletableFuture` 时如何指定自定义线程池？
 
 **A**：`CompletableFuture` 默认使用 `ForkJoinPool.commonPool()`，可能不适合业务场景。应显式传入：
 
@@ -617,7 +617,7 @@ CompletableFuture.supplyAsync(() -> fetchOrder(orderId), orderExecutor)
     .thenApplyAsync(this::enrichOrder, orderExecutor);
 ```
 
-## 5、Q5：Spring 的 `@Async` 默认线程池有什么问题？
+### 5、Q5：Spring 的 `@Async` 默认线程池有什么问题？
 
 **A**：Spring 默认使用 `SimpleAsyncTaskExecutor`，每次任务都新建线程，且队列无界。生产环境应通过 `ThreadPoolTaskExecutor` 自定义：
 
@@ -635,7 +635,7 @@ public ThreadPoolTaskExecutor taskExecutor() {
 }
 ```
 
-## 6、Q6：如何优雅关闭线程池？
+### 6、Q6：如何优雅关闭线程池？
 
 **A**：使用 `shutdown()` + `awaitTermination()` 组合：
 
@@ -651,13 +651,13 @@ try {
 }
 ```
 
-## 7、Q7：`allowCoreThreadTimeOut(true)` 是否推荐？
+### 7、Q7：`allowCoreThreadTimeOut(true)` 是否推荐？
 
 **A**：适合流量波动极大的场景，可在低峰期回收核心线程节省资源。但会增加高峰期线程创建开销，核心链路建议保持默认 `false`。
 
 ---
 
-# 十四、决策速查表
+## 十四、决策速查表
 
 | 场景 | corePoolSize | maximumPoolSize | 队列 | 拒绝策略 |
 | --- | --- | --- | --- | --- |
@@ -669,7 +669,7 @@ try {
 
 ---
 
-# 十五、总结
+## 十五、总结
 
 1. **永远不用 `Executors` 工厂方法**，必须显式构造 `ThreadPoolExecutor`。
 2. **必须使用有界队列**，无界队列是 OOM 隐患。
@@ -686,7 +686,7 @@ flowchart LR
 
 ---
 
-# 十六、参考资料
+## 十六、参考资料
 
 - 《Java 并发编程实战》Brian Goetz
 - 阿里巴巴《Java 开发手册》

@@ -8,9 +8,9 @@ draft: false
 ---
 
 
-# 一、背景
+## 一、背景
 
-## 1、一个真实的场景
+### 1、一个真实的场景
 
 假设你在写一个电商商品详情页的接口，需要聚合以下数据：
 
@@ -39,7 +39,7 @@ List<Comment> cs = fetchComments(skuId);  // 再等 40ms
 
 并行的方式比串行快了将近 3 倍。**这就是并发编程的核心价值所在**：让多件事同时发生，而不是排队等待。
 
-## 2、问题的本质
+### 2、问题的本质
 
 在 Java 中，最自然的并发方式是"多线程"。但传统线程有个根本问题：
 
@@ -56,11 +56,11 @@ List<Comment> cs = fetchComments(skuId);  // 再等 40ms
 
 ---
 
-# 二、Java 并发模型的演进史
+## 二、Java 并发模型的演进史
 
 了解历史，才能理解为什么每个技术会出现。
 
-## 1、阶段 1：原始线程时代（Java 1.0，1996年）
+### 1、阶段 1：原始线程时代（Java 1.0，1996年）
 
 ```java
 // 最原始的多线程写法
@@ -73,7 +73,7 @@ t.join(); // 等线程结束
 
 **问题**：直接创建线程开销大，无法管理线程数量，容易写出各种并发 bug（死锁、竞态条件等）。
 
-## 2、阶段 2：线程池时代（Java 5，2004年）
+### 2、阶段 2：线程池时代（Java 5，2004年）
 
 Java 5 引入了 `java.util.concurrent` 包，Doug Lea 大神贡献的杰作：
 
@@ -87,7 +87,7 @@ String result = future.get(); // 阻塞等待结果
 **进步**：线程可以复用了，不用每次都创建销毁。  
 **残余问题**：线程数量仍然有限，IO 阻塞期间线程仍然是浪费的。
 
-## 3、阶段 3：异步回调时代（Java 8，2014年）
+### 3、阶段 3：异步回调时代（Java 8，2014年）
 
 ```java
 // CompletableFuture：不等结果了，告诉它"完成后做什么"
@@ -99,7 +99,7 @@ CompletableFuture.supplyAsync(() -> fetchUser(id))
 **进步**：线程不需要阻塞等待了，任务完成后自动触发下一步。  
 **新问题**：代码可读性变差，调试困难，错误处理很麻烦。
 
-## 4、阶段 4：响应式编程时代（Spring WebFlux，2017年）
+### 4、阶段 4：响应式编程时代（Spring WebFlux，2017年）
 
 ```java
 // Reactor：声明式数据流处理
@@ -112,7 +112,7 @@ Mono.just(userId)
 **进步**：吞吐量极高，支持背压（防止下游被压垮）。  
 **新问题**：学习曲线陡峭，代码风格完全不同，调试极其困难，全栈必须改造。
 
-## 5、阶段 5：虚拟线程时代（JDK 21，2023年）
+### 5、阶段 5：虚拟线程时代（JDK 21，2023年）
 
 ```java
 // 虚拟线程：用同步代码的写法，获得异步的性能
@@ -127,9 +127,9 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
 ---
 
-# 三、虚拟线程
+## 三、虚拟线程
 
-## 1、传统线程的问题（图解）
+### 1、传统线程的问题（图解）
 
 ```
 传统线程模型：
@@ -143,7 +143,7 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 线程在等待 IO 期间：占着内存（约1MB/线程），但什么都不做
 ```
 
-## 2、虚拟线程的解决思路
+### 2、虚拟线程的解决思路
 
 虚拟线程引入了一个新的层级：
 
@@ -163,7 +163,7 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
   （只需要和 CPU 核数相当的载体线程）
 ```
 
-## 3、关键概念：Continuation（续体）
+### 3、关键概念：Continuation（续体）
 
 当虚拟线程遇到阻塞时，JVM 会：
 
@@ -174,7 +174,7 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
 这一切对开发者**完全透明**——你写的代码和普通线程代码完全一样。
 
-## 4、通俗类比
+### 4、通俗类比
 
 想象一个图书馆管理员（载体线程）和很多读者（虚拟线程）：
 
@@ -185,7 +185,7 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
 ---
 
-# 四、虚拟线程 vs 平台线程：全面对比
+## 四、虚拟线程 vs 平台线程：全面对比
 
 | 对比维度 | 平台线程（传统线程） | 虚拟线程（JDK 21）|
 |----------|---------------------|-------------------|
@@ -203,9 +203,9 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
 ---
 
-# 五、虚拟线程的使用方式（完整代码）
+## 五、虚拟线程的使用方式（完整代码）
 
-## 1、最简单的创建方式
+### 1、最简单的创建方式
 
 ```java
 // 方式1：Thread.ofVirtual() ── 直接创建
@@ -221,7 +221,7 @@ vt.join(); // 等待执行完成
 Thread.startVirtualThread(() -> System.out.println("快速创建虚拟线程"));
 ```
 
-## 2、生产推荐：每任务一虚拟线程
+### 2、生产推荐：每任务一虚拟线程
 
 ```java
 // newVirtualThreadPerTaskExecutor：每个任务创建一个新虚拟线程
@@ -241,7 +241,7 @@ try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
 } // try-with-resources 自动关闭 executor，等待所有任务完成
 ```
 
-## 3、Spring Boot 3.2+ 集成（推荐）
+### 3、Spring Boot 3.2+ 集成（推荐）
 
 ```yaml
 # application.yml：一行配置，全局生效
@@ -285,7 +285,7 @@ public class OrderService {
 }
 ```
 
-## 4、并行聚合多个 IO 任务（最常用场景）
+### 4、并行聚合多个 IO 任务（最常用场景）
 
 ```java
 // 场景：商品详情页需要聚合多个服务的数据
@@ -312,7 +312,7 @@ public ProductDetailVO getProductDetail(@PathVariable Long id) throws Exception 
 }
 ```
 
-## 5、结合 ScopedValue 传递上下文（推荐替代 ThreadLocal）
+### 5、结合 ScopedValue 传递上下文（推荐替代 ThreadLocal）
 
 ```java
 // ScopedValue 是专门为虚拟线程设计的上下文传递工具
@@ -353,13 +353,13 @@ public class OrderService {
 
 ---
 
-# 六、⚠️ 虚拟线程踩坑大全（12个坑）
+## 六、⚠️ 虚拟线程踩坑大全（12个坑）
 
 > 这是本文最重要的章节，每个坑都在生产环境中真实出现过。
 
 ---
 
-## 1、坑 1：给虚拟线程建线程池（最常见错误）
+### 1、坑 1：给虚拟线程建线程池（最常见错误）
 
 **❌ 错误代码：**
 
@@ -381,7 +381,7 @@ ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
 ---
 
-## 2、坑 2：synchronized 块导致 Pinning（JDK 21/23）
+### 2、坑 2：synchronized 块导致 Pinning（JDK 21/23）
 
 **❌ 问题代码：**
 
@@ -419,7 +419,7 @@ public UserInfo getUser(long id) {
 
 ---
 
-## 3、坑 3：ThreadLocal 在虚拟线程中导致内存泄漏
+### 3、坑 3：ThreadLocal 在虚拟线程中导致内存泄漏
 
 **❌ 问题代码：**
 
@@ -464,7 +464,7 @@ ScopedValue.where(USER_CTX, new UserContext(userId))
 
 ---
 
-## 4、坑 4：虚拟线程遇到 CPU 密集任务反而变慢
+### 4、坑 4：虚拟线程遇到 CPU 密集任务反而变慢
 
 **❌ 错误认知：**
 
@@ -505,7 +505,7 @@ public class ExecutorConfig {
 
 ---
 
-## 5、坑 5：数据库连接池成为新瓶颈
+### 5、坑 5：数据库连接池成为新瓶颈
 
 **问题描述：**
 
@@ -557,7 +557,7 @@ public class UserRepository {
 
 ---
 
-## 6、坑 6：在虚拟线程中调用 native 方法导致 Pinning
+### 6、坑 6：在虚拟线程中调用 native 方法导致 Pinning
 
 **问题代码：**
 
@@ -585,7 +585,7 @@ public ExecutorService nativeOperationExecutor() {
 
 ---
 
-## 7、坑 7：用 isVirtual() 做业务逻辑判断
+### 7、坑 7：用 isVirtual() 做业务逻辑判断
 
 **❌ 错误代码：**
 
@@ -607,7 +607,7 @@ void processTask() {
 
 ---
 
-## 8、坑 8：虚拟线程数量无上限导致 OOM
+### 8、坑 8：虚拟线程数量无上限导致 OOM
 
 **问题描述：**
 
@@ -660,7 +660,7 @@ public List<Result> processBatch(@RequestBody List<Long> ids) {
 
 ---
 
-## 9、坑 9：忘记处理虚拟线程的中断
+### 9、坑 9：忘记处理虚拟线程的中断
 
 **❌ 问题代码：**
 
@@ -694,7 +694,7 @@ executor.submit(() -> {
 
 ---
 
-## 10、坑 10：在虚拟线程中使用 BlockingQueue 不当
+### 10、坑 10：在虚拟线程中使用 BlockingQueue 不当
 
 **❌ 问题：** `LinkedBlockingQueue.take()` 虽然会挂起虚拟线程（这是正确的），但如果生产者速度远慢于消费者，会有大量虚拟线程"无用等待"。
 
@@ -702,7 +702,7 @@ executor.submit(() -> {
 
 ---
 
-## 11、坑 11：错误理解"虚拟线程不需要关心并发问题"
+### 11、坑 11：错误理解"虚拟线程不需要关心并发问题"
 
 ```java
 // ❌ 错误认知：虚拟线程会自动处理并发
@@ -725,7 +725,7 @@ void increment() {
 
 ---
 
-## 12、坑 12：在旧版 JDBC 驱动中遇到兼容性问题
+### 12、坑 12：在旧版 JDBC 驱动中遇到兼容性问题
 
 **问题描述：** 某些旧版 JDBC 驱动（如 MySQL Connector/J 5.x）内部使用了 `synchronized` 块，在虚拟线程场景下会导致 Pinning 问题。
 
@@ -746,11 +746,11 @@ void increment() {
 
 ---
 
-# 七、CompletableFuture 异步编排从零讲起
+## 七、CompletableFuture 异步编排从零讲起
 
 虚拟线程让单个任务的"同步等待"不再浪费资源，但当你需要**编排多个任务之间的关系**（A 完成后做 B，A 和 B 同时做完后做 C），`CompletableFuture` 是非常有用的工具。
 
-## 1、基本概念：什么是 CompletableFuture？
+### 1、基本概念：什么是 CompletableFuture？
 
 ```java
 // Future：只能阻塞等待结果
@@ -762,7 +762,7 @@ CompletableFuture<String> cf = CompletableFuture.supplyAsync(() -> "结果");
 cf.thenAccept(result -> System.out.println("得到结果：" + result)); // 不阻塞，异步回调
 ```
 
-## 2、核心方法速查
+### 2、核心方法速查
 
 ```java
 // ① 创建 CompletableFuture
@@ -792,7 +792,7 @@ CompletableFuture<Object> fastest = CompletableFuture.anyOf(
 );
 ```
 
-## 3、实战：并行聚合商品详情
+### 3、实战：并行聚合商品详情
 
 ```java
 @Service
@@ -827,7 +827,7 @@ public class ProductDetailService {
 }
 ```
 
-## 4、超时与降级处理
+### 4、超时与降级处理
 
 ```java
 // 重要！生产环境必须设置超时，否则一个慢服务会拖垮整个链路
@@ -851,11 +851,11 @@ CompletableFuture<UserProfile> safeProfile = CompletableFuture
 
 ---
 
-# 八、⚠️ CompletableFuture 踩坑大全（8个坑）
+## 八、⚠️ CompletableFuture 踩坑大全（8个坑）
 
 ---
 
-## 1、坑 1：不指定 Executor，使用 ForkJoinPool 公共池
+### 1、坑 1：不指定 Executor，使用 ForkJoinPool 公共池
 
 **❌ 问题代码：**
 
@@ -884,7 +884,7 @@ CompletableFuture<String> cf = CompletableFuture
 
 ---
 
-## 2、坑 2：异常被静默吞掉
+### 2、坑 2：异常被静默吞掉
 
 **❌ 问题代码：**
 
@@ -929,7 +929,7 @@ cf.whenComplete((result, ex) -> {
 
 ---
 
-## 3、坑 3：thenApply vs thenApplyAsync 混淆
+### 3、坑 3：thenApply vs thenApplyAsync 混淆
 
 **❌ 常见误区：** 以为 `thenApply` 是同步的，所以比 `thenApplyAsync` 性能更好
 
@@ -951,7 +951,7 @@ thenApplyAsync(fn):  fn 在 ForkJoinPool 或指定的 executor 上执行（异�
 
 ---
 
-## 4、坑 4：allOf 没有返回值，需要额外 get()
+### 4、坑 4：allOf 没有返回值，需要额外 get()
 
 **❌ 困惑代码：**
 
@@ -972,7 +972,7 @@ allFuture.thenRun(() -> {
 
 ---
 
-## 5、坑 5：链式调用中的线程切换导致 ThreadLocal 丢失
+### 5、坑 5：链式调用中的线程切换导致 ThreadLocal 丢失
 
 **问题描述：**
 
@@ -1010,7 +1010,7 @@ CompletableFuture.supplyAsync(() -> fetchData())
 
 ---
 
-## 6、坑 6：join() 和 get() 的异常包装差异
+### 6、坑 6：join() 和 get() 的异常包装差异
 
 ```java
 try {
@@ -1034,7 +1034,7 @@ try {
 
 ---
 
-## 7、坑 7：CompletableFuture 没有超时导致线程泄漏
+### 7、坑 7：CompletableFuture 没有超时导致线程泄漏
 
 **❌ 危险代码：**
 
@@ -1056,7 +1056,7 @@ String result = CompletableFuture.supplyAsync(() -> fetchData())
 
 ---
 
-## 8、坑 8：在高并发下大量创建 CompletableFuture 链导致内存压力
+### 8、坑 8：在高并发下大量创建 CompletableFuture 链导致内存压力
 
 **问题：** 每个 `thenApply`/`thenCompose` 都会创建一个新的 `CompletableFuture` 对象和内部节点。在 QPS 很高的场景下，大量短命的 `CompletableFuture` 对象会给 GC 带来压力。
 
@@ -1064,9 +1064,9 @@ String result = CompletableFuture.supplyAsync(() -> fetchData())
 
 ---
 
-# 九、结构化并发：下一代并发编程
+## 九、结构化并发：下一代并发编程
 
-## 1、它解决了什么问题？
+### 1、它解决了什么问题？
 
 传统异步编程有一个根本缺陷：**父任务和子任务的生命周期没有强绑定关系**。
 
@@ -1084,7 +1084,7 @@ void handleRequest() {
 
 结构化并发（`StructuredTaskScope`）强制要求：**子任务的生命周期不能超出父任务的作用域**。
 
-## 2、基本用法
+### 2、基本用法
 
 ```java
 // ShutdownOnFailure：任何一个子任务失败，立即取消其他所有子任务
@@ -1118,7 +1118,7 @@ try (var scope = new StructuredTaskScope.ShutdownOnSuccess<String>()) {
 }
 ```
 
-## 3、带超时的结构化并发
+### 3、带超时的结构化并发
 
 ```java
 // joinUntil：限制最长等待时间
@@ -1137,7 +1137,7 @@ try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
 }
 ```
 
-## 4、结构化并发的优势总结
+### 4、结构化并发的优势总结
 
 | 特性 | CompletableFuture | StructuredTaskScope |
 |------|-------------------|---------------------|
@@ -1150,11 +1150,11 @@ try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
 
 ---
 
-# 十、响应式编程（Reactor/WebFlux）概览
+## 十、响应式编程（Reactor/WebFlux）概览
 
 > 响应式编程学习门槛较高，本章只介绍核心概念和适用场景，帮你判断"要不要学"。
 
-## 1、核心概念：Mono 和 Flux
+### 1、核心概念：Mono 和 Flux
 
 ```java
 // Mono：0 或 1 个结果（类比单个值的异步计算）
@@ -1165,7 +1165,7 @@ Flux<Order> orderFlux = Flux.fromIterable(orderIds)
     .flatMap(id -> Mono.fromCallable(() -> fetchOrder(id)));
 ```
 
-## 2、背压（Backpressure）：响应式的核心优势
+### 2、背压（Backpressure）：响应式的核心优势
 
 背压是响应式编程的杀手锏，在虚拟线程模型中没有原生支持。
 
@@ -1195,7 +1195,7 @@ Flux.range(1, 1_000_000)
     );
 ```
 
-## 3、什么时候应该用响应式？
+### 3、什么时候应该用响应式？
 
 **适合响应式的场景：**
 - 流式数据处理（Kafka 消费、大文件读取、SSE 推送）
@@ -1207,7 +1207,7 @@ Flux.range(1, 1_000_000)
 - 微服务间 HTTP 调用聚合
 - 团队没有响应式经验，项目交期紧张
 
-## 4、响应式的三大难点（让你望而却步的原因）
+### 4、响应式的三大难点（让你望而却步的原因）
 
 1. **代码风格完全不同**：所有 IO 调用必须改成返回 `Mono`/`Flux` 的形式，不能有阻塞调用，全栈改造成本极高
 
@@ -1217,7 +1217,7 @@ Flux.range(1, 1_000_000)
 
 ---
 
-# 十一、四种模型横向大对比
+## 十一、四种模型横向大对比
 
 | 对比维度 | 平台线程+线程池 | 虚拟线程 | CompletableFuture | Reactor/WebFlux |
 |----------|----------------|----------|-------------------|-----------------|
@@ -1235,9 +1235,9 @@ Flux.range(1, 1_000_000)
 
 ---
 
-# 十二、企业级选型决策指南
+## 十二、企业级选型决策指南
 
-## 1、决策树
+### 1、决策树
 
 ```
 你的 JDK 版本是多少？
@@ -1254,7 +1254,7 @@ Flux.range(1, 1_000_000)
     └── 已有 WebFlux 代码 → 继续维护，不必强行迁移
 ```
 
-## 2、推荐的企业级组合（JDK 21+）
+### 2、推荐的企业级组合（JDK 21+）
 
 ```java
 @Configuration
@@ -1295,7 +1295,7 @@ public class ConcurrencyConfig {
 }
 ```
 
-## 3、完整实战：商品详情页聚合接口
+### 3、完整实战：商品详情页聚合接口
 
 ```java
 /**
@@ -1365,9 +1365,9 @@ public class ProductController {
 
 ---
 
-# 十三、核心总结与学习路径
+## 十三、核心总结与学习路径
 
-## 1、三句话总结
+### 1、三句话总结
 
 1. **虚拟线程**：让同步代码获得异步吞吐，IO 密集场景的首选，JDK 21 起可用，学习成本极低。
 
@@ -1375,7 +1375,7 @@ public class ProductController {
 
 3. **结构化并发**：下一代并发编程范式，父子任务生命周期强绑定，是虚拟线程的最佳搭档，JDK 24 正式 GA。
 
-## 2、学习路径建议
+### 2、学习路径建议
 
 ```
 阶段 1（1~2 周）：打好基础
