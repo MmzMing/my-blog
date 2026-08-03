@@ -32,6 +32,7 @@ import I18nKey from "./src/i18n/i18nKey";
 import { pluginLanguageBadge } from "expressive-code-language-badge"; /* Language Badge */
 import { pluginCollapsible } from "expressive-code-collapsible"; /* Collapsible */
 import { GithubCardComponent } from "./src/plugins/rehype-component-github-card.mjs";
+import { pluginLazyCollapsibleCode } from "./src/plugins/expressive-code-lazy-collapsible.mjs";
 import { rehypeDiagramPanZoom } from "./src/plugins/rehype-diagram-panzoom.mjs";
 import { rehypeMermaid } from "./src/plugins/rehype-mermaid.mjs";
 import { rehypePlantuml } from "./src/plugins/rehype-plantuml.mjs";
@@ -135,6 +136,11 @@ export default defineConfig({
 								collapseButtonText: i18n(I18nKey.codeCollapsibleShowLess),
 								expandedAnnouncement: i18n(I18nKey.codeCollapsibleExpanded),
 								collapsedAnnouncement: i18n(I18nKey.codeCollapsibleCollapsed),
+							}),
+							pluginLazyCollapsibleCode({
+								lineThreshold: 200,
+								previewLines:
+									expressiveCodeConfig.pluginCollapsible.previewLines || 8,
 							}),
 						]
 					: []),

@@ -17,6 +17,7 @@ const COLLAPSE_DELAY = 250;
 const MIN_HEADING_MARK_WIDTH = 1.5;
 const MAX_HEADING_MARK_WIDTH = 4;
 const HEADING_MARK_WIDTH_PER_CHARACTER = 0.16;
+const SUMMARY_EDGE_GUTTER = 64;
 
 function clamp(value: number, minimum: number, maximum: number): number {
 	return Math.min(Math.max(value, minimum), maximum);
@@ -54,6 +55,7 @@ export class ArticleOutlineRailController {
 	private readonly minimap: HTMLElement | null;
 	private readonly browsePanel: HTMLElement | null;
 	private readonly browseList: HTMLElement | null;
+	private readonly progressRegion: HTMLElement | null;
 	private readonly progressLabel: HTMLElement | null;
 	private article: HTMLElement | null = null;
 	private headings: OutlineHeading[] = [];
@@ -61,6 +63,10 @@ export class ArticleOutlineRailController {
 	private activeRailBar: HTMLElement | null = null;
 	private articleStart = 0;
 	private articleEnd = 0;
+	private railStart = 0;
+	private railEnd = 0;
+	private railHeight = 0;
+	private lastProgressPercent = -1;
 	private animationFrame: number | null = null;
 	private measureFrame: number | null = null;
 	private collapseTimer: ReturnType<typeof setTimeout> | null = null;
@@ -72,6 +78,7 @@ export class ArticleOutlineRailController {
 		this.minimap = root.querySelector("[data-outline-minimap]");
 		this.browsePanel = root.querySelector("[data-outline-browse]");
 		this.browseList = root.querySelector("[data-outline-browse-list]");
+		this.progressRegion = root.querySelector("[data-outline-progress-region]");
 		this.progressLabel = root.querySelector("[data-outline-progress-label]");
 	}
 
@@ -82,8 +89,10 @@ export class ArticleOutlineRailController {
 			return false;
 		}
 
+		this.root.hidden = false;
 		this.cachePositions();
 		this.renderMinimap();
+		this.cacheRailGeometry();
 		this.renderBrowseList();
 		this.bindInteractions();
 		this.resizeObserver = new ResizeObserver(() => this.scheduleMeasure());
@@ -97,7 +106,6 @@ export class ArticleOutlineRailController {
 			signal: this.abortController.signal,
 		});
 
-		this.root.hidden = false;
 		this.root.classList.remove("is-pending");
 		this.update();
 		return true;
@@ -218,6 +226,28 @@ export class ArticleOutlineRailController {
 		this.activeRailBar = null;
 	}
 
+	private cacheRailGeometry(): void {
+		if (!this.minimap) return;
+
+		const bars = this.minimap.querySelectorAll<HTMLElement>(
+			".article-outline-rail__heading-mark, .article-outline-rail__body-tick",
+		);
+		const firstBar = bars.item(0);
+		const lastBar = bars.item(bars.length - 1);
+		const minimapRect = this.minimap.getBoundingClientRect();
+		this.railHeight = minimapRect.height;
+		if (!firstBar || !lastBar) {
+			this.railStart = 0;
+			this.railEnd = 0;
+			return;
+		}
+
+		const firstRect = firstBar.getBoundingClientRect();
+		const lastRect = lastBar.getBoundingClientRect();
+		this.railStart = firstRect.top - minimapRect.top + firstRect.height / 2;
+		this.railEnd = lastRect.top - minimapRect.top + lastRect.height / 2;
+	}
+
 	private renderBrowseList(): void {
 		if (!this.browseList) return;
 
@@ -272,6 +302,7 @@ export class ArticleOutlineRailController {
 			this.measureFrame = null;
 			this.cachePositions();
 			this.renderMinimap();
+			this.cacheRailGeometry();
 			this.renderBrowseList();
 			this.activeIndex = -1;
 			this.update();
@@ -282,9 +313,7 @@ export class ArticleOutlineRailController {
 		if (!this.headings.length) return;
 
 		const progress = this.getProgress();
-		this.root.style.setProperty("--article-outline-progress", String(progress));
-		if (this.progressLabel)
-			this.progressLabel.textContent = `${Math.round(progress * 100)}%`;
+		this.syncReadingProgress(progress);
 
 		const nextActiveIndex = this.getActiveIndex();
 		if (nextActiveIndex !== this.activeIndex) {
@@ -292,6 +321,63 @@ export class ArticleOutlineRailController {
 			this.syncActiveHeading(this.headings[nextActiveIndex]);
 		}
 		this.syncActiveRailBar(this.headings[nextActiveIndex]);
+	}
+
+	private syncReadingProgress(progress: number): void {
+		const readerCenter =
+			this.railStart + (this.railEnd - this.railStart) * progress;
+		const summaryPosition = clamp(
+			readerCenter,
+			SUMMARY_EDGE_GUTTER,
+			Math.max(SUMMARY_EDGE_GUTTER, this.railHeight - SUMMARY_EDGE_GUTTER),
+		);
+
+		this.root.style.setProperty("--article-outline-progress", String(progress));
+		this.root.style.setProperty(
+			"--article-outline-summary-y",
+			`${summaryPosition}px`,
+		);
+
+		const progressPercent = Math.round(progress * 100);
+		if (progressPercent === this.lastProgressPercent) return;
+
+		this.lastProgressPercent = progressPercent;
+		this.progressRegion?.setAttribute("aria-valuenow", String(progressPercent));
+		if (this.progressLabel)
+			this.progressLabel.textContent = `${progressPercent}%`;
+	}
+
+	private syncActiveRailBar(activeHeading: OutlineHeading): void {
+		if (!this.minimap) return;
+		const segment = this.minimap.querySelector<HTMLElement>(
+			`.article-outline-rail__segment[data-outline-index="${activeHeading.index}"]`,
+		);
+		if (!segment) return;
+
+		const bars = Array.from(
+			segment.querySelectorAll<HTMLElement>(
+				".article-outline-rail__heading-mark, .article-outline-rail__body-tick",
+			),
+		);
+		if (!bars.length) return;
+
+		const readingPosition = window.scrollY + READING_OFFSET;
+		const sectionProgress = clamp(
+			(readingPosition - activeHeading.absoluteTop) /
+				Math.max(1, activeHeading.sectionEnd - activeHeading.absoluteTop),
+			0,
+			1,
+		);
+		const activeBarIndex = Math.min(
+			bars.length - 1,
+			Math.floor(sectionProgress * bars.length),
+		);
+		const nextActiveRailBar = bars[activeBarIndex];
+		if (nextActiveRailBar === this.activeRailBar) return;
+
+		this.activeRailBar?.classList.remove("is-active");
+		nextActiveRailBar.classList.add("is-active");
+		this.activeRailBar = nextActiveRailBar;
 	}
 
 	private getProgress(): number {
@@ -354,60 +440,6 @@ export class ArticleOutlineRailController {
 			title.textContent = heading?.text ?? "";
 			title.title = heading?.text ?? "";
 		});
-		this.positionSummaryForHeading(activeHeading);
-	}
-
-	private positionSummaryForHeading(activeHeading: OutlineHeading): void {
-		if (!this.minimap) return;
-		const activeMark = this.minimap.querySelector<HTMLElement>(
-			`.article-outline-rail__heading-mark[data-outline-index="${activeHeading.index}"]`,
-		);
-		if (!activeMark) return;
-
-		const minimapRect = this.minimap.getBoundingClientRect();
-		const markRect = activeMark.getBoundingClientRect();
-		const summaryTop = clamp(
-			markRect.top - minimapRect.top + markRect.height / 2,
-			64,
-			Math.max(64, minimapRect.height - 64),
-		);
-		this.root.style.setProperty(
-			"--article-outline-summary-top",
-			`${summaryTop}px`,
-		);
-	}
-
-	private syncActiveRailBar(activeHeading: OutlineHeading): void {
-		if (!this.minimap) return;
-		const segment = this.minimap.querySelector<HTMLElement>(
-			`.article-outline-rail__segment[data-outline-index="${activeHeading.index}"]`,
-		);
-		if (!segment) return;
-
-		const bars = Array.from(
-			segment.querySelectorAll<HTMLElement>(
-				".article-outline-rail__heading-mark, .article-outline-rail__body-tick",
-			),
-		);
-		if (!bars.length) return;
-
-		const readingPosition = window.scrollY + READING_OFFSET;
-		const sectionProgress = clamp(
-			(readingPosition - activeHeading.absoluteTop) /
-				Math.max(1, activeHeading.sectionEnd - activeHeading.absoluteTop),
-			0,
-			1,
-		);
-		const activeBarIndex = Math.min(
-			bars.length - 1,
-			Math.floor(sectionProgress * bars.length),
-		);
-		const nextActiveRailBar = bars[activeBarIndex];
-		if (nextActiveRailBar === this.activeRailBar) return;
-
-		this.activeRailBar?.classList.remove("is-active");
-		nextActiveRailBar.classList.add("is-active");
-		this.activeRailBar = nextActiveRailBar;
 	}
 
 	private navigateToHeading(event: Event): void {
@@ -427,7 +459,9 @@ export class ArticleOutlineRailController {
 		}
 		window.scrollTo({
 			top: heading.absoluteTop - READING_OFFSET,
-			behavior: "smooth",
+			behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+				? "auto"
+				: "smooth",
 		});
 	}
 

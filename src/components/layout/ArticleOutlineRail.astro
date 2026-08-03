@@ -3,6 +3,7 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 
 const outlineLabel = i18n(I18nKey.tableOfContents);
+const readingProgressLabel = i18n(I18nKey.readingProgress);
 ---
 
 <aside
@@ -23,13 +24,6 @@ const outlineLabel = i18n(I18nKey.tableOfContents);
 				<span class="article-outline-rail__path-title" data-outline-detail-title></span>
 			</div>
 		</div>
-
-		<div class="article-outline-rail__progress" data-outline-progress-region>
-			<div class="article-outline-rail__progress-track" aria-hidden="true">
-				<span class="article-outline-rail__progress-value"></span>
-			</div>
-			<span class="article-outline-rail__progress-label" data-outline-progress-label>0%</span>
-		</div>
 	</div>
 
 	<nav class="article-outline-rail__browse" aria-hidden="true" aria-label={outlineLabel} data-outline-browse>
@@ -37,6 +31,29 @@ const outlineLabel = i18n(I18nKey.tableOfContents);
 	</nav>
 
 	<div class="article-outline-rail__minimap" aria-hidden="true" data-outline-minimap></div>
+
+	<div
+		class="article-outline-rail__progress"
+		role="progressbar"
+		aria-label={readingProgressLabel}
+		aria-valuemin="0"
+		aria-valuemax="100"
+		aria-valuenow="0"
+		data-outline-progress-region
+	>
+		<svg
+			class="article-outline-rail__progress-ring"
+			width="20"
+			height="20"
+			viewBox="0 0 24 24"
+			aria-hidden="true"
+			focusable="false"
+		>
+			<circle class="article-outline-rail__progress-ring-track" cx="12" cy="12" r="9" pathLength="1"></circle>
+			<circle class="article-outline-rail__progress-ring-value" cx="12" cy="12" r="9" pathLength="1"></circle>
+		</svg>
+		<span class="article-outline-rail__progress-label" data-outline-progress-label>0%</span>
+	</div>
 </aside>
 
 <!-- 样式已迁移至 src/styles/components/article-outline-rail.css -->

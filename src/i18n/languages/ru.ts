@@ -42,6 +42,7 @@ export const ru: Translation = {
 	[Key.recentPosts]: "Последние посты",
 	[Key.postList]: "Список постов",
 	[Key.tableOfContents]: "Содержание",
+	[Key.readingProgress]: "Прогресс чтения",
 	[Key.tocEmpty]: "На этой странице нет оглавления",
 	[Key.music]: "Музыка",
 	[Key.musicNoPlaying]: "Ничего не воспроизводится",

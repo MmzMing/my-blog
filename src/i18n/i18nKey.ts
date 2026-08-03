@@ -17,6 +17,7 @@ enum I18nKey {
 	recentPosts = "recentPosts",
 	postList = "postList",
 	tableOfContents = "tableOfContents",
+	readingProgress = "readingProgress",
 	tocEmpty = "tocEmpty",
 	music = "music",
 

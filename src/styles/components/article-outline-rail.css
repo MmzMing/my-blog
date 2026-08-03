@@ -6,7 +6,9 @@
 @media (min-width: 108rem) and (hover: hover) and (pointer: fine) {
 	.article-outline-rail {
 		--article-outline-progress: 0;
+		--article-outline-summary-y: 50%;
 		--article-outline-active: #0e7490;
+		--article-outline-progress-track: rgb(0 0 0 / 18%);
 		--article-outline-panel-bg: #dedede;
 		--article-outline-panel-text: #000;
 		--article-outline-panel-muted: #000;
@@ -16,7 +18,9 @@
 		left: calc(50% + 32rem + var(--space-4));
 		right: auto;
 		z-index: 30;
-		display: block;
+		display: grid;
+		grid-template-rows: minmax(0, 1fr) auto;
+		gap: var(--space-3);
 		width: 5rem;
 		height: min(40rem, calc(100vh - 10rem));
 		min-height: 18rem;
@@ -25,6 +29,7 @@
 
 	:root.dark .article-outline-rail {
 		--article-outline-active: #67e8f9;
+		--article-outline-progress-track: rgb(255 255 255 / 22%);
 		--article-outline-panel-bg: #131313;
 		--article-outline-panel-text: #f5f5f5;
 		--article-outline-panel-muted: #c7c7c7;
@@ -42,7 +47,7 @@
 		grid-template-rows: repeat(var(--article-outline-row-count, 1), minmax(0, 1fr));
 		justify-items: start;
 		align-items: start;
-		height: 100%;
+		min-height: 0;
 		padding: var(--space-2) 0;
 		cursor: default;
 		transition: opacity 240ms ease, transform 240ms ease;
@@ -64,7 +69,6 @@
 		flex: none;
 		border-radius: 999px;
 		background: var(--line-color);
-		transition: background-color 180ms ease, opacity 180ms ease;
 	}
 
 	.article-outline-rail__heading-mark {
@@ -100,19 +104,24 @@
 		position: absolute;
 		left: calc(100% + var(--space-3));
 		width: 15rem;
-		transform: translateY(-50%);
 		transition: opacity 250ms ease;
 	}
 
 	.article-outline-rail__details {
-		top: var(--article-outline-summary-top, 50%);
+		top: 0;
 		padding: var(--space-3) var(--space-4);
 		opacity: 1;
 		pointer-events: auto;
 		background: var(--article-outline-panel-bg);
 		border: 0;
 		border-radius: var(--radius-large);
-		transition: opacity 250ms ease, top 360ms cubic-bezier(0.22, 1, 0.36, 1);
+		transform: translate3d(
+			0,
+			calc(var(--article-outline-summary-y) - 50%),
+			0
+		);
+		transition: opacity 250ms ease;
+		will-change: transform, opacity;
 	}
 
 	.article-outline-rail.is-expanded .article-outline-rail__details {
@@ -191,39 +200,45 @@
 	}
 
 	.article-outline-rail__progress {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
+		display: flex;
 		align-items: center;
-		gap: var(--space-3);
-		margin-top: var(--space-4);
+		gap: 0.45rem;
+		justify-self: start;
+		min-height: 1.5rem;
 		color: var(--article-outline-panel-muted);
 		font-family: "JetBrains Mono Variable", ui-monospace, monospace;
-		font-size: 0.72rem;
+		font-size: 0.8rem;
 	}
 
-	.article-outline-rail__progress-track {
-		height: 1px;
-		background-image: repeating-linear-gradient(
-			to right,
-			var(--article-outline-panel-muted) 0,
-			var(--article-outline-panel-muted) 3px,
-			transparent 3px,
-			transparent 6px
-		);
-	}
-
-	.article-outline-rail__progress-value {
+	.article-outline-rail__progress-ring {
 		display: block;
-		height: 100%;
-		background: var(--article-outline-active);
-		transform: scaleX(var(--article-outline-progress));
-		transform-origin: left center;
-		transition: transform 120ms linear;
+		flex: none;
+		overflow: visible;
+	}
+
+	.article-outline-rail__progress-ring-track,
+	.article-outline-rail__progress-ring-value {
+		fill: none;
+		stroke-width: 3;
+	}
+
+	.article-outline-rail__progress-ring-track {
+		stroke: var(--article-outline-progress-track);
+	}
+
+	.article-outline-rail__progress-ring-value {
+		stroke: var(--article-outline-active);
+		stroke-dasharray: 1;
+		stroke-dashoffset: calc(1 - var(--article-outline-progress));
+		stroke-linecap: round;
+		transform: rotate(-90deg);
+		transform-origin: center;
 	}
 
 	.article-outline-rail__progress-label {
-		color: var(--article-outline-active);
+		color: var(--article-outline-panel-muted);
 		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.article-outline-rail__browse-list {
@@ -276,10 +291,7 @@
 		.article-outline-rail__minimap,
 		.article-outline-rail__details,
 		.article-outline-rail__browse,
-		.article-outline-rail__heading-mark,
-		.article-outline-rail__body-tick,
 		.article-outline-rail__path-item,
-		.article-outline-rail__progress-value,
 		.article-outline-rail__browse-item {
 			animation: none;
 			transition-duration: 1ms;

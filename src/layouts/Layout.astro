@@ -370,7 +370,10 @@ const siteLang = lang.replace("_", "-");
 
 <script>
 	import { ArticleOutlineRailRuntime } from "@/utils/article-outline-controller";
+	import { installLazyCollapsibleCodeController } from "@/utils/lazy-collapsible-code-controller";
   import { expressiveCodeConfig, siteConfig } from "@/config";
+
+	installLazyCollapsibleCodeController();
 
 	if (!window.__articleOutlineRailRuntime) {
 		window.__articleOutlineRailRuntime = new ArticleOutlineRailRuntime();
