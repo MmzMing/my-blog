@@ -1,7 +1,7 @@
 ---
 title: 米塔3D字体网页端实现
 published: 2026-08-01
-description: 本文详细讲解如何在 React Three Fiber 场景中实现仿米塔（Miside）3D 字体物理效果：逐字打字显现、保持、逐个释放、物理坠落消失。核心架构分为三层——纯函数层（core.ts）负责字形分割、排版布局、确定性随机与四阶段状态机；物理渲染层（physics.tsx）基于 Rapier 引擎驱动刚体碰撞与坠落；懒加载门面层（layer.tsx）实现动态导入与错误降级。涵盖 Intl.Segmenter 分割、SDF 字体渲染、相机朝向视差、移动端适配及性能优化等关键技术点。
+description: 如何在 React Three Fiber场景中实现仿米塔（Miside）3D 字体物理效果。涵盖分割、SDF 字体渲染、相机朝向视差、移动端适配及性能优化等关键技术点。
 tags:
   - React
   - Three
