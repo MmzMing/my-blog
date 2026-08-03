@@ -67,9 +67,12 @@ function handleToggleClick(event: MouseEvent): void {
 	// The collapsible plugin handles the same click at the button. Capture first so
 	// its existing state, line-number and accessibility behavior stays unchanged.
 	materializeCode(frame);
-	queueMicrotask(() => {
+	// Let the plugin's button listener finish before deciding whether to unload
+	// the deferred lines. A microtask can run before that listener when the
+	// plugin initializes during the same page-load turn.
+	window.setTimeout(() => {
 		if (frame.isConnected) dematerializeCode(frame);
-	});
+	}, 0);
 }
 
 export function installLazyCollapsibleCodeController(): void {
