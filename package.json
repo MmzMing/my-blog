@@ -17,6 +17,7 @@
 		"icons": "node scripts/generate-icons.js",
 		"build-index": "tsx scripts/ai-search/build-index.ts",
 		"build-index:dry-run": "tsx scripts/ai-search/build-index.ts --dry-run",
+		"indexnow": "tsx scripts/indexnow.ts",
 		"worker:types": "wrangler types",
 		"test": "vitest run",
 		"test:worker": "vitest run --config vitest.config.ts"
