@@ -6,7 +6,9 @@ import { i18n } from "@/i18n/translation";
 import "@/styles/pages/music-visualizer.css";
 ---
 
-<MainGridLayout title={i18n(I18nKey.music) + " - 3D可视化"} description="音乐地形可视化，沉浸式音乐体验">
+
+<MainGridLayout title={i18n(I18nKey.music) + " - 3D可视化"} description="音乐地形可视化，沉浸式音乐体验" hasOwnH1={true}>
+	<h1 class="sr-only">音乐 3D 可视化</h1>
 	<div class="music-visualizer-page">
 		<MusicVisualizer client:only="svelte" />
 	</div>

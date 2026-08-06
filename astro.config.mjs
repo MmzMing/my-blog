@@ -180,6 +180,10 @@ export default defineConfig({
 		}),
 		svelte(),
 		sitemap({
+			customPages: [
+				new URL("/knowledge/index.json", siteConfig.site_url).toString(),
+				new URL("/llms.txt", siteConfig.site_url).toString(),
+			],
 			filter: (page) => {
 				// 根据页面开关配置过滤sitemap
 				const url = new URL(page);

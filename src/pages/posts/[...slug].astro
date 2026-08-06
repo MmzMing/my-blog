@@ -118,16 +118,17 @@ dayjs.extend(utc);
 
 const jsonLd = {
 	"@context": "https://schema.org",
-	"@type": "BlogPosting",
+	"@type": ["BlogPosting", "TechArticle"],
+	"@id": Astro.url.href,
 	headline: entry.data.title,
 	description: entry.data.description || entry.data.title,
 	keywords: entry.data.tags,
+	articleSection: entry.data.category || "未分类",
+	wordCount: remarkPluginFrontmatter.words,
 	image: posterCoverUrl || undefined,
-	author: {
-		"@type": "Person",
-		name: homeConfig.name,
-		url: Astro.site,
-	},
+	author: { "@id": `${Astro.site}#person` },
+	url: Astro.url.href,
+	isPartOf: { "@id": `${Astro.site}#website` },
 	publisher: {
 		"@type": "Organization",
 		name: siteConfig.title,
@@ -150,6 +151,37 @@ const jsonLd = {
 };
 
 const serializedJsonLd = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+const breadcrumbJsonLd = {
+	"@context": "https://schema.org",
+	"@type": "BreadcrumbList",
+	itemListElement: [
+		{
+			"@type": "ListItem",
+			position: 1,
+			name: siteConfig.title,
+			item: new URL("/", Astro.site).href,
+		},
+		{
+			"@type": "ListItem",
+			position: 2,
+			name: entry.data.category || "文章",
+			item: new URL(
+				`/archive/?category=${encodeURIComponent(entry.data.category || "")}`,
+				Astro.site,
+			).href,
+		},
+		{
+			"@type": "ListItem",
+			position: 3,
+			name: entry.data.title,
+			item: Astro.url.href,
+		},
+	],
+};
+const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
+	/</g,
+	"\\u003c",
+);
 ---
 
 <MainGridLayout
@@ -178,6 +210,12 @@ const serializedJsonLd = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
     type="application/ld+json"
     set:html={serializedJsonLd}
   />
+	<script
+		slot="head"
+		is:inline
+		type="application/ld+json"
+		set:html={serializedBreadcrumbJsonLd}
+	/>
   <!-- Layer 1: Title + meta -->
   <div class="post-hero rounded-(--radius-large) mb-2 onload-animation">
     <div class="post-hero__content">

@@ -16,8 +16,9 @@ if (!aboutPost) {
 const aboutText = aboutPost.body ?? "";
 ---
 
-<MainGridLayout title={i18n(I18nKey.about)} description={i18n(I18nKey.about)}>
-    <div class="about-canvas-container">
+<MainGridLayout title={i18n(I18nKey.about)} description="MmzMing 的个人介绍、技术方向、博客主题与联系方式。" hasOwnH1={true}>
+	<h1 class="sr-only">关于 MmzMing</h1>
+	<div class="about-canvas-container">
         <AboutCanvas text={aboutText} client:only="svelte" />
     </div>
 </MainGridLayout>

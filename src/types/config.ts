@@ -151,6 +151,30 @@ export type SiteConfig = {
 	};
 };
 
+export type LlmsConfig = {
+	author: {
+		heading: string;
+		description: string;
+	};
+	machineEntrypoints: {
+		heading: string;
+		items: Array<{
+			label: string;
+			path: string;
+		}>;
+	};
+	topics: {
+		heading: string;
+	};
+	featuredArticles: {
+		heading: string;
+	};
+	usage: {
+		heading: string;
+		description: string;
+	};
+};
+
 export type Favicon = {
 	src: string;
 	theme?: "light" | "dark";
@@ -178,6 +202,7 @@ export enum LinkPreset {
 	NavPosts = 17,
 	NavMy = 18,
 	Music = 19,
+	Topics = 20,
 }
 
 export type NavBarLink = {

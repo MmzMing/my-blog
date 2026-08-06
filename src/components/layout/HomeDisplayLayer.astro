@@ -20,9 +20,13 @@ const transparentPixel =
 	data-scroll-distance={String(displayConfig.scrollDistance)}
 	data-shutter-scroll-distance={String(shutterConfig.scrollDistance)}
 	data-pillar-final-width={displayConfig.pillarFinalWidth}
+	data-display-ready="pending"
 	style={`--display-pillar-final-width: ${displayConfig.pillarFinalWidth};`}
 >
 	<div class="home-display-layer__viewport" data-display-viewport>
+		<div class="home-display-layer__fallback" data-display-fallback>
+			<span>{displayConfig.title}</span>
+		</div>
 		{/* ===== 展示层动画元素 ===== */}
 		<div class="home-display-layer__line" data-display-line></div>
 		{displayConfig.emitterImage && (
@@ -51,7 +55,7 @@ const transparentPixel =
 			muted
 			loop
 			playsinline
-			preload="auto"
+			preload="none"
 			aria-hidden="true"
 		></video>
 		<img
@@ -283,41 +287,55 @@ const transparentPixel =
 	// 分帧 decode 图片，避免一次性解码大量位图阻塞主线程。
 	// 视频等待 canplaythrough，无需 decode。
 	async function decodeImageBatch(images: HTMLImageElement[], batchSize: number) {
+		let allReady = true;
 		for (let i = 0; i < images.length; i += batchSize) {
-			await new Promise<void>((resolve) => {
+			const batchReady = await new Promise<boolean>((resolve) => {
 				requestAnimationFrame(() => {
 					const batch = images.slice(i, i + batchSize);
-					Promise.allSettled(batch.map((img) => img.decode?.().catch(() => undefined))).then(
-						() => resolve(),
-					);
+					Promise.all(
+						batch.map(async (img) => {
+							try {
+								await img.decode?.();
+								return img.complete && img.naturalWidth > 0;
+							} catch {
+								return false;
+							}
+						}),
+					).then((results) => resolve(results.every(Boolean)));
 				});
 			});
+			allReady = allReady && batchReady;
 		}
+		return allReady;
 	}
 
 	// 等待视频加载到可流畅播放状态（HAVE_ENOUGH_DATA, readyState===4），
 // 确保百叶窗 merge 阶段视频渐入时不会出现卡顿/黑帧。
-function waitVideoReady(video: HTMLVideoElement) {
-	return new Promise<void>((resolve) => {
-		if (video.readyState >= 4) return resolve();
-		const cleanup = () => {
-			video.removeEventListener("canplaythrough", onReady);
-			video.removeEventListener("canplay", onReady);
-			video.removeEventListener("loadeddata", onReady);
-			video.removeEventListener("error", onReady);
-		};
-		const onReady = () => {
-			cleanup();
-			resolve();
-		};
+	function waitVideoReady(video: HTMLVideoElement) {
+		return new Promise<boolean>((resolve) => {
+			if (video.readyState >= 3) return resolve(true);
+			const cleanup = () => {
+				video.removeEventListener("canplaythrough", onReady);
+				video.removeEventListener("canplay", onReady);
+				video.removeEventListener("loadeddata", onReady);
+				video.removeEventListener("error", onError);
+			};
+			const onReady = () => {
+				cleanup();
+				resolve(true);
+			};
+			const onError = () => {
+				cleanup();
+				resolve(false);
+			};
 		// canplaythrough 是最理想状态，但部分浏览器对循环视频可能只触发 canplay/loadeddata，
 		// 因此三者任一触发即视为就绪，error 也 resolve 以避免阻塞动画。
 		video.addEventListener("canplaythrough", onReady);
-		video.addEventListener("canplay", onReady);
-		video.addEventListener("loadeddata", onReady);
-		video.addEventListener("error", onReady);
-	});
-}
+			video.addEventListener("canplay", onReady);
+			video.addEventListener("loadeddata", onReady);
+			video.addEventListener("error", onError);
+		});
+	}
 
 async function hydrateLazyImages(root: HTMLElement) {
 	const elements = getLazyImages(root);
@@ -335,16 +353,29 @@ async function hydrateLazyImages(root: HTMLElement) {
 		}
 	}
 
-	await withTimeout(
-		Promise.allSettled([
-			decodeImageBatch(images, 2),
-			...videos.map((video) => waitVideoReady(video)),
-		]),
-		IMAGE_DECODE_TIMEOUT,
-	).catch(() => {
-		console.warn("[home-display-layer] media decode timeout, proceeding with fallback");
-	});
-}
+		try {
+			const readiness = await withTimeout(
+				Promise.all([
+					decodeImageBatch(images, 2),
+					...videos.map((video) => waitVideoReady(video)),
+				]),
+				IMAGE_DECODE_TIMEOUT,
+			);
+			return readiness.every(Boolean);
+		} catch {
+			console.warn("[home-display-layer] media decode timeout, proceeding with fallback");
+			return false;
+		}
+	}
+
+	function setDisplayFallback(root: HTMLElement) {
+		if (activeCleanup) {
+			activeCleanup();
+			activeCleanup = null;
+		}
+		root.dataset.displayReady = "fallback";
+		resetLazyImages(root);
+	}
 
 	function ensureNoContentWrapperContainingBlock(): Promise<void> {
 		return new Promise((resolve) => {
@@ -427,12 +458,16 @@ async function hydrateLazyImages(root: HTMLElement) {
 	// 资源加载（图片 decode / 视频 canplaythrough）通常耗时较长，
 	// 与 content-wrapper 动画等待并行可显著提前资源就绪时机，
 	// 避免快速滚动时 ScrollTrigger pin 已激活但图片/视频尚未就绪。
-	await Promise.all([
+	const [, mediaReady] = await Promise.all([
 		ensureNoContentWrapperContainingBlock(),
 		hydrateLazyImages(root),
 	]);
 
 	if (token !== initToken || !document.contains(root) || !matchesDesktop()) return;
+	if (!mediaReady) {
+		setDisplayFallback(root);
+		return;
+	}
 
 		const [{ gsap }, { ScrollTrigger }] = await Promise.all([
 			import("gsap"),
@@ -505,6 +540,7 @@ async function hydrateLazyImages(root: HTMLElement) {
 			!stripRight ||
 			panels.length !== 5
 		) {
+			setDisplayFallback(root);
 			return;
 		}
 
@@ -883,7 +919,10 @@ async function hydrateLazyImages(root: HTMLElement) {
 		// 首页关键资源：boot 时立即初始化，initHomeDisplayLayer 内部会尽早并行
 		// 加载所有图片/视频并等待 decode/canplaythrough，确保用户滚动到时资源已就绪。
 		if (matchesDesktop() && !prefersReducedMotion()) {
-			void initHomeDisplayLayer();
+			void initHomeDisplayLayer().catch(() => {
+				const currentRoot = getRoot();
+				if (currentRoot) setDisplayFallback(currentRoot);
+			});
 		}
 	}
 

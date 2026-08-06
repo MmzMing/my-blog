@@ -105,4 +105,9 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
 		url: "/music/",
 		icon: "material-symbols:graphic-eq-rounded",
 	},
+	[LinkPreset.Topics]: {
+		name: "主题知识库",
+		url: "/topics/",
+		icon: "material-symbols:account-tree",
+	},
 };

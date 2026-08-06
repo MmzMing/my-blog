@@ -7,7 +7,7 @@ import {
 	normalizeUmamiPageviewPath,
 } from "@/utils/umami-pageviews";
 
-type ArticleSort = "latest" | "earliest";
+type ArticleSort = "latest" | "earliest" | "popular";
 
 type ArticleListTag = {
 	name: string;
@@ -57,6 +57,13 @@ const regularPosts = $derived(
 	posts
 		.filter((post) => !post.pinned)
 		.sort((a, b) => {
+			if (sortMode === "popular") {
+				const aViews =
+					pageviewLookup?.get(normalizeUmamiPageviewPath(a.url)) ?? -1;
+				const bViews =
+					pageviewLookup?.get(normalizeUmamiPageviewPath(b.url)) ?? -1;
+				return bViews - aViews || b.publishedTimestamp - a.publishedTimestamp;
+			}
 			const difference = b.publishedTimestamp - a.publishedTimestamp;
 			return sortMode === "latest" ? difference : -difference;
 		}),
@@ -259,11 +266,19 @@ onMount(() => {
 			>
 				最早
 			</button>
+			<button
+				type="button"
+				class:is-active={sortMode === "popular"}
+				aria-pressed={sortMode === "popular"}
+				onclick={() => changeSort("popular")}
+			>
+				热门
+			</button>
 		</div>
 	</header>
 
 	<p class="sr-only" aria-live="polite">
-		当前按{sortMode === "latest" ? "最新" : "最早"}排序，第 {currentPage} 页，共 {totalPages} 页
+		当前按{sortMode === "latest" ? "最新" : sortMode === "popular" ? "热门" : "最早"}排序，第 {currentPage} 页，共 {totalPages} 页
 	</p>
 
 	<section class="article-list-regular" aria-labelledby="article-list-regular-title">

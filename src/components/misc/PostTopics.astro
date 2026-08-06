@@ -1,0 +1,34 @@
+---
+import { getTopicDefinition } from "@/config/topics";
+
+interface Props {
+	topics: string[];
+}
+
+const { topics } = Astro.props;
+const definitions = topics
+	.map((slug) => getTopicDefinition(slug))
+	.filter((topic): topic is NonNullable<typeof topic> => Boolean(topic));
+---
+
+{definitions.length > 0 && (
+	<section
+		class="post-topics mb-6 rounded-(--radius-large) border border-(--line-divider) bg-(--card-bg) p-4"
+		aria-labelledby="post-topics-title"
+	>
+		<h2 id="post-topics-title" class="text-sm font-semibold text-(--content-meta)">
+			所属专题
+		</h2>
+		<div class="mt-3 flex flex-wrap gap-2">
+			{definitions.map((topic) => (
+				<a
+					href={`/topics/${topic.slug}/`}
+					class="rounded-full border border-(--line-divider) px-3 py-1.5 text-sm transition-colors hover:border-(--primary) hover:text-(--primary)"
+					title={topic.description}
+				>
+					{topic.title}
+				</a>
+			))}
+		</div>
+	</section>
+)}

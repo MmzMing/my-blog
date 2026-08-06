@@ -3,6 +3,8 @@ import HomeDataLayer from "@components/layout/HomeDataLayer.astro";
 import HomeDisplayLayer from "@components/layout/HomeDisplayLayer.astro";
 import HomeHero from "@components/layout/HomeHero.astro";
 import HomeTicker from "@components/layout/HomeTicker.astro";
+import SiteStructuredData from "@/components/seo/SiteStructuredData.astro";
+import { siteConfig } from "@/config";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import "@/styles/components/home-data-layer.css";
 import "@/styles/components/home-display-layer.css";
@@ -13,7 +15,12 @@ import "@/styles/components/home-section.css";
 import "@/styles/components/home-ticker.css";
 ---
 
-<MainGridLayout>
+<MainGridLayout
+	title={siteConfig.title}
+	description={siteConfig.description}
+	hasOwnH1={true}
+>
+	<SiteStructuredData slot="head" />
 	<div class="home-page home-page--motion-pending">
 		<HomeHero />
 		<HomeTicker />

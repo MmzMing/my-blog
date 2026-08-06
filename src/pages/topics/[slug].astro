@@ -1,0 +1,42 @@
+---
+import { getTopicDefinition, topicDefinitions } from "@/config/topics";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { getTopicPosts } from "@/utils/knowledge";
+import { getPostUrlBySlug } from "@/utils/url-utils";
+
+export function getStaticPaths() {
+	return topicDefinitions.map((topic) => ({ params: { slug: topic.slug } }));
+}
+
+const slug = Astro.params.slug || "";
+const topic = getTopicDefinition(slug);
+if (!topic) return Astro.redirect("/404/");
+const posts = await getTopicPosts(topic.slug);
+---
+
+<MainGridLayout title={topic.title} description={topic.description} hasOwnH1={true}>
+	<div class="card-base rounded-(--radius-large) p-6 md:p-9">
+		<nav class="mb-5 text-sm text-(--content-meta)" aria-label="面包屑">
+			<a class="hover:text-(--primary) hover:underline" href="/topics/">主题知识库</a>
+			<span class="mx-2">/</span>
+			<span>{topic.title}</span>
+		</nav>
+		<h1 class="text-3xl font-bold">{topic.title}</h1>
+		<p class="mt-3 max-w-3xl leading-7 text-(--content-meta)">{topic.description}</p>
+		<h2 class="mt-10 text-2xl font-semibold">相关文章（{posts.length}）</h2>
+		{posts.length > 0 ? (
+			<div class="mt-4 grid gap-4 md:grid-cols-2">
+				{posts.map((post) => (
+					<article class="rounded-(--radius-large) border border-(--line-divider) p-5">
+						<p class="text-xs text-(--content-meta)">{post.data.category || "未分类"} · {post.data.published.toISOString().slice(0, 10)}</p>
+						<h3 class="mt-2 text-lg font-semibold"><a class="hover:text-(--primary) hover:underline" href={getPostUrlBySlug(post.id)}>{post.data.title}</a></h3>
+						<p class="mt-2 text-sm leading-6 text-(--content-meta)">{post.data.description}</p>
+						<div class="mt-3 flex flex-wrap gap-2 text-xs text-(--content-meta)">
+							{post.data.tags.slice(0, 5).map((tag) => <span>#{tag}</span>)}
+						</div>
+					</article>
+				))}
+			</div>
+		) : <p class="mt-4 text-(--content-meta)">该主题暂时没有公开文章。</p>}
+	</div>
+</MainGridLayout>

@@ -28,6 +28,8 @@ interface Props {
 	lang?: string;
 	setOGTypeArticle?: boolean;
 	postSlug?: string;
+	hasOwnH1?: boolean;
+	robots?: string;
 	postCategory?: string;
 	bannerPostMeta?: {
 		title: string;
@@ -52,6 +54,8 @@ const {
 	lang,
 	setOGTypeArticle,
 	postSlug,
+	hasOwnH1 = false,
+	robots,
 	postCategory,
 	bannerPostMeta: _bannerPostMeta,
 	articleMeta,
@@ -67,7 +71,7 @@ const navLinks = navBarConfig.links.map((item) => {
 });
 ---
 
-<Layout title={title} banner={banner} description={description} lang={lang} setOGTypeArticle={setOGTypeArticle} postSlug={postSlug} articleMeta={articleMeta}>
+<Layout title={title} banner={banner} description={description} lang={lang} setOGTypeArticle={setOGTypeArticle} postSlug={postSlug} articleMeta={articleMeta} robots={robots}>
 	<slot slot="head" name="head"></slot>
 
 	<div
@@ -93,8 +97,8 @@ const navLinks = navBarConfig.links.map((item) => {
 			<main id="swup-container" class="transition-swup-main" data-current-post-category={postCategory || ""}>
 				{isPostPage && <ArticleOutlineRail />}
 				{shouldRenderCategoryBar && <div id="category-bar-wrapper"><CategoryBar title={title} postSlug={postSlug} postCategory={postCategory} /></div>}
-				{/* 文章页有 post-hero 的可视 H1，跳过 sr-only 兜底避免重复 H1 */}
-				{!isPostPage && <h1 class="sr-only">{title}</h1>}
+				{/* 页面组件有自己的 H1 时不再输出布局兜底标题，确保每页只有一个 H1。 */}
+				{!isPostPage && !hasOwnH1 && <h1 class="sr-only">{title}</h1>}
 
 				<div id="content-wrapper" class="onload-animation">
 					<slot></slot>

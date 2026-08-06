@@ -21,6 +21,12 @@
 	display: none;
 }
 
+/* 媒体与 GSAP 尚未就绪前隐藏整套动画层，避免 SSR 首帧显示成堆叠静态图层。 */
+.home-display-layer:not([data-display-ready="ready"]):not([data-display-ready="fallback"])
+	.home-display-layer__viewport {
+	visibility: hidden;
+}
+
 .home-display-layer__viewport {
 	position: relative;
 	z-index: 40;
@@ -30,6 +36,32 @@
 	overflow: hidden;
 	background: var(--page-bg);
 	isolation: isolate;
+}
+
+.home-display-layer__fallback {
+	position: absolute;
+	inset: 0;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem;
+	background: var(--page-bg);
+	color: var(--deep-text);
+	font-size: clamp(1rem, 1.8vw, 1.5rem);
+	letter-spacing: 0.12em;
+	text-align: center;
+}
+
+.home-display-layer[data-display-ready="fallback"] .home-display-layer__viewport {
+	visibility: visible;
+}
+
+.home-display-layer[data-display-ready="fallback"] .home-display-layer__viewport > :not([data-display-fallback]) {
+	display: none !important;
+}
+
+.home-display-layer[data-display-ready="fallback"] .home-display-layer__fallback {
+	display: flex;
 }
 
 @supports (height: 100dvh) {

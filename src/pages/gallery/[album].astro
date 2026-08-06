@@ -32,7 +32,8 @@ const cover = getAlbumCover(albumMeta, photos);
 const columnWidth = galleryConfig.columnWidth || 240;
 ---
 
-<MainGridLayout title={albumMeta.name} description={albumMeta.description || ""}>
+<MainGridLayout title={albumMeta.name} description={albumMeta.description || `相册：${albumMeta.name}`} hasOwnH1={true}>
+	<h1 class="sr-only">{albumMeta.name}</h1>
   <!-- 相册封面横幅 -->
   <div class="w-full rounded-(--radius-large) overflow-hidden relative">
     {cover ? (

@@ -3,3 +3,14 @@
 # /assets/*、/fonts/* 为非哈希路径，不设 immutable，以免资源更新后客户端长期持旧缓存。
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/fonts/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+/knowledge/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+/llms.txt
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+/api/allPostMeta.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400

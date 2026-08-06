@@ -1,0 +1,84 @@
+---
+import { siteConfig } from "@/config";
+import { getSortedPosts } from "@/utils/content-utils";
+import { getPostUrlBySlug } from "@/utils/url-utils";
+
+const posts = (await getSortedPosts())
+	.filter((post) => post.data.draft !== true && !post.data.password)
+	.slice(0, 6);
+const umami = siteConfig.analytics?.umamiAnalytics;
+const apiBase = umami?.scriptUrl ? new URL(umami.scriptUrl).origin : "";
+const shareId = umami?.shareId || "";
+---
+
+<section
+	id="popular-posts"
+	class="mx-auto mt-12 w-full max-w-5xl px-4"
+	aria-labelledby="popular-posts-title"
+	data-popular-api-base={apiBase}
+	data-popular-share-id={shareId}
+>
+	<div class="mb-5 flex items-end justify-between gap-4">
+		<div>
+			<p class="text-xs tracking-[0.24em] text-(--content-meta)">POPULAR</p>
+			<h2 id="popular-posts-title" class="mt-2 text-2xl font-bold">热门文章</h2>
+		</div>
+		<a class="text-sm text-(--primary) hover:underline" href="/list/">浏览全部文章</a>
+	</div>
+	<div class="grid gap-3 md:grid-cols-2">
+		{posts.map((post) => (
+			<article class="card-base rounded-(--radius-large) p-4" data-popular-post={getPostUrlBySlug(post.id)}>
+				<div class="flex items-start justify-between gap-4">
+					<div>
+						<h3 class="font-semibold">
+							<a class="hover:text-(--primary) hover:underline" href={getPostUrlBySlug(post.id)}>{post.data.title}</a>
+						</h3>
+						<p class="mt-1 text-sm leading-6 text-(--content-meta)">{post.data.description}</p>
+					</div>
+					<span class="shrink-0 text-xs text-(--content-meta)" data-popular-views>访问量 —</span>
+				</div>
+			</article>
+		))}
+	</div>
+</section>
+
+<script is:inline>
+	(() => {
+		const init = () => {
+			const root = document.getElementById("popular-posts");
+			if (!root || root.dataset.popularReady === "true") return;
+			root.dataset.popularReady = "true";
+			const apiBase = root.dataset.popularApiBase;
+			const shareId = root.dataset.popularShareId;
+			if (!apiBase || !shareId) return;
+			const normalize = (value) => {
+				try { return new URL(value, window.location.origin).pathname.replace(/\/+$/, "").toLowerCase() || "/"; }
+				catch { return String(value).split(/[?#]/, 1)[0].replace(/\/+$/, "").toLowerCase() || "/"; }
+			};
+			fetch(`${apiBase}/api/share/${encodeURIComponent(shareId)}`)
+				.then((response) => response.ok ? response.json() : Promise.reject(new Error("share")))
+				.then((share) => {
+					const websiteId = share.websiteId || share.entityId;
+					const token = share.token || shareId;
+					if (!websiteId) throw new Error("website");
+					return fetch(`${apiBase}/api/websites/${websiteId}/metrics?startAt=0&endAt=${Date.now()}&type=path&limit=1000`, {
+						headers: { "x-umami-share-context": "1", "x-umami-share-token": token },
+					});
+				})
+				.then((response) => response.ok ? response.json() : Promise.reject(new Error("metrics")))
+				.then((rows) => {
+					const lookup = new Map();
+					rows.forEach((row) => lookup.set(normalize(row.x), (lookup.get(normalize(row.x)) || 0) + (Number(row.y) || 0)));
+					root.querySelectorAll("[data-popular-post]").forEach((card) => {
+						const views = lookup.get(normalize(card.dataset.popularPost || "")) || 0;
+						const output = card.querySelector("[data-popular-views]");
+						if (output) output.textContent = `访问量 ${views.toLocaleString()}`;
+					});
+				})
+				.catch(() => {});
+		};
+		if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
+		else init();
+		document.addEventListener("astro:page-load", init);
+	})();
+</script>

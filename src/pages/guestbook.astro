@@ -16,7 +16,9 @@ const title = i18n(I18nKey.guestbook);
 const description = i18n(I18nKey.guestbookDescription);
 ---
 
-<MainGridLayout title={title} description={description}>
+
+<MainGridLayout title={title} description={description} hasOwnH1={true}>
+	<h1 class="sr-only">{title}</h1>
 	<div class="guestbook-page">
 		<GuestbookChat client:only="svelte">
 			<GuestbookChatFallback slot="fallback" />

@@ -23,7 +23,6 @@ import {
 import { PAGE_WIDTH } from "@/constants/constants";
 import { defaultFavicons } from "@/constants/icon";
 import type { Favicon } from "@/types/config";
-import { formatDateToYYYYMMDD } from "@/utils/date-utils";
 import { url } from "@/utils/url-utils";
 
 import "@/styles/main.css";
@@ -46,10 +45,11 @@ interface Props {
 	lang?: string;
 	setOGTypeArticle?: boolean;
 	postSlug?: string;
+	robots?: string;
 	articleMeta?: ArticleMeta;
 }
 
-const { title, description, setOGTypeArticle, postSlug, articleMeta } =
+const { title, description, setOGTypeArticle, postSlug, articleMeta, robots } =
 	Astro.props;
 let { lang } = Astro.props;
 
@@ -127,6 +127,7 @@ const siteLang = lang.replace("_", "-");
 
     <title>{pageTitle}</title>
     <meta name="description" content={description || siteConfig.description || pageTitle} />
+    {robots && <meta name="robots" content={robots} />}
     {/* 文章页用 tags 作为 keywords，否则回退站点级 keywords */}
     {(() => {
       const keywords =
@@ -138,7 +139,7 @@ const siteLang = lang.replace("_", "-");
     <meta name="author" content={homeConfig.name} />
 
     <meta property="og:site_name" content={siteConfig.title} />
-    <meta property="og:url" content={Astro.url} />
+    <meta property="og:url" content={canonicalUrl} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description || siteConfig.description || pageTitle} />
     {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
@@ -166,7 +167,7 @@ const siteLang = lang.replace("_", "-");
     )}
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content={Astro.url} />
+    <meta property="twitter:url" content={canonicalUrl} />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description || siteConfig.description || pageTitle} />
     {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}

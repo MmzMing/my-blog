@@ -10,7 +10,8 @@ import { getSortedPosts } from "@/utils/content-utils";
 import { getCategoryUrl, getPostUrlBySlug, getTagUrl } from "@/utils/url-utils";
 
 const title = "文章列表";
-const description = "按整页滚动浏览所有文章。";
+const description =
+	"按主题、分类、标签、发布时间和访问热度浏览博客的全部文章。";
 const posts = await getSortedPosts();
 
 const dateFormatter = new Intl.DateTimeFormat(
@@ -66,7 +67,7 @@ const umamiPageviews = {
 };
 ---
 
-<MainGridLayout title={title} description={description}>
+<MainGridLayout title={title} description={description} hasOwnH1={true}>
 	<section class="article-list-page">
 		<header class="article-list-page__header">
 			<PageTitle title={title} />

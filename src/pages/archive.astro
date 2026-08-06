@@ -10,6 +10,7 @@ import { getSortedPostsList } from "@/utils/content-utils";
 
 const sortedPostsList = await getSortedPostsList();
 const title = i18n(I18nKey.archive);
+const description = "按时间、分类和标签浏览博客的全部技术文章。";
 const archiveStatsConfig = siteConfig.archiveStats;
 const timezone = siteConfig.timezone ?? "UTC";
 const yearMonthFormatter = new Intl.DateTimeFormat("en-US", {
@@ -45,7 +46,7 @@ const archivePostSummaries = sortedPostsList.map((post) => ({
 }));
 ---
 
-<MainGridLayout title={title}>
+<MainGridLayout title={title} description={description} hasOwnH1={true} robots={Astro.url.search ? "noindex,follow" : undefined}>
   <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32">
     <div class="card-base z-10 px-4 py-6 md:px-9 relative w-full">
       <div class="mb-6">

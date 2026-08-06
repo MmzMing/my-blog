@@ -30,6 +30,7 @@ export type {
 	HomePortfolioShutterInterlude,
 	HomePortfolioShutterPanel,
 	LicenseConfig,
+	LlmsConfig,
 	MusicPlayerConfig,
 	NavBarConfig,
 	PlantUMLConfig,
@@ -63,6 +64,7 @@ export { galleryConfig } from "./galleryConfig"; // 相册配置
 export { guestbookConfig } from "./guestbookConfig"; // 留言板配置
 export { homeConfig } from "./homeConfig"; // 首页与用户资料配置
 export { licenseConfig } from "./licenseConfig"; // 许可证配置
+export { llmsConfig } from "./llmsConfig"; // LLM 机器入口配置
 export { mermaidConfig } from "./mermaidConfig"; // Mermaid 图表配置
 // 组件配置
 export { musicPlayerConfig } from "./musicConfig"; // 音乐播放器配置

@@ -101,7 +101,16 @@ const rainConfig = {
 	<!-- 背景层：移动端 / 桌面端通过 <picture> 服务端切换 -->
 	<picture class="home-hero__video-picture">
 		<source media="(max-width: 768px)" srcset={mobileBackground} />
-		<img class="home-hero__video" src={homeConfig.hero.backgroundImage} alt="" />
+		<img
+			class="home-hero__video"
+			src={homeConfig.hero.backgroundImage}
+			alt=""
+			width="3000"
+			height="1500"
+			loading="eager"
+			fetchpriority="high"
+			decoding="async"
+		/>
 	</picture>
 
 	<!-- 全屏内容容器 -->
@@ -162,6 +171,7 @@ const rainConfig = {
 								{nameLetters.map((letter, i) => (
 									<span class="home-hero__name-letter" data-letter-index={i}>{letter}</span>
 								))}
+								<span class="sr-only"> 的技术博客</span>
 							</h1>
 						)}
 						<div class="home-hero__name-badge">{homeConfig.nameBadge || ""}</div>
