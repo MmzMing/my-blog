@@ -1,14 +1,14 @@
 ---
 title: 前后端登录Token存储方案
 published: 2026-05-04
-description: ZSK-Cloud 从单 Token 演进为 Access+Refresh 双令牌的认证体系设计，采用 HttpOnly Cookie 存储 + Redis 白名单吊销机制。
+description: 设计 ZSK-Cloud 的 Access Token + Refresh Token 认证体系，介绍 RS256 签名、HttpOnly Cookie、Redis 会话白名单、主动吊销和跨服务验签。
 tags: [JWT, 认证, 安全]
 category: 设计文档
 draft: false
 ---
 
-
-> 核心结论：ZSK-Cloud 采用 RS256 非对称签名的 Access Token + Refresh Token 双令牌方案。Access Token 与 Refresh Token 均通过 HttpOnly Cookie 下发，利用 Redis Set 维护白名单实现主动吊销；前端 Pinia 仅缓存非敏感用户状态，不持有任何 Token。
+> [!NOTE] 提示
+> ZSK-Cloud 采用 RS256 签名的 Access Token + Refresh Token 双令牌方案。两个令牌通过 HttpOnly Cookie 下发，Redis Set 维护会话白名单并支持主动吊销，前端 Pinia 只缓存非敏感用户状态。本文重点审查令牌生命周期、Cookie 属性、跨服务验签和吊销策略。
 
 ---
 
@@ -782,7 +782,7 @@ HttpOnly 阻断 JavaScript 读取 Cookie，但 XSS 仍可发起已认证请求�
 
 RS256 签名的 JWT 通常在 500–800 B，远小于 4 KB。若 Claims 过多导致超限，应精简 Claims，禁止在 JWT 中存放角色 / 权限列表。
 
-### 3、Q3：为什么不在 JWT Claims 中存放角色和权限？
+### 3、Q3：JWT Claims 为什么不存放角色和权限？
 
 1. **Token 体积**：角色 / 权限列表可能显著增加 JWT 长度。
 2. **实时性**：角色 / 权限变更后，旧 Token 仍携带旧权限，造成权限漂移。
@@ -840,8 +840,8 @@ Pinia 状态仅存于内存，各标签页独立。推荐方案：
 
 ## 十一、参考资料
 
-- [RFC 7519: JSON Web Token (JWT)](https://tools.ietf.org/html/rfc7519)
-- [RFC 6749: OAuth 2.0 Authorization Framework](https://tools.ietf.org/html/rfc6749)
+- [RFC 7519: JSON Web Token (JWT)](https://www.rfc-editor.org/rfc/rfc7519)
+- [RFC 6749: OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749)
 - [OWASP: Cross-Site Scripting (XSS)](https://owasp.org/www-community/attacks/xss/)
 - [OWASP: Cross-Site Request Forgery (CSRF)](https://owasp.org/www-community/attacks/csrf)
 - [MDN: Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie)

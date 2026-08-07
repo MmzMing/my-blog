@@ -1,11 +1,18 @@
 ---
 title: 邮箱链接登录前后的实现方案
 published: 2026-05-01
-description: 魔法链接登录的完整技术方案，基于 Cloudflare Turnstile 人机校验 + Redis Token 缓存 + 邮件回调验证，实现无密码自动登录。
+description: 基于 Cloudflare Turnstile、Redis 一次性 Token 和邮件回调实现无密码登录，涵盖链接发送、校验消费、自动注册、Cookie 登录态和安全边界。
 tags: [认证, 登录, 安全]
 category: 设计文档
 draft: false
 ---
+
+> [!NOTE] 提示
+> 本方案使用 Cloudflare Turnstile、Redis 一次性 Token 和邮件回调实现无密码登录。服务端只在校验人机结果、Token 有效期、Token 消费状态和邮箱归属后建立登录态；Token 必须短时有效、单次消费，并通过 HTTPS 传输。
+
+## 方案边界
+
+本文覆盖发送链接、回调验证、自动注册和登录态写入。邮件投递可靠性、账号找回、设备管理和高可用部署需要由业务系统另行设计。
 
 
 ## 一、需求分析

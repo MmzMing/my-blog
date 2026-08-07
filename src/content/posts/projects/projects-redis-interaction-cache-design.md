@@ -1,14 +1,14 @@
 ---
 title: 交互数据Redis缓存实现
 published: 2026-05-13
-description: 基于 Redis 的交互数据缓存设计，对比 Set+MQ、Set+定时扫描、Bitmap+MQ 三种方案的适用边界与兜底降级策略。
+description: 设计 Redis 交互数据异步写入方案，对比 Set + MQ、Set + 定时扫描、Bitmap + MQ 的适用条件，并说明一致性、降级和数据恢复策略。
 tags: [Redis, 缓存设计, Bitmap, 高性能]
 category: 实践笔记
 draft: false
 ---
 
-
-> 本方案基于 Redis 缓存实现交互数据的高性能读写，提供三种方案：Set + MQ（通用）、Set + 定时扫描（无 MQ 依赖）、Bitmap + MQ（极致内存）。评审重点：三种方案的适用边界、Bitmap 在分布式场景下的扩展性、雪花 ID 带来的内存风险、兜底降级策略的完整性。
+> [!NOTE] 提示
+> 本方案基于 Redis 缓存实现交互数据的异步写入，比较 Set + MQ、Set + 定时扫描和 Bitmap + MQ 三种方案。选型重点是数据规模、最终一致性窗口、消息系统依赖、Bitmap 的 ID 约束和 Redis 故障时的降级路径。
 
 ---
 

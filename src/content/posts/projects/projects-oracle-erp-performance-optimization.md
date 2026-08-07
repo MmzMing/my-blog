@@ -1,11 +1,14 @@
 ---
 title: Oracle ERP性能优化
 published: 2025-12-02
-description: Oracle ERP 因 SHRINK 操作导致聚簇因子恶化的性能排查与优化，涵盖 AWR 分析、索引重建及查询调优。
+description: 记录 Oracle ERP 因 SHRINK 导致聚簇因子恶化的排查过程，结合 AWR、执行计划、索引重建、在线表重定义和查询调优分析性能问题。
 tags: [Oracle, 数据库, 性能优化]
 category: 实践笔记
 draft: false
 ---
+
+> [!NOTE] 提示
+> 本文记录一次 Oracle ERP 排产变慢的排查过程：表执行 SHRINK 后，索引与表的物理顺序关系发生变化，导致聚簇因子恶化和逻辑读增加。排查应以 AWR、执行计划和重建前后的指标为依据；本文数据来自单个业务场景，不能直接外推到所有表。
 
 
 ---
@@ -22,7 +25,7 @@ ALTER TABLE xxxxx DISABLE ROW MOVEMENT;      -- 禁用行移动保护 ROWID
 ```
 
 **目的：** 回收表碎片空间，降低高水位线（HWM）。  
-**结果：** MRP 排产并发请求显著变慢，正式环境排产耗时超过 **50 分钟**。
+**结果：** MRP 排产并发请求变慢，正式环境排产耗时超过 **50 分钟**。
 
 ---
 

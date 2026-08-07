@@ -1,14 +1,14 @@
 ---
 title: Redis中Bitmap、雪花ID、分布式的坑
 published: 2026-05-06
-description: Redis Bitmap 结合雪花 ID 在分布式场景下的三大陷阱：首次写入 O(offset) 卡顿、哈希碰撞风险、单线程阻塞，最终给出 String+Set 替代方案。
+description: 分析 Redis Bitmap 直接承载雪花 ID 时的初始化开销、映射碰撞、单线程阻塞和数据倾斜问题，并给出 String + Set 的替代方案。
 tags: [Redis, Bitmap, 分布式, 性能优化]
 category: 实践笔记
 draft: false
 ---
 
-
-> Bitmap 是 Redis 中极其精巧的数据结构——用 1 个 bit 标记一个用户状态，1 亿用户仅需 12 MB。但当它遇上雪花 ID（64 bit）和分布式架构时，一切美好都化为泡影。本文从三个维度（Bitmap 本身、雪花 ID、分布式）深度剖析这个经典踩坑，并给出最终方案。
+> [!NOTE] 提示
+> Bitmap 适合用连续整数偏移量表示布尔状态，但不适合直接承载稀疏的雪花 ID。本文通过首次 `SETBIT` 的初始化开销、ID 映射碰撞和 Redis 单线程阻塞三个问题，说明为什么该场景最终选择 String + Set。
 
 ---
 
@@ -19,7 +19,7 @@ draft: false
 ```
 # 第一次收藏（Key 不存在）
 SETBIT collect:bit:1:2051776854918803458 1823456789 1
-→ 耗时: 1500ms   ← 😰 用户肉眼可见的卡顿
+→ 耗时: 1500ms   ← 首次写入延迟明显升高
 → Redis 内存增长: 256 KB（分配 offset 0~18 亿的 bit 空间并清零）
 
 # 第二次收藏（Key 已存在）
@@ -224,7 +224,7 @@ t4  SETBIT 完成（耗时 2~5 秒）                        ← 客户端 B/C/D
 t5  客户端 B/C/D 的命令才开始执行
 ```
 
-**影响范围**：不仅是收藏操作本身慢，同一 Redis 节点上的**所有业务**（登录、查询、计数）都会被阻塞。
+**影响范围**：不仅是收藏操作本身变慢，同一 Redis 节点上的其他业务（登录、查询、计数）也会排队等待。
 
 ### 2、Redis Cluster 数据倾斜
 

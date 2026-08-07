@@ -1,15 +1,20 @@
 ---
 title: 滑块验证码、登录与注册完整流程
 published: 2026-05-02
-description: zsk-auth 认证模块的登录与注册完整流程，涵盖滑块验证码防刷、RSA 加密传输、BCrypt 哈希存储、邮箱验证码身份核验等安全机制。
+description: 介绍 zsk-auth 登录注册认证链路，涵盖滑块验证码限流、RSA 密码传输、BCrypt 密码摘要、邮箱验证码和异常安全边界。
 tags: [认证, 登录, 安全]
 category: 设计文档
 draft: false
 ---
 
+> [!NOTE] 提示
+> 本文描述 zsk-auth 的登录与注册链路：先用滑块验证码限制自动化请求，再使用 RSA 保护密码传输，服务端用 BCrypt 保存密码摘要，最后通过邮箱验证码完成身份核验。安全效果依赖 HTTPS、密钥管理、限流和日志审计，单一环节不能独立承担全部防护。
 
-详细代码地址[zsk-cloud](https://github.com/MmzMing/zsk-cloud)
-主要实现：滑块验证码（防刷） -> RSA 加密传输（防窃听） -> BCrypt 哈希存储（防拖库） -> 邮箱验证码（身份核验）
+代码地址：[zsk-cloud](https://github.com/MmzMing/zsk-cloud)
+
+## 方案范围
+
+本文覆盖正常登录、注册和邮箱验证流程；异常重试、密钥轮换、设备管理和多活部署需要结合具体业务补充。
 
 ## 一、流程图（不包含异常处理）
 ```mermaid

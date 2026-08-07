@@ -1,7 +1,7 @@
 ---
 title: 米塔3D字体网页端实现
 published: 2026-08-01
-description: 如何在 React Three Fiber场景中实现仿米塔（Miside）3D 字体物理效果。涵盖分割、SDF 字体渲染、相机朝向视差、移动端适配及性能优化等关键技术点。
+description: 使用 React Three Fiber、Three.js、SDF Text 和 Rapier 实现仿 Miside 3D 字体物理动画，涵盖字形分割、状态机、相机视差和移动端性能。
 tags:
   - React
   - Three
@@ -12,17 +12,16 @@ draft: false
 ---
 
 > [!NOTE] 提示
-> 在 React Three Fiber 场景中，使文本以"miside"物理效果出现：逐字打字显现 → 保持 → 逐个释放 → 物理坠落 → 消失。
-> 核心思路是将每个字形视为独立的物理刚体，由 Rapier 引擎驱动碰撞与运动。
+> 本文在 React Three Fiber 场景中将每个字形拆分为独立的物理刚体，实现“逐字显现—保持—释放—坠落—消失”的动画。实现重点是字形分割、SDF 文本渲染、刚体生命周期和移动端性能控制。
 
 ![仿米塔 3D 字体物理坠落效果演示：逐字打字显现后物理掉落](./image/projects-miside-3d-text.assets/projects-miside-3d-text-20260801213840.webp)
 
 ![3D 字体释放阶段：字形随机顺序脱离锚点并受重力影响坠落](./image/projects-miside-3d-text.assets/projects-miside-3d-text-20260801214136.webp)
 
 > [!NOTE] 提示
-> 具体可以点击上方 [个人主站](https://www.mmzhiku.xyz/) 尝试，文章种的gif显示掉落可能有点慢
+> 可在[个人主站](https://www.mmzhiku.xyz/)查看效果。文章中的动画速度受设备性能和浏览器调度影响，不能作为性能基准。
 > 
-> 还有部分米塔字体是有些先往上抬动再掉落的，我是没做这部分，如果需要也可以按本文思路自行调整
+> 部分参考效果包含“先上抬再坠落”的阶段，本文未实现该阶段；需要时可以在释放状态机中增加对应过渡。
 
 ## 技术栈
 

@@ -1,14 +1,14 @@
 ---
 title: Umami通过Vercel+Neon部署方案
 published: 2026-05-07
-description: 使用 Vercel + Neon 免费部署 Umami 网站统计，记录 Prisma 7 适配、自定义域名绑定及通过 Share API 拉取站点 UV/PV 的接入方式。
+description: 使用 Vercel 部署 Umami、Neon 托管 PostgreSQL 数据库，介绍 Prisma 7 适配、自定义域名和 Share API 展示博客 UV/PV 的配置方法。
 tags: [Umami, 部署, Vercel]
 category: 部署文档
 draft: false
 ---
 
-
-> 用 Vercel + Neon 免费部署 Umami，并通过 Share API 在博客首页展示 UV/PV。个人博客（< 10 万 PV/月）零成本运行。
+> [!NOTE] 提示
+> 本文将 Umami 部署到 Vercel，将 PostgreSQL 数据库部署到 Neon，再通过 Share API 在博客首页展示 UV/PV。方案适用于低流量个人站点；免费额度、休眠策略和函数限制会随服务商政策变化，部署前应重新核对当前定价。
 
 ## 一、架构
 

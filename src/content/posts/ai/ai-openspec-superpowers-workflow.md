@@ -1,7 +1,7 @@
 ---
-title:  OpenSpec+Superpowers实现流水线开发
+title: OpenSpec+Superpowers 实现流水线开发
 published: 2026-06-03
-description: OpenSpec 规范驱动开发与 Superpowers 工程化工作流的协同实践，建立"规范驱动规划 + 流程驱动执行"的 AI 编程闭环。
+description: 介绍 OpenSpec 与 Superpowers 的职责边界、安装配置和协同流程，建立从需求规范、任务实现到测试审查的 AI 编程工作流。
 tags: [AI, Skill, 工作流]
 category: 学习文档
 image: ./cover/cover1.webp
@@ -10,7 +10,7 @@ draft: false
 
 
 > [!NOTE] 提示
-> 本文面向使用 AI 辅助编程的开发者，系统整理 OpenSpec 与 Superpowers 两个工具的核心能力、配置方法与协同流程。核心目标：建立"规范驱动规划 + 流程驱动执行"的 AI 工程化闭环，降低需求偏差与代码回归风险。
+> 本文面向使用 AI 辅助编程的开发者，整理 OpenSpec 与 Superpowers 的职责边界、配置方式和协同流程。推荐做法是先用 OpenSpec 固化需求与验收条件，再用 Superpowers 执行实现、测试和审查；短期原型可以裁剪流程，但不能省略最终验证。
 
 ---
 

@@ -1,20 +1,20 @@
 ---
 title: 扫码登录前后的实现
 published: 2026-05-01
-description: 对比短轮询、长轮询、WebSocket、SSE 四种扫码登录方案，给出基于 WebSocket + Redis 的企业级实现及安全防御。
+description: 对比短轮询、长轮询、WebSocket 和 SSE 扫码登录方案，介绍 WebSocket + Redis 状态机、超时降级、二维码重放和登录态安全防护。
 tags: [扫码登录, 认证, WebSocket]
 category: 实践笔记
 draft: false
 ---
 
-
-> 核心思路：PC 端生成带唯一标识的二维码，手机端扫码确认后，服务端更新 Redis 状态，PC 端通过 WebSocket 实时感知状态变更并获取 Token。评审重点：二维码状态机的 5 种状态转换是否完整、WebSocket 与长轮询的降级策略是否可靠、安全防御是否覆盖二维码劫持和重放攻击。
+> [!NOTE] 提示
+> 本文比较短轮询、长轮询、WebSocket 和 SSE 四种扫码登录通信方式，并以 WebSocket + Redis 为主方案。核心链路是“PC 端创建一次性二维码 → 手机端确认 → 服务端更新状态 → PC 端获取新登录态”；实现重点是状态机、超时处理、降级通信和二维码重放防护。
 
 ---
 
 ## 一、背景
 
-用户在 PC 端访问 Web 应用时，输入账号密码是最直接的登录方式。但在以下场景中，扫码登录体验更优：
+用户在 PC 端访问 Web 应用时，密码输入并不适合所有场景。以下场景更适合使用扫码登录：
 
 | 场景 | 密码登录的问题 | 扫码登录的优势 |
 |------|--------------|--------------|
@@ -1373,15 +1373,9 @@ ws.onclose = () => {
 
 ## 十、参考资料
 
-- [RFC 6749: The WebSocket Protocol](https://tools.ietf.org/html/rfc6455)
-- [RFC 6749: OAuth 2.0 Authorization Framework](https://tools.ietf.org/html/rfc6749)
+- [RFC 6455: The WebSocket Protocol](https://www.rfc-editor.org/rfc/rfc6455)
+- [RFC 6749: OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749)
 - [微信扫码登录技术原理](https://developers.weixin.qq.com/doc/oplatform/Website_App/WeChat_Login/WeChat_Login.html)
 - [Spring WebSocket Support](https://docs.spring.io/spring-framework/reference/web/websocket.html)
 - [Redis Keyspace Notifications](https://redis.io/docs/manual/keyspace-notifications/)
-- 项目源码：
-  - [AuthServiceImpl.java](file:///e:/code/zsk/zsk-cloud/zsk-auth/src/main/java/com/zsk/auth/service/impl/AuthServiceImpl.java)
-  - [AuthController.java](file:///e:/code/zsk/zsk-cloud/zsk-auth/src/main/java/com/zsk/auth/controller/AuthController.java)
-  - [CacheConstants.java](file:///e:/code/zsk/zsk-cloud/zsk-common/zsk-common-core/src/main/java/com/zsk/common/core/constant/CacheConstants.java)
-
----
-> 如果这篇文章对你有帮助，欢迎点赞收藏。有问题欢迎评论区交流。
+- 项目源码：文章发布环境不包含本地源码路径；请以项目仓库当前目录结构为准。

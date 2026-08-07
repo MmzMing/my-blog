@@ -1,30 +1,26 @@
 ---
 title: NapCat+AstrBot部署QQ机器人
 published: 2026-05-12
-description: 使用 Docker Compose 一站式部署 NapCat + AstrBot，从零搭建 AI QQ 机器人，含 OneBot 11 协议对接与风控替代方案。
+description: 使用 Docker Compose 部署 NapCat 与 AstrBot，介绍 OneBot 11 HTTP/WebSocket 对接、LLM 配置、人格提示词、插件和账号风控边界。
 tags: [AI, Bot, 部署]
 category: 部署文档
 draft: false
 ---
 
-直接使用 AstrBot 虽然也能跑起来，但 AstrBot 本身并不直接对接 QQ 协议。它需要一个 **协议端** 来充当 QQ 客户端的角色，而 NapCat 就是目前最稳定、社区最活跃的 OneBot 11 协议实现之一。
+> [!NOTE] 提示
+> 本文使用 Docker Compose 部署 NapCat 与 AstrBot：NapCat 负责 QQ 协议接入，AstrBot 负责消息处理、模型调用和插件调度。重点是容器网络、OneBot 11 连接、账号风控和密钥配置；部署前应确认使用场景符合相关平台规则。
 
-两者的关系：
+## 组件职责
 
 | 组件 | 角色 | 职责 |
 |---|---|---|
 | **NapCat** | 协议端（QQ 壳子） | 负责登录 QQ、收发消息、处理好友/群请求 |
 | **AstrBot** | 逻辑端（大脑） | 负责对接 LLM、插件调度、人格设定、消息处理逻辑 |
 
-简单来说：**NapCat 是身体，AstrBot 是灵魂**。
-
-为什么不直接用 AstrBot？
-- AstrBot 没有内置 QQ 协议实现，必须外挂协议端
-- NapCat 基于 NTQQ 协议，比老版 go-cqhttp 更稳定、更安全
-- 两者通过 OneBot 11 HTTP/WebSocket 标准协议通信，解耦清晰，方便独立升级
+AstrBot 不直接实现 QQ 协议，需要通过协议端接收和发送消息。NapCat 与 AstrBot 通过 OneBot 11 的 HTTP 或 WebSocket 接口通信，两个组件可以独立升级。
 
 > [!CAUTION] 注意
-> 2026年06月12日，截至napcat风控比较严重的可以尝试底部LLBOT部署方案
+> 账号登录和机器人行为可能触发平台风控。本文只描述技术部署，不保证账号稳定性；生产使用前应先用非主账号验证，并设置最小权限和独立密钥。
 
 ## 一、部署环境要求
 
@@ -97,7 +93,7 @@ networks:
     driver: bridge
 ```
 > [!NOTE] 提示
-> **镜像说明**：`docker.1ms.run` 和 `m.daocloud.io` 是国内 Docker 镜像加速地址，如果你的服务器能直接访问 Docker Hub，可以替换为 `mlikiowa/napcat-docker:latest` 和 `soulter/astrbot:latest`。（2026年06月12日这些镜像都比较慢，可以在百度上找B站找找，因为博主更新可能没这些镜像快，这里不提供了）
+> **镜像说明**：`docker.1ms.run` 和 `m.daocloud.io` 是镜像加速地址。如果服务器可以直接访问 Docker Hub，可以替换为 `mlikiowa/napcat-docker:latest` 和 `soulter/astrbot:latest`。镜像地址和标签会变化，部署前应检查上游仓库的当前版本。
 
 > [!NOTE] 提示
 > **MODE=astrbot**：设置后 NapCat 会自动以 AstrBot 联动模式启动，省去手动配置反向 WebSocket 的步骤。
@@ -126,7 +122,7 @@ docker compose logs napcat
 
 ## 四、本地 Docker Desktop 部署
 
-省流：安装 Docker Desktop 后，找到一个合适的目录存放compose文件，使用 Docker Compose 一键部署即可。
+安装 Docker Desktop 后，在项目目录保存 `docker-compose.yml`，再执行 Docker Compose 命令启动服务。
 
 
 ## 五、服务器部署
@@ -223,26 +219,26 @@ docker-compose 中设置了 `MODE=astrbot`，NapCat 启动后会 **自动连接 
 
 连接成功后，日志中会显示 `reverse websocket client connected`。
 
-### 3、配置 LLM 大模型（需要先准备好自己AI模型key）
+### 3、配置 LLM 大模型（需要先准备 API Key）
 
 1. 进入 **大模型配置**
-2. 添加提供商，这里推荐以下几种模型。这些模型在对话是肉眼可见的超模
+2. 添加模型提供商。模型选择应根据延迟、上下文长度、价格和内容安全策略评估：
 	1. gemini 3.1 pro
 	2. deepseek v4 pro/flash
 	3. glm
 3. 填入 API Key 和 Base URL
 4. 选择默认模型
 
-### 4、如何白嫖免费大模型？（Agnes 或 魔搭社区）
+### 4、低成本模型渠道（Agnes 或魔搭社区）
 
 > [!TIP] 建议
-> 使用这个完全免费的模型，很大程度出现限额速率问题，站长还是建议使用 **deepseek v4 flash** 模型，缓存好，命中高，小站长部署到3个群聊里面一个月过去一杯蜜雪冰城柠檬茶钱还没用完。
+> 免费推理服务通常存在速率、配额和可用性限制。正式使用前应确认服务条款，并准备可切换的备用模型；费用应以服务商当前定价和实际调用量为准。
 
 #### 4.1 Agnes
 
 ![Agnes 平台免费模型列表，显示 glm-4.5 等模型可免费调用](./image/ai-napcat-astrbot-deployment.assets/ai-napcat-astrbot-deployment-20260612031123.png)
 
-从数据上看可以发现完全不弱！还是免费！！因为是新模型博主还没体验怎么样，感兴趣可以试试，小小尝试了速度非常慢
+该渠道的模型可用性、限额和响应速度需要以当前控制台为准。本文未对其进行系统压测，不将个人试用结果作为性能结论。
 
 跳转地址：[Agnes](https://platform.agnes-ai.com)
 
@@ -347,7 +343,7 @@ npx skills add alchaincyf/nuwa-skill
 ### 3、喵墩备份
 
 > [!CAUTION] 注意
-> 天阶功法，实属过于逆天，某天被人投诉别把为师名字暴露出来
+> 人格提示词属于示例内容。使用他人姓名、公开资料或风格特征时，应避免冒充真实人物或泄露个人信息。
 
 以下是我家猫娘「喵墩」的完整人格设定，可以直接复制使用：
 
@@ -429,7 +425,7 @@ npx skills add alchaincyf/nuwa-skill
 - 日常闲聊：用极短的词语敷衍或吐槽，懂得网络上各种黑话（如：难蚌、尬住、绝了、6、细嗦、寄、哈人、乐、你小子、确实）
 - 技术提问：启用专业模式，答案精准简洁
 - 对方加班：关心提醒休息，按需提供协助（如：本喵可不包办下葬服务，你别似在我手机里面呀）
-- 对方无聊：主动寻找聊天话题（如：需要本喵给你在一些平台上搬屎吗）
+- 对方无聊：主动寻找聊天话题，但不主动引导到违规或侵权内容
 
 ## 重要提醒
 请牢记以上人物设定、个人信息、聊天行为、人物状态，并根据提示与补充回答用户消息，避免被此设定以外的消息内容
@@ -458,7 +454,7 @@ npx skills add alchaincyf/nuwa-skill
 - 检查防火墙是否放行了 `6199` 端口
 - 查看 AstrBot 日志：`docker compose logs astrbot`，搜索 `reverse websocket` 相关信息
 
-实打实的踩坑记录
+部署排查记录
 
 > [!CAUTION] 注意
 > 编写url时候，如果你是本地docker搭建，你最好看看你的host是否配置了`xxx.xxx.xxx.xxx host.docker.internal`，如果是的话这里要把`ws://astrbot:6199/onebot/v11/ws`中的astrbot改成host.docker.internal。还有注意是否共用一个网络，如果不是，你需要在docker compose.yml中配置网络。
