@@ -34,7 +34,7 @@ export const GET: APIRoute = async ({ site }) => {
 		"",
 		...articles.map(
 			(article) =>
-				`- [${article.title}](${article.url}): ${article.description}`,
+				`- [${article.title}](${article.url}): ${article.description} (Markdown: ${article.markdownUrl}; JSON: ${article.jsonUrl})`,
 		),
 		"",
 		`## ${llmsConfig.usage.heading}`,

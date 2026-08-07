@@ -57,7 +57,10 @@ const configHue = siteConfig.themeColor.hue;
 const aiSearchEnabled = aiSearchConfig.enabled;
 
 let pageTitle: string;
-if (title) {
+
+if (title === siteConfig.title) {
+	pageTitle = siteConfig.title;
+} else if (title) {
 	pageTitle = `${title} - ${siteConfig.title}`;
 } else {
 	pageTitle = siteConfig.subtitle

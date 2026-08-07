@@ -3,8 +3,7 @@ import type { APIRoute } from "astro";
 const robotsTxt = `
 User-agent: *
 
-# Search results are marked noindex, but this also avoids wasting crawl budget.
-Disallow: /search/
+# The search page declares noindex,follow in its HTML metadata.
 
 Sitemap: ${new URL("sitemap-index.xml", import.meta.env.SITE).href}
 `.trim();

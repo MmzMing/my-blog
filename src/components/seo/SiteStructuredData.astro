@@ -1,6 +1,12 @@
 ---
 import { homeConfig, siteConfig } from "@/config";
 
+interface Props {
+	includeProfilePage?: boolean;
+}
+
+const { includeProfilePage = false } = Astro.props;
+
 const siteUrl = new URL("/", Astro.site).toString();
 const aboutUrl = new URL("/about/", Astro.site).toString();
 const imageUrl = new URL(
@@ -21,28 +27,39 @@ const structuredData = {
 			name: siteConfig.title,
 			description: siteConfig.description,
 			inLanguage: siteConfig.lang.replace("_", "-"),
-			publisher: { "@id": `${siteUrl}#person` },
+			publisher: { "@id": `${siteUrl}#organization` },
 		},
 		{
 			"@type": ["Person", "Author"],
 			"@id": `${siteUrl}#person`,
 			name: homeConfig.name,
 			url: aboutUrl,
-			description:
-				"MmzMing，专注 Java、AI、Astro、Redis、认证安全与个人站点工程实践的开发者。",
+			description: siteConfig.description,
 			image: imageUrl,
-			jobTitle: "全栈工程师 / 技术博主",
-			knowsAbout: ["Java", "AI", "Astro", "Redis", "认证安全", "Cloudflare"],
+			jobTitle: homeConfig.occupation,
+			knowsAbout: siteConfig.keywords,
 			sameAs,
 		},
 		{
+			"@type": "Organization",
+			"@id": `${siteUrl}#organization`,
+			name: siteConfig.title,
+			url: siteUrl,
+			logo: {
+				"@type": "ImageObject",
+				"@id": `${siteUrl}#logo`,
+				url: imageUrl,
+			},
+			sameAs,
+		},
+		...(includeProfilePage ? [{
 			"@type": "ProfilePage",
 			"@id": `${aboutUrl}#profilepage`,
 			url: aboutUrl,
 			name: `关于 ${homeConfig.name}`,
 			isPartOf: { "@id": `${siteUrl}#website` },
 			mainEntity: { "@id": `${siteUrl}#person` },
-		},
+		}] : []),
 	],
 };
 ---

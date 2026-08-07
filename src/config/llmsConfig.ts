@@ -37,8 +37,6 @@ export const llmsConfig: LlmsConfig = {
 		items: [
 			// 文章元数据索引：适合先批量发现文章，再按需读取正文。
 			{ label: "文章目录", path: "/knowledge/index.json" },
-			// Markdown 文章目录：适合直接获取文章正文和上下文。
-			{ label: "Markdown 文章", path: "/knowledge/articles/" },
 			// RSS：提供按发布时间组织的增量内容入口。
 			{ label: "RSS", path: "/rss.xml" },
 			// Sitemap：帮助搜索引擎或抓取程序发现站点页面。

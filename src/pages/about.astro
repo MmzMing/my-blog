@@ -1,7 +1,8 @@
 ---
 
-import { getEntry } from "astro:content";
+import { getEntry, render } from "astro:content";
 import AboutCanvas from "@components/about/AboutCanvas.svelte";
+import SiteStructuredData from "@/components/seo/SiteStructuredData.astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
@@ -14,11 +15,17 @@ if (!aboutPost) {
 
 // 提取 Markdown 源文本传给客户端
 const aboutText = aboutPost.body ?? "";
+const { Content } = await render(aboutPost);
 ---
 
 <MainGridLayout title={i18n(I18nKey.about)} description="MmzMing 的个人介绍、技术方向、博客主题与联系方式。" hasOwnH1={true}>
-	<h1 class="sr-only">关于 MmzMing</h1>
+	<SiteStructuredData slot="head" includeProfilePage={true} />
 	<div class="about-canvas-container">
         <AboutCanvas text={aboutText} client:only="svelte" />
     </div>
+	<div class="about-text-fallback sr-only" data-pagefind-body>
+		<article class="custom-md markdown-bordered">
+			<Content />
+		</article>
+	</div>
 </MainGridLayout>

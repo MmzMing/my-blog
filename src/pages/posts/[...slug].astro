@@ -116,25 +116,37 @@ if (posterAvatarUrl) {
 
 dayjs.extend(utc);
 
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
+const defaultStructuredImageUrl = new URL(
+	siteConfig.defaultOgImage || "/assets/images/aut.webp",
+	Astro.site,
+).href;
+const structuredImageUrl = posterCoverUrl
+	? new URL(posterCoverUrl, Astro.site).href
+	: defaultStructuredImageUrl;
+
 const jsonLd = {
 	"@context": "https://schema.org",
 	"@type": ["BlogPosting", "TechArticle"],
-	"@id": Astro.url.href,
+	"@id": canonicalUrl,
 	headline: entry.data.title,
 	description: entry.data.description || entry.data.title,
 	keywords: entry.data.tags,
 	articleSection: entry.data.category || "未分类",
 	wordCount: remarkPluginFrontmatter.words,
-	image: posterCoverUrl || undefined,
+	image: structuredImageUrl,
 	author: { "@id": `${Astro.site}#person` },
-	url: Astro.url.href,
+	url: canonicalUrl,
 	isPartOf: { "@id": `${Astro.site}#website` },
 	publisher: {
 		"@type": "Organization",
+		"@id": `${Astro.site}#organization`,
 		name: siteConfig.title,
+		url: new URL("/", Astro.site).href,
 		logo: {
 			"@type": "ImageObject",
-			url: new URL("/favicon/favicon.ico", Astro.site).href,
+			"@id": `${Astro.site}#logo`,
+			url: defaultStructuredImageUrl,
 		},
 	},
 	datePublished: formatDateToYYYYMMDD(entry.data.published),
@@ -143,7 +155,7 @@ const jsonLd = {
 	}),
 	mainEntityOfPage: {
 		"@type": "WebPage",
-		"@id": Astro.url.href,
+		"@id": canonicalUrl,
 	},
 	inLanguage: entry.data.lang
 		? entry.data.lang.replace("_", "-")
@@ -174,7 +186,7 @@ const breadcrumbJsonLd = {
 			"@type": "ListItem",
 			position: 3,
 			name: entry.data.title,
-			item: Astro.url.href,
+			item: canonicalUrl,
 		},
 	],
 };

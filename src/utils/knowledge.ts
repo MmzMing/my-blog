@@ -12,6 +12,8 @@ export type KnowledgeArticle = {
 	published: string;
 	updated?: string;
 	url: string;
+	jsonUrl: string;
+	markdownUrl: string;
 	category: string;
 	tags: string[];
 	topics: string[];
@@ -102,6 +104,8 @@ export function toKnowledgeArticle(
 		published,
 		...(updated ? { updated } : {}),
 		url: new URL(getPostUrlBySlug(post.id), site).toString(),
+		jsonUrl: new URL(`/knowledge/articles/${post.id}.json`, site).toString(),
+		markdownUrl: new URL(`/knowledge/articles/${post.id}.md`, site).toString(),
 		category: post.data.category?.trim() || "未分类",
 		tags: post.data.tags || [],
 		topics: getPostTopicSlugs(post),
