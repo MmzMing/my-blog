@@ -113,6 +113,14 @@ pnpm build-index -- --force
 
 注意：建议在 GitHub 仓库设置中关闭邮箱订阅，避免 CI 工作流频繁触发邮件通知。
 
+## GEO和SEO
+
+这里几个文件是你要到对应站点开站点收录的，目的是让AI或者搜索工具搜索到你的站点信息
+
+`public\baidu_verify_codeva-PmiKD9Nizp.html`:百度站长工具，普通搜索用的
+`public\ByteDanceVerify.html`：头条站长工具，豆包搜索用的
+`public\fd2c679cb5104763ac4c4655a147083b.txt`：Bing的index
+
 ## 部署清单
 
 粗略编写了一下部署清单，包括以下内容：
