@@ -52,14 +52,18 @@ const structuredData = {
 			},
 			sameAs,
 		},
-		...(includeProfilePage ? [{
-			"@type": "ProfilePage",
-			"@id": `${aboutUrl}#profilepage`,
-			url: aboutUrl,
-			name: `关于 ${homeConfig.name}`,
-			isPartOf: { "@id": `${siteUrl}#website` },
-			mainEntity: { "@id": `${siteUrl}#person` },
-		}] : []),
+		...(includeProfilePage
+			? [
+					{
+						"@type": "ProfilePage",
+						"@id": `${aboutUrl}#profilepage`,
+						url: aboutUrl,
+						name: `关于 ${homeConfig.name}`,
+						isPartOf: { "@id": `${siteUrl}#website` },
+						mainEntity: { "@id": `${siteUrl}#person` },
+					},
+				]
+			: []),
 	],
 };
 ---

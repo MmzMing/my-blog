@@ -16,14 +16,14 @@ export const GET: APIRoute = ({ props, site }) => {
 	const post = props.post;
 	const base = site ?? new URL(siteConfig.site_url);
 	return new Response(
-		JSON.stringify(
+		`${JSON.stringify(
 			{
 				...toKnowledgeArticle(post, base),
 				content: post.body || "",
 			},
 			null,
 			2,
-		) + "\n",
+		)}\n`,
 		{
 			headers: {
 				"Content-Type": "application/json; charset=utf-8",

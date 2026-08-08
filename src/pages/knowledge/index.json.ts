@@ -9,7 +9,7 @@ export const GET: APIRoute = async ({ site }) => {
 	const posts = await getPublicKnowledgePosts();
 	const articles = posts.map((post) => toKnowledgeArticle(post, base));
 	return new Response(
-		JSON.stringify(
+		`${JSON.stringify(
 			{
 				type: "BlogKnowledgeIndex",
 				version: 1,
@@ -19,7 +19,7 @@ export const GET: APIRoute = async ({ site }) => {
 			},
 			null,
 			2,
-		) + "\n",
+		)}\n`,
 		{
 			headers: {
 				"Content-Type": "application/json; charset=utf-8",
