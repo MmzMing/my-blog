@@ -157,6 +157,8 @@ const notes = friendsPageConfig.notes;
   function initFriendRulesModal() {
     const modal = document.getElementById('friend-rules-modal') as HTMLDialogElement | null;
     if (!modal) return;
+    if (modal.dataset.friendRulesInitialized === 'true') return;
+    modal.dataset.friendRulesInitialized = 'true';
 
     const openBtns = document.querySelectorAll('[data-open-friend-rules]');
     openBtns.forEach(btn => {
@@ -192,6 +194,17 @@ const notes = friendsPageConfig.notes;
     modal.addEventListener('close', () => {
       document.body.style.overflow = '';
     });
+  }
+
+  const friendRulesWindow = window as Window & {
+    __friendRulesLifecycleBound?: boolean;
+  };
+  if (!friendRulesWindow.__friendRulesLifecycleBound) {
+    const resetBodyOverflow = () => {
+      document.body.style.overflow = '';
+    };
+    document.addEventListener('astro:before-swap', resetBodyOverflow);
+    friendRulesWindow.__friendRulesLifecycleBound = true;
   }
 
   if (document.readyState === 'loading') {
