@@ -1,11 +1,11 @@
 <script lang="ts">
 import { ExternalLink, Send } from "lucide-svelte";
 import { onMount, tick } from "svelte";
+import type { FriendLink } from "@/types/config";
 import {
 	buildFriendLayout,
 	type FriendTilePlacement,
 } from "@/utils/friend-layout";
-import type { FriendLink } from "@/types/config";
 
 interface Props {
 	items: FriendLink[];
@@ -35,7 +35,8 @@ let filteredItems = $derived(
 );
 
 function updateTabIndicator(): void {
-	const activeButton = tabsPill?.querySelector<HTMLButtonElement>("button.active");
+	const activeButton =
+		tabsPill?.querySelector<HTMLButtonElement>("button.active");
 	if (!activeButton) return;
 
 	indicatorStyle = [
@@ -65,7 +66,10 @@ function getColumnCount(): number {
 	return 3;
 }
 
-function rebuildLayout(nextItems: readonly FriendLink[], columns: number): void {
+function rebuildLayout(
+	nextItems: readonly FriendLink[],
+	columns: number,
+): void {
 	layoutItems = isMounted
 		? buildFriendLayout(nextItems, columns)
 		: buildFriendLayout(nextItems, 1, () => 0);

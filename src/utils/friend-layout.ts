@@ -72,7 +72,10 @@ function weightedOrder(
 	return result;
 }
 
-function firstEmptyCell(rows: readonly number[], columns: number): [number, number] {
+function firstEmptyCell(
+	rows: readonly number[],
+	columns: number,
+): [number, number] {
 	const fullMask = (1 << columns) - 1;
 
 	for (let row = 0; row < rows.length; row += 1) {
@@ -172,8 +175,8 @@ function compactLayout(
 	random: RandomSource,
 ): FriendTilePlacement[] | null {
 	type SearchResult = {
-	rows: number[];
-	placements: FriendTilePlacement[];
+		rows: number[];
+		placements: FriendTilePlacement[];
 	};
 
 	let visitedNodes = 0;
@@ -206,8 +209,7 @@ function compactLayout(
 				const isLong = definition.kind !== "square";
 				const nextLongTiles = remainingLongTiles - (isLong ? 1 : 0);
 				return (
-					nextLongTiles >= 0 &&
-					nextLongTiles <= remainingItemsAfterPlacement
+					nextLongTiles >= 0 && nextLongTiles <= remainingItemsAfterPlacement
 				);
 			}),
 			random,
@@ -269,7 +271,10 @@ export function buildFriendLayout(
 		return squareLayout(shuffledItems, safeColumns);
 	}
 
-	const targetLongTiles = targetLongTileCount(shuffledItems.length, safeColumns);
+	const targetLongTiles = targetLongTileCount(
+		shuffledItems.length,
+		safeColumns,
+	);
 	const planned = compactLayout(
 		shuffledItems,
 		safeColumns,
