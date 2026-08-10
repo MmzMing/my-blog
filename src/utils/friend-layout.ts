@@ -34,17 +34,6 @@ function randomValue(random: RandomSource): number {
 	return Math.min(Math.max(value, 0), 0.999999999);
 }
 
-function shuffle<T>(items: readonly T[], random: RandomSource): T[] {
-	const result = [...items];
-
-	for (let index = result.length - 1; index > 0; index -= 1) {
-		const swapIndex = Math.floor(randomValue(random) * (index + 1));
-		[result[index], result[swapIndex]] = [result[swapIndex], result[index]];
-	}
-
-	return result;
-}
-
 function weightedOrder(
 	definitions: readonly TileDefinition[],
 	random: RandomSource,
@@ -264,25 +253,22 @@ export function buildFriendLayout(
 ): FriendTilePlacement[] {
 	const requestedColumns = Number.isFinite(columns) ? Math.floor(columns) : 1;
 	const safeColumns = Math.max(1, Math.min(3, requestedColumns));
-	const shuffledItems = shuffle(items, random);
+	const orderedItems = [...items];
 
-	if (shuffledItems.length === 0) return [];
-	if (safeColumns === 1 || shuffledItems.length < 4) {
-		return squareLayout(shuffledItems, safeColumns);
+	if (orderedItems.length === 0) return [];
+	if (safeColumns === 1 || orderedItems.length < 4) {
+		return squareLayout(orderedItems, safeColumns);
 	}
 
-	const targetLongTiles = targetLongTileCount(
-		shuffledItems.length,
-		safeColumns,
-	);
+	const targetLongTiles = targetLongTileCount(orderedItems.length, safeColumns);
 	const planned = compactLayout(
-		shuffledItems,
+		orderedItems,
 		safeColumns,
 		targetLongTiles,
 		random,
 	);
 
-	return (planned ?? squareLayout(shuffledItems, safeColumns)).sort(
+	return (planned ?? squareLayout(orderedItems, safeColumns)).sort(
 		comparePlacements,
 	);
 }
