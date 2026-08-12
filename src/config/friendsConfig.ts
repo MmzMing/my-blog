@@ -362,6 +362,24 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "伊linxiyy-微博客",
+		imgurl: "https://lxya.net/api/images/a7630eac-ec4b-4729-ae67-461d7a48c0d9",
+		desc: "记录生活，分享技术，留住美好瞬间",
+		siteurl: "https://lxya.net/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
+	{
+		title: "Neuro的博客",
+		imgurl: "https://blog.neurosama.com/assets/neuros_blog_text_zh.png",
+		desc: "Neuro的胡思乱想随记",
+		siteurl: "https://blog.neurosama.com/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
