@@ -15,7 +15,10 @@ import {
 } from "lucide-svelte";
 import type { GuestbookChatMessage } from "@/types/guestbook-chat";
 import { getGuestbookInitials } from "@/utils/guestbook-chat";
-import { renderGuestbookMessage } from "@/utils/guestbook-chat-markup";
+import {
+	renderGuestbookMessage,
+	renderGuestbookQuotePreview,
+} from "@/utils/guestbook-chat-markup";
 
 interface Props {
 	message: GuestbookChatMessage;
@@ -63,7 +66,7 @@ let copied = $state(false);
 
 const quotePreview = $derived(
 	referencedMessage
-		? referencedMessage.body.replace(/\s+/gu, " ").slice(0, 72)
+		? renderGuestbookQuotePreview(referencedMessage.body)
 		: "原消息暂未加载",
 );
 const renderedBody = $derived(renderGuestbookMessage(message.body));
@@ -86,6 +89,40 @@ async function copyMessage() {
 	class:is-sending={message.localState === "sending"}
 	class="guestbook-message"
 >
+	{#if message.replyToId}
+		<button
+			class="guestbook-message__quote"
+			type="button"
+			onclick={() => onJump(message)}
+			aria-label={`跳转到 ${message.replyToNick || "访客"} 的原消息`}
+			title="跳转到原消息"
+		>
+			<span class="guestbook-message__quote-avatar" aria-hidden="true">
+				<span>{getGuestbookInitials(referencedMessage?.nick || message.replyToNick || "访客")}</span>
+				{#if referencedMessage?.avatar}
+					<img
+						src={referencedMessage.avatar}
+						alt=""
+						loading="lazy"
+						referrerpolicy="no-referrer"
+						onerror={(event) =>
+							((event.currentTarget as HTMLImageElement).style.display = "none")}
+					/>
+				{/if}
+			</span>
+			<span class="guestbook-message__quote-copy">
+				<strong>@{message.replyToNick || "访客"}</strong>
+				<small>{@html quotePreview}</small>
+			</span>
+			<ArrowUpToLine
+				class="guestbook-message__quote-jump"
+				size={15}
+				aria-hidden="true"
+			/>
+		</button>
+	{/if}
+
+	<div class="guestbook-message__main">
 	<div class="guestbook-message__avatar" aria-hidden="true">
 		<span>{getGuestbookInitials(message.nick)}</span>
 		{#if message.avatar}
@@ -134,22 +171,6 @@ async function copyMessage() {
 
 		<div class="guestbook-message__bubble-row">
 			<div class="guestbook-message__bubble">
-				{#if message.replyToId}
-					<button
-						class="guestbook-message__quote"
-						type="button"
-						onclick={() => onJump(message)}
-						title="跳转到原消息"
-					>
-						<ArrowUpToLine
-							class="guestbook-message__quote-jump"
-							size={15}
-							aria-hidden="true"
-						/>
-						<span>@{message.replyToNick || "访客"}</span>
-						<small>{quotePreview}</small>
-					</button>
-				{/if}
 				{#if isEditing}
 					<textarea
 						class="guestbook-message__edit-input"
@@ -259,5 +280,6 @@ async function copyMessage() {
 		{#if actionError}
 			<div class="guestbook-message__failure" role="alert">{actionError}</div>
 		{/if}
+	</div>
 	</div>
 </article>

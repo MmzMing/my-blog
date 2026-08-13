@@ -13,6 +13,7 @@ import {
 	LoaderCircle,
 	RefreshCw,
 	RotateCcw,
+	Users,
 	WifiOff,
 	X,
 } from "lucide-svelte";
@@ -32,6 +33,7 @@ import {
 	buildGuestbookMessageBody,
 	flattenGuestbookComments,
 	getGuestbookErrorMessage,
+	getGuestbookInitials,
 	getGuestbookTextLength,
 	hasGuestbookImage,
 	hasGuestbookReplyMarker,
@@ -78,6 +80,7 @@ let announcementDialog = $state<HTMLDialogElement | null>(null);
 let deleteDialog = $state<HTMLDialogElement | null>(null);
 let selectedAnnouncement = $state<GuestbookAnnouncementItem | null>(null);
 let announcementBarVisible = $state(true);
+let sidebarOpen = $state(false);
 let showScrollToBottom = $state(false);
 let editingMessageId = $state<string | null>(null);
 let editDraft = $state("");
@@ -93,6 +96,33 @@ const hasMore = $derived(currentPage < totalPages);
 const isSending = $derived(
 	messages.some((message) => message.localState === "sending"),
 );
+const chatMembers = $derived.by(() => {
+	const members = new Map<
+		string,
+		Pick<GuestbookMessage, "nick" | "avatar" | "link" | "label" | "isAdmin">
+	>();
+	for (const message of messages) {
+		const key = `${message.nick.trim().toLocaleLowerCase()}|${message.avatar}`;
+		const current = members.get(key);
+		members.set(key, {
+			nick: message.nick || current?.nick || "匿名访客",
+			avatar: message.avatar || current?.avatar || "",
+			link: message.link || current?.link,
+			label: message.label || current?.label,
+			isAdmin: message.isAdmin || current?.isAdmin || false,
+		});
+	}
+	return [...members.values()].sort(
+		(left, right) => Number(right.isAdmin) - Number(left.isAdmin),
+	);
+});
+const stationMembers = $derived(chatMembers.filter((member) => member.isAdmin));
+const guestMembers = $derived(chatMembers.filter((member) => !member.isAdmin));
+
+function handleChatKeydown(event: KeyboardEvent) {
+	if (event.key !== "Escape") return;
+	sidebarOpen = false;
+}
 
 function canManageMessage(message: GuestbookMessage): boolean {
 	if (!authUser?.token || !message.objectId || message.localState) return false;
@@ -986,6 +1016,8 @@ onMount(() => {
 });
 </script>
 
+<svelte:window onkeydown={handleChatKeydown} />
+
 <section class="guestbook-chat" aria-label="留言板">
 	<header class="guestbook-chat__header">
 		<div class="guestbook-chat__channel">
@@ -1031,38 +1063,51 @@ onMount(() => {
 			</div>
 		</div>
 
+		<div class="guestbook-chat__actions">
+			<button
+				class="guestbook-chat__sidebar-toggle"
+				type="button"
+				onclick={() => (sidebarOpen = !sidebarOpen)}
+				aria-expanded={sidebarOpen}
+				aria-controls="guestbook-chat-sidebar"
+				title="留言人"
+			>
+				<Users size={18} aria-hidden="true" />
+				<span>{chatMembers.length}</span>
+			</button>
+		</div>
 	</header>
 
 	<div
 		class:has-announcement-bar={announcementBarVisible && announcements.length > 0}
 		class="guestbook-chat__workspace"
 	>
-		{#if announcementBarVisible && announcements.length > 0}
-			<aside class="guestbook-chat__announcement-bar" aria-label="公告">
-				<div class="guestbook-chat__announcement-bar-label">
-					<Bell size={16} aria-hidden="true" />
-					<strong>公告</strong>
-				</div>
-				<div class="guestbook-chat__announcement-bar-items">
-					{#each announcements as announcement}
-						<button type="button" onclick={() => void openAnnouncement(announcement)}>
-							{announcement.title}
-						</button>
-					{/each}
-				</div>
-				<button
-					class="guestbook-chat__announcement-bar-close"
-					type="button"
-					onclick={() => (announcementBarVisible = false)}
-					aria-label="关闭公告"
-					title="关闭公告"
-				>
-					<X size={17} aria-hidden="true" />
-				</button>
-			</aside>
-		{/if}
-
 		<div class="guestbook-chat__conversation">
+			{#if announcementBarVisible && announcements.length > 0}
+				<aside class="guestbook-chat__announcement-bar" aria-label="公告">
+					<div class="guestbook-chat__announcement-bar-label">
+						<Bell size={16} aria-hidden="true" />
+						<strong>公告</strong>
+					</div>
+					<div class="guestbook-chat__announcement-bar-items">
+						{#each announcements as announcement}
+							<button type="button" onclick={() => void openAnnouncement(announcement)}>
+								{announcement.title}
+							</button>
+						{/each}
+					</div>
+					<button
+						class="guestbook-chat__announcement-bar-close"
+						type="button"
+						onclick={() => (announcementBarVisible = false)}
+						aria-label="关闭公告"
+						title="关闭公告"
+					>
+						<X size={17} aria-hidden="true" />
+					</button>
+				</aside>
+			{/if}
+
 			{#if initialLoading}
 				<div
 					class="guestbook-chat__loading"
@@ -1205,6 +1250,81 @@ onMount(() => {
 			</div>
 		</div>
 
+		{#if sidebarOpen}
+			<button
+				class="guestbook-chat__sidebar-overlay"
+				type="button"
+				onclick={() => (sidebarOpen = false)}
+				aria-label="关闭留言人列表"
+			></button>
+		{/if}
+
+		<aside
+			id="guestbook-chat-sidebar"
+			class:is-open={sidebarOpen}
+			class="guestbook-chat__sidebar"
+			aria-label="留言人"
+		>
+			<div class="guestbook-chat__sidebar-heading">
+				<strong>留言人</strong>
+				<button
+					type="button"
+					onclick={() => (sidebarOpen = false)}
+					aria-label="关闭留言人列表"
+				>
+					<X size={18} aria-hidden="true" />
+				</button>
+			</div>
+
+			<section class="guestbook-chat__members" aria-label="留言人列表">
+				<div class="guestbook-chat__member-list custom-scrollbar">
+					{#each [
+						{ title: "站长", members: stationMembers },
+						{ title: "留言人", members: guestMembers },
+					] as group (group.title)}
+						<div class="guestbook-chat__member-group">
+							<div class="guestbook-chat__member-group-title">
+								<strong>{group.title}</strong>
+								<span aria-label={`${group.members.length} 人`}>— {group.members.length}</span>
+							</div>
+
+							<div class="guestbook-chat__member-group-list">
+								{#each group.members as member (`${member.nick}-${member.avatar}`)}
+									{#if member.link}
+										<a
+											class="guestbook-chat__member"
+											href={member.link}
+											target="_blank"
+											rel="nofollow noopener noreferrer"
+										>
+											<span class="guestbook-chat__member-avatar">
+												<span>{getGuestbookInitials(member.nick)}</span>
+												{#if member.avatar}<img src={member.avatar} alt="" loading="lazy" />{/if}
+											</span>
+											<span class="guestbook-chat__member-identity">
+												{#if member.label}<small>{member.label}</small>{/if}
+												<span class="guestbook-chat__member-name">{member.nick}</span>
+											</span>
+										</a>
+									{:else}
+										<div class="guestbook-chat__member">
+											<span class="guestbook-chat__member-avatar">
+												<span>{getGuestbookInitials(member.nick)}</span>
+												{#if member.avatar}<img src={member.avatar} alt="" loading="lazy" />{/if}
+											</span>
+											<span class="guestbook-chat__member-identity">
+												{#if member.label}<small>{member.label}</small>{/if}
+												<span class="guestbook-chat__member-name">{member.nick}</span>
+											</span>
+										</div>
+									{/if}
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
+			</section>
+		</aside>
 	</div>
 
 	<dialog

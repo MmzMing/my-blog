@@ -16,6 +16,7 @@ const skeletonRows = Array.from({ length: 6 });
 				</div>
 			</div>
 		</div>
+		<div class="guestbook-chat__fallback-action" aria-hidden="true"></div>
 	</header>
 
 	<div class="guestbook-chat__workspace">
@@ -48,5 +49,14 @@ const skeletonRows = Array.from({ length: 6 });
 				</div>
 			</footer>
 		</div>
+
+		<aside class="guestbook-chat__sidebar guestbook-chat__fallback-sidebar" aria-hidden="true">
+			<div class="guestbook-chat__fallback-panel-title"></div>
+			<div class="guestbook-chat__fallback-member-list">
+				{skeletonRows.slice(0, 5).map(() => (
+					<div><span></span><i></i></div>
+				))}
+			</div>
+		</aside>
 	</div>
 </section>
