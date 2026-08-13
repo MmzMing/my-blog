@@ -380,6 +380,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "年华",
+		imgurl: "https://q1.qlogo.cn/g?b=qq&nk=1323860289&s=640",
+		desc: "分享生活和技术。",
+		siteurl: "https://blog.amamo.top/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
