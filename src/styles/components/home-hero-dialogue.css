@@ -1,168 +1,159 @@
-/* ============================================
-   首页 Hero — galgame 对话框
-   写死暗黑主题（不随站点亮/暗切换），黑白极简风。
-   放大版对话框：底部居中，逐句打字机 + 两级话题导航。
-   说明：Hero 区域整体采用硬编码色值（背景常驻黑色遮罩），
-   本文件遵循同一约定，对话框固定为暗色以适配偏暗的首页。
-   ============================================ */
-
 .home-hero__dialogue {
 	position: absolute;
-	left: 50%;
-	bottom: clamp(3.5rem, 8vh, 6.5rem);
-	transform: translateX(-50%);
-	z-index: 32;
-	width: min(64rem, 92%);
+	left: 0;
+	right: auto;
+	bottom: 0;
+	z-index: 7;
+	width: 100vw;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	will-change: transform, opacity;
+}
+
+.home-hero__dialogue[data-scene-visible="true"][data-hidden="false"] {
+	pointer-events: auto;
+}
+
+.home-hero__dialogue-layout {
+	position: relative;
+	min-height: clamp(16rem, 34vh, 24rem);
+}
+
+.home-hero__dialogue-box {
+	position: relative;
+	width: 100%;
+	min-height: inherit;
+	padding: clamp(5.5rem, 10vh, 7.5rem) clamp(3rem, 7vw, 8rem)
+		clamp(4rem, 7vw, 5.5rem) clamp(21rem, 30vw, 36rem);
+	background: color-mix(in oklch, var(--home-hero-surface) 68%, transparent);
+	color: var(--home-hero-ink);
+	clip-path: polygon(0 0, 25% 0, 30% 24%, 100% 24%, 100% 100%, 0 100%);
+	backdrop-filter: blur(14px);
+	box-shadow: 0 1.25rem 3.5rem var(--home-hero-shadow);
+	overflow: hidden;
+	transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.home-hero__dialogue[data-hidden="true"] .home-hero__dialogue-box,
+.home-hero__dialogue[data-hidden="true"] .home-hero__sticker,
+.home-hero__dialogue[data-hidden="true"] .home-hero__dialogue-controls {
+	opacity: 0;
+	transform: translateY(0.9rem) scale(0.98);
+	visibility: hidden;
 	pointer-events: none;
 }
 
-/* ---------- 对话框主体 ---------- */
-.home-hero__dialogue-box {
-	position: relative;
-	pointer-events: auto;
-	min-height: clamp(9rem, 18vh, 12.5rem);
-	padding: clamp(1.6rem, 2.4vw, 2.3rem) clamp(1.8rem, 2.8vw, 2.6rem)
-		clamp(1.5rem, 2vw, 2rem);
-	border: 2px solid #000000;
-	border-radius: 14px;
-	background:
-		linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
-		rgba(10, 12, 16, 0.72);
-	backdrop-filter: blur(22px) saturate(140%);
-	-webkit-backdrop-filter: blur(22px) saturate(140%);
-	box-shadow:
-		0 3px 0 #000000,
-		0 26px 60px rgba(0, 0, 0, 0.42);
-	color: rgba(255, 255, 255, 0.92);
-	transform-origin: 50% 100%;
-	transition: opacity 0.35s ease, transform 0.35s ease;
-}
-
-/* ---------- 左上角名牌（随说话者切换，凸出于对话框上沿） ---------- */
-.home-hero__dialogue-nameplate {
-	position: absolute;
-	top: 0;
-	left: clamp(1.4rem, 2.4vw, 2.2rem);
-	transform: translateY(-52%);
-	display: inline-flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.42rem 1.1rem;
-	border: 2px solid #000000;
-	border-radius: 10px;
-	background: rgba(20, 22, 28, 0.96);
-	color: #ffffff;
-	font-size: clamp(0.95rem, 1.25vw, 1.2rem);
-	font-weight: 900;
-	letter-spacing: 0.06em;
-	line-height: 1;
-	white-space: nowrap;
-	box-shadow: 0 3px 0 #000000;
-}
-
-/* 访客说话时名牌反相，强化"两个人在对话"的辨识度 */
-.home-hero__dialogue-box[data-speaker="visitor"] .home-hero__dialogue-nameplate {
-	background: rgba(240, 240, 245, 0.96);
-	color: #14161c;
-	border-color: #000000;
-}
-
-.home-hero__dialogue-spark {
-	font-size: 0.85em;
-	opacity: 0.9;
-}
-
-.home-hero__dialogue-box[data-speaker="visitor"] .home-hero__dialogue-spark {
-	filter: grayscale(1);
-}
-
-/* ---------- 右上角控制按钮 ---------- */
 .home-hero__dialogue-controls {
 	position: absolute;
-	top: clamp(-0.9rem, -1vw, -0.7rem);
-	right: clamp(1rem, 1.8vw, 1.6rem);
-	display: flex;
-	gap: 0.4rem;
-}
-
-.home-hero__dialogue-btn {
+	top: clamp(0rem, 0.75vh, 0.5rem);
+	right: clamp(3rem, 6vw, 7rem);
+	z-index: 5;
 	display: inline-flex;
 	align-items: center;
-	gap: 0.32rem;
-	padding: 0.34rem 0.72rem;
-	border: 2px solid #000000;
-	border-radius: 999px;
-	background: rgba(20, 22, 28, 0.9);
-	color: rgba(255, 255, 255, 0.82);
-	font-size: clamp(0.7rem, 0.85vw, 0.82rem);
+	gap: clamp(0.75rem, 1.6vw, 2rem);
+	transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+}
+
+.home-hero__dialogue-button {
+	display: inline-flex;
+	width: auto;
+	min-width: clamp(6rem, 8vw, 8rem);
+	height: clamp(3rem, 5vh, 3.75rem);
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	padding-inline: clamp(0.9rem, 1.5vw, 1.4rem);
+	border: 0;
+	border-radius: var(--radius-full);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-size: 0.9375rem;
 	font-weight: 700;
-	letter-spacing: 0.04em;
-	line-height: 1;
 	cursor: pointer;
-	transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+	transition: background-color 150ms ease, transform 150ms ease;
 }
 
-.home-hero__dialogue-btn:hover {
-	background: #ffffff;
-	color: #14161c;
-	border-color: #000000;
+.home-hero__dialogue-button svg {
+	width: 1.5rem;
+	height: 1.5rem;
 }
 
-.home-hero__dialogue-btn-icon {
-	font-size: 0.9em;
-	line-height: 1;
+.home-hero__dialogue-button:hover,
+.home-hero__dialogue-button:focus-visible,
+.home-hero__dialogue-button[aria-pressed="true"] {
+	background: color-mix(in oklch, var(--home-hero-ink) 16%, transparent);
+	color: var(--home-hero-ink);
+	transform: translateY(-1px);
 }
 
-/* Auto 激活态 */
-.home-hero__dialogue-btn[data-dialogue-action="auto"][aria-pressed="true"] {
-	background: #ffffff;
-	color: #14161c;
-	border-color: #000000;
+.home-hero__dialogue-button:focus-visible,
+.home-hero__dialogue-advance:focus-visible,
+.home-hero__dialogue-menu-item:focus-visible {
+	outline: 2px solid var(--home-hero-ink);
+	outline-offset: 3px;
 }
 
-/* ---------- 正文（台词 + 话题菜单，点击推进） ---------- */
 .home-hero__dialogue-body {
-	position: relative;
-	z-index: 1;
+	min-height: 8.25rem;
 	cursor: pointer;
-	min-height: clamp(4.5rem, 9vh, 6.5rem);
+}
+
+.home-hero__dialogue-nameplate {
+	display: inline-flex;
+	min-width: 0;
+	align-items: center;
+	gap: var(--space-2);
+	margin-bottom: var(--space-4);
+	font-size: 1.55rem;
+	font-weight: 750;
+}
+
+.home-hero__dialogue-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.home-hero__dialogue-status {
+	width: 0.45rem;
+	height: 0.45rem;
+	flex: 0 0 auto;
+	border-radius: var(--radius-full);
+	background: var(--home-hero-ink);
+}
+
+.home-hero__dialogue-box[data-speaker="visitor"] .home-hero__dialogue-status {
+	transform: scale(0.72);
 }
 
 .home-hero__dialogue-text {
+	max-width: 52rem;
 	margin: 0;
-	color: rgba(255, 255, 255, 0.94);
-	font-size: clamp(1.15rem, 1.55vw, 1.6rem);
-	font-weight: 700;
-	letter-spacing: 0.04em;
+	font-size: 1.7rem;
 	line-height: 1.5;
-	min-height: 1.5em;
+	text-wrap: pretty;
 }
 
-/* 打字机光标（打字进行中显示） */
 .home-hero__dialogue-box[data-typing="true"] .home-hero__dialogue-text::after {
 	content: "";
 	display: inline-block;
-	width: 0.5em;
-	height: 1.05em;
-	margin-left: 0.12em;
-	vertical-align: text-bottom;
-	background: rgba(255, 255, 255, 0.85);
-	animation: dialogue-caret 0.9s steps(1) infinite;
+	width: 0.4rem;
+	height: 1em;
+	margin-left: 0.2rem;
+	vertical-align: -0.14em;
+	background: currentColor;
+	animation: home-hero-dialogue-caret 720ms steps(2, start) infinite;
 }
 
-@keyframes dialogue-caret {
-	0%, 50% { opacity: 1; }
-	50.01%, 100% { opacity: 0; }
-}
-
-/* ---------- 话题菜单 ---------- */
 .home-hero__dialogue-menu {
-	list-style: none;
-	margin: 0.9rem 0 0;
+	display: grid;
+	gap: var(--space-2);
+	max-width: 34rem;
+	margin: var(--space-3) 0 0;
 	padding: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
+	list-style: none;
 }
 
 .home-hero__dialogue-menu[hidden] {
@@ -170,142 +161,273 @@
 }
 
 .home-hero__dialogue-menu-item {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.6rem;
-	width: fit-content;
-	max-width: 100%;
-	padding: 0.5rem 1.1rem 0.5rem 1.4rem;
-	border: 2px solid rgba(255, 255, 255, 0.22);
-	border-radius: 10px;
-	background: rgba(255, 255, 255, 0.04);
-	color: rgba(255, 255, 255, 0.88);
-	font-size: clamp(0.95rem, 1.15vw, 1.15rem);
-	font-weight: 700;
-	letter-spacing: 0.03em;
-	line-height: 1.2;
+	display: block;
+	width: 100%;
+	min-height: 2.75rem;
+	padding: var(--space-2) var(--space-3);
+	border: 0;
+	border-radius: var(--radius-small);
+	background: color-mix(in oklch, var(--home-hero-ink) 10%, transparent);
+	color: inherit;
+	font: inherit;
+	font-size: 0.9375rem;
 	text-align: left;
 	cursor: pointer;
-	transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+	transition: background-color 150ms ease, transform 150ms ease;
 }
 
-.home-hero__dialogue-menu-item::before {
-	content: "▸";
-	color: var(--primary, #ffffff);
-	font-size: 0.9em;
+.home-hero__dialogue-menu-item:hover,
+.home-hero__dialogue-menu-item:focus-visible {
+	background: color-mix(in oklch, var(--home-hero-ink) 20%, transparent);
+	transform: translateX(0.2rem);
 }
 
-.home-hero__dialogue-menu-item:hover {
-	background: #ffffff;
-	color: #14161c;
-	border-color: #ffffff;
-	transform: translateX(4px);
-}
-
-.home-hero__dialogue-menu-item:hover::before {
-	color: #14161c;
-}
-
-/* ---------- 底部推进指示 ---------- */
 .home-hero__dialogue-footer {
 	position: absolute;
-	right: clamp(1.2rem, 2vw, 1.8rem);
-	bottom: clamp(0.8rem, 1.4vw, 1.2rem);
+	right: clamp(3rem, 7vw, 8rem);
+	bottom: clamp(0.45rem, 1.1vw, 0.9rem);
 	z-index: 2;
-}
-
-/* 打字中隐藏推进指示，避免"点了没反应"的错觉 */
-.home-hero__dialogue-box[data-typing="true"] .home-hero__dialogue-footer {
-	opacity: 0;
-	pointer-events: none;
+	display: flex;
+	min-height: 2.75rem;
+	align-items: center;
+	justify-content: end;
 }
 
 .home-hero__dialogue-advance {
 	display: inline-flex;
+	min-height: 2.75rem;
 	align-items: center;
-	gap: 0.35rem;
-	padding: 0.3rem 0.7rem;
+	gap: var(--space-1);
 	border: 0;
+	border-radius: var(--radius-full);
 	background: transparent;
-	color: rgba(255, 255, 255, 0.72);
-	font-size: clamp(0.78rem, 0.95vw, 0.9rem);
+	color: inherit;
+	font: inherit;
+	font-size: 0.875rem;
 	font-weight: 700;
-	letter-spacing: 0.06em;
 	cursor: pointer;
-	transition: color 0.15s ease;
+	transition: background-color 150ms ease, transform 150ms ease;
 }
+
+.home-hero__dialogue-advance svg {
+	width: 1.1rem;
+	height: 1.1rem;
+}
+
 
 .home-hero__dialogue-advance:hover {
-	color: #ffffff;
+	background: transparent;
+	transform: none;
 }
 
-.home-hero__dialogue-advance-caret {
-	display: inline-block;
-	animation: dialogue-advance-bounce 1.1s ease-in-out infinite;
+.home-hero__dialogue-advance:focus-visible {
+	background: color-mix(in oklch, var(--home-hero-ink) 16%, transparent);
+	transform: translateY(-1px);
 }
 
-@keyframes dialogue-advance-bounce {
-	0%, 100% { transform: translateY(0); opacity: 0.6; }
-	50% { transform: translateY(3px); opacity: 1; }
+.home-hero__sticker {
+	position: absolute;
+	bottom: clamp(1.25rem, 4vh, 3.25rem);
+	left: clamp(1rem, 4vw, 5rem);
+	z-index: 3;
+	width: clamp(18rem, 27vw, 24rem);
+	margin: 0;
+	line-height: 0;
+	filter: drop-shadow(0 1rem 1rem var(--home-hero-shadow));
+	transition: opacity 180ms ease, transform 180ms ease;
 }
 
-/* ---------- 隐藏态 ---------- */
-/* GSAP 入场会给 box 留下 inline opacity/visibility/transform，
-   故此处用 !important 覆盖，确保 Hide 真正隐藏对话框 */
-.home-hero__dialogue[data-hidden="true"] .home-hero__dialogue-box {
-	opacity: 0 !important;
-	visibility: hidden !important;
-	transform: translateY(24px) scale(0.98) !important;
-	pointer-events: none !important;
+.home-hero__sticker-image {
+	display: block;
+	width: 100%;
+	height: auto;
+	object-fit: contain;
 }
 
-/* 对话框收起后，整个 .home-hero__dialogue 容器不拦截交互，
-   由上方名牌（B站徽章）承担唤出职责 */
-.home-hero__dialogue[data-hidden="true"] {
-	pointer-events: none;
+.home-hero__sticker-feature {
+	position: absolute;
+	z-index: 1;
+	will-change: transform;
 }
 
-/* ---------- 收起后：名牌变为可点击的唤出触发器 ---------- */
-.home-hero__name-badge--dialogue-trigger {
-	cursor: pointer;
-	pointer-events: auto;
+.home-hero__sticker-eye {
+	width: 8.5%;
+	aspect-ratio: 1;
+	transform: translate(
+		calc(-50% + var(--home-hero-feature-shift-x, 0px)),
+		calc(-50% + var(--home-hero-feature-shift-y, 0px))
+	);
 }
 
-.home-hero__name-badge--dialogue-trigger::after {
-	content: "▾ 对话";
-	margin-left: 0.6em;
-	font-size: 0.82em;
-	letter-spacing: 0.1em;
-	opacity: 0.75;
+.home-hero__sticker-eye-pupil {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border-radius: var(--radius-full);
+	background: oklch(0.035 0 0);
+	transform-origin: 50% 52%;
+	animation: home-hero-sticker-blink 5.4s ease-in-out 0.8s infinite;
 }
 
-.home-hero__name-badge--dialogue-trigger:hover {
-	filter: brightness(1.08);
+.home-hero__sticker-eye--left {
+	left: var(--home-hero-left-eye-x);
+	top: var(--home-hero-left-eye-y);
 }
 
-/* ============================================
-   移动端适配
-   ============================================ */
+.home-hero__sticker-eye--right {
+	left: var(--home-hero-right-eye-x);
+	top: var(--home-hero-right-eye-y);
+}
+
+.home-hero__sticker-mouth {
+	left: var(--home-hero-mouth-x);
+	top: var(--home-hero-mouth-y);
+	width: var(--home-hero-mouth-width);
+	height: var(--home-hero-mouth-height);
+	border-radius: var(--radius-full);
+	transform: translate(
+		calc(-50% + var(--home-hero-feature-shift-x, 0px)),
+		calc(-50% + var(--home-hero-feature-shift-y, 0px))
+	) rotate(var(--home-hero-mouth-rotation));
+	background: oklch(0.035 0 0);
+}
+
+.home-hero__dialogue:has(
+		.home-hero__dialogue-box[data-typing="true"]
+	)
+	.home-hero__sticker-mouth {
+	width: clamp(1.35rem, 2vw, 1.85rem);
+	height: clamp(0.65rem, 0.9vw, 0.8rem);
+	border-radius: 0.16rem;
+	clip-path: inset(0 round 0.16rem);
+	animation: home-hero-sticker-talk 180ms steps(2, end) infinite;
+}
+
+@keyframes home-hero-dialogue-caret {
+	50% {
+		opacity: 0;
+	}
+}
+
+@keyframes home-hero-sticker-blink {
+	0%,
+	46%,
+	52%,
+	100% {
+		transform: scaleY(1);
+	}
+	48%,
+	50% {
+		transform: scaleY(0.08);
+	}
+}
+
+@keyframes home-hero-sticker-talk {
+	0%,
+	100% {
+		clip-path: inset(0 round 0.16rem);
+	}
+	50% {
+		clip-path: inset(38% 0 round 0.16rem);
+	}
+}
+
 @media (max-width: 768px) {
 	.home-hero__dialogue {
-		width: min(100%, 34rem);
-		bottom: clamp(2rem, 6vh, 4rem);
+		bottom: 0;
+		width: 100vw;
+	}
+
+	.home-hero__dialogue-layout {
+		min-height: 16.5rem;
 	}
 
 	.home-hero__dialogue-box {
-		min-height: auto;
-		padding: 1.4rem 1.2rem 1.2rem;
+		padding: 5.25rem 1.25rem 3.6rem 12.5rem;
+		clip-path: polygon(0 0, 24% 0, 31% 20%, 100% 20%, 100% 100%, 0 100%);
+		backdrop-filter: blur(7px);
+	}
+
+	.home-hero__dialogue-controls {
+		top: 0;
+		right: 0.75rem;
+		gap: var(--space-1);
+	}
+
+	.home-hero__dialogue-button {
+		width: auto;
+		min-width: 4.75rem;
+		height: 2.75rem;
+		gap: 0.3rem;
+		padding-inline: 0.55rem;
+		font-size: 0.75rem;
+	}
+
+	.home-hero__dialogue-button svg {
+		width: 1.1rem;
+		height: 1.1rem;
+	}
+
+	.home-hero__dialogue-body {
+		min-height: 6.75rem;
+	}
+
+	.home-hero__dialogue-nameplate {
+		margin-bottom: var(--space-2);
+		font-size: 1rem;
 	}
 
 	.home-hero__dialogue-text {
-		font-size: clamp(0.98rem, 3.8vw, 1.2rem);
+		font-size: 1.125rem;
+		line-height: 1.55;
 	}
 
-	.home-hero__dialogue-btn span:not(.home-hero__dialogue-btn-icon) {
-		display: none;
+	.home-hero__dialogue-menu-item {
+		min-height: 2.75rem;
+		font-size: 0.875rem;
 	}
 
-	.home-hero__dialogue-btn {
-		padding: 0.4rem;
+	.home-hero__dialogue-footer {
+		right: 1.25rem;
+		bottom: 0.25rem;
+	}
+
+	.home-hero__dialogue-advance {
+		min-height: 2.75rem;
+		padding-inline: var(--space-2);
+	}
+
+	.home-hero__sticker {
+		bottom: 1rem;
+		left: 0.75rem;
+		width: min(52vw, 14rem);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.home-hero__dialogue {
+		opacity: 1;
+		visibility: visible;
+		transform: none;
+	}
+
+	.home-hero__dialogue-box,
+	.home-hero__sticker {
+		transition: none;
+	}
+
+	.home-hero__dialogue-box[data-typing="true"] .home-hero__dialogue-text::after {
+		animation: none;
+	}
+
+	.home-hero__sticker-eye-pupil {
+		animation: none;
+	}
+
+	.home-hero__dialogue:has(
+			.home-hero__dialogue-box[data-typing="true"]
+		)
+		.home-hero__sticker-mouth {
+		animation: none;
 	}
 }

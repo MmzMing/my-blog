@@ -47,7 +47,6 @@
 		"@napi-rs/wasm-runtime": "^1.1.6",
 		"@swup/astro": "^1.8.0",
 		"@tailwindcss/typography": "^0.5.16",
-		"@vfx-js/core": "^1.1.0",
 		"@waline/api": "^1.1.2",
 		"astro": "7.1.6",
 		"astro-expressive-code": "^0.44.1",

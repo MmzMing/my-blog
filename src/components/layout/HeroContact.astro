@@ -1,0 +1,24 @@
+---
+import type { HeroContactConfig } from "@/types/config";
+
+interface Props {
+	contact: HeroContactConfig;
+}
+
+const { contact } = Astro.props;
+const label = `${contact.platform}：${contact.handle}`;
+---
+
+<aside class="home-hero__contact" data-hero-contact aria-label={label}>
+	{contact.href ? (
+		<a href={contact.href} class="home-hero__contact-link">
+			<span class="home-hero__contact-platform">{contact.platform}：</span>
+			<span class="home-hero__contact-handle">{contact.handle}</span>
+		</a>
+	) : (
+		<p class="home-hero__contact-link">
+			<span class="home-hero__contact-platform">{contact.platform}：</span>
+			<span class="home-hero__contact-handle">{contact.handle}</span>
+		</p>
+	)}
+</aside>

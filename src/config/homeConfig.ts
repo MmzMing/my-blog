@@ -8,20 +8,11 @@ export const homeConfig: HomeConfig = {
 	// 3. 远程 URL："https://example.com/avatar.jpg"
 	avatar: "assets/images/avatar.webp",
 
-	// 上班时间头像（为空则使用上方 avatar）
-	avatarOnWork: "assets/images/avatar-work-on.webp",
-
-	// 下班时间头像（为空则始终使用上方 avatar）
-	avatarOffWork: "assets/images/avatar-work-off.webp",
-
 	// 名字
 	name: "MmzMing",
 
 	// 首页展示名字（留空则使用 name）
 	displayName: "MmzMing",
-
-	// 名字右侧徽章文字（如 QQ 号）
-	nameBadge: "B站：Mmz明崽",
 
 	// 职业/身份标签
 	occupation: "[(伪)全栈工程师[全干工程师] / 技术博主]",
@@ -32,7 +23,68 @@ export const homeConfig: HomeConfig = {
 	hero: {
 		backgroundImage: "/assets/images/home/home.webp",
 		backgroundImageMobile: "/assets/images/home/home-mobile.webp",
-		speechAccentImage: "/assets/images/home/home2-1.webp",
+		mosaic: {
+			rows: 4,
+			columns: 6,
+			idleVisible: 6,
+			idleInterval: 900,
+			seed: 20260814,
+			scrub: 0.45,
+			desktopScrollDistance: 2600,
+			mobileScrollDistance: 1800,
+			desktopMinViewports: 3.25,
+			mobileMinViewports: 2.4,
+			interactionHold: 0.34,
+		},
+		quickActions: [
+			{
+				id: "articles",
+				kind: "link",
+				label: "我想查看文章",
+				icon: "material-symbols:article-outline-rounded",
+				href: "/archive/",
+			},
+			{
+				id: "music",
+				kind: "music",
+				label: "我想听歌",
+				icon: "material-symbols:music-note-rounded",
+				fallbackHref: "/music/",
+			},
+			{
+				id: "guestbook",
+				kind: "link",
+				label: "我想留言",
+				icon: "mingcute:comment-line",
+				href: "/guestbook/",
+			},
+		],
+		contact: {
+			platform: "B站",
+			handle: "Mmz明崽",
+		},
+		sticker: {
+			image: "/assets/images/home/character.webp",
+			alt: "黑猫角色贴纸",
+			eye: {
+				xPercent: 41.1,
+				yPercent: 48.2,
+				travelXPercent: 1.4,
+				travelYPercent: 1,
+			},
+			rightEye: {
+				xPercent: 64.1,
+				yPercent: 44.7,
+			},
+			mouth: {
+				xPercent: 53.4,
+				yPercent: 50.7,
+				widthPercent: 7.2,
+				heightPercent: 1.9,
+				rotation: -6,
+				travelScale: 0.45,
+			},
+		},
 		// galgame 对话框（写死暗黑主题）。内容全部由此驱动，可自由增删
 		dialogue: {
 			enabled: true,
@@ -91,13 +143,7 @@ export const homeConfig: HomeConfig = {
 				},
 			],
 		},
-		rightPanel: {
-			pill: "BLOG",
-			title: "博客",
-			diamond: "✦",
-			microText: "システム起動完了",
-		},
-		// 玻璃雨珠 + 撞击水花（仅桌面端生效，自动尊重 prefers-reduced-motion）
+		// 玻璃雨珠 + 撞击水花（移动端自动降低密度，尊重 prefers-reduced-motion）
 		rain: {
 			enabled: true,
 			intensity: 0.6,

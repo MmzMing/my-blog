@@ -1,0 +1,51 @@
+---
+import Icon from "@components/common/Icon.astro";
+import type { HeroQuickAction } from "@/types/config";
+
+interface Props {
+	actions: HeroQuickAction[];
+}
+
+const { actions } = Astro.props;
+---
+
+<nav class="home-hero__quick-panel" aria-label="快捷入口" data-hero-quick-panel>
+	<div class="home-hero__quick-actions">
+		{actions.map((action) => (
+			action.kind === "link" ? (
+				<a
+					class="home-hero__quick-action"
+					href={action.href}
+					data-hero-action
+					data-hero-action-kind="link"
+					data-hero-action-href={action.href}
+				>
+					<Icon name={action.icon} is:inline aria-hidden="true" />
+					<span>{action.label}</span>
+				</a>
+			) : (
+				<button
+					class="home-hero__quick-action"
+					type="button"
+					data-hero-action
+					data-hero-action-kind="music"
+					data-hero-action-href={action.fallbackHref}
+				>
+					<Icon name={action.icon} is:inline aria-hidden="true" />
+					<span>{action.label}</span>
+				</button>
+			)
+		))}
+		<button
+			class="home-hero__quick-action home-hero__dialogue-restore"
+			type="button"
+			data-hero-dialogue-restore
+			aria-label="重新打开对话"
+			aria-hidden="true"
+			tabindex="-1"
+		>
+			<Icon name="material-symbols:chat-bubble-outline-rounded" is:inline aria-hidden="true" />
+			<span>喵？还想继续聊聊吗</span>
+		</button>
+	</div>
+</nav>

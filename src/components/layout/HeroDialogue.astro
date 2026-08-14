@@ -1,0 +1,70 @@
+---
+import Icon from "@components/common/Icon.astro";
+import HeroSticker from "@components/layout/HeroSticker.astro";
+import type { HeroDialogueConfig, HeroStickerConfig } from "@/types/config";
+
+interface Props {
+	config: HeroDialogueConfig;
+	sticker: HeroStickerConfig;
+	fallbackHostName: string;
+}
+
+const { config, sticker, fallbackHostName } = Astro.props;
+const dialogueConfig = {
+	speakers: {
+		host: config.speakers?.host || fallbackHostName,
+		visitor: config.speakers?.visitor || "访客",
+	},
+	menuTitle: config.menuTitle || "想聊点什么？",
+	typingSpeed: config.typingSpeed ?? 45,
+	autoDelay: config.autoDelay ?? 1600,
+	intro: config.intro,
+	topics: config.topics,
+};
+---
+
+<section
+	class="home-hero__dialogue"
+	aria-label="角色对话"
+	aria-hidden="true"
+	data-hero-dialogue
+	data-dialogue={JSON.stringify(dialogueConfig)}
+	data-hidden="false"
+	data-scene-visible="false"
+>
+	<div class="home-hero__dialogue-layout">
+		<HeroSticker config={sticker} />
+
+		<div class="home-hero__dialogue-controls">
+			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="back" aria-label="上一句" title="上一句">
+				<Icon name="material-symbols:undo-rounded" is:inline aria-hidden="true" />
+				<span>返回</span>
+			</button>
+			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="auto" aria-label="自动播放" title="自动播放" aria-pressed="false">
+				<Icon name="material-symbols:play-arrow-rounded" is:inline aria-hidden="true" />
+				<span>自动</span>
+			</button>
+			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="hide" aria-label="收起对话" title="收起对话">
+				<Icon name="material-symbols:close-rounded" is:inline aria-hidden="true" />
+				<span>关闭</span>
+			</button>
+		</div>
+
+		<div class="home-hero__dialogue-box" data-dialogue-box data-speaker="host">
+			<div class="home-hero__dialogue-body" data-dialogue-click>
+				<div class="home-hero__dialogue-nameplate">
+					<span class="home-hero__dialogue-name" data-dialogue-name>{dialogueConfig.speakers.host}</span>
+				</div>
+				<p class="home-hero__dialogue-text" data-dialogue-text aria-live="polite"></p>
+				<ul class="home-hero__dialogue-menu" data-dialogue-menu hidden></ul>
+			</div>
+
+			<div class="home-hero__dialogue-footer">
+				<button type="button" class="home-hero__dialogue-advance" data-dialogue-advance>
+					<span data-dialogue-advance-label>下一句</span>
+					<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline aria-hidden="true" />
+				</button>
+			</div>
+		</div>
+	</div>
+</section>

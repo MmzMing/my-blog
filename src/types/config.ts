@@ -315,33 +315,82 @@ export type HeroDialogueConfig = {
 	autoDelay?: number;
 };
 
+export type HeroMosaicConfig = {
+	rows: number;
+	columns: number;
+	idleVisible: number;
+	idleInterval: number;
+	seed: number;
+	scrub: number;
+	desktopScrollDistance: number;
+	mobileScrollDistance: number;
+	desktopMinViewports: number;
+	mobileMinViewports: number;
+	/** 第二层全部出现后继续固定 Hero 的时间线长度，用于交互驻留。 */
+	interactionHold: number;
+};
+
+export type HeroQuickAction =
+	| {
+			id: string;
+			kind: "link";
+			label: string;
+			icon: string;
+			href: string;
+	  }
+	| {
+			id: string;
+			kind: "music";
+			label: string;
+			icon: string;
+			fallbackHref: string;
+	  };
+
+export type HeroContactConfig = {
+	platform: string;
+	handle: string;
+	href?: string;
+};
+
+export type HeroStickerConfig = {
+	image: string;
+	alt: string;
+	eye: {
+		xPercent: number;
+		yPercent: number;
+		travelXPercent: number;
+		travelYPercent: number;
+	};
+	rightEye: {
+		xPercent: number;
+		yPercent: number;
+	};
+	mouth: {
+		xPercent: number;
+		yPercent: number;
+		widthPercent: number;
+		heightPercent: number;
+		rotation: number;
+		travelScale: number;
+	};
+};
+
 export type HomeConfig = {
 	avatar?: string;
-	avatarOnWork?: string;
-	avatarOffWork?: string;
 	name: string;
 	displayName?: string; // 首页展示名字（如 MmMing）
-	nameBadge?: string; // 名字旁边的徽章（如 QQ 号）
 	occupation?: string; // 职业/身份标签（如 后端开发 / 技术博主）
 	bio?: string | string[];
 	hero: {
 		backgroundImage: string;
 		backgroundImageMobile?: string;
-		characterImage?: string;
-		speechAccentImage: string;
-		speech?: {
-			text: string;
-			english: string;
-		};
+		mosaic: HeroMosaicConfig;
+		quickActions: HeroQuickAction[];
+		contact?: HeroContactConfig;
+		sticker: HeroStickerConfig;
 		/** galgame 对话框（写死暗黑主题）。配置后替代底部简介气泡 */
 		dialogue?: HeroDialogueConfig;
-		rightPanel?: {
-			pill: string;
-			title: string;
-			diamond: string;
-			microText: string;
-		};
-		/** 玻璃雨珠 + 撞击水花动效（仅桌面端、尊重 reduced-motion） */
+		/** 玻璃雨珠 + 撞击水花动效，移动端自动降低密度。 */
 		rain?: {
 			enabled?: boolean;
 			/** 雨量强度，0–1，默认 0.6（克制） */

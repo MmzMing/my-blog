@@ -1,0 +1,65 @@
+---
+import type { HeroMosaicConfig } from "@/types/config";
+import { createHeroTileLayout } from "@/utils/home-hero-motion";
+
+interface Props {
+	desktopImage: string;
+	mobileImage: string;
+	config: HeroMosaicConfig;
+}
+
+const { desktopImage, mobileImage, config } = Astro.props;
+const tiles = createHeroTileLayout(config);
+const mosaicStyle = [
+	`--home-hero-mosaic-image: url("${desktopImage}")`,
+	`--home-hero-mosaic-image-mobile: url("${mobileImage}")`,
+	`--home-hero-mosaic-columns: ${config.columns}`,
+	`--home-hero-mosaic-rows: ${config.rows}`,
+].join(";");
+---
+
+<div class="home-hero__visual" style={mosaicStyle} aria-hidden="true">
+	<picture class="home-hero__backdrop" data-hero-backdrop>
+		<source media="(max-width: 768px)" srcset={mobileImage} />
+		<img
+			class="home-hero__backdrop-image"
+			src={desktopImage}
+			alt=""
+			width="3000"
+			height="1500"
+			loading="eager"
+			fetchpriority="high"
+			decoding="async"
+		/>
+	</picture>
+
+	<div class="home-hero__mosaic-frame" data-hero-mosaic>
+		<div class="home-hero__mosaic-grid">
+			{tiles.map((tile) => (
+				<span
+					class:list={[
+						"home-hero__mosaic-tile",
+						{ "is-idle-visible": tile.initiallyVisible },
+					]}
+					data-hero-tile
+					data-row={tile.row}
+					data-column={tile.column}
+					data-order={tile.order}
+					data-offset-x={tile.offsetX}
+					data-offset-y={tile.offsetY}
+					data-rotation={tile.rotation}
+					data-scale={tile.scale}
+					data-blur={tile.blur}
+					data-idle-visible={String(tile.initiallyVisible)}
+					style={`left: ${(tile.column / config.columns) * 100}%; top: ${(tile.row / config.rows) * 100}%; width: ${100 / config.columns}%; height: ${100 / config.rows}%; z-index: ${config.idleVisible - tile.idleDepth}; --home-hero-tile-column: ${tile.column}; --home-hero-tile-row: ${tile.row}; --home-hero-tile-bg-x: ${(tile.column / Math.max(1, config.columns - 1)) * 100}%; --home-hero-tile-bg-y: ${(tile.row / Math.max(1, config.rows - 1)) * 100}%; --home-hero-tile-x: ${tile.offsetX}%; --home-hero-tile-y: ${tile.offsetY}%; --home-hero-tile-rotation: ${tile.rotation}deg; --home-hero-tile-scale: ${tile.scale}; --home-hero-tile-blur: ${tile.blur}px;`}
+				>
+					<span class="home-hero__mosaic-tile-image"></span>
+				</span>
+			))}
+		</div>
+		<picture class="home-hero__mosaic-complete" data-hero-mosaic-complete>
+			<source media="(max-width: 768px)" srcset={mobileImage} />
+			<img src={desktopImage} alt="" width="3000" height="1500" decoding="async" />
+		</picture>
+	</div>
+</div>

@@ -1,871 +1,461 @@
-/* ============================================
-   首页 Hero 全屏层 — 来自 HomeHero.astro
-   全屏背景 + 双栏布局（左 87% / 右 13%）+ 磨砂玻璃对话框
-   ============================================ */
-
-/* ---------- 全屏容器（突破 MainGridLayout 限制） ---------- */
-.home-hero {
-	--home-hero-content-shift: 2rem;
-	--home-hero-title-left: clamp(10rem, 17vw, 17rem);
-	--home-hero-profile-lift: clamp(2rem, 4vh, 3rem);
-	position: relative;
-	width: 100vw;
-	margin-left: calc(50% - 50vw);
-	margin-right: calc(50% - 50vw);
-	/* 全屏：navbar 已脱离文档流（见下方 html:has(.home-hero) #top-row），
-	   Hero 上方无占位，故 100dvh 即精确铺满视口，无需任何偏移补偿 */
-	min-height: 100vh;
-	min-height: 100dvh;
-	overflow: hidden;
-	display: block;
-	color: #ffffff;
-	isolation: isolate;
-}
-
-/* 根治全屏：首页存在 Hero 时，将 sticky 顶栏改为 fixed 脱离文档流，
-   使其不再占据 Hero 上方的高度（顶栏本就是透明、pointer-events:none 的悬浮层，
-   设计意图即悬浮在 Hero 之上）。这样 Hero 顶边自然贴合视口顶部，彻底摆脱
-   对导航栏真实高度的依赖，不再需要 margin 负值 + 魔法数字补偿。 */
 html:has(.home-hero) #top-row {
 	position: fixed;
 	top: 0;
 	left: 0;
 	right: 0;
+	width: auto;
+	z-index: 1000;
+	background: transparent;
 }
 
-/* 背景图黑色遮罩（默认常驻，亮/暗主题均生效） */
-.home-hero::after {
-	content: '';
+.home-hero {
+	--home-hero-ink: var(--guestbook-bubble-text);
+	--home-hero-surface: oklch(0.075 0 0);
+	--home-hero-border: color-mix(in oklch, var(--home-hero-ink) 32%, transparent);
+	--home-hero-border-soft: color-mix(in oklch, var(--home-hero-ink) 20%, transparent);
+	--home-hero-overlay: color-mix(in oklch, var(--home-hero-surface) 72%, transparent);
+	--home-hero-shadow: color-mix(in oklch, var(--home-hero-surface) 78%, transparent);
+	position: relative;
+	width: 100vw;
+	height: 100svh;
+	min-height: 34rem;
+	margin-right: calc(50% - 50vw);
+	margin-left: calc(50% - 50vw);
+	overflow: clip;
+	isolation: isolate;
+	background: var(--home-hero-surface);
+	color: var(--home-hero-ink);
+	contain: layout paint;
+}
+
+.home-hero__visual,
+.home-hero__backdrop,
+.home-hero__shade,
+.home-hero__rain {
 	position: absolute;
 	inset: 0;
-	background: rgba(0, 0, 0, 0.45);
+}
+
+.home-hero__visual {
+	z-index: 0;
+	overflow: hidden;
+}
+
+.home-hero__backdrop {
+	z-index: 0;
+	opacity: 0;
+	visibility: hidden;
+}
+
+.home-hero__backdrop-image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+}
+
+.home-hero__mosaic-frame {
+	position: absolute;
+	left: 50%;
+	bottom: clamp(1rem, 3vh, 2.75rem);
+	z-index: 1;
+	width: min(84vw, 90rem);
+	aspect-ratio: 2 / 1;
+	transform: translateX(-50%);
+	transform-origin: 50% 50%;
+	will-change: transform, opacity;
+}
+
+.home-hero__mosaic-grid {
+	position: relative;
+	z-index: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.home-hero__mosaic-tile {
+	position: absolute;
+	display: block;
+	opacity: 0;
+	visibility: hidden;
+	transform: translate3d(
+		var(--home-hero-tile-x),
+		var(--home-hero-tile-y),
+		0
+	) rotate(var(--home-hero-tile-rotation)) scale(var(--home-hero-tile-scale));
+	filter: blur(var(--home-hero-tile-blur));
+	will-change: transform, opacity, filter;
+}
+
+.home-hero__mosaic-tile.is-idle-visible {
+	opacity: 1;
+	visibility: visible;
+}
+
+.home-hero__mosaic-tile-image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	background-image: var(--home-hero-mosaic-image);
+	background-repeat: no-repeat;
+	background-size: calc(var(--home-hero-mosaic-columns) * 100%) calc(var(--home-hero-mosaic-rows) * 100%);
+	background-position: var(--home-hero-tile-bg-x) var(--home-hero-tile-bg-y);
+}
+
+.home-hero__mosaic-complete {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	display: block;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.home-hero__mosaic-complete img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: fill;
+}
+
+.home-hero__shade {
 	z-index: 1;
 	pointer-events: none;
-	opacity: 1;
-	transition: opacity 0.3s ease;
+	background: var(--home-hero-overlay);
 }
 
-/* ---------- 背景图片（picture 容器） ---------- */
-.home-hero__video-picture {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	z-index: 0;
-	display: block;
-}
-
-/* ---------- 背景视频/图片 ---------- */
-.home-hero__video {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	z-index: 0;
-}
-
-/* ---------- 玻璃雨珠 + 撞击水花画布 ---------- */
-.home-hero__rain-canvas {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	/* 位于内容之上，模拟最前方的镜头玻璃；不拦截交互 */
+.home-hero__rain {
 	z-index: 20;
 	pointer-events: none;
+	opacity: 0;
+	transition: opacity 240ms ease;
 }
 
-/* ---------- 全屏内容容器 ---------- */
-.home-hero__canvas-container {
+.home-hero__rain.is-active {
+	opacity: 1;
+}
+
+.home-hero__identity {
 	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	display: grid;
-	grid-template-columns: 87% 13%;
-	z-index: 10;
-	overflow: hidden;
-}
-
-/* ---------- 外四角取景框 ---------- */
-.home-hero__viewfinder {
-	position: absolute;
-	inset: 0;
-	z-index: 8;
-	pointer-events: none;
-}
-
-.home-hero__viewfinder-corner {
-	position: absolute;
-	width: clamp(28px, 2.4vw, 42px);
-	height: clamp(28px, 2.4vw, 42px);
-	border: 2px solid rgba(255, 255, 255, 0.28);
-}
-
-[data-theme="light"] .home-hero__viewfinder-corner {
-	border-color: rgba(0, 0, 0, 0.22);
-}
-
-.home-hero__viewfinder-corner--tl {
-	top: calc(20px + var(--home-hero-content-shift));
-	left: 20px;
-	border-right: none;
-	border-bottom: none;
-}
-
-.home-hero__viewfinder-corner--tr {
-	top: calc(20px + var(--home-hero-content-shift));
-	right: 20px;
-	border-left: none;
-	border-bottom: none;
-}
-
-.home-hero__viewfinder-corner--bl {
-	bottom: 20px;
-	left: 20px;
-	border-right: none;
-	border-top: none;
-}
-
-.home-hero__viewfinder-corner--br {
-	bottom: 20px;
-	right: 20px;
-	border-left: none;
-	border-top: none;
-}
-
-/* ---------- 拍摄参数面板 ---------- */
-.home-hero__camera-params {
-	position: absolute;
-	top: calc(20px + var(--home-hero-content-shift));
-	left: clamp(66px, calc(20px + 2.8vw), 82px);
-	z-index: 9;
-	display: flex;
-	flex-direction: column;
-	gap: 0.1rem;
-	font-family: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
-	font-size: clamp(0.65rem, 0.85vw, 0.8rem);
-	font-weight: 600;
-	color: rgba(255, 255, 255, 0.78);
-	line-height: 1.25;
-	pointer-events: none;
-}
-
-[data-theme="light"] .home-hero__camera-params {
-	color: rgba(0, 0, 0, 0.62);
-}
-
-/* ---------- 中心对焦框 ---------- */
-.home-hero__focus-frame {
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
-	z-index: 8;
-	width: clamp(12rem, 24vw, 22rem);
-	height: clamp(7.5rem, 15vw, 13rem);
-	pointer-events: none;
-}
-
-.home-hero__focus-corner {
-	position: absolute;
-	width: clamp(12px, 1vw, 18px);
-	height: clamp(12px, 1vw, 18px);
-	border: 2px solid rgba(255, 255, 255, 0.45);
-}
-
-[data-theme="light"] .home-hero__focus-corner {
-	border-color: rgba(0, 0, 0, 0.35);
-}
-
-.home-hero__focus-corner--tl {
 	top: 0;
-	left: 0;
-	border-right: none;
-	border-bottom: none;
-}
-
-.home-hero__focus-corner--tr {
-	top: 0;
-	right: 0;
-	border-left: none;
-	border-bottom: none;
-}
-
-.home-hero__focus-corner--bl {
-	bottom: 0;
-	left: 0;
-	border-right: none;
-	border-top: none;
-}
-
-.home-hero__focus-corner--br {
-	bottom: 0;
-	right: 0;
-	border-left: none;
-	border-top: none;
-}
-
-.home-hero__focus-dot {
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.75);
-	transform: translate(-50%, -50%);
-	box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
-}
-
-[data-theme="light"] .home-hero__focus-dot {
-	background: rgba(0, 0, 0, 0.65);
-	box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
-}
-
-/* ---------- 左侧面板（吞并原中栏，87%，容器查询上下文） ---------- */
-.home-hero__left-panel {
-	container-type: inline-size;
-	padding-block: calc(5% + var(--home-hero-content-shift)) 5%;
-	padding-inline-start: var(--home-hero-title-left);
-	padding-inline-end: 4%;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: flex-start;
-	gap: clamp(2rem, 4vh, 3.5rem);
-	position: relative;
-	z-index: 15;
-}
-
-.home-hero__profile {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: clamp(1.8rem, 3vh, 2.6rem);
-	width: max-content;
-	max-width: 100%;
-	contain: layout;
-	transform: translateY(calc(-1 * var(--home-hero-profile-lift)));
-}
-
-.home-hero__identity-row {
-	--identity-avatar-size: clamp(9.5rem, 14vw, 15rem);
-	display: flex;
-	align-items: flex-end;
-	gap: clamp(1.4rem, 2.2vw, 2.4rem);
-	width: max-content;
-	max-width: none;
-	flex-shrink: 0;
-}
-
-/* 头像（左侧，放大） */
-.home-hero__avatar-group {
-	position: relative;
-	width: max-content;
-	margin-bottom: 0.15rem;
-	flex: 0 0 var(--identity-avatar-size);
-}
-
-.home-hero__avatar-wrapper {
-	width: var(--identity-avatar-size);
-	height: var(--identity-avatar-size);
-	border-radius: 50%;
-	overflow: hidden;
-	outline: 3px solid #D44E7D;
-	background: transparent;
-	box-shadow: 0 10px 0 #D44E7D, 0 18px 38px rgba(0, 0, 0, 0.48);
-	flex-shrink: 0;
-}
-
-/* 下班时头像边框和阴影恢复黑色 */
-.home-hero__avatar-group:has(.is-off-work) .home-hero__avatar-wrapper {
-	outline-color: #000000;
-	box-shadow: 0 10px 0 rgba(0, 0, 0, 0.9), 0 18px 38px rgba(0, 0, 0, 0.48);
-}
-
-.home-hero__avatar {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
-
-.home-hero__status-badge {
-	position: absolute;
-	left: 50%;
-	bottom: -1.05rem;
-	transform: translateX(-50%);
-	display: inline-flex;
-	align-items: center;
-	gap: 0.45rem;
-	min-width: 5.75rem;
-	justify-content: center;
-	padding: 0.35rem 0.85rem;
-	border: 3px solid #D44E7D;
-	border-radius: 999px;
-	background: #ffffff;
-	color: #D44E7D;
-	font-size: 1rem;
-	font-weight: 900;
-	line-height: 1;
-	white-space: nowrap;
-	box-shadow: 0 3px 0 #D44E7D;
-}
-
-.home-hero__status-dot {
-	width: 0.55rem;
-	height: 0.55rem;
-	border-radius: 50%;
-	background: #D44E7D;
-	flex-shrink: 0;
-	animation: status-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes status-pulse {
-	0%, 100% { opacity: 1; transform: scale(1); }
-	50% { opacity: 0.25; transform: scale(0.7); }
-}
-
-.home-hero__status-badge.is-off-work {
-	border-color: #000000;
-	color: #000000;
-	box-shadow: 0 3px 0 rgba(0, 0, 0, 0.9);
-}
-
-.home-hero__status-badge.is-off-work .home-hero__status-dot {
-	background: #000000;
-	animation: none;
-}
-
-[data-theme="light"] .home-hero__status-badge {
-	background: #ffffff;
-}
-
-/* 名字组（右侧） */
-.home-hero__name-group {
-	flex: 0 0 auto;
-	width: max-content;
-	max-width: none;
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: clamp(0.1rem, 0.3vh, 0.2rem);
-}
-
-/* 名字 — 逐字 span + cqw 缩放，根除横向溢出 */
-.home-hero__name {
-	font-family: var(--font-sans);
-	font-size: clamp(4rem, 11cqw, 11rem);
-	font-weight: 950;
-	line-height: 1.12;
-	margin: 0;
-	letter-spacing: 0;
-	text-transform: none;
-	display: inline-block;
-	position: relative;
-	z-index: 2;
-	overflow: visible;
-	padding-bottom: 0.12em;
-}
-
-.home-hero__name--rainbow .home-hero__name-letter:nth-child(7n+1) { color: #FF5252; }
-.home-hero__name--rainbow .home-hero__name-letter:nth-child(7n+2) { color: #FF9800; }
-.home-hero__name--rainbow .home-hero__name-letter:nth-child(7n+3) { color: #FFEB3B; }
-.home-hero__name--rainbow .home-hero__name-letter:nth-child(7n+4) { color: #4CAF50; }
-.home-hero__name--rainbow .home-hero__name-letter:nth-child(7n+5) { color: #00BCD4; }
-.home-hero__name--rainbow .home-hero__name-letter:nth-child(7n+6) { color: #2196F3; }
-.home-hero__name--rainbow .home-hero__name-letter:nth-child(7n+7) { color: #9C27B0; }
-
-.home-hero__name-letter {
-	display: inline-block;
-	min-height: 1em;
-	vertical-align: bottom;
-	will-change: transform, opacity;
-}
-
-/* 联系徽章 — Rainbow Button 实体表面 + 虹彩边框 */
-.home-hero__name-badge {
-	--name-badge-surface: #ffffff;
-	--name-badge-surface-fade: rgba(255, 255, 255, 0.6);
-	--name-badge-color-1: hsl(0 100% 63%);
-	--name-badge-color-2: hsl(270 100% 63%);
-	--name-badge-color-3: hsl(210 100% 63%);
-	--name-badge-color-4: hsl(195 100% 63%);
-	--name-badge-color-5: hsl(90 100% 63%);
-	--name-badge-rainbow: linear-gradient(
-		90deg,
-		var(--name-badge-color-1),
-		var(--name-badge-color-5),
-		var(--name-badge-color-3),
-		var(--name-badge-color-4),
-		var(--name-badge-color-2)
-	);
-	display: flex;
-	position: relative;
+	left: clamp(2rem, 4.5vw, 5rem);
 	z-index: 3;
-	width: fit-content;
-	max-width: 100%;
-	align-items: center;
+	display: flex;
+	height: 50svh;
+	max-width: calc(100vw - 4rem);
+	flex-direction: column;
 	justify-content: center;
-	min-width: clamp(9.5rem, 13vw, 13.5rem);
-	margin-top: clamp(-1.6rem, -2vw, -0.9rem);
-	padding: 0.34rem 1rem;
-	border: 2px solid transparent;
-	border-radius: 0.25rem;
-	background-image:
-		linear-gradient(var(--name-badge-surface), var(--name-badge-surface)),
-		linear-gradient(
-			var(--name-badge-surface) 50%,
-			var(--name-badge-surface-fade) 80%,
-			transparent
-		),
-		var(--name-badge-rainbow);
-	background-size: 200%;
-	background-origin: border-box;
-	background-clip: padding-box, border-box, border-box;
-	color: #000000;
-	font-size: clamp(0.82rem, 1.05vw, 1.06rem);
-	font-weight: 950;
-	letter-spacing: 0.22em;
-	line-height: 1;
-	overflow: visible;
-	isolation: isolate;
-	animation: name-badge-rainbow 2s linear infinite;
-	box-shadow: none;
-}
-
-.home-hero__name-badge::before {
-	content: "";
-	position: absolute;
-	z-index: -1;
-	left: 50%;
-	bottom: -20%;
-	width: 60%;
-	height: 20%;
-	transform: translateX(-50%);
-	background: var(--name-badge-rainbow);
-	background-size: 200%;
-	filter: blur(0.75rem);
-	opacity: 0.95;
-	pointer-events: none;
-	animation: name-badge-rainbow 2s linear infinite;
-}
-
-[data-theme="light"] .home-hero__name-badge {
-	--name-badge-surface: #121213;
-	--name-badge-surface-fade: rgba(18, 18, 19, 0.6);
-	color: #ffffff;
-}
-
-@keyframes name-badge-rainbow {
-	0% { background-position: 0%; }
-	100% { background-position: 200%; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.home-hero__name-badge,
-	.home-hero__name-badge::before {
-		animation: none;
-		background-position: 50% 50%;
-	}
-}
-
-/* 职业 */
-.home-hero__occupation {
-	font-size: clamp(1rem, 1.35vw, 1.45rem);
-	color: rgba(255, 255, 255, 0.86);
-	font-weight: 800;
-	margin: 0 0 0.15rem;
-	padding: 0.15em 0;
-	letter-spacing: 0;
-	line-height: 1.15;
-	text-shadow: 0 4px 10px rgba(0, 0, 0, 0.55);
-}
-
-[data-theme="light"] .home-hero__occupation {
-	color: rgba(0, 0, 0, 0.72);
-	text-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
-}
-
-.home-hero__occupation,
-.home-hero__name,
-.home-hero__name-letter,
-.home-hero__name-badge,
-.home-hero__avatar-group,
-.home-hero__dialogue-box,
-.home-hero__right-panel,
-.home-hero__focus-frame,
-.home-hero__viewfinder,
-.home-hero__camera-params {
+	margin: 0;
 	will-change: transform, opacity;
 }
 
-/* ---------- 入场前状态（防 FOUC，GSAP 接管后覆盖） ---------- */
-.home-hero--motion-pending .home-hero__viewfinder-corner {
-	opacity: 0;
-	transform: scale(0.3);
+.home-hero__filter {
+	position: absolute;
+	width: 0;
+	height: 0;
+	overflow: hidden;
 }
 
-.home-hero--motion-pending .home-hero__focus-frame {
-	opacity: 0;
-	transform: translate(-50%, -50%) scale(1.7);
+.home-hero__title {
+	margin: 0;
+	font-family: var(--font-sans);
+	font-size: clamp(7.5rem, 10.8vw, 9.5rem);
+	font-weight: 760;
+	line-height: 1.08;
+	letter-spacing: 0;
+	text-wrap: balance;
+	overflow: visible;
 }
 
-.home-hero--motion-pending .home-hero__focus-dot {
-	opacity: 0;
-	transform: translate(-50%, -50%) scale(0);
+.home-hero__title > span:first-child {
+	--home-hero-melt-size: 1.35rem;
+	--home-hero-melt-width: 0.72rem;
+	--home-hero-melt-gap: 0.34rem;
+	display: inline-block;
+	padding: 0.08em 0.18em 0.18em;
+	margin: -0.08em -0.18em -0.18em;
+	color: transparent;
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--home-hero-ink) 0 var(--home-hero-melt-width),
+		transparent var(--home-hero-melt-width) calc(var(--home-hero-melt-width) + var(--home-hero-melt-gap))
+	);
+	background-clip: text;
+	background-size: var(--home-hero-melt-size) var(--home-hero-melt-size);
+	filter: url("#home-hero-gooey");
+	animation: home-hero-melt 1.25s linear infinite;
 }
 
-.home-hero--motion-pending .home-hero__camera-params {
-	opacity: 0;
-	transform: translateX(-16px);
+.home-hero__occupation {
+	margin: var(--space-4) 0 0;
+	color: color-mix(in oklch, var(--home-hero-ink) 64%, transparent);
+	font-size: 2rem;
+	font-weight: 500;
+	letter-spacing: 0;
 }
 
-.home-hero--motion-pending .home-hero__occupation {
-	opacity: 0;
-	transform: translateY(48px);
+.home-hero__contact {
+	position: absolute;
+	right: clamp(2.5rem, 6vw, 8rem);
+	bottom: clamp(3rem, 8vh, 7rem);
+	z-index: 4;
+	display: flex;
+	width: min(36vw, 38rem);
+	min-height: clamp(11rem, 24vh, 18rem);
+	align-items: flex-end;
+	justify-content: flex-end;
+	text-align: right;
+	will-change: transform, opacity;
 }
 
-.home-hero--motion-pending .home-hero__name-badge {
-	opacity: 0;
-	transform: translateY(12px) scale(0.7);
+.home-hero__contact-link {
+	display: block;
+	margin: 0;
+	color: transparent;
+	font-family: var(--font-sans);
+	font-size: clamp(3.75rem, 6.6vw, 8rem);
+	font-weight: 760;
+	line-height: 0.88;
+	letter-spacing: 0;
+	text-decoration: none;
 }
 
-.home-hero--motion-pending .home-hero__avatar-group {
-	opacity: 0;
-	transform: translate(-54px, 12px) scale(0.82);
-	clip-path: circle(0% at 50% 50%);
+.home-hero__contact-platform,
+.home-hero__contact-handle {
+	--home-hero-melt-size: 1.1rem;
+	--home-hero-melt-width: 0.6rem;
+	--home-hero-melt-gap: 0.28rem;
+	display: block;
+	padding: 0.08em 0.12em 0.16em;
+	margin: -0.08em -0.12em -0.16em;
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--home-hero-ink) 0 var(--home-hero-melt-width),
+		transparent var(--home-hero-melt-width) calc(var(--home-hero-melt-width) + var(--home-hero-melt-gap))
+	);
+	background-clip: text;
+	background-size: var(--home-hero-melt-size) var(--home-hero-melt-size);
+	filter: url("#home-hero-gooey");
+	animation: home-hero-melt 1.25s linear infinite;
 }
 
-.home-hero--motion-pending .home-hero__dialogue-box {
-	opacity: 0;
-	transform: translateY(34px) scale(0.92);
-	filter: blur(10px);
+.home-hero__contact-platform {
+	font-size: 0.48em;
+	line-height: 1;
 }
 
-.home-hero--motion-pending .home-hero__right-panel {
-	opacity: 0;
-	transform: translateX(60px);
+.home-hero__contact-handle {
+	white-space: nowrap;
 }
 
-.home-page--motion-pending > :not(#home-hero) .home-section-title,
-.home-page--motion-pending > :not(#home-hero) [data-motion-title],
-.home-page--motion-pending > :not(#home-hero) .card-base,
-.home-page--motion-pending > :not(#home-hero) .post-card-wrapper,
-.home-page--motion-pending > :not(#home-hero) .home-pending,
-.home-page--motion-pending > :not(#home-hero) .stats-container,
-.home-page--motion-pending > :not(#home-hero) [data-motion-card] {
-	opacity: 0;
-	transform: translateY(86px);
-	filter: blur(12px);
+.home-hero__contact-link[href]:hover,
+.home-hero__contact-link[href]:focus-visible {
+	filter: brightness(0.82);
 }
 
-.home-page--motion-pending > :not(#home-hero) img[data-home-motion-image]:not([data-shutter-image]):not([data-shutter-final-midground]):not([data-shutter-final-foreground]),
-.home-page--motion-pending > :not(#home-hero) [data-home-motion-image]:not([data-shutter-image]):not([data-shutter-final-midground]):not([data-shutter-final-foreground]) {
-	clip-path: inset(0 0 100% 0);
-	transform: scale(1.1);
+.home-hero__contact-link[href]:focus-visible {
+	outline: 2px solid var(--home-hero-ink);
+	outline-offset: 0.5rem;
 }
 
-/* 对话框样式已迁移至 home-hero-dialogue.css（galgame 暗黑对话框） */
+.home-hero__quick-panel {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	z-index: 6;
+	width: min(26rem, calc(100vw - 2rem));
+	max-width: none;
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+}
 
-/* ---------- 右侧面板 ---------- */
-.home-hero__right-panel {
-	padding: calc(40px + var(--home-hero-content-shift)) 15px 40px;
+.home-hero__quick-actions {
 	display: flex;
 	flex-direction: column;
-	justify-content: space-between;
+	flex-wrap: wrap;
 	align-items: center;
-	color: #ffffff;
-	position: relative;
-	z-index: 15;
-	background: linear-gradient(-90deg, rgba(0, 0, 0, 0.4) 0%, transparent 100%);
+	justify-content: center;
+	gap: var(--space-3);
 }
 
-[data-theme="light"] .home-hero__right-panel {
-	background: linear-gradient(-90deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%);
-}
-
-.home-hero__pill {
-	padding: 0;
+.home-hero__quick-action {
+	display: inline-flex;
+	min-width: min(24rem, calc(100vw - 3rem));
+	min-height: 4rem;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-5);
 	border: 0;
 	border-radius: 0;
-	font-size: 0.65rem;
-	letter-spacing: 2px;
-	font-weight: bold;
-	background: transparent;
-	color: #ffffff;
+	background: color-mix(in oklch, var(--home-hero-surface) 52%, transparent);
+	backdrop-filter: blur(8px);
+	clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
+	color: var(--home-hero-ink);
+	font: inherit;
+	font-size: 1.2rem;
+	font-weight: 650;
+	letter-spacing: 0;
+	line-height: 1.2;
+	text-decoration: none;
+	cursor: pointer;
+	pointer-events: auto;
+	opacity: 0;
+	visibility: hidden;
+	will-change: transform, opacity;
+	transition: background-color 160ms ease, transform 160ms ease;
 }
 
-[data-theme="light"] .home-hero__pill {
-	background: transparent;
-	color: #1a1a2e;
+.home-hero__quick-action svg {
+	width: 1.5rem;
+	height: 1.5rem;
+	flex: 0 0 auto;
 }
 
-.home-hero__vertical-wrap {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 15px;
+.home-hero__quick-action:hover,
+.home-hero__quick-action:focus-visible {
+	background: color-mix(in oklch, var(--home-hero-ink) 18%, transparent);
+	color: var(--home-hero-ink);
+	transform: translateY(-2px);
 }
 
-.home-hero__v-title {
-	writing-mode: vertical-rl;
-	font-size: 2.2rem;
-	font-weight: 900;
-	letter-spacing: 10px;
-	color: #ffffff;
-	text-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+.home-hero__quick-action:focus-visible,
+.home-hero__dialogue-restore:focus-visible {
+	outline: 2px solid var(--home-hero-ink);
+	outline-offset: 3px;
 }
 
-[data-theme="light"] .home-hero__v-title {
-	color: #1a1a2e;
-	text-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+.home-hero__dialogue-restore {
+	display: none;
+	font-size: 1rem;
 }
 
-.home-hero__v-sub {
-	writing-mode: vertical-rl;
-	font-size: 0.7rem;
-	letter-spacing: 6px;
-	color: rgba(255, 255, 255, 0.5);
+.home-hero__dialogue-restore svg {
+	width: 1rem;
+	height: 1rem;
+	flex: 0 0 auto;
 }
 
-[data-theme="light"] .home-hero__v-sub {
-	color: rgba(0, 0, 0, 0.4);
+.home-hero[data-layer-active="true"] .home-hero__dialogue-restore.is-dialogue-closed {
+	display: inline-flex;
+	opacity: 1;
+	visibility: visible;
+	transform: none;
 }
 
-/* 上下班状态：上班绿色，下班正常白色 */
-.home-hero__v-status {
-	color: #ffffff;
-	font-weight: 700;
-	transition: color 0.3s ease;
-}
-
-.home-hero__v-status.is-working {
-	color: #3fb950;
-}
-
-[data-theme="light"] .home-hero__v-status {
-	color: #1a1a2e;
-}
-
-[data-theme="light"] .home-hero__v-status.is-working {
-	color: #2ea043;
-}
-
-.home-hero__diamond {
-	color: #b5893d;
-	font-size: 0.7rem;
-	animation: pulse-glow 2s infinite ease-in-out;
-}
-
-@keyframes pulse-glow {
-	0%, 100% { opacity: 0.3; transform: scale(0.9); }
-	50% { opacity: 1; transform: scale(1.1); }
-}
-
-.home-hero__panel-footer {
-	text-align: center;
-}
-
-.home-hero__footer-line {
-	width: 10px;
-	height: 1px;
-	background: rgba(255, 255, 255, 0.2);
-	margin: 0 auto 8px;
-}
-
-[data-theme="light"] .home-hero__footer-line {
-	background: rgba(0, 0, 0, 0.15);
-}
-
-.home-hero__micro-text {
-	font-size: 0.45rem;
-	letter-spacing: 3px;
-	color: rgba(255, 255, 255, 0.3);
-	writing-mode: vertical-rl;
-	transform: rotate(180deg);
-	margin: 0;
-}
-
-[data-theme="light"] .home-hero__micro-text {
-	color: rgba(0, 0, 0, 0.25);
-}
-
-/* ============================================
-   桌面端：去除大头照 + 标题/职业/徽章视窗居中
-   仅 >=769px 生效，移动端保持原样（含头像）
-   ============================================ */
-@media (min-width: 769px) {
-	/* 桌面端去除大头照 */
-	.home-hero__avatar-group {
-		display: none;
-	}
-
-	/* 视窗居中：左侧面板占栅格 87% 列，其中心在 43.5vw。
-	   将左内边距设为右栏宽度（13vw）即可把内容中心推回视口 50%，
-	   与底部对话框（left:50%）对齐 */
-	.home-hero__left-panel {
-		align-items: center;
-		padding-inline-start: 13vw;
-		padding-inline-end: 0;
-	}
-
-	.home-hero__profile {
-		align-items: center;
-	}
-
-	.home-hero__identity-row {
-		align-items: center;
-		justify-content: center;
-	}
-
-	.home-hero__name-group {
-		align-items: center;
-		text-align: center;
+@keyframes home-hero-melt {
+	to {
+		background-position: var(--home-hero-melt-size) 0;
 	}
 }
-
-/* ============================================
-   移动端适配
-   ============================================ */
 
 @media (max-width: 768px) {
 	.home-hero {
-		/* 移动端顶栏本就 display:none（见 mobile-dock.css），Hero 上方无占位，
-		   直接使用 100svh 精确铺满小视口即可 */
-		min-height: 100svh;
+		min-height: 32rem;
 	}
 
-	/* 移动端遮罩：暗色主题深一点，亮色主题淡一点 */
-	.home-hero::after {
-		background: rgba(0, 0, 0, 0.55);
+	.home-hero__mosaic-frame {
+		bottom: max(var(--space-5), 5svh);
+		width: min(86vw, 28rem);
+		aspect-ratio: 9 / 16;
 	}
 
-	[data-theme="light"] .home-hero::after {
-		background: rgba(255, 255, 255, 0.15);
+	.home-hero__mosaic-tile-image {
+		background-image: var(--home-hero-mosaic-image-mobile);
 	}
 
-	.home-hero__canvas-container {
-		grid-template-columns: 1fr;
-		width: 100%;
-		height: 100%;
+	.home-hero__shade {
+		background: var(--home-hero-overlay);
 	}
 
-	/* 隐藏右侧面板 */
-	.home-hero__right-panel {
-		display: none;
+	.home-hero__identity {
+		left: var(--space-5);
 	}
 
-	/* 左侧面板全宽居中 */
-	.home-hero__left-panel {
-		padding: 2rem;
-		align-items: center;
-		justify-content: center;
-		background: transparent;
+	.home-hero__identity {
+		top: 0;
+		height: 46svh;
 	}
 
-	[data-theme="light"] .home-hero__left-panel {
-		background: transparent;
+	.home-hero__identity {
+		max-width: calc(100vw - 2.5rem);
 	}
 
-	.home-hero__profile {
-		align-items: center;
-		text-align: center;
-		width: 100%;
-		max-width: 100%;
-		transform: none;
-	}
-
-	.home-hero__identity-row {
-		--identity-avatar-size: clamp(8rem, 36vw, 10rem);
-		flex-direction: column;
-		align-items: center;
-		gap: 0.75rem;
-		width: 100%;
-		max-width: 100%;
-	}
-
-	/* 移动端：name-group 使用 contents，让子元素参与 identity-row 的 flex 排序 */
-	.home-hero__name-group {
-		display: contents;
-		max-width: 100%;
-		width: 100%;
-	}
-
-	/* 移动端顺序：职业(1) → 名字(2) → 头像组(3) → B站徽章(4) */
-	.home-hero__occupation {
-		order: 1;
-	}
-
-	.home-hero__name {
-		order: 2;
-	}
-
-	.home-hero__avatar-group {
-		order: 3;
-	}
-
-	.home-hero__name-badge {
-		order: 4;
-		min-width: min(12rem, 74vw);
-		margin-right: auto;
-		margin-left: auto;
-		margin-top: 0.5rem;
-		padding: 0.32rem 0.9rem;
-		font-size: clamp(0.78rem, 3.4vw, 0.98rem);
-		letter-spacing: 0.18em;
-	}
-
-	.home-hero__avatar-wrapper {
-		outline-width: 3px;
-	}
-
-	.home-hero__avatar {
-		/* 若图片边缘自带白边，稍微放大让图片内容顶满圆形裁剪区 */
-		transform: scale(1.08);
-	}
-
-	.home-hero__status-badge {
-		bottom: -0.95rem;
-		min-width: 5.1rem;
-		padding: 0.32rem 0.75rem;
-		font-size: 0.9rem;
-		border-width: 3px;
-	}
-
-	.home-hero__name {
-		font-size: clamp(3.2rem, 16vw, 5.2rem);
-		line-height: 1.15;
-		margin-top: 0;
-		padding-bottom: 0.05em;
-		margin-inline: auto;
+	.home-hero__title {
+		font-size: 4.5rem;
 	}
 
 	.home-hero__occupation {
-		font-size: clamp(0.9rem, 3.6vw, 1.15rem);
-		width: 100%;
-		text-align: center;
-		margin-bottom: 0.1rem;
+		margin-top: var(--space-3);
+		font-size: 1.25rem;
 	}
 
-	/* 移动端隐藏相机取景器元素（对话框移动端样式见 home-hero-dialogue.css） */
-	.home-hero__focus-frame,
-	.home-hero__viewfinder,
-	.home-hero__camera-params {
-		display: none;
+	.home-hero__contact {
+		right: 1rem;
+		bottom: 1.5rem;
+		width: min(52vw, 17rem);
+		min-height: 8rem;
+	}
+
+	.home-hero__contact-link {
+		font-size: clamp(2.6rem, 10vw, 4.5rem);
+	}
+
+	.home-hero__quick-panel {
+		width: calc(100vw - 1rem);
+	}
+
+	.home-hero__quick-actions {
+		gap: var(--space-2);
+	}
+
+	.home-hero__quick-action {
+		min-height: 3rem;
+		min-width: min(22rem, calc(100vw - 2rem));
+		padding-inline: var(--space-4);
+		font-size: 1rem;
+	}
+
+	.home-hero__dialogue-restore {
+		font-size: 0.8125rem;
 	}
 
 }
 
-/* 平板适配 */
-@media (min-width: 769px) and (max-width: 1024px) {
-	.home-hero__canvas-container {
-		grid-template-columns: 88% 12%;
+@media (prefers-reduced-motion: reduce) {
+	.home-hero {
+		min-height: 32rem;
 	}
 
-	/* 右栏 12%，视窗居中补偿同步为 12vw */
-	.home-hero__left-panel {
-		padding-inline-start: 12vw;
+	.home-hero__mosaic-frame {
+		display: none;
+	}
+
+	.home-hero__backdrop {
+		opacity: 1;
+		visibility: visible;
+	}
+
+	.home-hero__title > span:first-child {
+		animation: none;
+		filter: none;
+		background-image: none;
+		color: var(--home-hero-ink);
+	}
+
+	.home-hero__identity {
+		display: none;
+	}
+
+	.home-hero__quick-action {
+		opacity: 1;
+		visibility: visible;
+		transform: none;
+	}
+
+	.home-hero__rain {
+		display: none;
 	}
 }
