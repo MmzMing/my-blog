@@ -484,7 +484,7 @@ onMount(() => {
 	ballImg.onload = () => {
 		imgLoaded = true;
 	};
-	ballImg.src = "/assets/images/about.webp";
+	ballImg.src = "/assets/images/about.avif";
 
 	// IntersectionObserver：离开视口时暂停渲染循环
 	if (container) {

@@ -21,8 +21,8 @@ export const homeConfig: HomeConfig = {
 	bio: ["且视他人之疑目如盏盏鬼火，大胆地去走你的夜路"],
 
 	hero: {
-		backgroundImage: "/assets/images/home/home.webp",
-		backgroundImageMobile: "/assets/images/home/home-mobile.webp",
+		backgroundImage: "/assets/images/home/home.avif",
+		backgroundImageMobile: "/assets/images/home/home-mobile.avif",
 		mosaic: {
 			rows: 4,
 			columns: 6,
@@ -64,7 +64,7 @@ export const homeConfig: HomeConfig = {
 			handle: "Mmz明崽",
 		},
 		sticker: {
-			image: "/assets/images/home/character.webp",
+			image: "/assets/images/home/character.avif",
 			alt: "黑猫角色贴纸",
 			eye: {
 				xPercent: 41.1,
@@ -153,10 +153,9 @@ export const homeConfig: HomeConfig = {
 	},
 
 	dataLayer: {
-		visitImage: "/assets/images/home/home-data-1.webp",
-		archiveImage: "/assets/images/home/home-data-2.webp",
-		contactImage: "/assets/images/home/home-data-3.webp",
-		skillsImage: "/assets/images/home/home-data-4.webp",
+		visitImage: "/assets/images/home/home-data-1.avif",
+		archiveImage: "/assets/images/home/home-data-2.avif",
+		contactImage: "/assets/images/home/home-data-3.avif",
 	},
 
 	// 展示层：垂直线 → 长柱 → 字体显隐 → 柱子扩全屏 → 衔接百叶窗
@@ -168,7 +167,7 @@ export const homeConfig: HomeConfig = {
 			"Where fleeting visions crystallize into permanence — each frame a frozen breath of time, each work a memory hardened into light.",
 		scrollDistance: 4000,
 		pillarFinalWidth: "18vw",
-		emitterImage: "/assets/images/home-truncated/td.webp",
+		emitterImage: "/assets/images/home-truncated/td.avif",
 	},
 
 	portfolioShutter: {
@@ -178,15 +177,15 @@ export const homeConfig: HomeConfig = {
 		description: "岁岁常欢愉，万事皆胜意",
 		scrollDistance: 3000,
 		finalImage: {
-			midgroundImage: "/assets/images/home-truncated/utl-back1.webp",
-			backgroundVideo: "/assets/images/home-truncated/utl-back2.webm",
-			foregroundImage: "/assets/images/home-truncated/utl-1.webp",
+			midgroundImage: "/assets/images/home-truncated/utl-back1.avif",
+			backgroundVideo: "/assets/images/home-truncated/utl-back2.mp4",
+			foregroundImage: "/assets/images/home-truncated/utl-1.avif",
 			alt: "2026年 加油！",
 		},
 		interlude: {
-			foreground: "/assets/images/home-truncated/b-1.webp",
-			stripLeft: "/assets/images/home-truncated/b-2.webp",
-			stripRight: "/assets/images/home-truncated/b-3.webp",
+			foreground: "/assets/images/home-truncated/b-1.avif",
+			stripLeft: "/assets/images/home-truncated/b-2.avif",
+			stripRight: "/assets/images/home-truncated/b-3.avif",
 			copyLeft: "菲比",
 			copyRight: "啾比",
 		},
@@ -195,35 +194,35 @@ export const homeConfig: HomeConfig = {
 				title: "外部站点",
 				english: "PROJECTS",
 				description: "菲比主站 · 工具导航",
-				image: "/assets/images/home-truncated/1.webp",
+				image: "/assets/images/home-truncated/1.avif",
 				alt: "外部站点",
 			},
 			{
 				title: "术业专攻",
 				english: "SPECIALITIES",
 				description: "AI学习 · 技术架构 · 踩坑记录",
-				image: "/assets/images/home-truncated/2.webp",
+				image: "/assets/images/home-truncated/2.avif",
 				alt: "术业专攻",
 			},
 			{
 				title: "博客特色",
 				english: "BLOG FEATURES",
 				description: "RAG 知识检索 · 归档热力图 · 结构化知识库",
-				image: "/assets/images/home-truncated/3.webp",
+				image: "/assets/images/home-truncated/3.avif",
 				alt: "博客特色",
 			},
 			{
 				title: "站点技术",
 				english: "STACK",
 				description: "Astro · SSG静态生成 · 纯AI零手工",
-				image: "/assets/images/home-truncated/4.webp",
+				image: "/assets/images/home-truncated/4.avif",
 				alt: "站点技术",
 			},
 			{
 				title: "相册收录",
 				english: "PHOTO ALBUM",
 				description: "AI 生图 · API 接入",
-				image: "/assets/images/home-truncated/5.webp",
+				image: "/assets/images/home-truncated/5.avif",
 				alt: "相册收录",
 			},
 		],

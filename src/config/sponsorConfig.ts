@@ -19,7 +19,7 @@ export const sponsorConfig: SponsorConfig = {
 			name: "菲比啾比支付",
 			icon: "material-symbols:chat-bubble",
 			// 收款码图片路径（需要放在 public 目录下）
-			qrCode: "/assets/images/wechat-pay.webp",
+			qrCode: "/assets/images/wechat-pay.avif",
 			link: "",
 			description: "",
 			enabled: true,

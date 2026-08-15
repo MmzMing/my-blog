@@ -403,7 +403,6 @@ export type HomeConfig = {
 		visitImage: string;
 		archiveImage: string;
 		contactImage: string;
-		skillsImage: string;
 	};
 	/** 展示层：垂直线 → 长柱 → 字体显隐 → 柱子扩全屏，衔接百叶窗 */
 	displayLayer: HomeDisplayLayerConfig;

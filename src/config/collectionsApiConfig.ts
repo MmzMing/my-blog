@@ -39,6 +39,14 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 					enabled: true,
 				},
 				{
+					name: "图片处理 | OneImage",
+					url: "https://oneimage.co/",
+					description:
+						"隐私优先的免费在线图片工具，支持压缩、裁剪、模糊、格式转换等，浏览器内处理无需上传。",
+					icon: favicon("oneimage.co"),
+					enabled: true,
+				},
+				{
 					name: "图片查找 | SauceNAO",
 					url: "https://saucenao.com/",
 					description: "以图搜图引擎，支持查找动漫插画、同人图等图片来源。",
@@ -74,14 +82,6 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 					url: "https://patorjk.com/",
 					description: "在线 ASCII 艺术字生成器，还提供多种实用小工具集合。",
 					icon: favicon("patorjk.com"),
-					enabled: true,
-				},
-				{
-					name: "设备展示 | Fireship",
-					url: "https://fireship.dev/",
-					description:
-						"用于生成设备展示效果的在线工具，方便快速制作产品截图与演示。",
-					icon: favicon("fireship.dev"),
 					enabled: true,
 				},
 			],
