@@ -289,10 +289,9 @@ html:has(.home-hero) #top-row {
 	gap: var(--space-2);
 	padding: var(--space-3) var(--space-5);
 	border: 0;
-	border-radius: 0;
+	border-radius: 1.5rem 1.5rem 0.35rem 1.5rem;
 	background: color-mix(in oklch, var(--home-hero-surface) 52%, transparent);
 	backdrop-filter: blur(8px);
-	clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
 	color: var(--home-hero-ink);
 	font: inherit;
 	font-size: 1.2rem;
@@ -353,6 +352,8 @@ html:has(.home-hero) #top-row {
 
 @media (max-width: 768px) {
 	.home-hero {
+		height: 100vh;
+		height: 100lvh;
 		min-height: 32rem;
 	}
 

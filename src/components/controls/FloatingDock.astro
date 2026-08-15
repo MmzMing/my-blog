@@ -116,7 +116,7 @@ const tags = await getTagList();
 						<time class="dock-announcement-card__time">{item.time}</time>
 						<p class="dock-announcement-card__content">{item.content}</p>
 						{item.link && (
-							<a href={item.link} class="dock-announcement-card__link btn-line text-sm">
+							<a href={item.link} class="dock-announcement-card__link btn-line text-sm" aria-label={`查看公告：${item.title}`}>
 								查看详情
 								<Icon name="fa7-solid:arrow-right" class="ml-2 text-xs" />
 							</a>

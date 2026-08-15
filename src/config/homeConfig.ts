@@ -30,11 +30,11 @@ export const homeConfig: HomeConfig = {
 			idleInterval: 900,
 			seed: 20260814,
 			scrub: 0.45,
-			desktopScrollDistance: 2600,
-			mobileScrollDistance: 1800,
-			desktopMinViewports: 3.25,
-			mobileMinViewports: 2.4,
-			interactionHold: 0.34,
+			desktopScrollDistance: 6500,
+			mobileScrollDistance: 4600,
+			desktopMinViewports: 8.1,
+			mobileMinViewports: 6.1,
+			interactionHold: 0.17,
 		},
 		quickActions: [
 			{

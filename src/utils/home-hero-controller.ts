@@ -9,9 +9,10 @@ import { navigateToPage } from "@/utils/navigation-utils";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const DIALOGUE_REVEAL_TIME = 0.93;
-const LAYER_ACTIVATE_TIME = 0.94;
-const INTERACTION_HOLD_START = 1.12;
+const RAIN_ACTIVATE_TIME = 0.99;
+const DIALOGUE_REVEAL_TIME = 1.08;
+const QUICK_ACTIONS_REVEAL_TIME = 1.23;
+const INTERACTION_HOLD_START = 1.43;
 let initialReloadHandled = false;
 
 function resetHeroScrollOnReload() {
@@ -244,15 +245,16 @@ export function mountHomeHero() {
 
 	const updateSceneState = (progress: number) => {
 		const timelineTime = progress * (timeline?.duration() ?? 1);
+		const rainActive = timelineTime >= RAIN_ACTIVATE_TIME;
 		const dialogueVisible = timelineTime >= DIALOGUE_REVEAL_TIME;
-		const layerActive = timelineTime >= LAYER_ACTIVATE_TIME;
+		const layerActive = timelineTime >= QUICK_ACTIONS_REVEAL_TIME;
 		dialogue.setSceneVisible(dialogueVisible);
 		hero.dataset.layerActive = String(layerActive);
 		quickActions.forEach((action) => {
 			action.tabIndex = layerActive ? 0 : -1;
 			action.setAttribute("aria-hidden", String(!layerActive));
 		});
-		rain.setActive(layerActive && !reducedMotionQuery.matches);
+		rain.setActive(rainActive && !reducedMotionQuery.matches);
 		if (progress > 0.002) {
 			stopIdleRotation();
 		} else if (!idleTimer) {
@@ -414,11 +416,8 @@ export function mountHomeHero() {
 			0.04,
 		);
 
-		const roundStarts = [0.1, 0.25, 0.4, 0.55];
 		for (const tile of tiles) {
-			const round = Math.min(3, Math.floor(tile.order / 6));
-			const positionInRound = tile.order % 6;
-			const start = roundStarts[round] + positionInRound * 0.01;
+			const start = 0.1 + tile.order * 0.02;
 			timeline.fromTo(
 				tile.element,
 				{
@@ -508,7 +507,7 @@ export function mountHomeHero() {
 					duration: 0.14,
 					ease: "back.out(2.1)",
 				},
-				LAYER_ACTIVATE_TIME + index * 0.02,
+				QUICK_ACTIONS_REVEAL_TIME + index * 0.03,
 			);
 		});
 

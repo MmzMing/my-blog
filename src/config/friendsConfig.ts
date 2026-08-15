@@ -61,15 +61,6 @@ export const friendsConfig: FriendLink[] = [
 		enabled: true,
 	},
 	{
-		title: "原博客(已迁移)",
-		imgurl: "https://i.stardots.io/784774835/StarDots-2026052116445539713.jpg",
-		desc: "目前只展示前端，仿B站，微服务架构，支持视频上传和播放，文档上传和下载，后台还带链路监控、日志监控等功能等等。因为使劲堆后台，内存消耗实在太大部署不起",
-		siteurl: "https://dev.mmzmingzsk.dpdns.org/",
-		tags: ["Blog"],
-		weight: 5,
-		enabled: true,
-	},
-	{
 		title: "番茄主理人",
 		imgurl: "https://q1.qlogo.cn/g?b=qq&nk=20447289&s=640",
 		desc: "坐而言不如起而行.",
