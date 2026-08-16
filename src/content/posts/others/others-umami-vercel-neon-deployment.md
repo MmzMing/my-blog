@@ -44,7 +44,7 @@ Cloudflare D1 基于 SQLite，Umami 仅支持 PostgreSQL，无法兼容。
 3. 进入 **Dashboard → Connection String → 选择 Prisma → 进入 .env 复制**
 4. 复制 `DATABASE_URL` 连接字符串
 
-![Neon 项目 Dashboard，复制 Prisma 连接字符串作为 DATABASE_URL](./image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-20260512042258.png)
+![Neon 项目 Dashboard，复制 Prisma 连接字符串作为 DATABASE_URL](./image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-20260512042258.webp)
 
 ---
 

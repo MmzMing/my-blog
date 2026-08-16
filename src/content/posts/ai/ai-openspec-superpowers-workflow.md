@@ -4,7 +4,6 @@ published: 2026-06-03
 description: 介绍 OpenSpec 与 Superpowers 的职责边界、安装配置和协同流程，建立从需求规范、任务实现到测试审查的 AI 编程工作流。
 tags: [AI, Skill, 工作流]
 category: 学习文档
-image: ./cover/cover1.webp
 draft: false
 ---
 
@@ -16,7 +15,7 @@ draft: false
 
 ## 一、介绍
 
-![OpenSpec + Superpowers 协同工作流：规范驱动规划与流程驱动执行的闭环](./image/ai-openspec-superpowers-workflow.assets/ai-openspec-superpowers-workflow-20260620163505.png)
+![OpenSpec + Superpowers 协同工作流：规范驱动规划与流程驱动执行的闭环](./image/ai-openspec-superpowers-workflow.assets/ai-openspec-superpowers-workflow-20260620163505.webp)
 
 ### 1、Superpowers
 
