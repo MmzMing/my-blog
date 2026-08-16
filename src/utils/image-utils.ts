@@ -66,30 +66,6 @@ export function processCoverImageSync(
 }
 
 /**
- * 获取所有随机封面图API URL列表（带seed参数）
- * 用于客户端按顺序尝试，第一个成功即使用，全部失败则显示回退图片
- * @param image - 文章frontmatter中的image字段值
- * @param seed - 用于生成唯一URL的种子（文章id或slug）
- */
-export function getApiUrlList(
-	image: string | undefined,
-	seed?: string,
-): string[] {
-	const useApi =
-		image === "api" ||
-		(!image &&
-			randomCoverImage.enable &&
-			!!randomCoverImage.apis &&
-			randomCoverImage.apis.length > 0);
-	if (!useApi) {
-		return [];
-	}
-
-	const hash = getSeedHash(seed);
-	return randomCoverImage.apis.map((api) => appendSeedParam(api, hash));
-}
-
-/**
  * 获取图片优化格式配置
  */
 export function getImageFormats(): ImageFormat[] {

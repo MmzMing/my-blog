@@ -262,19 +262,19 @@ function openPostOrSelect(ev: CalendarEvent) {
 							<!-- 第三层：倒计时 -->
 							<div class="text-xs text-neutral-500 dark:text-neutral-400">
 								{#if cd.isOngoing}
-									<span>距离</span>
+									<span>{i18n(I18nKey.countdownTo)}</span>
 									<span class="font-medium text-neutral-700 dark:text-neutral-300">{ev.title}</span>
-									<span>结束还有：</span>
+									<span>{i18n(I18nKey.countdownEndIn)}</span>
 								{:else}
-									<span>距离</span>
+									<span>{i18n(I18nKey.countdownTo)}</span>
 									<span class="font-medium text-neutral-700 dark:text-neutral-300">{ev.title}</span>
-									<span>还有：</span>
+									<span>{i18n(I18nKey.countdownIn)}</span>
 								{/if}
 								<span class="font-bold text-neutral-900 dark:text-neutral-100 tabular-nums">
-									{cd.days}<span class="font-normal text-neutral-500 dark:text-neutral-400">天</span>
-									{cd.hours}<span class="font-normal text-neutral-500 dark:text-neutral-400">时</span>
-									{cd.minutes}<span class="font-normal text-neutral-500 dark:text-neutral-400">分</span>
-									{cd.seconds}<span class="font-normal text-neutral-500 dark:text-neutral-400">秒</span>
+									{cd.days}<span class="font-normal text-neutral-500 dark:text-neutral-400">{i18n(I18nKey.dayShort)}</span>
+									{cd.hours}<span class="font-normal text-neutral-500 dark:text-neutral-400">{i18n(I18nKey.hour)}</span>
+									{cd.minutes}<span class="font-normal text-neutral-500 dark:text-neutral-400">{i18n(I18nKey.minute)}</span>
+									{cd.seconds}<span class="font-normal text-neutral-500 dark:text-neutral-400">{i18n(I18nKey.second)}</span>
 								</span>
 							</div>
 						</button>

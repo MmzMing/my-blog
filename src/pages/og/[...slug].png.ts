@@ -4,9 +4,9 @@ import * as fs from "node:fs";
 import type { APIContext, GetStaticPaths } from "astro";
 import satori from "satori";
 import sharp from "sharp";
+import { defaultFavicons } from "@/constants/icon";
 import type { PostData } from "@/types/post";
 import { removeFileExtension } from "@/utils/url-utils";
-
 import { homeConfig } from "../../config/homeConfig";
 import { siteConfig } from "../../config/siteConfig";
 
@@ -79,10 +79,13 @@ export async function GET({
 		avatarBase64 = `data:image/png;base64,${avatarBuffer.toString("base64")}`;
 	}
 
-	let iconPath = "./public/favicon/favicon-dark-192.png";
-	if (siteConfig.favicon.length > 0) {
-		iconPath = `./public${siteConfig.favicon[0].src}`;
-	}
+	const iconSrc =
+		siteConfig.favicon[0]?.src ??
+		defaultFavicons.find(
+			(fav) => fav.theme === "dark" && fav.sizes === "192x192",
+		)?.src ??
+		defaultFavicons[0].src;
+	const iconPath = `./public${iconSrc}`;
 	const iconBuffer = fs.readFileSync(iconPath);
 	const iconBase64 = `data:image/png;base64,${iconBuffer.toString("base64")}`;
 

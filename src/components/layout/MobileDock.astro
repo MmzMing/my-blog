@@ -8,6 +8,8 @@ import Icon from "@components/common/Icon.astro";
 import { announcementConfig, spineModelConfig } from "@/config";
 import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import { musicPlayerConfig } from "@/config/musicConfig";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 
 // 工具栏 sheet 内按钮显隐条件预计算
 const showMusic = musicPlayerConfig.showInNavbar !== false;
@@ -17,19 +19,19 @@ const showSpine = !!spineModelConfig?.enable;
 
 <div class="mobile-dock" id="mobile-dock">
 	<!-- 左1: 首页 -->
-	<button class="mobile-dock__btn" id="mobile-dock-home-btn" aria-label="首页" type="button">
+	<button class="mobile-dock__btn" id="mobile-dock-home-btn" aria-label={i18n(I18nKey.home)} type="button">
 		<span class="mobile-dock__icon"><Icon name="material-symbols:home-outline-rounded" is:inline /></span>
-		<span class="mobile-dock__label">首页</span>
+		<span class="mobile-dock__label">{i18n(I18nKey.home)}</span>
 	</button>
 
 	<!-- 左2: 搜索 -->
-	<button class="mobile-dock__btn" id="mobile-dock-search-btn" aria-label="搜索" type="button">
+	<button class="mobile-dock__btn" id="mobile-dock-search-btn" aria-label={i18n(I18nKey.search)} type="button">
 		<span class="mobile-dock__icon"><Icon name="material-symbols:search-rounded" is:inline /></span>
-		<span class="mobile-dock__label">搜索</span>
+		<span class="mobile-dock__label">{i18n(I18nKey.search)}</span>
 	</button>
 
 	<!-- 中: 菜单（凸出） -->
-	<button class="mobile-dock__btn mobile-dock__btn--center" id="mobile-dock-menu-btn" aria-label="菜单" type="button">
+	<button class="mobile-dock__btn mobile-dock__btn--center" id="mobile-dock-menu-btn" aria-label={i18n(I18nKey.menu)} type="button">
 		<span class="mobile-dock__icon">
 			<Icon name="material-symbols:menu-rounded" is:inline class="mobile-dock-menu-icon-collapsed" />
 			<Icon name="material-symbols:close-rounded" is:inline class="mobile-dock-menu-icon-open" style="display:none" />
@@ -37,21 +39,21 @@ const showSpine = !!spineModelConfig?.enable;
 	</button>
 
 	<!-- 右2: 主题切换 -->
-	<button class="mobile-dock__btn" id="mobile-dock-theme-btn" aria-label="主题" type="button">
+	<button class="mobile-dock__btn" id="mobile-dock-theme-btn" aria-label={i18n(I18nKey.theme)} type="button">
 		<span class="mobile-dock__icon">
 			<Icon name="material-symbols:wb-sunny-outline-rounded" is:inline class="mobile-dock-theme-icon-light" />
 			<Icon name="material-symbols:dark-mode-outline-rounded" is:inline class="mobile-dock-theme-icon-dark" style="display:none" />
 		</span>
-		<span class="mobile-dock__label">主题</span>
+		<span class="mobile-dock__label">{i18n(I18nKey.theme)}</span>
 	</button>
 
 	<!-- 右1: 工具栏 -->
-	<button class="mobile-dock__btn" id="mobile-dock-tools-btn" aria-label="工具栏" type="button">
+	<button class="mobile-dock__btn" id="mobile-dock-tools-btn" aria-label={i18n(I18nKey.tools)} type="button">
 		<span class="mobile-dock__icon">
 			<Icon name="material-symbols:more-horiz" is:inline class="mobile-dock-tools-icon-collapsed" />
 			<Icon name="material-symbols:close-rounded" is:inline class="mobile-dock-tools-icon-open" style="display:none" />
 		</span>
-		<span class="mobile-dock__label">工具</span>
+		<span class="mobile-dock__label">{i18n(I18nKey.tools)}</span>
 	</button>
 </div>
 
@@ -60,46 +62,46 @@ const showSpine = !!spineModelConfig?.enable;
 
 <!-- 工具栏底部 Sheet -->
 <div class="mobile-dock__sheet" id="mobile-dock-sheet">
-	<div class="mobile-dock__sheet-title">工具</div>
+	<div class="mobile-dock__sheet-title">{i18n(I18nKey.tools)}</div>
 	<div class="mobile-dock__sheet-grid">
 		{aiSearchPublicConfig.enabled && (
-			<button class="mobile-dock__sheet-item" id="md-ai-search-btn" aria-label="AI 搜索" type="button">
+			<button class="mobile-dock__sheet-item" id="md-ai-search-btn" aria-label={i18n(I18nKey.aiSearch)} type="button">
 				<span class="mobile-dock__sheet-item-icon"><Icon name="ri:ai" is:inline /></span>
-				<span class="mobile-dock__sheet-item-label">AI 搜索</span>
+				<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.aiSearch)}</span>
 			</button>
 		)}
 		{showMusic && (
-			<button class="mobile-dock__sheet-item" id="md-music-btn" aria-label="音乐" type="button">
+			<button class="mobile-dock__sheet-item" id="md-music-btn" aria-label={i18n(I18nKey.music)} type="button">
 				<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:music-note-rounded" is:inline /></span>
-				<span class="mobile-dock__sheet-item-label">音乐</span>
+				<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.music)}</span>
 			</button>
 		)}
 		{showAnnouncement && (
-			<button class="mobile-dock__sheet-item" id="md-announcement-btn" aria-label="公告" type="button">
+			<button class="mobile-dock__sheet-item" id="md-announcement-btn" aria-label={i18n(I18nKey.announcement)} type="button">
 				<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:notifications-outline-rounded" is:inline /></span>
-				<span class="mobile-dock__sheet-item-label">公告</span>
+				<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.announcement)}</span>
 			</button>
 		)}
-		<button class="mobile-dock__sheet-item" id="md-tags-btn" aria-label="标签" type="button">
+		<button class="mobile-dock__sheet-item" id="md-tags-btn" aria-label={i18n(I18nKey.tags)} type="button">
 			<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:label-outline" is:inline /></span>
-			<span class="mobile-dock__sheet-item-label">标签</span>
+			<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.tags)}</span>
 		</button>
-		<button class="mobile-dock__sheet-item hide" id="md-toc-btn" aria-label="目录" type="button">
+		<button class="mobile-dock__sheet-item hide" id="md-toc-btn" aria-label={i18n(I18nKey.tableOfContents)} type="button">
 			<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:format-list-bulleted" is:inline /></span>
-			<span class="mobile-dock__sheet-item-label">目录</span>
+			<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.tableOfContents)}</span>
 		</button>
-		<button class="mobile-dock__sheet-item hide" id="md-comment-btn" aria-label="评论" type="button">
+		<button class="mobile-dock__sheet-item hide" id="md-comment-btn" aria-label={i18n(I18nKey.comments)} type="button">
 			<span class="mobile-dock__sheet-item-icon"><Icon name="mingcute:comment-line" is:inline /></span>
-			<span class="mobile-dock__sheet-item-label">评论</span>
+			<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.comments)}</span>
 		</button>
-		<button class="mobile-dock__sheet-item hide" id="md-top-btn" aria-label="回到顶部" type="button">
+		<button class="mobile-dock__sheet-item hide" id="md-top-btn" aria-label={i18n(I18nKey.backToTop)} type="button">
 			<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:keyboard-arrow-up-rounded" is:inline /></span>
-			<span class="mobile-dock__sheet-item-label">顶部</span>
+			<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.top)}</span>
 		</button>
 		{showSpine && (
-			<button class="mobile-dock__sheet-item" id="md-spine-btn" aria-label="Spine" type="button">
+			<button class="mobile-dock__sheet-item" id="md-spine-btn" aria-label={i18n(I18nKey.spineModel)} type="button">
 				<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:image-outline" is:inline /></span>
-				<span class="mobile-dock__sheet-item-label">Spine</span>
+				<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.spineModel)}</span>
 			</button>
 		)}
 	</div>

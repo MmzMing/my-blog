@@ -76,7 +76,7 @@ const widgetId =
                 </div>
             </div>
             <!-- Visualizer (3D page) + Lyric Toggle + Floating Lyric Toggle -->
-            <a href="/music/" class="btn-visualizer transition-all duration-300 p-0.5 transform active:scale-95 shrink-0 ml-auto inline-flex items-center justify-center" title="音乐可视化" aria-label="音乐可视化">
+            <a href="/music/" class="btn-visualizer transition-all duration-300 p-0.5 transform active:scale-95 shrink-0 ml-auto inline-flex items-center justify-center" title={i18n(I18nKey.musicVisualizer)} aria-label={i18n(I18nKey.musicVisualizer)}>
                 <Icon name="material-symbols:graphic-eq-rounded" class="text-xl" aria-hidden="true" />
             </a>
             <button class={`btn-lrc-toggle hover:text-(--primary) transition-all duration-300 p-0.5 transform active:scale-95 text-neutral-400 shrink-0 ${!config.showLyrics ? 'hidden' : ''}`} title={i18n(I18nKey.musicLyrics)} aria-label={i18n(I18nKey.musicLyrics)}>

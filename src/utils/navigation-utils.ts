@@ -84,13 +84,6 @@ function fallbackNavigation(
 }
 
 /**
- * 检查 Swup 是否已准备就绪
- */
-export function isSwupReady(): boolean {
-	return typeof window !== "undefined" && !!window.swup;
-}
-
-/**
  * 获取当前页面路径
  */
 export function getCurrentPath(): string {

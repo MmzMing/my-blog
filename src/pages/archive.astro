@@ -10,7 +10,7 @@ import { getSortedPostsList } from "@/utils/content-utils";
 
 const sortedPostsList = await getSortedPostsList();
 const title = i18n(I18nKey.archive);
-const description = "按时间、分类和标签浏览博客的全部技术文章。";
+const description = i18n(I18nKey.archiveDescription);
 const archiveStatsConfig = siteConfig.archiveStats;
 const timezone = siteConfig.timezone ?? "UTC";
 const yearMonthFormatter = new Intl.DateTimeFormat("en-US", {

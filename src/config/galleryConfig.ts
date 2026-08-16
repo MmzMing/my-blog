@@ -29,6 +29,8 @@ export const galleryConfig: GalleryConfig = {
 
 	// 网络相册配置
 	networkAlbum: {
+		// 网络相册 API 地址
+		apiUrl: "https://t.alcy.cc",
 		// 单次获取图片数量限制，默认 10
 		maxQuantity: 10,
 		// 默认获取数量，默认 6

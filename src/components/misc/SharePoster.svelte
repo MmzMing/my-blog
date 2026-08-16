@@ -495,7 +495,7 @@ function portal(node: HTMLElement) {
 <button 
   class="flex items-center gap-1.5 text-50 text-sm font-medium hover:text-(--primary) dark:hover:text-(--primary) transition cursor-pointer"
   on:click={generatePoster}
-  aria-label="Generate Share Poster"
+  aria-label={i18n(I18nKey.generateSharePoster)}
 >
   <Icon icon="material-symbols:share" size="md" />
   <span>{i18n(I18nKey.shareArticle)}</span>

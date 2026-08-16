@@ -1,5 +1,7 @@
 ---
 import { homeConfig, siteConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 
 interface Props {
 	includeProfilePage?: boolean;
@@ -9,10 +11,7 @@ const { includeProfilePage = false } = Astro.props;
 
 const siteUrl = new URL("/", Astro.site).toString();
 const aboutUrl = new URL("/about/", Astro.site).toString();
-const imageUrl = new URL(
-	siteConfig.defaultOgImage || "/assets/images/aut.webp",
-	Astro.site,
-).toString();
+const imageUrl = new URL(siteConfig.defaultOgImage, Astro.site).toString();
 const sameAs = homeConfig.links
 	.filter((link) => /^https?:\/\//i.test(link.url))
 	.map((link) => link.url);
@@ -58,7 +57,7 @@ const structuredData = {
 						"@type": "ProfilePage",
 						"@id": `${aboutUrl}#profilepage`,
 						url: aboutUrl,
-						name: `关于 ${homeConfig.name}`,
+						name: `${i18n(I18nKey.aboutSitePrefix)} ${homeConfig.name}`,
 						isPartOf: { "@id": `${siteUrl}#website` },
 						mainEntity: { "@id": `${siteUrl}#person` },
 					},

@@ -1,6 +1,8 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import Icon from "@/components/common/Icon.svelte";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import {
 	createEmptyUmamiPageviewLookup,
 	getUmamiPageviewLookup,
@@ -161,20 +163,20 @@ onMount(() => {
 			href={post.categoryUrl}
 			class="article-list-card__category article-list-card__meta-link"
 			style={`--article-category-hue: ${getCategoryHue(post.category)}`}
-			aria-label={`查看分类归档：${post.category}`}
+			aria-label={`${i18n(I18nKey.viewCategoryArchivePrefix)}${post.category}`}
 		>
 			{post.category}
 		</a>
 		<span class="article-list-card__meta-divider" aria-hidden="true">/</span>
 		<span class="article-list-card__meta-item">
 			<Icon icon="material-symbols:calendar-month-rounded" size="sm" />
-			<span class="sr-only">发布日期：</span>
+			<span class="sr-only">{i18n(I18nKey.publishDatePrefix)}</span>
 			<time datetime={post.publishedIso}>{post.publishedText}</time>
 		</span>
 		<span class="article-list-card__meta-divider" aria-hidden="true">/</span>
-		<span class="article-list-card__meta-item" title="访问量">
+		<span class="article-list-card__meta-item" title={i18n(I18nKey.viewsLabel)}>
 			<Icon icon="material-symbols:visibility-outline-rounded" size="sm" />
-			<span class="sr-only">访问量：</span>
+			<span class="sr-only">{i18n(I18nKey.viewsLabel)}</span>
 			<span>{getPageviews(post)}</span>
 		</span>
 		{#each post.tags.slice(0, 3) as tag (tag.name)}
@@ -182,7 +184,7 @@ onMount(() => {
 			<a
 				href={tag.url}
 				class="article-list-card__tag article-list-card__meta-link"
-				aria-label={`查看标签归档：${tag.name}`}
+				aria-label={`${i18n(I18nKey.viewTagArchivePrefix)}${tag.name}`}
 			>
 				{tag.name}
 			</a>
@@ -190,8 +192,8 @@ onMount(() => {
 		{#if post.tags.length > 3}
 			<span class="article-list-card__meta-divider" aria-hidden="true">/</span>
 			<span class="article-list-card__tag-more">
-				<span class="sr-only">另有</span>+{post.tags.length - 3}
-			</span>
+					<span class="sr-only">{i18n(I18nKey.moreTagsPrefix)}{post.tags.length - 3}{i18n(I18nKey.moreTagsSuffix)}</span>+{post.tags.length - 3}{i18n(I18nKey.moreTagsSuffix)}
+				</span>
 		{/if}
 	</div>
 {/snippet}
@@ -202,7 +204,7 @@ onMount(() => {
 			{#if variant === "pinned"}
 				<div class="article-list-card__pinned">
 					<Icon icon="material-symbols:pinboard" size="sm" />
-					<span>置顶</span>
+					<span>{i18n(I18nKey.pinned)}</span>
 				</div>
 			{/if}
 
@@ -210,14 +212,14 @@ onMount(() => {
 				<a
 					href={post.url}
 					class="article-list-card__article-link"
-					aria-label={`查看文章：${post.title}`}
+					aria-label={`${i18n(I18nKey.viewPostPrefix)}${post.title}`}
 				>
 					{post.title}
 					{#if post.password}
 						<span class="article-list-card__lock" aria-hidden="true">
 							<Icon icon="material-symbols:lock-outline" size="sm" />
 						</span>
-						<span class="sr-only">加密文章</span>
+						<span class="sr-only">{i18n(I18nKey.encryptedPost)}</span>
 					{/if}
 				</a>
 			</h3>
@@ -234,7 +236,7 @@ onMount(() => {
 <div class="article-list" bind:this={containerRef}>
 	{#if currentPage === 1 && pinnedPosts.length > 0}
 		<section class="article-list-pinned" aria-labelledby="article-list-pinned-title">
-			<h2 id="article-list-pinned-title" class="sr-only">置顶文章</h2>
+			<h2 id="article-list-pinned-title" class="sr-only">{i18n(I18nKey.pinnedPosts)}</h2>
 			<div class="article-list-pinned__collection">
 				{#each pinnedPosts as post (post.id)}
 					{@render articleCard(post, "pinned")}
@@ -244,19 +246,22 @@ onMount(() => {
 	{/if}
 
 	<header class="article-list-toolbar">
-		<div class="article-list-toolbar__total" aria-label={`共 ${posts.length} 篇文章`}>
-			<span>共</span>
+		<div
+			class="article-list-toolbar__total"
+			aria-label={`${i18n(I18nKey.totalPostsPrefix)} ${posts.length} ${i18n(posts.length === 1 ? I18nKey.postCount : I18nKey.postsCount)}`}
+		>
+			<span>{i18n(I18nKey.totalPostsPrefix)}</span>
 			<strong>{posts.length}</strong>
-			<span>篇</span>
+			<span>{i18n(posts.length === 1 ? I18nKey.postCount : I18nKey.postsCount)}</span>
 		</div>
-		<div class="article-list-toolbar__sort" aria-label="文章排序">
+		<div class="article-list-toolbar__sort" aria-label={i18n(I18nKey.sortPosts)}>
 			<button
 				type="button"
 				class:is-active={sortMode === "latest"}
 				aria-pressed={sortMode === "latest"}
 				onclick={() => changeSort("latest")}
 			>
-				最新
+				{i18n(I18nKey.sortLatest)}
 			</button>
 			<button
 				type="button"
@@ -264,7 +269,7 @@ onMount(() => {
 				aria-pressed={sortMode === "earliest"}
 				onclick={() => changeSort("earliest")}
 			>
-				最早
+				{i18n(I18nKey.sortOldest)}
 			</button>
 			<button
 				type="button"
@@ -272,17 +277,17 @@ onMount(() => {
 				aria-pressed={sortMode === "popular"}
 				onclick={() => changeSort("popular")}
 			>
-				热门
+				{i18n(I18nKey.sortPopular)}
 			</button>
 		</div>
 	</header>
 
 	<p class="sr-only" aria-live="polite">
-		当前按{sortMode === "latest" ? "最新" : sortMode === "popular" ? "热门" : "最早"}排序，第 {currentPage} 页，共 {totalPages} 页
+		{i18n(I18nKey.sortByPrefix)}{sortMode === "latest" ? i18n(I18nKey.sortLatest) : sortMode === "popular" ? i18n(I18nKey.sortPopular) : i18n(I18nKey.sortOldest)}{i18n(I18nKey.sortBySuffix)}，{i18n(I18nKey.paginationPage)} {currentPage} {i18n(I18nKey.paginationOf)} {totalPages} {i18n(I18nKey.bangumiPage)}
 	</p>
 
 	<section class="article-list-regular" aria-labelledby="article-list-regular-title">
-		<h2 id="article-list-regular-title" class="sr-only">普通文章</h2>
+		<h2 id="article-list-regular-title" class="sr-only">{i18n(I18nKey.regularPosts)}</h2>
 		{#if paginatedPosts.length > 0}
 			<div class="article-list-regular__collection">
 				{#each paginatedPosts as post (post.id)}
@@ -291,20 +296,20 @@ onMount(() => {
 			</div>
 		{:else}
 			<div class="article-list-empty">
-				<span class="article-list-empty__title">暂无普通文章</span>
-				<span class="article-list-empty__meta">新的内容会显示在这里。</span>
+				<span class="article-list-empty__title">{i18n(I18nKey.noRegularPosts)}</span>
+				<span class="article-list-empty__meta">{i18n(I18nKey.noPostsHint)}</span>
 			</div>
 		{/if}
 	</section>
 
 	{#if totalPages > 1}
-		<nav class="article-list-pagination" aria-label="文章分页">
+		<nav class="article-list-pagination" aria-label={i18n(I18nKey.paginationNav)}>
 			<div class="article-list-pagination__inner">
 				<button
 					type="button"
 					class="article-list-pagination__btn"
 					disabled={currentPage === 1}
-					aria-label="上一页"
+					aria-label={i18n(I18nKey.paginationPrev)}
 					onclick={() => goToPage(currentPage - 1)}
 				>
 					<Icon icon="material-symbols:chevron-left-rounded" class="text-[1.75rem]" />
@@ -321,7 +326,7 @@ onMount(() => {
 								type="button"
 								class="article-list-pagination__page"
 								class:is-active={pageItem === currentPage}
-								aria-label={`第 ${pageItem} 页`}
+								aria-label={`${i18n(I18nKey.paginationPage)} ${pageItem} ${i18n(I18nKey.bangumiPage)}`}
 								aria-current={pageItem === currentPage ? "page" : undefined}
 								onclick={() => goToPage(pageItem as number)}
 							>
@@ -335,7 +340,7 @@ onMount(() => {
 					type="button"
 					class="article-list-pagination__btn"
 					disabled={currentPage === totalPages}
-					aria-label="下一页"
+					aria-label={i18n(I18nKey.paginationNext)}
 					onclick={() => goToPage(currentPage + 1)}
 				>
 					<Icon icon="material-symbols:chevron-right-rounded" class="text-[1.75rem]" />

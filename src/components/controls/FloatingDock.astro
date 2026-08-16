@@ -19,9 +19,9 @@ const tags = await getTagList();
 
 <div class="floating-dock" id="floating-dock">
 	{aiSearchPublicConfig.enabled && (
-		<button class="dock-btn dock-btn-ai-search" id="dock-ai-search-btn" aria-label="AI 搜索" type="button" data-tooltip="AI 搜索">
+		<button class="dock-btn dock-btn-ai-search" id="dock-ai-search-btn" aria-label={i18n(I18nKey.aiSearch)} type="button" data-tooltip={i18n(I18nKey.aiSearch)}>
 			<span class="dock-btn-icon"><Icon name="ri:ai" class="text-3xl" /></span>
-			<span class="dock-btn-label">AI 搜索</span>
+			<span class="dock-btn-label">{i18n(I18nKey.aiSearch)}</span>
 		</button>
 	)}
 
@@ -32,27 +32,27 @@ const tags = await getTagList();
 		</button>
 	)}
 
-	<button class="dock-btn dock-btn-comment hide" id="dock-comment-btn" aria-label="Comments" type="button" data-tooltip="跳到评论">
+	<button class="dock-btn dock-btn-comment hide" id="dock-comment-btn" aria-label={i18n(I18nKey.comments)} type="button" data-tooltip={i18n(I18nKey.comments)}>
 		<span class="dock-btn-icon"><Icon name="mingcute:comment-line" class="text-3xl" /></span>
-		<span class="dock-btn-label">评论</span>
+		<span class="dock-btn-label">{i18n(I18nKey.comments)}</span>
 	</button>
 
 	<div class="dock-stack" id="dock-stack" data-expanded="false">
 		<div class="dock-buttons">
 			{announcementConfig.items.length > 0 && (
-				<button class="dock-btn" id="dock-announcement-btn" aria-label="Announcement" type="button" data-tooltip="公告">
+				<button class="dock-btn" id="dock-announcement-btn" aria-label={i18n(I18nKey.announcement)} type="button" data-tooltip={i18n(I18nKey.announcement)}>
 					<span class="dock-btn-icon"><Icon name="material-symbols:notifications-outline-rounded" class="text-3xl" /></span>
-					<span class="dock-btn-label">公告</span>
+					<span class="dock-btn-label">{i18n(I18nKey.announcement)}</span>
 				</button>
 			)}
 
-			<button class="dock-btn" id="dock-theme-btn" aria-label="Theme" type="button" data-tooltip="切换暗色" data-theme-state="light">
+			<button class="dock-btn" id="dock-theme-btn" aria-label={i18n(I18nKey.switchToDark)} type="button" data-tooltip={i18n(I18nKey.switchToDark)} data-theme-state="light">
 				<span class="dock-btn-icon">
 					<Icon name="material-symbols:wb-sunny-outline-rounded" class="text-3xl dock-theme-icon-light" />
 					<Icon name="material-symbols:dark-mode-outline-rounded" class="text-3xl dock-theme-icon-dark hidden" />
 				</span>
-				<span class="dock-btn-label dock-theme-label-light">切换暗色</span>
-				<span class="dock-btn-label dock-theme-label-dark hidden">切换亮色</span>
+				<span class="dock-btn-label dock-theme-label-light">{i18n(I18nKey.switchToDark)}</span>
+				<span class="dock-btn-label dock-theme-label-dark hidden">{i18n(I18nKey.switchToLight)}</span>
 			</button>
 
 			<button class="dock-btn" id="dock-tags-btn" aria-label={i18n(I18nKey.tags)} type="button" data-tooltip={i18n(I18nKey.tags)}>
@@ -61,15 +61,15 @@ const tags = await getTagList();
 			</button>
 
 			{spineModelConfig?.enable && (
-				<button class="dock-btn" id="dock-spine-btn" aria-label="Spine" type="button" data-active="true" data-tooltip="Spine 模型">
+				<button class="dock-btn" id="dock-spine-btn" aria-label={i18n(I18nKey.spineModel)} type="button" data-active="true" data-tooltip={i18n(I18nKey.spineModel)}>
 					<span class="dock-btn-icon"><Icon name="material-symbols:image-outline" class="text-3xl" /></span>
-					<span class="dock-btn-label">Spine</span>
+					<span class="dock-btn-label">{i18n(I18nKey.spineModel)}</span>
 				</button>
 			)}
 
-			<button class="dock-btn dock-btn-toc hide" id="dock-toc-btn" aria-label="Table of Contents" type="button" data-tooltip="目录">
+			<button class="dock-btn dock-btn-toc hide" id="dock-toc-btn" aria-label={i18n(I18nKey.tableOfContents)} type="button" data-tooltip={i18n(I18nKey.tableOfContents)}>
 				<span class="dock-btn-icon"><Icon name="material-symbols:format-list-bulleted" class="text-3xl" /></span>
-				<span class="dock-btn-label">目录</span>
+				<span class="dock-btn-label">{i18n(I18nKey.tableOfContents)}</span>
 			</button>
 
 			<button class="dock-btn dock-btn-home hide" id="dock-home-btn" aria-label={i18n(I18nKey.home)} type="button" data-tooltip={i18n(I18nKey.home)}>
@@ -79,19 +79,19 @@ const tags = await getTagList();
 
 		</div>
 
-		<button class="dock-btn dock-toggle" id="dock-toggle-btn" aria-label="Toggle dock" type="button" data-tooltip="工具坞">
+		<button class="dock-btn dock-toggle" id="dock-toggle-btn" aria-label={i18n(I18nKey.toggleDock)} type="button" data-tooltip={i18n(I18nKey.toggleDock)}>
 			<span class="dock-btn-icon">
 				<Icon name="material-symbols:more-horiz" class="text-3xl dock-icon-collapsed" />
 				<Icon name="material-symbols:close" class="text-3xl dock-icon-expanded hidden" />
 			</span>
-			<span class="dock-btn-label dock-toggle-label-collapsed">展开</span>
-			<span class="dock-btn-label dock-toggle-label-expanded hidden">收起</span>
+			<span class="dock-btn-label dock-toggle-label-collapsed">{i18n(I18nKey.expand)}</span>
+			<span class="dock-btn-label dock-toggle-label-expanded hidden">{i18n(I18nKey.collapse)}</span>
 		</button>
 	</div>
 
-	<button class="dock-btn dock-btn-top hide" id="dock-top-btn" aria-label="Back to Top" type="button" data-tooltip="回到顶部">
+	<button class="dock-btn dock-btn-top hide" id="dock-top-btn" aria-label={i18n(I18nKey.backToTop)} type="button" data-tooltip={i18n(I18nKey.backToTop)}>
 		<span class="dock-btn-icon"><Icon name="material-symbols:keyboard-arrow-up-rounded" class="text-3xl" /></span>
-		<span class="dock-btn-label">顶部</span>
+		<span class="dock-btn-label">{i18n(I18nKey.top)}</span>
 	</button>
 </div>
 
@@ -101,7 +101,7 @@ const tags = await getTagList();
 	<div class="dock-drawer dock-drawer-closed" id="dock-drawer-announcement">
 		<div class="dock-drawer-title">
 			<Icon name="material-symbols:notifications-outline-rounded" class="dock-drawer-title-icon" />
-			<span>{announcementConfig.title || "公告"}</span>
+			<span>{announcementConfig.title || i18n(I18nKey.announcement)}</span>
 		</div>
 		<div class="dock-announcement-list">
 			{announcementConfig.items
@@ -116,8 +116,8 @@ const tags = await getTagList();
 						<time class="dock-announcement-card__time">{item.time}</time>
 						<p class="dock-announcement-card__content">{item.content}</p>
 						{item.link && (
-							<a href={item.link} class="dock-announcement-card__link btn-line text-sm" aria-label={`查看公告：${item.title}`}>
-								查看详情
+							<a href={item.link} class="dock-announcement-card__link btn-line text-sm" aria-label={`${i18n(I18nKey.viewAnnouncement)}：${item.title}`}>
+								{i18n(I18nKey.viewDetails)}
 								<Icon name="fa7-solid:arrow-right" class="ml-2 text-xs" />
 							</a>
 						)}
@@ -163,6 +163,8 @@ const tags = await getTagList();
 <!-- 样式已迁移至 src/styles/components/floating-dock.css -->
 
 <script>
+	import I18nKey from "@/i18n/i18nKey";
+	import { i18n } from "@/i18n/translation";
 	import { getStoredTheme, setTheme } from "@/utils/setting-utils";
 
 	(function initFloatingDock() {
@@ -294,7 +296,7 @@ const tags = await getTagList();
 				darkIcon?.classList.toggle("hidden", !isDark);
 				lightLabel?.classList.toggle("hidden", isDark);
 				darkLabel?.classList.toggle("hidden", !isDark);
-				themeBtn.setAttribute("data-tooltip", isDark ? "切换亮色" : "切换暗色");
+				themeBtn.setAttribute("data-tooltip", isDark ? i18n(I18nKey.switchToLight) : i18n(I18nKey.switchToDark));
 			}
 
 			themeBtn.addEventListener("click", (e) => {

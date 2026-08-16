@@ -11,15 +11,9 @@
 
 /* === 组件层 === */
 @import './components/page-loader.css';
-@import './components/bubble-menu.css';
-@import './components/category-bubble-menu.css';
 @import './components/page-title.css';
 @import './components/floating-dock.css';
 @import './components/mobile-dock.css';
-@import './components/widget-layout.css';
-@import './components/cover-image.css';
-@import './components/button-tag.css';
-@import './components/typewriter.css';
 @import './components/music-player.css';
 @import './components/floating-lyrics.css';
 @import './components/privacy-modal.css';
@@ -29,10 +23,7 @@
 @import './components/related-posts.css';
 
 /* === 侧边栏组件层 === */
-@import './widgets/calendar.css';
-@import './widgets/sidebar-toc.css';
 @import './widgets/archive-stats.css';
-@import './widgets/terrarium-model.css';
 @import './widgets/announcement.css';
 
 /* === 页面层 === */

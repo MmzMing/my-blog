@@ -1,6 +1,6 @@
 export const MOBILE_REMOVAL_WIDTH = 768;
 export const DESKTOP_MEDIA_QUERY = `(min-width: ${MOBILE_REMOVAL_WIDTH + 1}px)`;
-export const DISPLAY_MIN_SCROLL_VIEWPORTS = 4;
+const DISPLAY_MIN_SCROLL_VIEWPORTS = 4;
 
 /**
  * 计算展示层 pin 的滚动距离。

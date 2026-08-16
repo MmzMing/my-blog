@@ -9,6 +9,8 @@
  * 因为如果使用@iconify/svelte搭配unplugin-icons的方式会导致使用方法繁琐了，所以改为这种预构建内联SVG的方式。
  */
 import { getIconSvg, hasIcon } from "@/constants/icons";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 
 interface Props {
 	icon: string;
@@ -61,7 +63,7 @@ const iconExists = $derived(hasIcon(icon));
     class="inline-icon inline-flex items-center justify-center {combinedClass}"
     style={combinedStyle}
     aria-hidden="true"
-    title="Icon not found: {icon}"
+    title={i18n(I18nKey.iconNotFound).replace("{icon}", icon)}
   >
     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3"/>

@@ -24,10 +24,26 @@ const totalWords = posts.reduce(
 const { pinned: pinnedPosts, recent: recentPosts } = getGuidePostSets(posts, 4);
 const rotationPosts = pinnedPosts;
 const articlePills = [
-	{ label: "文章", value: posts.length, tone: "light" as const },
-	{ label: "分类", value: categories.length, tone: "solid" as const },
-	{ label: "标签", value: tags.length, tone: "solid" as const },
-	{ label: "字数", value: totalWords.toLocaleString(), tone: "light" as const },
+	{
+		label: i18n(I18nKey.siteStatsPostCount),
+		value: posts.length,
+		tone: "light" as const,
+	},
+	{
+		label: i18n(I18nKey.siteStatsCategoryCount),
+		value: categories.length,
+		tone: "solid" as const,
+	},
+	{
+		label: i18n(I18nKey.siteStatsTagCount),
+		value: tags.length,
+		tone: "solid" as const,
+	},
+	{
+		label: i18n(I18nKey.wordCount),
+		value: totalWords.toLocaleString(),
+		tone: "light" as const,
+	},
 ];
 const visitPills = [
 	{ label: "UV", value: "--", tone: "light" as const },
@@ -64,76 +80,76 @@ const statsShareId = umamiConfig?.shareId ?? "";
 	<div class="home-data-layer__inner">
 		<div class="home-data-layer__heading">
 			<p class="home-data-layer__kicker">CONTEXT</p>
-			<h2 class="home-data-layer__title-main" id="home-data-layer-title">站点数据</h2>
-			<h2 class="home-data-layer__title-matrix">地图指南</h2>
+				<h2 class="home-data-layer__title-main" id="home-data-layer-title">{i18n(I18nKey.siteData)}</h2>
+				<h2 class="home-data-layer__title-matrix">{i18n(I18nKey.mapGuide)}</h2>
 		</div>
 
 		<div class="home-data-layer__top-grid">
-			<DataMetricCard title="站点访问" eyebrow="VISITS" detail="访客与浏览统计载入中" icon="material-symbols:visibility-outline-rounded" hoverTitle="访问轨迹" hoverCode="01" variant="square" pills={visitPills} statKind="visits" visualImage={homeConfig.dataLayer.visitImage} />
-			<DataMetricCard title="文章档案" eyebrow="ARCHIVE" detail={`${posts.length} 篇文章 / ${categories.length} 个分类 / ${tags.length} 个标签`} icon="material-symbols:article-outline" hoverTitle="内容索引" hoverCode="02" variant="wide" pills={articlePills} statKind="articles" visualImage={homeConfig.dataLayer.archiveImage} />
+			<DataMetricCard title={i18n(I18nKey.siteVisits)} eyebrow="VISITS" detail={i18n(I18nKey.visitsLoading)} icon="material-symbols:visibility-outline-rounded" hoverTitle={i18n(I18nKey.visitTrajectory)} hoverCode="01" variant="square" pills={visitPills} statKind="visits" visualImage={homeConfig.dataLayer.visitImage} />
+			<DataMetricCard title={i18n(I18nKey.articleArchive)} eyebrow="ARCHIVE" detail={`${posts.length}${i18n(I18nKey.postsCount)} / ${categories.length}${i18n(I18nKey.categoryUnit)} / ${tags.length}${i18n(I18nKey.tagUnit)}`} icon="material-symbols:article-outline" hoverTitle={i18n(I18nKey.contentIndex)} hoverCode="02" variant="wide" pills={articlePills} statKind="articles" visualImage={homeConfig.dataLayer.archiveImage} />
 		</div>
 
 		<div class="home-guide-grid">
 			<section class="guide-card guide-card--article guide-card--pinned" aria-labelledby="guide-pinned-title" data-guide-rotator data-guide-axis="vertical">
 				<div class="guide-card__article-heading">
-					<h3 id="guide-pinned-title">置顶文章</h3>
+					<h3 id="guide-pinned-title">{i18n(I18nKey.pinnedPosts)}</h3>
 				</div>
 				<div class="guide-rotator__slides">
 					{rotationPosts.length > 0 ? rotationPosts.map((post, index) => (
 						<article class="guide-rotator__slide" data-guide-slide data-guide-url={getPostUrlBySlug(post.id)} hidden={index !== 0} aria-hidden={index !== 0 ? "true" : undefined}>
-							<span class="guide-rotator__meta">{post.data.category || "未分类"} / {formatDateI18n(post.data.published)}</span>
+							<span class="guide-rotator__meta">{post.data.category || i18n(I18nKey.uncategorized)} / {formatDateI18n(post.data.published)}</span>
 							<div class="guide-rotator__title-row">
 								<a class="guide-rotator__article-link" href={getPostUrlBySlug(post.id)}><strong>{post.data.title}</strong></a>
-								<button class="guide-card__article-action" type="button" data-guide-next aria-label="切换下一篇置顶文章" title="切换下一篇置顶文章"><Icon name="material-symbols:arrow-forward-rounded" is:inline /></button>
+								<button class="guide-card__article-action" type="button" data-guide-next aria-label={i18n(I18nKey.switchPinnedPost)} title={i18n(I18nKey.switchPinnedPost)}><Icon name="material-symbols:arrow-forward-rounded" is:inline /></button>
 							</div>
-							<span>{post.data.description || "打开这篇文章继续阅读。"}</span>
+							<span>{post.data.description || i18n(I18nKey.continueReadingFallback)}</span>
 						</article>
-					)) : <p class="guide-card__detail">暂无置顶内容</p>}
+					)) : <p class="guide-card__detail">{i18n(I18nKey.noPinnedContent)}</p>}
 				</div>
 				{rotationPosts.length > 0 && (
-					<div class="guide-rotator__dots" aria-label="切换置顶文章">
-						{rotationPosts.map((post, index) => <button type="button" data-guide-dot aria-label={`查看置顶文章：${post.data.title}`} aria-current={index === 0 ? "true" : undefined}></button>)}
+					<div class="guide-rotator__dots" aria-label={i18n(I18nKey.switchPinnedAria)}>
+						{rotationPosts.map((post, index) => <button type="button" data-guide-dot aria-label={`${i18n(I18nKey.viewPinnedPostPrefix)}${post.data.title}`} aria-current={index === 0 ? "true" : undefined}></button>)}
 					</div>
 				)}
 			</section>
 
 			<section class="guide-card guide-card--article guide-card--latest" aria-labelledby="guide-latest-title" data-guide-rotator data-guide-axis="horizontal">
 				<div class="guide-card__article-heading">
-					<h3 id="guide-latest-title">最新更新</h3>
+					<h3 id="guide-latest-title">{i18n(I18nKey.latestUpdates)}</h3>
 				</div>
 				<div class="guide-rotator__slides">
 					{recentPosts.length > 0 ? recentPosts.map((post, index) => (
 						<article class="guide-rotator__slide" data-guide-slide data-guide-url={getPostUrlBySlug(post.id)} hidden={index !== 0} aria-hidden={index !== 0 ? "true" : undefined}>
-							<span class="guide-rotator__meta">{post.data.category || "未分类"} / {formatDateI18n(post.data.published)}</span>
+							<span class="guide-rotator__meta">{post.data.category || i18n(I18nKey.uncategorized)} / {formatDateI18n(post.data.published)}</span>
 							<div class="guide-rotator__title-row">
 								<a class="guide-rotator__article-link" href={getPostUrlBySlug(post.id)}><strong>{post.data.title}</strong></a>
-								<a class="guide-card__article-action" href={getPostUrlBySlug(post.id)} aria-label={`打开文章：${post.data.title}`} title="打开当前文章"><Icon name="material-symbols:arrow-forward-rounded" is:inline /></a>
+								<a class="guide-card__article-action" href={getPostUrlBySlug(post.id)} aria-label={`${i18n(I18nKey.openPostPrefix)}${post.data.title}`} title={i18n(I18nKey.openPost)}><Icon name="material-symbols:arrow-forward-rounded" is:inline /></a>
 							</div>
 						</article>
-					)) : <p class="guide-card__detail">暂无文章内容</p>}
+					)) : <p class="guide-card__detail">{i18n(I18nKey.noPosts)}</p>}
 				</div>
 				{recentPosts.length > 0 && (
-					<div class="guide-rotator__dots" aria-label="切换最新文章">
-						{recentPosts.map((post, index) => <button type="button" data-guide-dot aria-label={`查看最新文章：${post.data.title}`} aria-current={index === 0 ? "true" : undefined}></button>)}
+					<div class="guide-rotator__dots" aria-label={i18n(I18nKey.switchLatestAria)}>
+						{recentPosts.map((post, index) => <button type="button" data-guide-dot aria-label={`${i18n(I18nKey.viewLatestPostPrefix)}${post.data.title}`} aria-current={index === 0 ? "true" : undefined}></button>)}
 					</div>
 				)}
 			</section>
 
 			<section class="guide-card guide-card--index guide-card--categories" aria-labelledby="guide-categories-title">
 				<p class="guide-card__eyebrow">CATEGORIES</p>
-				<h3 id="guide-categories-title">分类索引</h3>
+				<h3 id="guide-categories-title">{i18n(I18nKey.categoryIndex)}</h3>
 				<div class="guide-link-list">
 					{categories.slice(0, 3).map((category) => <a href={category.url}><span>{category.name}</span><strong>{category.count}</strong></a>)}
-					<a href={url("/categories/")}><span>查看全部</span><strong>{categories.length} 个分类</strong></a>
+					<a href={url("/categories/")}><span>{i18n(I18nKey.viewAll)}</span><strong>{`${categories.length}${i18n(I18nKey.categoryUnit)}`}</strong></a>
 				</div>
 			</section>
 
 			<section class="guide-card guide-card--index guide-card--tags" aria-labelledby="guide-tags-title">
 				<p class="guide-card__eyebrow">TAGS</p>
-				<h3 id="guide-tags-title">标签索引</h3>
+				<h3 id="guide-tags-title">{i18n(I18nKey.tagIndex)}</h3>
 				<div class="guide-tag-list">
 					{tags.slice(0, 5).map((tag) => <a href={getTagUrl(tag.name)}>#{tag.name}<span>{tag.count}</span></a>)}
-					<a class="guide-tag-list__all" href={url("/archive/")}>浏览全部标签 <Icon name="material-symbols:arrow-outward-rounded" is:inline /></a>
+					<a class="guide-tag-list__all" href={url("/archive/")}>{`${i18n(I18nKey.browseAllTags)} `}<Icon name="material-symbols:arrow-outward-rounded" is:inline /></a>
 				</div>
 			</section>
 
@@ -142,12 +158,12 @@ const statsShareId = umamiConfig?.shareId ?? "";
 					<img src={homeConfig.dataLayer.contactImage} alt="" loading="lazy" decoding="async" />
 				</div>
 				<p class="guide-card__eyebrow">SUBSCRIBE</p>
-				<h3 id="guide-contact-title">订阅与联系</h3>
-				<div class="guide-contact__primary" aria-label="常用联系方式">
+				<h3 id="guide-contact-title">{i18n(I18nKey.subscribeContact)}</h3>
+				<div class="guide-contact__primary" aria-label={i18n(I18nKey.contactMethods)}>
 					{primaryContactItems.map((link) => <a href={link.href} aria-label={link.name} title={link.name}><Icon name={link.icon} is:inline /></a>)}
-					<button class="guide-contact__toggle" type="button" aria-expanded="false" aria-label="展开全部联系方式"><Icon name="material-symbols:add-rounded" is:inline /></button>
+					<button class="guide-contact__toggle" type="button" aria-expanded="false" aria-label={i18n(I18nKey.expandContacts)}><Icon name="material-symbols:add-rounded" is:inline /></button>
 				</div>
-				<div class="guide-contact__all" aria-label="全部联系方式">
+				<div class="guide-contact__all" aria-label={i18n(I18nKey.allContacts)}>
 					{contactItems.map((link) => <a href={link.href} aria-label={link.name} title={link.name}><Icon name={link.icon} is:inline /><span>{link.name}</span></a>)}
 				</div>
 			</section>
@@ -157,6 +173,8 @@ const statsShareId = umamiConfig?.shareId ?? "";
 
 <script>
 	import { gsap } from "gsap";
+	import I18nKey from "@/i18n/i18nKey";
+	import { i18n } from "@/i18n/translation";
 	import { createCache } from "@/utils/cache-utils";
 	import { formatCompactNumber } from "@/utils/home-data-layer.js";
 	import { waitForPageLoaderHidden } from "@/utils/page-loader-controller.js";
@@ -360,7 +378,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			const pvRaw = data.pv || data.pageviews || 0;
 			const uvCompact = formatCompactNumber(uvRaw);
 			const pvCompact = formatCompactNumber(pvRaw);
-			if (detail) detail.textContent = `访客 ${uvCompact} / 浏览 ${pvCompact}`;
+			if (detail) detail.textContent = `${i18n(I18nKey.siteStatsVisitors)} ${uvCompact} / ${i18n(I18nKey.viewsBrowseLabel)} ${pvCompact}`;
 			valueNodes.forEach((node) => {
 				const isUv = node.dataset.statValue === "UV";
 				const isPv = node.dataset.statValue === "PV";
@@ -371,7 +389,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				node.textContent = node.dataset.compactValue;
 			});
 		}).catch(() => {
-			if (detail) detail.textContent = "访客 -- / 浏览 --";
+			if (detail) detail.textContent = `${i18n(I18nKey.siteStatsVisitors)} -- / ${i18n(I18nKey.viewsBrowseLabel)} --`;
 		});
 	}
 

@@ -35,14 +35,11 @@ export type {
 	NavBarConfig,
 	PlantUMLConfig,
 	ScheduleItem,
-	SidebarLayoutConfig,
 	SiteConfig,
 	SolarOrLunarDate,
 	SponsorConfig,
 	SponsorItem,
 	SponsorMethod,
-	WidgetComponentConfig,
-	WidgetComponentType,
 } from "../types/config";
 export type {
 	MermaidConfig,
@@ -72,6 +69,5 @@ export { navBarConfig } from "./navBarConfig"; // 导航栏配置
 export { live2dModelConfig, spineModelConfig } from "./pioConfig"; // 看板娘配置
 export { plantumlConfig } from "./plantumlConfig"; // PlantUML 图表配置
 // 布局配置
-export { sidebarLayoutConfig } from "./sidebarConfig"; // 侧边栏布局配置
 export { siteConfig } from "./siteConfig"; // 站点基础配置
 export { sponsorConfig } from "./sponsorConfig"; // 赞助配置

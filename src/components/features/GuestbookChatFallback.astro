@@ -1,17 +1,25 @@
 ---
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+
 const skeletonRows = Array.from({ length: 6 });
+const messageCountLabel = i18n(I18nKey.gbMessageCount).replace("{count}", "--");
 ---
 
-<section class="guestbook-chat guestbook-chat--fallback" aria-label="留言板" aria-busy="true">
+<section
+	class="guestbook-chat guestbook-chat--fallback"
+	aria-label={i18n(I18nKey.gbTitle)}
+	aria-busy="true"
+>
 	<header class="guestbook-chat__header">
 		<div class="guestbook-chat__channel">
 			<div>
 				<div class="guestbook-chat__title-row">
-					<h2>留言板</h2>
-					<span>· -- 条留言</span>
+					<h2>{i18n(I18nKey.gbTitle)}</h2>
+					<span>· {messageCountLabel}</span>
 					<div class="guestbook-chat__status">
 						<span></span>
-						正在连接留言服务
+						{i18n(I18nKey.gbConnecting)}
 					</div>
 				</div>
 			</div>
@@ -21,7 +29,7 @@ const skeletonRows = Array.from({ length: 6 });
 
 	<div class="guestbook-chat__workspace">
 		<div class="guestbook-chat__conversation">
-			<div class="guestbook-chat__loading" aria-label="正在加载留言">
+			<div class="guestbook-chat__loading" aria-label={i18n(I18nKey.gbLoadingAria)}>
 				{skeletonRows.map((_, index) => (
 					<div class:list={["guestbook-chat__skeleton", { "is-admin": index % 3 === 2 }]}>
 						<div class="guestbook-chat__skeleton-avatar"></div>

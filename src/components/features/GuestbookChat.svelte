@@ -20,6 +20,8 @@ import {
 import { onMount, tick } from "svelte";
 import { commentConfig } from "@/config/commentConfig";
 import { guestbookConfig } from "@/config/guestbookConfig";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import type { GuestbookAnnouncementItem } from "@/types/config";
 import type {
 	GuestbookAuthUser,
@@ -105,7 +107,7 @@ const chatMembers = $derived.by(() => {
 		const key = `${message.nick.trim().toLocaleLowerCase()}|${message.avatar}`;
 		const current = members.get(key);
 		members.set(key, {
-			nick: message.nick || current?.nick || "匿名访客",
+			nick: message.nick || current?.nick || i18n(I18nKey.gbAnonymousVisitor),
 			avatar: message.avatar || current?.avatar || "",
 			link: message.link || current?.link,
 			label: message.label || current?.label,
@@ -283,12 +285,12 @@ function removeLoginTokenFromURL() {
 }
 
 async function restoreWalineRedirectLogin(token: string) {
-	if (!serverURL) throw new Error("Waline 服务地址未配置，暂时无法登录");
+	if (!serverURL) throw new Error(i18n(I18nKey.gbServerNotConfiguredLogin));
 	const response = await fetch(
 		`${serverURL.replace(/\/+$/u, "")}/api/token?lang=${encodeURIComponent(lang)}`,
 		{ headers: { Authorization: `Bearer ${token}` } },
 	);
-	if (!response.ok) throw new Error("登录信息验证失败，请重新登录");
+	if (!response.ok) throw new Error(i18n(I18nKey.gbLoginVerifyFailed));
 
 	const result = (await response.json()) as WalineTokenResponse;
 	const user =
@@ -296,7 +298,7 @@ async function restoreWalineRedirectLogin(token: string) {
 			? { ...(result.data as Record<string, unknown>), token, remember: false }
 			: null;
 	if (!isAuthUser(user)) {
-		throw new Error(result.errmsg || "登录信息已失效，请重新登录");
+		throw new Error(result.errmsg || i18n(I18nKey.gbLoginExpired));
 	}
 
 	authUser = user;
@@ -323,12 +325,12 @@ function queueLatestSync() {
 function handleAuthenticationError(error: unknown): boolean {
 	if (!authUser || !isGuestbookAuthError(error)) return false;
 	clearAuthentication();
-	composerError = "登录状态已失效，请重新登录";
+	composerError = i18n(I18nKey.gbAuthExpired);
 	return true;
 }
 
 async function fetchPage(page: number, signal?: AbortSignal) {
-	if (!serverURL) throw new Error("Waline 服务地址未配置");
+	if (!serverURL) throw new Error(i18n(I18nKey.gbServerNotConfigured));
 	return getComment({
 		serverURL,
 		lang,
@@ -344,7 +346,7 @@ async function fetchPage(page: number, signal?: AbortSignal) {
 async function loadInitial() {
 	if (isOffline) {
 		initialLoading = false;
-		initialError = "当前处于离线状态，恢复网络后将自动加载";
+		initialError = i18n(I18nKey.gbOfflineInitial);
 		return;
 	}
 	dataController?.abort();
@@ -501,7 +503,7 @@ function handleOnline() {
 
 function handleOffline() {
 	isOffline = true;
-	syncError = "网络已断开，恢复连接后将自动同步";
+	syncError = i18n(I18nKey.gbNetworkDisconnected);
 	if (pollTimer) window.clearInterval(pollTimer);
 	pollTimer = undefined;
 	dataController?.abort();
@@ -600,16 +602,19 @@ function formatMessageTime(value: number): string {
 }
 
 function formatSyncStatus(): string {
-	if (isOffline) return "离线";
-	if (syncing) return "同步中";
-	if (syncError) return "同步失败";
-	if (!lastSyncedAt) return "等待同步";
-	return `同步于 ${new Intl.DateTimeFormat("zh-CN", {
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit",
-		hour12: false,
-	}).format(lastSyncedAt)}`;
+	if (isOffline) return i18n(I18nKey.gbSyncOffline);
+	if (syncing) return i18n(I18nKey.gbSyncSyncing);
+	if (syncError) return i18n(I18nKey.gbSyncFailed);
+	if (!lastSyncedAt) return i18n(I18nKey.gbSyncWaiting);
+	return i18n(I18nKey.gbSyncedAt).replace(
+		"{time}",
+		new Intl.DateTimeFormat("zh-CN", {
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit",
+			hour12: false,
+		}).format(lastSyncedAt),
+	);
 }
 
 function dateKey(value: number): string {
@@ -624,8 +629,9 @@ function dateLabel(value: number): string {
 	const today = new Date();
 	const yesterday = new Date(today);
 	yesterday.setDate(today.getDate() - 1);
-	if (dateKey(value) === dateKey(today.getTime())) return "今天";
-	if (dateKey(value) === dateKey(yesterday.getTime())) return "昨天";
+	if (dateKey(value) === dateKey(today.getTime())) return i18n(I18nKey.gbToday);
+	if (dateKey(value) === dateKey(yesterday.getTime()))
+		return i18n(I18nKey.gbYesterday);
 	return dateKey(value);
 }
 
@@ -669,37 +675,43 @@ async function jumpToQuotedMessage(message: GuestbookMessage) {
 function validateMessageBody(content: string): string {
 	const textLength = getGuestbookTextLength(content);
 	if (textLength < MIN_MESSAGE_LENGTH && !hasGuestbookImage(content)) {
-		return `消息至少需要 ${MIN_MESSAGE_LENGTH} 个字符`;
+		return i18n(I18nKey.gbMsgMinLength).replace(
+			"{min}",
+			String(MIN_MESSAGE_LENGTH),
+		);
 	}
 	if (textLength > MAX_MESSAGE_LENGTH) {
-		return `消息不能超过 ${MAX_MESSAGE_LENGTH} 个字符`;
+		return i18n(I18nKey.gbMsgMaxLength).replace(
+			"{max}",
+			String(MAX_MESSAGE_LENGTH),
+		);
 	}
 	if (hasGuestbookReplyMarker(content)) {
-		return "消息内容不能以系统引用标记开头";
+		return i18n(I18nKey.gbMsgReplyMarker);
 	}
 	return "";
 }
 
 function validateComposer(content: string): string {
-	if (loginMode === "force" && !authUser) return "请先登录后再发送消息";
+	if (loginMode === "force" && !authUser) return i18n(I18nKey.gbLoginRequired);
 	if (!authUser && profile.nick.trim().length < 2) {
 		return profile.nick.trim()
-			? "游客昵称至少需要 2 个字符"
+			? i18n(I18nKey.gbNicknameMinLength).replace("{min}", "2")
 			: loginMode === "disable"
-				? "请先通过游客访问填写资料后再发送"
-				: "请选择游客访问并填写资料，或登录后发送";
+				? i18n(I18nKey.gbGuestProfileRequiredDisabled)
+				: i18n(I18nKey.gbGuestProfileRequired);
 	}
 	if (profile.mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(profile.mail)) {
-		return "邮箱格式不正确";
+		return i18n(I18nKey.gbEmailInvalid);
 	}
 	if (profile.link) {
 		try {
 			const website = new URL(profile.link);
 			if (website.protocol !== "http:" && website.protocol !== "https:") {
-				return "网站地址仅支持 http 或 https";
+				return i18n(I18nKey.gbLinkProtocolInvalid);
 			}
 		} catch {
-			return "网站地址格式不正确";
+			return i18n(I18nKey.gbLinkInvalid);
 		}
 	}
 	return validateMessageBody(content);
@@ -723,7 +735,7 @@ async function sendMessage(
 	const tempId = `local-${Date.now()}`;
 	const optimistic: GuestbookMessage = {
 		id: tempId,
-		nick: authUser?.display_name || profile.nick || "访客",
+		nick: authUser?.display_name || profile.nick || i18n(I18nKey.gbVisitor),
 		avatar: authUser?.avatar || "",
 		link: authUser?.url || profile.link.trim() || undefined,
 		body: target ? `@${target.nick} ${content}` : content,
@@ -760,7 +772,7 @@ async function sendMessage(
 		});
 
 		if (response.errno || !response.data) {
-			throw new Error(response.errmsg || "消息发送失败");
+			throw new Error(response.errmsg || i18n(I18nKey.gbSendFailed));
 		}
 
 		messages = messages.filter((message) => message.id !== tempId);
@@ -776,7 +788,8 @@ async function sendMessage(
 		queueLatestSync();
 	} catch (error) {
 		handleAuthenticationError(error);
-		const failureReason = getGuestbookErrorMessage(error) || "消息发送失败";
+		const failureReason =
+			getGuestbookErrorMessage(error) || i18n(I18nKey.gbSendFailed);
 		messages = messages.map((message) =>
 			message.id === tempId
 				? { ...message, localState: "failed", failureReason }
@@ -862,7 +875,7 @@ async function saveEditedMessage(message: GuestbookMessage) {
 		handleAuthenticationError(error);
 		messageActionError = {
 			id: message.id,
-			message: getGuestbookErrorMessage(error) || "消息修改失败，请稍后重试",
+			message: getGuestbookErrorMessage(error) || i18n(I18nKey.gbEditFailed),
 		};
 	} finally {
 		mutatingMessageId = null;
@@ -906,7 +919,7 @@ async function confirmDeleteMessage() {
 		handleAuthenticationError(error);
 		messageActionError = {
 			id: target.id,
-			message: getGuestbookErrorMessage(error) || "消息删除失败，请稍后重试",
+			message: getGuestbookErrorMessage(error) || i18n(I18nKey.gbDeleteFailed),
 		};
 	} finally {
 		mutatingMessageId = null;
@@ -916,7 +929,7 @@ async function confirmDeleteMessage() {
 async function handleLogin() {
 	if (loggingIn) return;
 	if (!serverURL) {
-		composerError = "Waline 服务地址未配置，暂时无法登录";
+		composerError = i18n(I18nKey.gbServerNotConfiguredLogin);
 		return;
 	}
 	loggingIn = true;
@@ -924,7 +937,8 @@ async function handleLogin() {
 
 	try {
 		const user = await loginWithWaline({ serverURL, lang });
-		if (!isAuthUser(user)) throw new Error("登录返回信息无效，请重新登录");
+		if (!isAuthUser(user))
+			throw new Error(i18n(I18nKey.gbLoginInvalidResponse));
 		authUser = user;
 		persistAuthentication(user);
 		await loadInitial();
@@ -932,7 +946,7 @@ async function handleLogin() {
 		composerError =
 			error instanceof Error && error.message
 				? error.message
-				: "登录失败，请稍后重试";
+				: i18n(I18nKey.gbLoginFailed);
 	} finally {
 		loggingIn = false;
 	}
@@ -947,7 +961,7 @@ async function initializeGuestbook(returnedToken: string | null) {
 			composerError =
 				error instanceof Error && error.message
 					? error.message
-					: "登录信息验证失败，请重新登录";
+					: i18n(I18nKey.gbLoginVerifyFailed);
 		} finally {
 			removeLoginTokenFromURL();
 			loggingIn = false;
@@ -958,12 +972,12 @@ async function initializeGuestbook(returnedToken: string | null) {
 
 	if (isOffline) {
 		initialLoading = false;
-		initialError = "当前处于离线状态，恢复网络后将自动加载";
+		initialError = i18n(I18nKey.gbOfflineInitial);
 	} else if (document.visibilityState === "visible") {
 		await loadInitial();
 	} else {
 		initialLoading = false;
-		initialError = "页面恢复可见后将自动加载留言板";
+		initialError = i18n(I18nKey.gbHiddenUntilVisible);
 	}
 }
 
@@ -1018,7 +1032,7 @@ onMount(() => {
 
 <svelte:window onkeydown={handleChatKeydown} />
 
-<section class="guestbook-chat" aria-label="留言板">
+<section class="guestbook-chat" aria-label={i18n(I18nKey.gbTitle)}>
 	<header class="guestbook-chat__header">
 		<div class="guestbook-chat__channel">
 			<button
@@ -1027,18 +1041,25 @@ onMount(() => {
 				type="button"
 				onclick={() => void syncLatest()}
 				disabled={syncing || initialLoading || isOffline}
-				aria-label={syncing ? "留言板正在刷新" : "刷新留言板"}
+				aria-label={syncing
+					? i18n(I18nKey.gbRefreshingAria)
+					: i18n(I18nKey.gbRefreshAria)}
 				aria-busy={syncing}
 			>
-				<span>留言板</span>
+				<span>{i18n(I18nKey.gbTitle)}</span>
 				<span class:is-visible={syncing} class="guestbook-chat__mobile-refresh-icon">
 					<RefreshCw size={15} aria-hidden="true" />
 				</span>
 			</button>
 			<div class="guestbook-chat__desktop-channel-details">
 				<div class="guestbook-chat__title-row">
-					<h2>留言板</h2>
-					<span>· {initialLoading ? "--" : totalCount} 条留言</span>
+					<h2>{i18n(I18nKey.gbTitle)}</h2>
+					<span>
+						· {i18n(I18nKey.gbMessageCount).replace(
+							"{count}",
+							initialLoading ? "--" : String(totalCount),
+						)}
+					</span>
 					<div class="guestbook-chat__sync">
 						<div
 							class:is-failed={Boolean(syncError)}
@@ -1046,15 +1067,15 @@ onMount(() => {
 							aria-live="polite"
 						>
 							<span class:is-offline={isOffline}></span>
-							{formatSyncStatus()} · 30 s
+							{formatSyncStatus()} {i18n(I18nKey.gbSyncIntervalSuffix)}
 						</div>
 						<button
 							class:is-syncing={syncing} class="guestbook-chat__refresh"
 							type="button"
 							onclick={() => void syncLatest()}
 							disabled={syncing || initialLoading || isOffline}
-							aria-label="立即刷新消息"
-							title="立即刷新"
+							aria-label={i18n(I18nKey.gbRefreshNowAria)}
+							title={i18n(I18nKey.gbRefreshNowTitle)}
 						>
 							<RefreshCw size={17} aria-hidden="true" />
 						</button>
@@ -1070,7 +1091,7 @@ onMount(() => {
 				onclick={() => (sidebarOpen = !sidebarOpen)}
 				aria-expanded={sidebarOpen}
 				aria-controls="guestbook-chat-sidebar"
-				title="留言人"
+				title={i18n(I18nKey.gbMembers)}
 			>
 				<Users size={18} aria-hidden="true" />
 				<span>{chatMembers.length}</span>
@@ -1084,10 +1105,10 @@ onMount(() => {
 	>
 		<div class="guestbook-chat__conversation">
 			{#if announcementBarVisible && announcements.length > 0}
-				<aside class="guestbook-chat__announcement-bar" aria-label="公告">
+				<aside class="guestbook-chat__announcement-bar" aria-label={i18n(I18nKey.announcement)}>
 					<div class="guestbook-chat__announcement-bar-label">
 						<Bell size={16} aria-hidden="true" />
-						<strong>公告</strong>
+						<strong>{i18n(I18nKey.announcement)}</strong>
 					</div>
 					<div class="guestbook-chat__announcement-bar-items">
 						{#each announcements as announcement}
@@ -1100,8 +1121,8 @@ onMount(() => {
 						class="guestbook-chat__announcement-bar-close"
 						type="button"
 						onclick={() => (announcementBarVisible = false)}
-						aria-label="关闭公告"
-						title="关闭公告"
+						aria-label={i18n(I18nKey.gbCloseAnnouncement)}
+						title={i18n(I18nKey.gbCloseAnnouncement)}
 					>
 						<X size={17} aria-hidden="true" />
 					</button>
@@ -1111,7 +1132,7 @@ onMount(() => {
 			{#if initialLoading}
 				<div
 					class="guestbook-chat__loading"
-					aria-label="正在加载留言"
+					aria-label={i18n(I18nKey.gbLoadingAria)}
 					aria-busy="true"
 				>
 					{#each Array(6) as _, index}
@@ -1128,10 +1149,10 @@ onMount(() => {
 			{:else if initialError && messages.length === 0}
 				<div class="guestbook-chat__state" role="alert">
 					<AlertCircle size={34} aria-hidden="true" />
-					<h3>留言板加载失败</h3>
+					<h3>{i18n(I18nKey.gbLoadFailedTitle)}</h3>
 					<p>{initialError}</p>
 					<button type="button" onclick={() => void loadInitial()}>
-						<RotateCcw size={17} aria-hidden="true" />重新加载
+						<RotateCcw size={17} aria-hidden="true" />{i18n(I18nKey.gbReload)}
 					</button>
 				</div>
 			{:else}
@@ -1152,18 +1173,20 @@ onMount(() => {
 								{#if loadingOlder}
 									<LoaderCircle class="is-spinning" size={15} aria-hidden="true" />
 								{/if}
-								{loadingOlder ? "正在加载历史消息" : "加载更早消息"}
+								{loadingOlder
+									? i18n(I18nKey.gbLoadingOlder)
+									: i18n(I18nKey.gbLoadOlder)}
 							</button>
 						{:else if messages.length > 0}
-							<span>已经到最早一条消息</span>
+							<span>{i18n(I18nKey.gbNoMoreMessages)}</span>
 						{/if}
 					</div>
 
 					{#if messages.length === 0}
 						<div class="guestbook-chat__empty">
 							<div class="guestbook-chat__empty-mark">GB</div>
-							<h3>还没有人发言</h3>
-							<p>发送第一条消息，开启这段对话。</p>
+							<h3>{i18n(I18nKey.gbEmptyTitle)}</h3>
+							<p>{i18n(I18nKey.gbEmptyBody)}</p>
 						</div>
 					{/if}
 
@@ -1211,8 +1234,11 @@ onMount(() => {
 						type="button"
 						onclick={() => scrollToBottom(true)}
 						aria-label={newMessageCount > 0
-							? `${newMessageCount} 条新消息，回到最新消息`
-							: "回到底部"}
+							? i18n(I18nKey.gbNewMessagesAria).replace(
+									"{count}",
+									String(newMessageCount),
+								)
+							: i18n(I18nKey.gbBackToBottom)}
 					>
 						<ChevronDown size={20} aria-hidden="true" />
 					</button>
@@ -1221,9 +1247,9 @@ onMount(() => {
 				{#if syncError || isOffline}
 					<div class="guestbook-chat__sync-error" role="status">
 						<WifiOff size={15} aria-hidden="true" />
-						<span>{syncError || "当前处于离线状态"}</span>
+						<span>{syncError || i18n(I18nKey.gbOffline)}</span>
 						{#if !isOffline}
-							<button type="button" onclick={() => void syncLatest()}>重试同步</button>
+							<button type="button" onclick={() => void syncLatest()}>{i18n(I18nKey.gbRetrySync)}</button>
 						{/if}
 					</div>
 				{/if}
@@ -1255,7 +1281,7 @@ onMount(() => {
 				class="guestbook-chat__sidebar-overlay"
 				type="button"
 				onclick={() => (sidebarOpen = false)}
-				aria-label="关闭留言人列表"
+				aria-label={i18n(I18nKey.gbCloseMembers)}
 			></button>
 		{/if}
 
@@ -1263,29 +1289,29 @@ onMount(() => {
 			id="guestbook-chat-sidebar"
 			class:is-open={sidebarOpen}
 			class="guestbook-chat__sidebar"
-			aria-label="留言人"
+			aria-label={i18n(I18nKey.gbMembers)}
 		>
 			<div class="guestbook-chat__sidebar-heading">
-				<strong>留言人</strong>
+				<strong>{i18n(I18nKey.gbMembers)}</strong>
 				<button
 					type="button"
 					onclick={() => (sidebarOpen = false)}
-					aria-label="关闭留言人列表"
+					aria-label={i18n(I18nKey.gbCloseMembers)}
 				>
 					<X size={18} aria-hidden="true" />
 				</button>
 			</div>
 
-			<section class="guestbook-chat__members" aria-label="留言人列表">
+			<section class="guestbook-chat__members" aria-label={i18n(I18nKey.gbMembersListAria)}>
 				<div class="guestbook-chat__member-list custom-scrollbar">
 					{#each [
-						{ title: "站长", members: stationMembers },
-						{ title: "留言人", members: guestMembers },
+						{ title: i18n(I18nKey.gbAdmin), members: stationMembers },
+						{ title: i18n(I18nKey.gbMembers), members: guestMembers },
 					] as group (group.title)}
 						<div class="guestbook-chat__member-group">
 							<div class="guestbook-chat__member-group-title">
 								<strong>{group.title}</strong>
-								<span aria-label={`${group.members.length} 人`}>— {group.members.length}</span>
+								<span aria-label={i18n(I18nKey.gbMemberCountAria).replace("{count}", String(group.members.length))}>— {group.members.length}</span>
 							</div>
 
 							<div class="guestbook-chat__member-group-list">
@@ -1348,7 +1374,7 @@ onMount(() => {
 						class="privacy-close"
 						type="button"
 						onclick={closeAnnouncement}
-					aria-label="关闭公告"
+					aria-label={i18n(I18nKey.gbCloseAnnouncement)}
 					>
 						<X size={20} aria-hidden="true" />
 					</button>
@@ -1364,7 +1390,7 @@ onMount(() => {
 				</div>
 				<div class="privacy-footer">
 					<button class="privacy-confirm-btn" type="button" onclick={closeAnnouncement}>
-						我知道了
+						{i18n(I18nKey.gotIt)}
 					</button>
 				</div>
 			</div>
@@ -1388,19 +1414,19 @@ onMount(() => {
 		{#if deleteTarget}
 			<div class="privacy-panel guestbook-delete-modal__panel">
 				<div class="privacy-header">
-					<h2 id="guestbook-delete-title" class="privacy-title">删除消息</h2>
+					<h2 id="guestbook-delete-title" class="privacy-title">{i18n(I18nKey.gbDeleteMessage)}</h2>
 					<button
 						class="privacy-close"
 						type="button"
 						onclick={closeDeleteDialog}
 						disabled={mutatingMessageId === deleteTarget.id}
-						aria-label="关闭删除确认"
+						aria-label={i18n(I18nKey.gbCloseDeleteConfirm)}
 					>
 						<X size={20} aria-hidden="true" />
 					</button>
 				</div>
 				<div class="privacy-body guestbook-delete-modal__body">
-					<p>删除后无法恢复，Waline 服务端也会同步删除这条消息。</p>
+					<p>{i18n(I18nKey.gbDeleteWarning)}</p>
 					<blockquote>{deleteTarget.body.slice(0, 160)}</blockquote>
 					{#if messageActionError?.id === deleteTarget.id}
 						<p class="guestbook-delete-modal__error" role="alert">
@@ -1414,16 +1440,18 @@ onMount(() => {
 						type="button"
 						onclick={closeDeleteDialog}
 						disabled={mutatingMessageId === deleteTarget.id}
-					>
-						取消
-					</button>
+						>
+							{i18n(I18nKey.cancel)}
+						</button>
 					<button
 						class="guestbook-delete-modal__confirm"
 						type="button"
 						onclick={() => void confirmDeleteMessage()}
 						disabled={mutatingMessageId === deleteTarget.id}
 					>
-						{mutatingMessageId === deleteTarget.id ? "删除中" : "确认删除"}
+						{mutatingMessageId === deleteTarget.id
+							? i18n(I18nKey.deleting)
+							: i18n(I18nKey.deleteLabel)}
 					</button>
 				</div>
 			</div>

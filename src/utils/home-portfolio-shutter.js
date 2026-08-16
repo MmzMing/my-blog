@@ -1,7 +1,6 @@
 export const SHUTTER_PANEL_COUNT = 5;
 export const MOBILE_REMOVAL_WIDTH = 768;
 export const DESKTOP_MEDIA_QUERY = `(min-width: ${MOBILE_REMOVAL_WIDTH + 1}px)`;
-export const SHUTTER_MIN_SCROLL_VIEWPORTS = 4;
 export const SHUTTER_PANEL_STEP = 0.5;
 export const SHUTTER_MERGE_DELAY = 0.22;
 
@@ -21,21 +20,6 @@ export function normalizeShutterPanels(panels = []) {
 		index,
 		direction: getPanelDirection(index),
 	}));
-}
-
-export function getShutterPinEndDistance(
-	configuredDistance,
-	viewportHeight,
-	minViewportMultiplier = SHUTTER_MIN_SCROLL_VIEWPORTS,
-) {
-	const configured = Number(configuredDistance);
-	const viewport = Number(viewportHeight);
-	const fallback = Math.round(
-		(Number.isFinite(viewport) && viewport > 0 ? viewport : 0) *
-			minViewportMultiplier,
-	);
-
-	return Math.max(Number.isFinite(configured) ? configured : 0, fallback);
 }
 
 export function getShutterMergeStart(

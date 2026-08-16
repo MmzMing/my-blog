@@ -20,6 +20,9 @@ export const homeConfig: HomeConfig = {
 	// 个人签名（支持多条，会循环打字+删除效果）
 	bio: ["且视他人之疑目如盏盏鬼火，大胆地去走你的夜路"],
 
+	// 关于页 3D 文字球贴图（public 目录路径）
+	aboutCanvasTexture: "/assets/images/about.avif",
+
 	hero: {
 		backgroundImage: "/assets/images/home/home.avif",
 		backgroundImageMobile: "/assets/images/home/home-mobile.avif",

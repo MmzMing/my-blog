@@ -151,6 +151,15 @@ export const siteConfig: SiteConfig = {
 
 	defaultOgImage: "/assets/images/aut.webp",
 
+	// 页面加载动画配置
+	pageLoader: {
+		// 加载动画图路径（public 目录）
+		image: "/assets/images/loading/feibi-loading.webp",
+		// 图片宽高（避免布局偏移）
+		width: 960,
+		height: 540,
+	},
+
 	// 页面开关配置 - 控制特定页面的访问权限，设为false会返回404
 	pages: {
 		// 友链页面开关

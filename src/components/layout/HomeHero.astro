@@ -4,6 +4,8 @@ import HeroDialogue from "@components/layout/HeroDialogue.astro";
 import HeroMosaic from "@components/layout/HeroMosaic.astro";
 import HeroQuickActions from "@components/layout/HeroQuickActions.astro";
 import { homeConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 
 const { hero } = homeConfig;
 const mobileBackground = hero.backgroundImageMobile || hero.backgroundImage;
@@ -58,7 +60,7 @@ const runtimeConfig = {
 		</svg>
 		<h1 class="home-hero__title">
 			<span>{homeConfig.displayName || homeConfig.name}</span>
-			<span class="sr-only"> 的技术博客</span>
+				<span class="sr-only">{i18n(I18nKey.techBlogSuffix)}</span>
 		</h1>
 		{homeConfig.occupation && (
 			<p class="home-hero__occupation">{homeConfig.occupation}</p>

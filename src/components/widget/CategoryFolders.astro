@@ -1,5 +1,7 @@
 ---
 import Icon from "@/components/common/Icon.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import type { CategoryTagGroup } from "@/utils/content-utils";
 
 interface Props {
@@ -12,6 +14,9 @@ const { groups } = Astro.props;
 <div class="category-folders">
 	{groups.map((group, index) => {
 		const panelId = `category-folder-panel-${index}`;
+		const metaText = i18n(I18nKey.categoryFolderMeta)
+			.replace("{posts}", `${group.count}`)
+			.replace("{tags}", `${group.tags.length}`);
 		return (
 			<details class="category-folder">
 				<summary class="category-folder__summary" aria-controls={panelId}>
@@ -27,9 +32,7 @@ const { groups } = Astro.props;
 					</span>
 					<span class="category-folder__heading">
 						<strong class="category-folder__name">{group.name}</strong>
-						<span class="category-folder__meta">
-							{group.count} 篇文章 · {group.tags.length} 个标签
-						</span>
+						<span class="category-folder__meta">{metaText}</span>
 					</span>
 					<Icon
 						name="material-symbols:keyboard-arrow-down-rounded"
@@ -53,7 +56,7 @@ const { groups } = Astro.props;
 							))}
 						</div>
 					) : (
-						<p class="category-folder__empty">暂无标签</p>
+						<p class="category-folder__empty">{i18n(I18nKey.noTags)}</p>
 					)}
 				</div>
 			</details>

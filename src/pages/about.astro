@@ -3,6 +3,7 @@
 import { getEntry, render } from "astro:content";
 import AboutCanvas from "@components/about/AboutCanvas.svelte";
 import SiteStructuredData from "@/components/seo/SiteStructuredData.astro";
+import { homeConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
@@ -18,7 +19,7 @@ const aboutText = aboutPost.body ?? "";
 const { Content } = await render(aboutPost);
 ---
 
-<MainGridLayout title={i18n(I18nKey.about)} description="MmzMing 的个人介绍、技术方向、博客主题与联系方式。" hasOwnH1={true}>
+<MainGridLayout title={i18n(I18nKey.about)} description={i18n(I18nKey.aboutDescription).replace("{name}", homeConfig.name)} hasOwnH1={true}>
 	<SiteStructuredData slot="head" includeProfilePage={true} />
 	<div class="about-canvas-container">
         <AboutCanvas text={aboutText} client:only="svelte" />

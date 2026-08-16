@@ -177,12 +177,12 @@ onDestroy(() => {
 								</span>
 								{#if ev.isOfficial}
 									<span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
-										法定
+										{i18n(I18nKey.officialHolidayBadge)}
 									</span>
 								{/if}
 								{#if ev.isWorkday}
 									<span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-										补班
+										{i18n(I18nKey.makeupWorkdayBadge)}
 									</span>
 								{/if}
 							</div>

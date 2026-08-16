@@ -43,7 +43,15 @@ export type SiteConfig = {
 	};
 
 	generateOgImages: boolean;
-	defaultOgImage?: string;
+	defaultOgImage: string;
+
+	// 页面加载动画配置
+	pageLoader: {
+		image: string; // 加载动画图路径（public 目录）
+		width?: number; // 图片宽度（避免布局偏移）
+		height?: number; // 图片高度（避免布局偏移）
+	};
+
 	favicon: Array<{
 		src: string;
 		theme?: "light" | "dark";
@@ -381,6 +389,8 @@ export type HomeConfig = {
 	displayName?: string; // 首页展示名字（如 MmMing）
 	occupation?: string; // 职业/身份标签（如 后端开发 / 技术博主）
 	bio?: string | string[];
+	// 关于页 3D 文字球贴图（public 目录路径）
+	aboutCanvasTexture: string;
 	hero: {
 		backgroundImage: string;
 		backgroundImageMobile?: string;
@@ -635,55 +645,6 @@ export type CoverImageConfig = {
 		fallback?: string; // API失败时的回退图片路径（相对于src目录或以/开头的public目录路径）
 		showLoading?: boolean; // 是否显示加载动画
 	};
-};
-
-// 组件配置类型定义
-export type WidgetComponentType =
-	| "profile"
-	| "announcement"
-	| "categories"
-	| "tags"
-	| "sidebarToc"
-	| "advertisement"
-	| "stats"
-	| "calendar"
-	| "music";
-
-export type WidgetComponentConfig = {
-	type: WidgetComponentType; // 组件类型
-	enable: boolean; // 是否启用该组件
-	position: "top" | "sticky"; // 组件位置：top=固定在顶部，sticky=粘性定位（可滚动）
-	configId?: string; // 配置ID，用于广告组件指定使用哪个配置
-	showOnPostPage?: boolean; // 是否在文章详情页显示
-	showOnNonPostPage?: boolean; // 是否在非文章详情页显示
-	responsive?: {
-		hidden?: ("mobile" | "tablet" | "desktop")[]; // 在指定设备上隐藏
-		collapseThreshold?: number; // 折叠阈值
-	};
-	customProps?: Record<string, unknown>; // 自定义属性，用于扩展组件功能
-};
-
-export type MobileBottomComponentConfig = {
-	type: WidgetComponentType; // 组件类型
-	enable: boolean; // 是否启用该组件
-	configId?: string; // 配置ID，用于广告组件指定使用哪个配置
-	showOnPostPage?: boolean; // 是否在文章详情页显示
-	showOnNonPostPage?: boolean; // 是否在非文章详情页显示
-	responsive?: {
-		hidden?: ("mobile" | "tablet" | "desktop")[]; // 在指定设备上隐藏
-		collapseThreshold?: number; // 折叠阈值
-	};
-	customProps?: Record<string, unknown>; // 自定义属性，用于扩展组件功能
-};
-
-export type SidebarLayoutConfig = {
-	enable: boolean; // 是否启用侧边栏
-	position: "left" | "right" | "both"; // 侧边栏位置：左侧、右侧或双侧
-	tabletSidebar?: "left" | "right"; // 平板端(769-1279px)显示哪侧侧边栏，仅position为both时生效，默认left
-	showBothSidebarsOnPostPage?: boolean; // 当position为left或right时，是否在文章详情页显示双侧边栏
-	leftComponents: WidgetComponentConfig[]; // 左侧边栏组件配置列表
-	rightComponents: WidgetComponentConfig[]; // 右侧边栏组件配置列表
-	mobileBottomComponents: MobileBottomComponentConfig[]; // 移动端底部组件配置列表（<768px显示）
 };
 
 export type SakuraConfig = {
@@ -959,6 +920,8 @@ export type GalleryConfig = {
 	columnWidth?: number; // 瀑布流最小列宽(px)，默认 240，浏览器根据容器宽度自动计算列数
 	// 网络相册配置
 	networkAlbum?: {
+		// 网络相册 API 地址
+		apiUrl: string;
 		// 单次获取图片数量限制
 		maxQuantity?: number;
 		// 默认获取数量

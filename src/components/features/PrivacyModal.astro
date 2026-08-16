@@ -1,6 +1,8 @@
 ---
 import { getEntry, render } from "astro:content";
 import Markdown from "@components/common/Markdown.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 
 const privacyPost = await getEntry("spec", "privacy");
 let Content: Awaited<ReturnType<typeof render>>["Content"] | null = null;
@@ -14,8 +16,8 @@ if (privacyPost) {
 	<div class="privacy-overlay" data-close-privacy></div>
 	<div class="privacy-panel">
 		<div class="privacy-header">
-			<h2 class="privacy-title">隐私政策</h2>
-			<button class="privacy-close" data-close-privacy aria-label="关闭">
+			<h2 class="privacy-title">{i18n(I18nKey.privacyPolicy)}</h2>
+			<button class="privacy-close" data-close-privacy aria-label={i18n(I18nKey.close)}>
 				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<line x1="18" y1="6" x2="6" y2="18"/>
 					<line x1="6" y1="6" x2="18" y2="18"/>
@@ -30,7 +32,7 @@ if (privacyPost) {
 			)}
 		</div>
 		<div class="privacy-footer">
-			<button class="privacy-confirm-btn" data-close-privacy>我知道了</button>
+			<button class="privacy-confirm-btn" data-close-privacy>{i18n(I18nKey.gotIt)}</button>
 		</div>
 	</div>
 </dialog>

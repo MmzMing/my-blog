@@ -1,5 +1,7 @@
 <script lang="ts">
 import { onDestroy, onMount, tick } from "svelte";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 
 interface LyricLine {
 	time: number;
@@ -15,9 +17,9 @@ let currentIndex = $state(-1);
 let lyricsStatus = $state<LyricStatus>("loading");
 let offsetY = $state(0);
 let statusLabels = $state({
-	loading: "正在加载歌词",
-	none: "暂无歌词",
-	failed: "歌词加载失败",
+	loading: i18n(I18nKey.musicLoadingLyrics),
+	none: i18n(I18nKey.musicNoLyrics),
+	failed: i18n(I18nKey.musicFailedLyrics),
 });
 
 const statusText = $derived(

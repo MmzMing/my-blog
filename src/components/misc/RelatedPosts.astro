@@ -1,6 +1,8 @@
 ---
 import { getSortedPosts } from "@utils/content-utils";
 import { getPostUrlBySlug } from "@utils/url-utils";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import { formatDateToYYYYMMDD } from "@/utils/date-utils";
 import "@/styles/components/related-posts.css";
 
@@ -44,8 +46,8 @@ const related = scored.slice(0, limit).map((item) => item.post);
 ---
 
 {related.length > 0 && (
-	<section class="related-posts mb-6 onload-animation" aria-label="相关文章">
-		<h2 class="related-posts__title">相关文章</h2>
+	<section class="related-posts mb-6 onload-animation" aria-label={i18n(I18nKey.relatedPosts)}>
+		<h2 class="related-posts__title">{i18n(I18nKey.relatedPosts)}</h2>
 		<ul class="related-posts__list">
 			{related.map((post) => (
 				<li class="related-posts__item">

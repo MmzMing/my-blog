@@ -80,7 +80,7 @@ const isExternalLink = (href: string) => !/^(mailto:|tel:)/i.test(href);
 				type="button"
 			>
 				<Icon name="material-symbols:shield-outline" is:inline class="text-base" />
-				<span>隐私政策</span>
+				<span>{i18n(I18nKey.privacyPolicy)}</span>
 			</button>
 			<span class="text-neutral-300 dark:text-neutral-600">|</span>
 			<button
@@ -89,7 +89,7 @@ const isExternalLink = (href: string) => !/^(mailto:|tel:)/i.test(href);
 				type="button"
 			>
 				<Icon name="material-symbols:description-outline" is:inline class="text-base" />
-				<span>用户协议</span>
+				<span>{i18n(I18nKey.userAgreement)}</span>
 			</button>
 		</div>
 
@@ -133,7 +133,7 @@ const isExternalLink = (href: string) => !/^(mailto:|tel:)/i.test(href);
 						rel="noreferrer"
 						href={beian.policeUrl}
 					>
-						<img src={beian.policeIcon} alt="公安网备" class="w-4 h-4 inline-block" />
+						<img src={beian.policeIcon} alt={i18n(I18nKey.policeBeianAlt)} class="w-4 h-4 inline-block" />
 						<span>{beian.police}</span>
 					</a>
 				)}
@@ -161,7 +161,7 @@ const isExternalLink = (href: string) => !/^(mailto:|tel:)/i.test(href);
 	</div>
 </div>
 
-<script is:inline define:vars={{ siteStartDate, lastPostDate }}>
+<script is:inline define:vars={{ siteStartDate, lastPostDate, runningDaysText, lastUpdateText, todayText }}>
 	function updateFooterStats() {
 		const today = new Date();
 
@@ -172,7 +172,7 @@ const isExternalLink = (href: string) => !/^(mailto:|tel:)/i.test(href);
 
 		const runningDaysEl = document.getElementById('footer-running-days');
 		if (runningDaysEl) {
-			const template = runningDaysEl.dataset.template || '已运行 {days} 天';
+			const template = runningDaysEl.dataset.template || runningDaysText;
 			runningDaysEl.textContent = template.replace('{days}', diffDays.toString());
 		}
 
@@ -182,11 +182,11 @@ const isExternalLink = (href: string) => !/^(mailto:|tel:)/i.test(href);
 			const lastPost = new Date(lastPostDate);
 			const timeSinceLastPost = Math.abs(today.getTime() - lastPost.getTime());
 			const daysSinceLastUpdate = Math.floor(timeSinceLastPost / (1000 * 60 * 60 * 24));
-			const template = lastUpdateEl.dataset.template || '最后更新于 {days} 天前';
-			const todayText = lastUpdateEl.dataset.today || '今天';
+			const template = lastUpdateEl.dataset.template || lastUpdateText;
+			const todayLabel = lastUpdateEl.dataset.today || todayText;
 
 			if (daysSinceLastUpdate === 0) {
-				lastUpdateEl.textContent = todayText;
+				lastUpdateEl.textContent = todayLabel;
 			} else {
 				lastUpdateEl.textContent = template.replace('{days}', daysSinceLastUpdate.toString());
 			}

@@ -1,3 +1,5 @@
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import type { AiSearchArticleReference } from "@/types/ai-search";
 
 export interface AiSearchMessage {
@@ -60,7 +62,7 @@ function writeStoredValue<T>(key: string, data: T): void {
 
 function getSessionTitle(messages: AiSearchMessage[]): string {
 	const firstUser = messages.find((message) => message.role === "user");
-	if (!firstUser) return "新对话";
+	if (!firstUser) return i18n(I18nKey.aiNewChat);
 	return firstUser.content.length > 20
 		? `${firstUser.content.slice(0, 20)}...`
 		: firstUser.content;

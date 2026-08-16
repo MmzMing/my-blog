@@ -1,7 +1,10 @@
 <script lang="ts">
 import { onMount, tick } from "svelte";
 import Icon from "@/components/common/Icon.svelte";
+import { siteConfig } from "@/config";
 import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import "@/styles/components/ai-search.css";
 import { AiSearchClientError, streamAiSearch } from "./api-client";
 import { isSafeUrl, renderSimpleMarkdown } from "./markdown";
@@ -17,8 +20,14 @@ import {
 	saveSessionList,
 } from "./session-store";
 
-const SUGGESTIONS = ["这个博客是怎么做的？", "介绍一下自己"];
-const FOLLOW_UP_SUGGESTIONS = ["说说最近的文章", "有什么推荐的项目？"];
+const SUGGESTIONS = [
+	i18n(I18nKey.aiSuggestionBlog),
+	i18n(I18nKey.aiSuggestionIntro),
+];
+const FOLLOW_UP_SUGGESTIONS = [
+	i18n(I18nKey.aiFollowUpPosts),
+	i18n(I18nKey.aiFollowUpProjects),
+];
 
 let isOpen = $state(false);
 let inputVal = $state("");
@@ -109,10 +118,21 @@ function switchSession(id: string) {
 
 function formatTime(ts: number): string {
 	const diff = Date.now() - ts;
-	if (diff < 60000) return "刚刚";
-	if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
-	if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
-	return `${Math.floor(diff / 86400000)} 天前`;
+	if (diff < 60000) return i18n(I18nKey.aiJustNow);
+	if (diff < 3600000)
+		return i18n(I18nKey.aiMinutesAgo).replace(
+			"{n}",
+			`${Math.floor(diff / 60000)}`,
+		);
+	if (diff < 86400000)
+		return i18n(I18nKey.aiHoursAgo).replace(
+			"{n}",
+			`${Math.floor(diff / 3600000)}`,
+		);
+	return i18n(I18nKey.aiDaysAgo).replace(
+		"{n}",
+		`${Math.floor(diff / 86400000)}`,
+	);
 }
 
 export function toggle() {
@@ -154,7 +174,10 @@ async function send(text?: string) {
 			...messages,
 			{
 				role: "assistant",
-				content: `输入太长了喵，最多支持 ${MAX_INPUT_LEN} 个字符~`,
+				content: i18n(I18nKey.aiInputTooLong).replace(
+					"{max}",
+					`${MAX_INPUT_LEN}`,
+				),
 			},
 		];
 		scrollToBottom();
@@ -217,7 +240,7 @@ async function send(text?: string) {
 					pendingRefs = event.articles;
 					scheduleStreamUpdate();
 				} else if (event.type === "error") {
-					pendingText += `\n\n> 错误：${event.error}`;
+					pendingText += `\n\n> ${i18n(I18nKey.aiStreamErrorPrefix).replace("{error}", event.error)}`;
 					flushStreamUpdate();
 				} else {
 					flushStreamUpdate();
@@ -229,7 +252,7 @@ async function send(text?: string) {
 		const e = err instanceof Error ? err : new Error(String(err));
 		if (e.name === "AbortError") {
 			flushStreamUpdate();
-			messages[aiIdx].content += "\n\n> *(已取消)*";
+			messages[aiIdx].content += `\n\n> *${i18n(I18nKey.aiCancelled)}*`;
 		} else {
 			if (flushTimer) clearTimeout(flushTimer);
 			flushTimer = null;
@@ -237,9 +260,9 @@ async function send(text?: string) {
 			pendingRefs = null;
 			console.error("AI chat error:", e);
 			if (e instanceof AiSearchClientError && e.code === "RATE_LIMITED") {
-				messages[aiIdx].content = "请求太频繁了喵，请稍后再试~";
+				messages[aiIdx].content = i18n(I18nKey.aiRateLimited);
 			} else {
-				messages[aiIdx].content = "抱歉，请求出错了，请稍后再试喵~";
+				messages[aiIdx].content = i18n(I18nKey.aiRequestError);
 			}
 		}
 		messages = [...messages];
@@ -299,13 +322,13 @@ onMount(() => {
 		<div class="ai-panel">
 			<!-- 标题栏 -->
 			<div class="ai-header">
-				<div class="ai-header__left">
-					<img
-						src="/assets/images/aut.webp"
-						alt="喵墩"
+					<div class="ai-header__left">
+						<img
+							src={siteConfig.defaultOgImage}
+						alt={i18n(I18nKey.aiAssistantName)}
 						class="ai-header__avatar"
 					/>
-					<span class="ai-header__name">喵墩</span>
+					<span class="ai-header__name">{i18n(I18nKey.aiAssistantName)}</span>
 					<span class="ai-header__model">{aiSearchPublicConfig.modelName}</span>
 				</div>
 				<div class="ai-header__actions">
@@ -314,20 +337,20 @@ onMount(() => {
 							class="ai-icon-btn"
 							class:ai-icon-btn--active={showSessionList}
 							onclick={() => (showSessionList = !showSessionList)}
-							title="历史会话"
+							title={i18n(I18nKey.aiHistory)}
 						>
 							<Icon icon="material-symbols:history" />
 						</button>
 					{/if}
 					{#if sessionList.length > 0 || messages.length > 0}
-						<button class="ai-icon-btn" onclick={clearAllSessions} title="清空全部会话">
+						<button class="ai-icon-btn" onclick={clearAllSessions} title={i18n(I18nKey.aiClearAllSessions)}>
 							<Icon icon="material-symbols:delete-sweep-outline" />
 						</button>
 					{/if}
-					<button class="ai-icon-btn" onclick={startNewSession} title="新建会话">
+					<button class="ai-icon-btn" onclick={startNewSession} title={i18n(I18nKey.aiNewSession)}>
 						<Icon icon="material-symbols:add-circle-outline" />
 					</button>
-					<button class="ai-icon-btn" onclick={close} title="关闭">
+					<button class="ai-icon-btn" onclick={close} title={i18n(I18nKey.close)}>
 						<Icon icon="material-symbols:close" />
 					</button>
 				</div>
@@ -349,14 +372,14 @@ onMount(() => {
 							<span
 								class="ai-session-delete"
 								onclick={(e) => { e.stopPropagation(); deleteSession(sess.id); }}
-								title="删除会话"
+								title={i18n(I18nKey.aiDeleteSession)}
 							>
 								<Icon icon="material-symbols:close" size="sm" />
 							</span>
 						</button>
 					{/each}
 					{#if sessionList.length === 0}
-						<div class="ai-session-empty">暂无历史会话</div>
+						<div class="ai-session-empty">{i18n(I18nKey.aiNoHistory)}</div>
 					{/if}
 				</div>
 			{/if}
@@ -367,12 +390,12 @@ onMount(() => {
 					<div class="ai-empty">
 						<div class="ai-empty__icon-wrapper">
 							<img
-								src="/assets/images/aut.webp"
-								alt="喵墩"
+								src={siteConfig.defaultOgImage}
+								alt={i18n(I18nKey.aiAssistantName)}
 								class="ai-empty__avatar"
 							/>
 						</div>
-						<h2 class="ai-empty__title">有什么想问的？</h2>
+						<h2 class="ai-empty__title">{i18n(I18nKey.aiEmptyTitle)}</h2>
 						<div class="ai-empty__suggestions-box">
 							{#each SUGGESTIONS as suggestion}
 								<button class="ai-empty__suggestion" onclick={() => send(suggestion)}>
@@ -390,7 +413,7 @@ onMount(() => {
 					>
 						{#if msg.role === "assistant"}
 							<div class="ai-msg__avatar">
-								<img src="/assets/images/aut.webp" alt="喵墩" class="ai-msg__avatar-img" />
+								<img src={siteConfig.defaultOgImage} alt={i18n(I18nKey.aiAssistantName)} class="ai-msg__avatar-img" />
 							</div>
 						{/if}
 						<div class="ai-msg__body">
@@ -418,7 +441,7 @@ onMount(() => {
 								{/if}
 								{#if msg.role === "assistant" && msg.refs && msg.refs.length > 0}
 									<div class="ai-refs">
-										<div class="ai-refs__title">参考文章</div>
+										<div class="ai-refs__title">{i18n(I18nKey.aiRefsTitle)}</div>
 										{#each msg.refs as ref}
 											<a href={isSafeUrl(ref.path) ? ref.path : '#'} class="ai-refs__link" onclick={() => (isOpen = false)}>
 												<Icon icon="material-symbols:article-outline" size="sm" />
@@ -444,7 +467,7 @@ onMount(() => {
 						class="ai-input-area__resize-handle"
 						onmousedown={startResize}
 						ontouchstart={startResize}
-						title="拖拽调整高度"
+						title={i18n(I18nKey.aiResizeTitle)}
 					>
 						<span class="ai-input-area__resize-grip"></span>
 					</div>
@@ -462,26 +485,26 @@ onMount(() => {
 							{/each}
 						</div>
 					{/if}
-					<label class="ai-input-area__label" for="ai-chat-input">Ask</label>
+					<label class="ai-input-area__label" for="ai-chat-input">{i18n(I18nKey.aiAskLabel)}</label>
 					<div class="ai-input-area__textarea-wrapper">
 						<textarea
 							id="ai-chat-input"
 							bind:this={inputEl}
 							bind:value={inputVal}
 							onkeydown={handleKeydown}
-							placeholder="输入你的问题..."
+							placeholder={i18n(I18nKey.aiInputPlaceholder)}
 							disabled={isLoading}
 							class="ai-input-area__textarea"
 							rows="5"
-							aria-label="AI 搜索问题"
+							aria-label={i18n(I18nKey.aiInputAria)}
 						></textarea>
 						{#if isLoading}
 							<button
 								type="button"
 								class="ai-input-area__submit ai-input-area__submit--stop"
 								onclick={stop}
-								title="停止生成"
-								aria-label="停止生成"
+								title={i18n(I18nKey.aiStopGeneration)}
+								aria-label={i18n(I18nKey.aiStopGeneration)}
 							>
 								<Icon icon="material-symbols:stop-circle-outline" size="lg" />
 							</button>
@@ -491,15 +514,15 @@ onMount(() => {
 								class="ai-input-area__submit"
 								onclick={() => send()}
 								disabled={!inputVal.trim()}
-								title="发送"
-								aria-label="发送"
+								title={i18n(I18nKey.send)}
+								aria-label={i18n(I18nKey.send)}
 							>
 								<Icon icon="material-symbols:arrow-outward-rounded" size="lg" />
 							</button>
 						{/if}
 					</div>
 					<p class="ai-input-area__privacy">
-						问题和最近 6 条对话会发送至 ModelScope 或 Cloudflare Workers AI；请勿提交密码、Token 或个人敏感信息。本机会话保存 7 天。
+						{i18n(I18nKey.aiPrivacyNotice)}
 					</p>
 				</div>
 			</div>

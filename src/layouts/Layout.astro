@@ -22,6 +22,8 @@ import {
 } from "@/config";
 import { PAGE_WIDTH } from "@/constants/constants";
 import { defaultFavicons } from "@/constants/icon";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import type { Favicon } from "@/types/config";
 import { url } from "@/utils/url-utils";
 
@@ -94,7 +96,7 @@ const siteLang = lang.replace("_", "-");
       <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
     )}
     {siteConfig.font.enable && siteConfig.font.selected?.includes("aazongyiyuan") && (
-      <link rel="preload" href="/fonts/AaZongYiYuan/AaZongYiYuan-2.woff2" as="font" type="font/woff2" crossorigin />
+      <link rel="preload" href={siteConfig.font.fonts.aazongyiyuan.src} as="font" type="font/woff2" crossorigin />
     )}
     {siteConfig.analytics?.microsoftClarityId && (
       <link rel="preconnect" href="https://www.clarity.ms" crossorigin />
@@ -177,7 +179,7 @@ const siteLang = lang.replace("_", "-");
     {/* 文章页 Twitter 卡片附加作者与阅读时间标签 */}
     {setOGTypeArticle && (
       <>
-        <meta name="twitter:label1" content="作者" />
+        <meta name="twitter:label1" content={i18n(I18nKey.author)} />
         <meta name="twitter:data1" content={articleMeta?.author || homeConfig.name} />
       </>
     )}
@@ -274,18 +276,20 @@ const siteLang = lang.replace("_", "-");
 
 <script>
   import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
+  import I18nKey from "@/i18n/i18nKey";
+  import { i18n } from "@/i18n/translation";
   import {
     requestSearchModalToggle,
     SEARCH_MODAL_TOGGLE_EVENT,
   } from "@/utils/search-modal-controller";
 
   const SEARCH_PLACEHOLDERS = [
-    "搜索文章、标签、分类...",
-    "输入关键词开始搜索",
-    "试试搜索「Astro」或「Svelte」",
-    "按 ESC 关闭搜索面板",
+    i18n(I18nKey.searchPlaceholder1),
+    i18n(I18nKey.searchPlaceholder2),
+    i18n(I18nKey.searchPlaceholder3),
+    i18n(I18nKey.searchPlaceholder4),
     ...(aiSearchPublicConfig.enabled
-      ? ["Ctrl+K 快速切换AI搜索/普通搜索"]
+      ? [i18n(I18nKey.searchPlaceholder5)]
       : []),
   ];
 

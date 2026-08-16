@@ -1,3 +1,5 @@
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import type {
 	AiSearchChatMessage,
 	AiSearchErrorBody,
@@ -62,13 +64,21 @@ export async function streamAiSearch({
 			body = null;
 		}
 		throw new AiSearchClientError(
-			body?.error ?? `请求失败 (${response.status})`,
+			body?.error ??
+				i18n(I18nKey.aiRequestFailedStatus).replace(
+					"{status}",
+					`${response.status}`,
+				),
 			response.status,
 			body?.code ?? null,
 		);
 	}
 	if (!response.body) {
-		throw new AiSearchClientError("无法读取响应流", response.status, null);
+		throw new AiSearchClientError(
+			i18n(I18nKey.aiStreamUnreadable),
+			response.status,
+			null,
+		);
 	}
 
 	for await (const event of parseAiSearchEventStream(response.body)) {

@@ -117,10 +117,8 @@ if (posterAvatarUrl) {
 dayjs.extend(utc);
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
-const defaultStructuredImageUrl = new URL(
-	siteConfig.defaultOgImage || "/assets/images/aut.webp",
-	Astro.site,
-).href;
+const defaultStructuredImageUrl = new URL(siteConfig.defaultOgImage, Astro.site)
+	.href;
 const structuredImageUrl = posterCoverUrl
 	? new URL(posterCoverUrl, Astro.site).href
 	: defaultStructuredImageUrl;
@@ -132,7 +130,7 @@ const jsonLd = {
 	headline: entry.data.title,
 	description: entry.data.description || entry.data.title,
 	keywords: entry.data.tags,
-	articleSection: entry.data.category || "未分类",
+	articleSection: entry.data.category || i18n(I18nKey.uncategorized),
 	wordCount: remarkPluginFrontmatter.words,
 	image: structuredImageUrl,
 	author: { "@id": `${Astro.site}#person` },
@@ -176,7 +174,7 @@ const breadcrumbJsonLd = {
 		{
 			"@type": "ListItem",
 			position: 2,
-			name: entry.data.category || "文章",
+			name: entry.data.category || i18n(I18nKey.navPosts),
 			item: new URL(
 				`/archive/?category=${encodeURIComponent(entry.data.category || "")}`,
 				Astro.site,
@@ -321,7 +319,7 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
             <>
               {siteConfig.showLastModified && <div class="post-intro-card__divider" />}
               <div class="post-intro-card__section">
-                <div class="post-intro-card__label">简介</div>
+                <div class="post-intro-card__label">{i18n(I18nKey.postIntroLabel)}</div>
                 <p class="post-intro-card__desc">{entry.data.description}</p>
               </div>
             </>
@@ -336,7 +334,7 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
     <div class="post-cover mb-2">
       <img
         src={posterCoverUrl}
-        alt={`${entry.data.title} - 封面图`}
+        alt={`${entry.data.title} - ${i18n(I18nKey.coverImageAltSuffix)}`}
         loading="eager"
         fetchpriority="high"
       />

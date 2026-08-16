@@ -1,6 +1,8 @@
 <script lang="ts">
 import { ExternalLink, Send } from "lucide-svelte";
 import { onMount, tick } from "svelte";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import type { FriendLink } from "@/types/config";
 import {
 	buildFriendLayout,
@@ -13,7 +15,11 @@ interface Props {
 	applyEnabled?: boolean;
 }
 
-let { items, allLabel = "全部", applyEnabled = false }: Props = $props();
+let {
+	items,
+	allLabel = i18n(I18nKey.all),
+	applyEnabled = false,
+}: Props = $props();
 
 let activeTag = $state("all");
 let tabsPill = $state<HTMLElement | null>(null);
@@ -135,9 +141,9 @@ function placementStyle(placement: FriendTilePlacement): string {
 }
 </script>
 
-<section class="friend-links" aria-label="友链列表">
+<section class="friend-links" aria-label={i18n(I18nKey.friendListAria)}>
 	<header class="friend-toolbar">
-		<nav class="friend-tabs" aria-label="友链类型筛选">
+		<nav class="friend-tabs" aria-label={i18n(I18nKey.friendFilterAria)}>
 			<div class="friend-tabs-pill" bind:this={tabsPill}>
 				<span class="friend-tab-indicator" aria-hidden="true" style={indicatorStyle}></span>
 				<button
@@ -168,7 +174,7 @@ function placementStyle(placement: FriendTilePlacement): string {
 		{#if applyEnabled}
 			<button type="button" class="friend-apply" data-open-friend-rules>
 				<Send size={16} strokeWidth={2} aria-hidden="true" />
-				<span>申请友链</span>
+				<span>{i18n(I18nKey.applyFriendLink)}</span>
 			</button>
 		{/if}
 	</header>
@@ -188,7 +194,7 @@ function placementStyle(placement: FriendTilePlacement): string {
 					<span class="friend-avatar">
 						<img
 							src={placement.friend.imgurl}
-							alt={`${placement.friend.title}头像`}
+							alt={`${placement.friend.title}${i18n(I18nKey.avatarSuffix)}`}
 							loading="lazy"
 							decoding="async"
 							onerror={handleAvatarError}
@@ -215,9 +221,9 @@ function placementStyle(placement: FriendTilePlacement): string {
 					<span class="friend-card-footer">
 						<span
 							class="friend-card-type"
-							title={placement.friend.tags?.join("、") || "未分类"}
+							title={placement.friend.tags?.join("、") || i18n(I18nKey.uncategorized)}
 						>
-							{placement.friend.tags?.join("、") || "未分类"}
+							{placement.friend.tags?.join("、") || i18n(I18nKey.uncategorized)}
 						</span>
 						<span class="friend-card-separator" aria-hidden="true">/</span>
 						<span class="friend-card-url" title={placement.friend.siteurl}>
@@ -230,8 +236,8 @@ function placementStyle(placement: FriendTilePlacement): string {
 
 		{#if filteredItems.length === 0}
 			<div class="friend-empty" role="status">
-				<strong>当前分类没有友链</strong>
-				<span>请选择其他博客类型查看</span>
+				<strong>{i18n(I18nKey.friendEmptyTitle)}</strong>
+				<span>{i18n(I18nKey.friendEmptyHint)}</span>
 			</div>
 		{/if}
 	</div>

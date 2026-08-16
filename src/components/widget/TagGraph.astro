@@ -1,4 +1,6 @@
 ---
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import type { TagGraphData } from "@/utils/tag-graph-data";
 
 interface Props {
@@ -6,9 +8,13 @@ interface Props {
 }
 
 const { graph } = Astro.props;
-const accessibleLabel = `标签关系图谱，共 ${graph.nodes.length} 个标签、${graph.links.length} 条关联。使用方向键选择标签，回车打开。`;
+const accessibleLabel = i18n(I18nKey.tagGraphAccessible)
+	.replace("{tags}", String(graph.nodes.length))
+	.replace("{links}", String(graph.links.length));
 const initialStatus =
-	graph.nodes.length === 0 ? "暂无标签关系" : "正在准备图谱…";
+	graph.nodes.length === 0
+		? i18n(I18nKey.tagGraphEmpty)
+		: i18n(I18nKey.tagGraphPreparing);
 ---
 
 <div
@@ -18,9 +24,9 @@ const initialStatus =
 >
   <div class="tag-graph__header">
     <p class="tag-graph__description">
-      本关系图谱基于
+      {i18n(I18nKey.tagGraphCreditPrefix)}
       <a href="https://d3js.org/" target="_blank" rel="noopener noreferrer">D3.js</a>
-      进行绘制。
+      {i18n(I18nKey.tagGraphCreditSuffix)}
     </p>
   </div>
 
@@ -61,6 +67,8 @@ const initialStatus =
 
 <script>
   import type { TagGraphController } from "@/utils/tag-graph-controller";
+  import I18nKey from "@/i18n/i18nKey";
+  import { i18n } from "@/i18n/translation";
 
   let activeController: TagGraphController | null = null;
   let loadingObserver: IntersectionObserver | null = null;
@@ -87,7 +95,7 @@ const initialStatus =
       if (version !== loadVersion || !root.isConnected) return;
       surface.dataset.state = "error";
       const status = surface.querySelector<HTMLElement>("[data-tag-graph-status]");
-      if (status) status.textContent = "关系图谱加载失败";
+      if (status) status.textContent = i18n(I18nKey.tagGraphFailed);
       console.error("Failed to load the tag graph", error);
     }
   }

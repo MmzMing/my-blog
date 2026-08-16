@@ -1,5 +1,3 @@
-export const HERO_MOBILE_BREAKPOINT = 768;
-
 export type HeroTileLayout = {
 	index: number;
 	row: number;
@@ -92,9 +90,4 @@ export function getHeroPinEndDistance(
 		: 0;
 	const viewport = Number.isFinite(viewportHeight) ? viewportHeight : 0;
 	return Math.max(0, configured, Math.round(viewport * minimumViewports));
-}
-
-export function clampHeroProgress(progress: number) {
-	if (!Number.isFinite(progress)) return 0;
-	return Math.min(1, Math.max(0, progress));
 }

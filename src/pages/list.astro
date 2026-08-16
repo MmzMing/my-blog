@@ -9,9 +9,8 @@ import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import { getSortedPosts } from "@/utils/content-utils";
 import { getCategoryUrl, getPostUrlBySlug, getTagUrl } from "@/utils/url-utils";
 
-const title = "文章列表";
-const description =
-	"按主题、分类、标签、发布时间和访问热度浏览博客的全部文章。";
+const title = i18n(I18nKey.postList);
+const description = i18n(I18nKey.listDescription);
 const posts = await getSortedPosts();
 
 const dateFormatter = new Intl.DateTimeFormat(
@@ -49,7 +48,7 @@ const articleListPosts = await Promise.all(
 			description:
 				entry.data.description ||
 				remarkPluginFrontmatter.excerpt ||
-				"暂无文章简介，点击查看完整内容。",
+				i18n(I18nKey.noDescriptionFallback),
 			pinned: !!entry.data.pinned,
 			password: !!entry.data.password,
 		};

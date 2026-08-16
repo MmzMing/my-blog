@@ -50,7 +50,7 @@ const showSponsorsList = sponsorConfig.showSponsorsList !== false;
           </div>
 
           <!-- 第二层：选择支付方式 -->
-          <p class="sponsor-qr-card__subtitle">选择你喜欢的支付方式</p>
+          <p class="sponsor-qr-card__subtitle">{i18n(I18nKey.sponsorChooseMethod)}</p>
 
           <!-- 第三层：Tabs 导航 -->
           <div class="sponsor-qr-card__tabs-wrapper">
@@ -99,7 +99,7 @@ const showSponsorsList = sponsorConfig.showSponsorsList !== false;
                 ) : (
                   <div class="sponsor-qr-card__empty">
                     <Icon name="material-symbols:qr-code-scanner" class="text-[3rem] mb-2 opacity-40" />
-                    <span class="sponsor-qr-card__empty-text">暂不开通</span>
+                    <span class="sponsor-qr-card__empty-text">{i18n(I18nKey.sponsorNotAvailable)}</span>
                   </div>
                 )}
               </div>
@@ -118,7 +118,7 @@ const showSponsorsList = sponsorConfig.showSponsorsList !== false;
         <div class="flex items-center justify-between mb-6">
           <div class="flex items-center gap-3">
             <h2 class="text-xl font-bold text-neutral-900 dark:text-neutral-100">
-              赞助名单
+              {i18n(I18nKey.sponsorList)}
             </h2>
           </div>
         </div>

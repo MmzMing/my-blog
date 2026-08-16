@@ -8,6 +8,7 @@ import {
 	prepareWithSegments,
 } from "@chenglou/pretext";
 import { onDestroy, onMount } from "svelte";
+import { homeConfig } from "@/config";
 import {
 	hitTestLink,
 	type LinkHitArea,
@@ -484,7 +485,7 @@ onMount(() => {
 	ballImg.onload = () => {
 		imgLoaded = true;
 	};
-	ballImg.src = "/assets/images/about.avif";
+	ballImg.src = homeConfig.aboutCanvasTexture;
 
 	// IntersectionObserver：离开视口时暂停渲染循环
 	if (container) {

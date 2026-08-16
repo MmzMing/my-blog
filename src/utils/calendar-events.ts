@@ -203,31 +203,6 @@ export function bucketize(events: CalendarEvent[]): EventBucket {
 	return bucket;
 }
 
-// 取从 today 开始未来 N 天（含 today）有事件的列表，按日期升序，截取前 maxItems
-export function getUpcomingEvents(
-	bucket: EventBucket,
-	today: Date,
-	days: number,
-	maxItems: number,
-): CalendarEvent[] {
-	const out: CalendarEvent[] = [];
-	const todayKey = formatYmd(today);
-	const horizon = new Date(today);
-	horizon.setDate(horizon.getDate() + days);
-	const horizonKey = formatYmd(horizon);
-
-	const keys = Object.keys(bucket)
-		.filter((k) => k >= todayKey && k <= horizonKey)
-		.sort();
-	for (const k of keys) {
-		for (const e of bucket[k]) {
-			out.push(e);
-			if (out.length >= maxItems) return out;
-		}
-	}
-	return out;
-}
-
 // 按类型取最近的事件（含今天及未来，不限天数），每种类型最多 maxPerType 条
 export function getNearestByType(
 	bucket: EventBucket,

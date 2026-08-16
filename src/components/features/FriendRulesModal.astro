@@ -1,6 +1,8 @@
 ---
 import Icon from "@components/common/Icon.astro";
 import { friendsPageConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 
 interface Props {
 	applyLink?: string;
@@ -18,8 +20,8 @@ const notes = friendsPageConfig.notes;
   <div class="fr-panel">
     <!-- 头部 -->
     <div class="fr-header">
-      <h2 class="fr-title">友链申请指南</h2>
-      <button class="fr-close" data-close-modal aria-label="关闭">
+      <h2 class="fr-title">{i18n(I18nKey.friendRulesTitle)}</h2>
+      <button class="fr-close" data-close-modal aria-label={i18n(I18nKey.close)}>
         <Icon name="material-symbols:close-rounded" class="text-xl" />
       </button>
     </div>
@@ -33,14 +35,14 @@ const notes = friendsPageConfig.notes;
             <div class="fr-section-icon">
               <Icon name="material-symbols:info-outline-rounded" />
             </div>
-            <h3>本站信息</h3>
+            <h3>{i18n(I18nKey.friendSiteInfo)}</h3>
           </div>
           <div class="fr-info-grid">
             {[
-              { label: "站点名称", value: site.name },
-              { label: "站点描述", value: site.desc },
-              { label: "站点链接", value: site.url },
-              { label: "头像链接", value: site.avatar },
+              { label: i18n(I18nKey.siteNameLabel), value: site.name },
+              { label: i18n(I18nKey.siteDescLabel), value: site.desc },
+              { label: i18n(I18nKey.siteUrlLabel), value: site.url },
+              { label: i18n(I18nKey.siteAvatarLabel), value: site.avatar },
             ].map((item) => (
               <div class="fr-info-row">
                 <div class="fr-info-text">
@@ -49,8 +51,8 @@ const notes = friendsPageConfig.notes;
                 </div>
                 <button
                   class="fr-copy-btn"
-                  onclick={`navigator.clipboard.writeText('${item.value.replace(/'/g, "\\'")}');this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),1500)`}
-                  aria-label={`复制${item.label}`}
+                  data-copy-text={item.value}
+                  aria-label={`${i18n(I18nKey.copyPrefix)}${item.label}`}
                 >
                   <Icon name="material-symbols:content-copy-outline-rounded" class="fr-copy-icon" />
                   <Icon name="material-symbols:check-rounded" class="fr-check-icon" />
@@ -67,41 +69,41 @@ const notes = friendsPageConfig.notes;
           <div class="fr-section-icon">
             <Icon name="material-symbols:list-alt-outline-rounded" />
           </div>
-          <h3>申请流程</h3>
+          <h3>{i18n(I18nKey.applyProcess)}</h3>
         </div>
         <div class="fr-steps">
           <div class="fr-step">
             <div class="fr-step-num">1</div>
             <div class="fr-step-line"></div>
             <div class="fr-step-content">
-              <p class="fr-step-title">添加本站友链</p>
-              <p class="fr-step-desc">请先在您的网站友链页面添加本站信息，可直接复制上方各字段</p>
+              <p class="fr-step-title">{i18n(I18nKey.applyStep1Title)}</p>
+              <p class="fr-step-desc">{i18n(I18nKey.applyStep1Desc)}</p>
             </div>
           </div>
           <div class="fr-step">
             <div class="fr-step-num">2</div>
             <div class="fr-step-line"></div>
             <div class="fr-step-content">
-              <p class="fr-step-title">在下方评论区提交申请</p>
-              <p class="fr-step-desc">将下方模板内容复制修改后，前往本页评论区发送</p>
+              <p class="fr-step-title">{i18n(I18nKey.applyStep2Title)}</p>
+              <p class="fr-step-desc">{i18n(I18nKey.applyStep2Desc)}</p>
               <div class="fr-template">
                 <button
                   class="fr-copy-btn fr-template-copy"
-                  onclick={`navigator.clipboard.writeText('站点名称：您的站点名称\\n站点描述：您的站点描述\\n站点链接：您的站点链接\\n头像链接：您的站点头像');this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),1500)`}
-                  aria-label="复制模板"
+                  data-copy-text={i18n(I18nKey.friendApplyTemplate)}
+                  aria-label={i18n(I18nKey.copyTemplate)}
                 >
                   <Icon name="material-symbols:content-copy-outline-rounded" class="fr-copy-icon" />
                   <Icon name="material-symbols:check-rounded" class="fr-check-icon" />
                 </button>
-                <pre class="fr-template-text">{`站点名称：您的站点名称\n站点描述：您的站点描述\n站点链接：您的站点链接\n头像链接：您的站点头像`}</pre>
+                <pre class="fr-template-text">{i18n(I18nKey.friendApplyTemplate)}</pre>
               </div>
             </div>
           </div>
           <div class="fr-step">
             <div class="fr-step-num">3</div>
             <div class="fr-step-content">
-              <p class="fr-step-title">等待审核</p>
-              <p class="fr-step-desc">确认信息无误后会尽快添加您的友链</p>
+              <p class="fr-step-title">{i18n(I18nKey.applyStep3Title)}</p>
+              <p class="fr-step-desc">{i18n(I18nKey.applyStep3Desc)}</p>
             </div>
           </div>
         </div>
@@ -114,7 +116,7 @@ const notes = friendsPageConfig.notes;
             <div class="fr-section-icon">
               <Icon name="material-symbols:info-outline-rounded" />
             </div>
-            <h3>注意事项</h3>
+            <h3>{i18n(I18nKey.friendNotesTitle)}</h3>
           </div>
           <div class="fr-notes">
             {notes.map((item) => (
@@ -138,13 +140,13 @@ const notes = friendsPageConfig.notes;
           class="fr-btn fr-btn-primary"
         >
           <Icon name="material-symbols:edit-square-outline" class="text-base" />
-          自助申请友链（推荐）
+          {i18n(I18nKey.friendSelfApply)}
         </a>
       )}
       {commentEnabled && (
         <button class="fr-btn fr-btn-secondary" data-scroll-to-friend-comments>
           <Icon name="mingcute:comment-line" class="text-base" />
-          前往评论区
+          {i18n(I18nKey.goToComments)}
         </button>
       )}
     </div>
@@ -173,6 +175,14 @@ const notes = friendsPageConfig.notes;
       el.addEventListener('click', () => {
         modal.close();
         document.body.style.overflow = '';
+      });
+    });
+
+    modal.querySelectorAll('[data-copy-text]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        void navigator.clipboard.writeText(btn.getAttribute('data-copy-text') ?? '');
+        btn.classList.add('copied');
+        setTimeout(() => btn.classList.remove('copied'), 1500);
       });
     });
 

@@ -3,12 +3,14 @@ import CategoryFolders from "@components/widget/CategoryFolders.astro";
 import TagGraph from "@components/widget/TagGraph.astro";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import PageTitle from "@/components/common/PageTitle.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import { getCategoryTagGroups, getTagGraphData } from "@/utils/content-utils";
 
 const categoryGroups = await getCategoryTagGroups();
 const tagGraph = await getTagGraphData();
-const title = "标签图谱";
-const description = "通过分类和标签关系图谱浏览博客中文章关系。";
+const title = i18n(I18nKey.tagGraphPageTitle);
+const description = i18n(I18nKey.tagGraphPageDescription);
 ---
 
 <MainGridLayout title={title} description={description} hasOwnH1={true}>
@@ -24,7 +26,7 @@ const description = "通过分类和标签关系图谱浏览博客中文章关�
       <TagGraph graph={tagGraph} />
     </section>
 
-    <section class="categories-page__folders" aria-label="分类文件夹">
+    <section class="categories-page__folders" aria-label={i18n(I18nKey.categoryFoldersAria)}>
       <CategoryFolders groups={categoryGroups} />
     </section>
   </div>

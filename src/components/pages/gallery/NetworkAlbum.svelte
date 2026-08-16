@@ -22,11 +22,13 @@ const categories = [
 ];
 
 const networkAlbumConfig = galleryConfig.networkAlbum ?? {
+	apiUrl: "",
 	maxQuantity: 10,
 	defaultQuantity: 6,
 };
 const maxQuantity = networkAlbumConfig.maxQuantity ?? 10;
 const defaultQuantity = networkAlbumConfig.defaultQuantity ?? 6;
+const apiUrl = networkAlbumConfig.apiUrl;
 
 let selectedCategory = $state("pc");
 let quantity = $state(defaultQuantity);
@@ -40,8 +42,13 @@ async function fetchImages() {
 	fetching = true;
 	error = false;
 	const limitedQuantity = Math.min(Math.max(quantity, 1), maxQuantity);
+	if (!apiUrl) {
+		fetching = false;
+		error = true;
+		return;
+	}
 	try {
-		const url = `https://t.alcy.cc/json?${selectedCategory}${limitedQuantity > 1 ? `=${limitedQuantity}` : ""}`;
+		const url = `${apiUrl}/json?${selectedCategory}${limitedQuantity > 1 ? `=${limitedQuantity}` : ""}`;
 		const response = await fetch(url);
 		if (!response.ok) throw new Error("Fetch failed");
 		const data = await response.json();

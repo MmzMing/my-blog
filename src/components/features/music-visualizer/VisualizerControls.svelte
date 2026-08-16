@@ -1,6 +1,8 @@
 <script lang="ts">
 import Icon from "@components/common/Icon.svelte";
 import { onDestroy, onMount } from "svelte";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 
 interface Track {
 	name: string;
@@ -41,7 +43,11 @@ declare global {
 	}
 }
 
-const MODE_LABELS = ["列表循环", "单曲循环", "随机播放"];
+const MODE_LABELS = [
+	i18n(I18nKey.playModeList),
+	i18n(I18nKey.playModeSingle),
+	i18n(I18nKey.playModeShuffle),
+];
 
 let currentTrack: Track | null = $state(null);
 let playlist: Track[] = $state([]);
@@ -318,16 +324,16 @@ onDestroy(() => {
 </script>
 
 <div class="music-visualizer__side-panel" data-panel-mode={rightPanelMode}>
-	<div class="music-visualizer__divider-meta" aria-label="当前曲目">
+	<div class="music-visualizer__divider-meta" aria-label={i18n(I18nKey.currentTrack)}>
 		<span class="music-visualizer__divider-title">
-			{currentTrack?.name || "未播放"}
+			{currentTrack?.name || i18n(I18nKey.musicNoPlaying)}
 		</span>
 		<span class="music-visualizer__divider-artist">
 			{currentTrack?.artist || "—"}
 		</span>
 	</div>
 	{#if rightPanelMode === "tools"}
-		<section class="music-visualizer__card" aria-label="音乐播放器">
+		<section class="music-visualizer__card" aria-label={i18n(I18nKey.musicPlayerLabel)}>
 			<!-- 层 1 · 胶片旋转动效（点击跳转歌单） -->
 			<button
 				type="button"
@@ -335,8 +341,8 @@ onDestroy(() => {
 				class:music-visualizer__record--playing={isPlaying}
 				class:music-visualizer__record--loading={!initialized}
 				onclick={openPlaylist}
-				title="查看歌单"
-				aria-label="查看歌单"
+				title={i18n(I18nKey.viewPlaylist)}
+				aria-label={i18n(I18nKey.viewPlaylist)}
 				aria-controls="music-visualizer-playlist-panel"
 			>
 				<span class="music-visualizer__record-disc-shell" aria-hidden="true">
@@ -370,14 +376,14 @@ onDestroy(() => {
 				</span>
 				<span class="music-visualizer__record-overlay" aria-hidden="true">
 					<Icon icon="material-symbols:queue-music-rounded" size="2xl" />
-					<span class="music-visualizer__record-overlay-text">歌单</span>
+					<span class="music-visualizer__record-overlay-text">{i18n(I18nKey.musicPlaylist)}</span>
 				</span>
 			</button>
 
 			<!-- 移动端保留：曲目标题（桌面隐藏） -->
 			<div class="music-visualizer__mobile-track">
 				<span class="music-visualizer__record-title">
-					{currentTrack?.name || "未播放"}
+					{currentTrack?.name || i18n(I18nKey.musicNoPlaying)}
 				</span>
 			</div>
 
@@ -399,7 +405,7 @@ onDestroy(() => {
 					onmouseleave={() => (progressTrackHover = false)}
 					role="slider"
 					tabindex="0"
-					aria-label="进度"
+					aria-label={i18n(I18nKey.musicProgress)}
 					aria-valuemin="0"
 					aria-valuemax="100"
 					aria-valuenow={Math.round(progress)}
@@ -417,7 +423,7 @@ onDestroy(() => {
 			</div>
 
 			<!-- 层 3 · 工具栏（桌面） -->
-			<div class="music-visualizer__toolbar" aria-label="播放控制">
+			<div class="music-visualizer__toolbar" aria-label={i18n(I18nKey.playbackControls)}>
 				<div class="music-visualizer__tool-wrap" role="group">
 					<span
 						class="music-visualizer__tool-hint"
@@ -448,8 +454,8 @@ onDestroy(() => {
 					type="button"
 					class="music-visualizer__tool-btn"
 					onclick={playPrev}
-					title="上一首"
-					aria-label="上一首"
+					title={i18n(I18nKey.musicPrev)}
+					aria-label={i18n(I18nKey.musicPrev)}
 				>
 					<Icon icon="material-symbols:skip-previous-rounded" size="xl" />
 				</button>
@@ -458,8 +464,8 @@ onDestroy(() => {
 					type="button"
 					class="music-visualizer__tool-btn music-visualizer__tool-btn--play"
 					onclick={togglePlay}
-					title={isPlaying ? "暂停" : "播放"}
-					aria-label={isPlaying ? "暂停" : "播放"}
+					title={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
+					aria-label={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
 				>
 					{#if isPlaying}
 						<Icon icon="material-symbols:pause-rounded" size="2xl" />
@@ -472,8 +478,8 @@ onDestroy(() => {
 					type="button"
 					class="music-visualizer__tool-btn"
 					onclick={playNext}
-					title="下一首"
-					aria-label="下一首"
+					title={i18n(I18nKey.musicNext)}
+					aria-label={i18n(I18nKey.musicNext)}
 				>
 					<Icon icon="material-symbols:skip-next-rounded" size="xl" />
 				</button>
@@ -496,7 +502,7 @@ onDestroy(() => {
 							onpointercancel={onVolumeVPointerUp}
 							role="slider"
 							tabindex="0"
-							aria-label="音量"
+							aria-label={i18n(I18nKey.musicVolume)}
 							aria-valuemin="0"
 							aria-valuemax="100"
 							aria-valuenow={volumePercent}
@@ -516,8 +522,8 @@ onDestroy(() => {
 						type="button"
 						class="music-visualizer__tool-btn"
 						onclick={toggleMute}
-						title="音量"
-						aria-label="音量"
+						title={i18n(I18nKey.musicVolume)}
+						aria-label={i18n(I18nKey.musicVolume)}
 					>
 						{#if isMuted || volume === 0}
 							<Icon icon="material-symbols:volume-off-rounded" size="lg" />
@@ -534,8 +540,8 @@ onDestroy(() => {
 					type="button"
 					class="music-visualizer__btn music-visualizer__btn--mobile-play"
 					onclick={togglePlay}
-					title={isPlaying ? "暂停" : "播放"}
-					aria-label={isPlaying ? "暂停" : "播放"}
+					title={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
+					aria-label={isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay)}
 				>
 					{#if isPlaying}
 						<Icon icon="material-symbols:pause-rounded" size="lg" />
@@ -548,8 +554,8 @@ onDestroy(() => {
 					type="button"
 					class="music-visualizer__btn"
 					onclick={cycleMode}
-					title="播放模式"
-					aria-label="播放模式"
+					title={i18n(I18nKey.musicPlayMode)}
+					aria-label={i18n(I18nKey.musicPlayMode)}
 				>
 					{#if playMode === 0}
 						<Icon icon="material-symbols:repeat-rounded" size="md" />
@@ -564,8 +570,8 @@ onDestroy(() => {
 					type="button"
 					class="music-visualizer__btn"
 					onclick={togglePlaylist}
-					title="歌单"
-					aria-label="歌单"
+					title={i18n(I18nKey.musicPlaylist)}
+					aria-label={i18n(I18nKey.musicPlaylist)}
 					aria-controls="music-visualizer-playlist-panel"
 					aria-expanded={rightPanelMode === "playlist"}
 				>
@@ -576,8 +582,8 @@ onDestroy(() => {
 					type="button"
 					class="music-visualizer__btn"
 					onclick={toggleMute}
-					title="音量"
-					aria-label="音量"
+					title={i18n(I18nKey.musicVolume)}
+					aria-label={i18n(I18nKey.musicVolume)}
 				>
 					{#if isMuted || volume === 0}
 						<Icon icon="material-symbols:volume-off-rounded" size="md" />
@@ -591,22 +597,22 @@ onDestroy(() => {
 		<aside
 			id="music-visualizer-playlist-panel"
 			class="music-visualizer__playlist-view"
-			aria-label="歌单切换"
+			aria-label={i18n(I18nKey.playlistSwitch)}
 		>
 			<div class="music-visualizer__playlist-stage">
 				<div class="music-visualizer__playlist-timeline"></div>
 				<div class="music-visualizer__playlist-header">
 					<div>
 						<div class="music-visualizer__playlist-kicker">PLAYLIST</div>
-						<div class="music-visualizer__playlist-title">歌单切换</div>
+						<div class="music-visualizer__playlist-title">{i18n(I18nKey.playlistSwitch)}</div>
 					</div>
 					<div class="music-visualizer__playlist-count">{playlist.length}</div>
 					<button
 						type="button"
 						class="music-visualizer__playlist-back"
 						onclick={togglePlaylist}
-						title="返回播放器"
-						aria-label="返回播放器"
+						title={i18n(I18nKey.backToPlayer)}
+						aria-label={i18n(I18nKey.backToPlayer)}
 						aria-controls="music-visualizer-playlist-panel"
 						aria-expanded={rightPanelMode === "playlist"}
 					>
@@ -618,10 +624,10 @@ onDestroy(() => {
 					bind:this={playlistListEl}
 					class="music-visualizer__playlist-list"
 					role="listbox"
-					aria-label="当前歌单"
+					aria-label={i18n(I18nKey.currentPlaylist)}
 				>
 					{#if playlist.length === 0}
-						<div class="music-visualizer__playlist-empty">歌单加载中</div>
+						<div class="music-visualizer__playlist-empty">{i18n(I18nKey.playlistLoading)}</div>
 					{:else}
 						{#each playlist as track, i}
 							<button
@@ -663,14 +669,14 @@ onDestroy(() => {
 </div>
 
 <!-- 移动端保留：底部播放控制条（桌面隐藏） -->
-<div class="music-visualizer__bottom-dock" aria-label="播放控制">
+<div class="music-visualizer__bottom-dock" aria-label={i18n(I18nKey.playbackControls)}>
 	<div class="music-visualizer__bottom-dock-inner">
 		<button
 			type="button"
 			class="music-visualizer__transport-btn"
 			onclick={playPrev}
-			title="上一首"
-			aria-label="上一首"
+			title={i18n(I18nKey.musicPrev)}
+			aria-label={i18n(I18nKey.musicPrev)}
 		>
 			<Icon icon="material-symbols:skip-previous-rounded" size="xl" />
 		</button>
@@ -686,7 +692,7 @@ onDestroy(() => {
 				onpointerup={onProgressPointerUp}
 				onpointercancel={onProgressPointerUp}
 				role="slider"
-				aria-label="进度"
+				aria-label={i18n(I18nKey.musicProgress)}
 				aria-valuemin="0"
 				aria-valuemax="100"
 				aria-valuenow={Math.round(progress)}
@@ -708,8 +714,8 @@ onDestroy(() => {
 			type="button"
 			class="music-visualizer__transport-btn"
 			onclick={playNext}
-			title="下一首"
-			aria-label="下一首"
+			title={i18n(I18nKey.musicNext)}
+			aria-label={i18n(I18nKey.musicNext)}
 		>
 			<Icon icon="material-symbols:skip-next-rounded" size="xl" />
 		</button>

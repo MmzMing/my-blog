@@ -273,7 +273,7 @@ function uniqueDots(events: CalendarEvent[]): EventType[] {
 			type="button"
 			class="nav-btn"
 			onclick={prevMonth}
-			aria-label="Previous month"
+			aria-label={i18n(I18nKey.prevMonth)}
 		>
 			<Icon icon="material-symbols:chevron-left" />
 		</button>
@@ -298,7 +298,7 @@ function uniqueDots(events: CalendarEvent[]): EventType[] {
 				type="button"
 				class="nav-btn"
 				onclick={nextMonth}
-				aria-label="Next month"
+				aria-label={i18n(I18nKey.nextMonth)}
 			>
 				<Icon icon="material-symbols:chevron-right" />
 			</button>

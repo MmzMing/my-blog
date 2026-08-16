@@ -1,6 +1,8 @@
 ---
 import Icon from "@components/common/Icon.astro";
 import HeroSticker from "@components/layout/HeroSticker.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import type { HeroDialogueConfig, HeroStickerConfig } from "@/types/config";
 
 interface Props {
@@ -13,9 +15,9 @@ const { config, sticker, fallbackHostName } = Astro.props;
 const dialogueConfig = {
 	speakers: {
 		host: config.speakers?.host || fallbackHostName,
-		visitor: config.speakers?.visitor || "访客",
+		visitor: config.speakers?.visitor || i18n(I18nKey.visitor),
 	},
-	menuTitle: config.menuTitle || "想聊点什么？",
+	menuTitle: config.menuTitle || i18n(I18nKey.dialogueMenuTitle),
 	typingSpeed: config.typingSpeed ?? 45,
 	autoDelay: config.autoDelay ?? 1600,
 	intro: config.intro,
@@ -25,7 +27,7 @@ const dialogueConfig = {
 
 <section
 	class="home-hero__dialogue"
-	aria-label="角色对话"
+	aria-label={i18n(I18nKey.characterDialogue)}
 	aria-hidden="true"
 	data-hero-dialogue
 	data-dialogue={JSON.stringify(dialogueConfig)}
@@ -36,15 +38,15 @@ const dialogueConfig = {
 		<HeroSticker config={sticker} />
 
 		<div class="home-hero__dialogue-controls">
-			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="back" aria-label="上一句" title="上一句">
+			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="back" aria-label={i18n(I18nKey.dialoguePrev)} title={i18n(I18nKey.dialoguePrev)}>
 				<Icon name="material-symbols:undo-rounded" is:inline aria-hidden="true" />
 				<span>BACK</span>
 			</button>
-			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="auto" aria-label="自动播放" title="自动播放" aria-pressed="false">
+			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="auto" aria-label={i18n(I18nKey.dialogueAutoPlay)} title={i18n(I18nKey.dialogueAutoPlay)} aria-pressed="false">
 				<Icon name="material-symbols:play-arrow-rounded" is:inline aria-hidden="true" />
 				<span>AUTO</span>
 			</button>
-			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="hide" aria-label="收起对话" title="收起对话">
+			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="hide" aria-label={i18n(I18nKey.collapse)} title={i18n(I18nKey.collapse)}>
 				<Icon name="material-symbols:close-rounded" is:inline aria-hidden="true" />
 				<span>CLOSE</span>
 			</button>
@@ -61,7 +63,7 @@ const dialogueConfig = {
 
 			<div class="home-hero__dialogue-footer">
 				<button type="button" class="home-hero__dialogue-advance" data-dialogue-advance>
-					<span data-dialogue-advance-label>下一句</span>
+					<span data-dialogue-advance-label>{i18n(I18nKey.dialogueNext)}</span>
 					<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline aria-hidden="true" />
 				</button>
 			</div>

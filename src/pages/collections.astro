@@ -53,7 +53,7 @@ const enabledApisCount = enabledGroups.reduce(
           <div class="tools-tab-pill" data-tools-tab-nav>
             <div class="tools-tab-indicator" data-tools-tab-indicator></div>
             <button data-tools-tab="all" class="tools-tab-btn tools-tab-btn-active">
-              全部
+              {i18n(I18nKey.all)}
               <span class="tools-tab-badge">{enabledApisCount}</span>
             </button>
             {categories.map((cat) => (

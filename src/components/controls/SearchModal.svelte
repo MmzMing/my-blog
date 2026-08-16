@@ -3,6 +3,8 @@ import { navigateToPage } from "@utils/navigation-utils";
 import { onMount, tick } from "svelte";
 import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import type { SearchResult } from "@/global";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import { bindSearchModalController } from "@/utils/search-modal-controller";
 import { url as formatUrl, getSearchUrl } from "@/utils/url-utils";
 
@@ -339,7 +341,7 @@ $effect(() => {
 	<div class="search-modal-content">
 		<!-- Title -->
 		<h2 class="search-modal-title">
-			搜索文章
+			{i18n(I18nKey.searchArticles)}
 		</h2>
 
 		<!-- Vanish Input -->
@@ -389,7 +391,7 @@ $effect(() => {
 			<!-- Placeholder animation -->
 			{#if !keyword && !animating}
 				<div class="search-placeholder">
-					{placeholders[currentPlaceholder] || "搜索..."}
+					{placeholders[currentPlaceholder] || i18n(I18nKey.search)}
 				</div>
 			{/if}
 		</form>
@@ -397,7 +399,7 @@ $effect(() => {
 		<!-- Search Results -->
 		{#if isSearching}
 			<div class="search-results">
-				<div class="search-result-empty">搜索中...</div>
+				<div class="search-result-empty">{i18n(I18nKey.searchLoading)}</div>
 			</div>
 		{:else if result.length > 0}
 			<div class="search-results">
@@ -426,21 +428,21 @@ $effect(() => {
 						onclick={(e) => handleResultClick(e, getSearchUrl(keyword))}
 						class="search-result-more"
 					>
-						查看全部 {result.length} 条结果 →
+						{i18n(I18nKey.searchViewAllPrefix)} {result.length} {i18n(I18nKey.searchViewAllSuffix)}
 					</a>
 				{/if}
 			</div>
 		{:else if keyword && !isSearching}
 			<div class="search-results">
-				<div class="search-result-empty">未找到相关文章</div>
+				<div class="search-result-empty">{i18n(I18nKey.searchNoResults)}</div>
 			</div>
 		{/if}
 
 		<!-- Footer hint -->
 		<div class="search-modal-footer">
-			<span class="search-hint-key">ESC</span> 关闭
-			<span class="search-hint-key ml-3">ENTER</span> 搜索
-			<span class="search-hint-key ml-3">Ctrl+K</span> 切换
+			<span class="search-hint-key">{i18n(I18nKey.searchHintClose)}</span>
+			<span class="search-hint-key ml-3">{i18n(I18nKey.searchHintSearch)}</span>
+			<span class="search-hint-key ml-3">{i18n(I18nKey.searchHintToggle)}</span>
 		</div>
 	</div>
 </div>

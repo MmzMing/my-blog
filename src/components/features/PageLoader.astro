@@ -1,28 +1,33 @@
 ---
+import { siteConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+
 const pathname = Astro.url.pathname;
 const isHome = pathname === "/" || pathname === "";
+const { image, width, height } = siteConfig.pageLoader;
 ---
 <div
 	id="page-loader"
 	class:list={["page-loader", isHome ? "page-loader--visible" : "page-loader--hidden"]}
 	role="status"
 	aria-live="polite"
-	aria-label="Page loading"
+	aria-label={i18n(I18nKey.pageLoading)}
 	hidden={!isHome}
 >
 	<div
-		aria-label="Running animation"
+		aria-label={i18n(I18nKey.pageLoadingAnimation)}
 		role="img"
 		class="page-loader__animation"
 	>
 		<img
-			src="/assets/images/loading/feibi-loading.webp"
+			src={image}
 			alt=""
 			class="page-loader__image"
-			width="960"
-			height="540"
+			width={width}
+			height={height}
 			decoding="async"
 		/>
 	</div>
-	<span class="page-loader__sr-only">Loading</span>
+	<span class="page-loader__sr-only">{i18n(I18nKey.pageLoading)}</span>
 </div>
