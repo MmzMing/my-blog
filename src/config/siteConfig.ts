@@ -153,6 +153,8 @@ export const siteConfig: SiteConfig = {
 
 	// 页面加载动画配置
 	pageLoader: {
+		// 是否启用（进入首页时的全屏加载动效）
+		enabled: false,
 		// 加载动画图路径（public 目录）
 		image: "/assets/images/loading/feibi-loading.webp",
 		// 图片宽高（避免布局偏移）

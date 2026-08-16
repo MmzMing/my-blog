@@ -275,8 +275,8 @@ export const zh_CN: Translation = {
 
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.aiSearch]: "AI 搜索",
-	[Key.switchToDark]: "切换暗色",
-	[Key.switchToLight]: "切换亮色",
+	[Key.switchToDark]: "暗色",
+	[Key.switchToLight]: "亮色",
 	[Key.spineModel]: "Spine 模型",
 	[Key.toggleDock]: "工具坞",
 	[Key.quickActions]: "快捷入口",

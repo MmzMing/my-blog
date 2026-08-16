@@ -13,17 +13,14 @@
   gap: 0.375rem;
   padding: 0.375rem;
   border-radius: 1rem;
-  border: 1.5px solid #000;
-}
-:root.dark .tools-tab-pill {
-  border-color: #fff;
+  border: 1.5px solid var(--deep-text);
 }
 
 /* 滑动指示条（填充胶囊背景） */
 .tools-tab-indicator {
   position: absolute;
   border-radius: 9999px;
-  background: #000;
+  background: var(--deep-text);
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -31,9 +28,6 @@
   opacity: 0;
   pointer-events: none;
   z-index: 0;
-}
-:root.dark .tools-tab-indicator {
-  background: #fff;
 }
 
 /* Tab 按钮 */
@@ -55,24 +49,18 @@
   flex-shrink: 0;
 }
 
-/* 激活态：指示条覆盖时白色文字 */
+/* 激活态：指示条覆盖时背景色文字 */
 .tools-tab-btn-active {
-  color: #fff;
+  color: var(--page-bg);
   cursor: default;
 }
-:root.dark .tools-tab-btn-active {
-  color: #000;
-}
 
-/* 未激活态：黑色文字 */
+/* 未激活态：主题文字色 */
 .tools-tab-btn-inactive {
-  color: #000;
+  color: var(--deep-text);
 }
 .tools-tab-btn-inactive:hover {
   opacity: 0.7;
-}
-:root.dark .tools-tab-btn-inactive {
-  color: #fff;
 }
 
 /* 数量徽章 */
@@ -91,12 +79,8 @@
 
 /* 激活态徽章反转 */
 .tools-tab-btn-active .tools-tab-badge {
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
-}
-:root.dark .tools-tab-btn-active .tools-tab-badge {
-  background: rgba(0, 0, 0, 0.2);
-  color: #000;
+  background: color-mix(in oklch, var(--page-bg) 25%, transparent);
+  color: var(--page-bg);
 }
 
 /* 分组间距（"全部" Tab） */
@@ -128,8 +112,8 @@
   flex-direction: column;
   padding: 1.25rem;
   border-radius: var(--radius-large, 0.75rem);
-  border: 2px solid #000;
-  background: #fff;
+  border: 2px solid var(--deep-text);
+  background: var(--page-bg);
   text-decoration: none;
   overflow: hidden;
   opacity: 0;
@@ -137,17 +121,12 @@
   animation: toolsCardSlideIn 0.5s ease-out forwards;
   transition: border-color 300ms ease, box-shadow 300ms ease, transform 300ms ease, background-color 300ms ease;
 }
-:root.dark .tools-card {
-  border-color: #fff;
-  background: #000;
-}
 .tools-card:hover {
-  border-color: #000;
+  border-color: var(--deep-text);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
 }
 :root.dark .tools-card:hover {
-  border-color: #fff;
   box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
 }

@@ -267,10 +267,10 @@ html {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 0.75rem;
-        border: 2px solid #000;
-        background: #fff;
-        color: #000;
+        border-radius: 1.25rem;
+        border: 2px solid var(--deep-text);
+        background: var(--page-bg);
+        color: var(--deep-text);
         transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
         overflow: hidden;
         position: relative;
@@ -278,19 +278,9 @@ html {
         cursor: pointer;
     }
     .dock-btn:hover {
-        background: #000;
-        color: #fff;
-        border-color: #fff;
-    }
-    :root.dark .dock-btn {
-        border-color: #fff;
-        background: #000;
-        color: #fff;
-    }
-    :root.dark .dock-btn:hover {
-        background: #fff;
-        color: #000;
-        border-color: #000;
+        background: var(--deep-text);
+        color: var(--page-bg);
+        border-color: var(--page-bg);
     }
     .dock-btn .dock-btn-icon {
         position: absolute;

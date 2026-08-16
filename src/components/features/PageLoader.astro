@@ -5,29 +5,31 @@ import { i18n } from "@/i18n/translation";
 
 const pathname = Astro.url.pathname;
 const isHome = pathname === "/" || pathname === "";
-const { image, width, height } = siteConfig.pageLoader;
+const { enabled, image, width, height } = siteConfig.pageLoader;
 ---
-<div
-	id="page-loader"
-	class:list={["page-loader", isHome ? "page-loader--visible" : "page-loader--hidden"]}
-	role="status"
-	aria-live="polite"
-	aria-label={i18n(I18nKey.pageLoading)}
-	hidden={!isHome}
->
+{enabled && (
 	<div
-		aria-label={i18n(I18nKey.pageLoadingAnimation)}
-		role="img"
-		class="page-loader__animation"
+		id="page-loader"
+		class:list={["page-loader", isHome ? "page-loader--visible" : "page-loader--hidden"]}
+		role="status"
+		aria-live="polite"
+		aria-label={i18n(I18nKey.pageLoading)}
+		hidden={!isHome}
 	>
-		<img
-			src={image}
-			alt=""
-			class="page-loader__image"
-			width={width}
-			height={height}
-			decoding="async"
-		/>
+		<div
+			aria-label={i18n(I18nKey.pageLoadingAnimation)}
+			role="img"
+			class="page-loader__animation"
+		>
+			<img
+				src={image}
+				alt=""
+				class="page-loader__image"
+				width={width}
+				height={height}
+				decoding="async"
+			/>
+		</div>
+		<span class="page-loader__sr-only">{i18n(I18nKey.pageLoading)}</span>
 	</div>
-	<span class="page-loader__sr-only">{i18n(I18nKey.pageLoading)}</span>
-</div>
+)}

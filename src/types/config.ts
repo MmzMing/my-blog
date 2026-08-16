@@ -47,6 +47,7 @@ export type SiteConfig = {
 
 	// 页面加载动画配置
 	pageLoader: {
+		enabled: boolean; // 是否启用首页全屏加载动效
 		image: string; // 加载动画图路径（public 目录）
 		width?: number; // 图片宽度（避免布局偏移）
 		height?: number; // 图片高度（避免布局偏移）

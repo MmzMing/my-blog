@@ -2,9 +2,9 @@
 .home-data-layer {
 	--guide-gap: clamp(0.7rem, 1.2vw, 1.1rem);
 	--guide-radius: 0.7rem;
-	--guide-border: #000;
-	--guide-bg: #fff;
-	--guide-fg: #000;
+	--guide-border: var(--deep-text);
+	--guide-bg: var(--page-bg);
+	--guide-fg: var(--deep-text);
 	--guide-muted: color-mix(in srgb, var(--guide-fg) 62%, transparent);
 	--guide-accent: #b8ff1f;
 	--guide-row-height: clamp(12rem, 14vw, 14rem);
@@ -20,12 +20,6 @@
 	background: var(--page-bg);
 	color: var(--guide-fg);
 	overflow: clip;
-}
-
-:root.dark .home-data-layer {
-	--guide-border: #fff;
-	--guide-bg: #000;
-	--guide-fg: #fff;
 }
 
 .home-data-layer__inner {

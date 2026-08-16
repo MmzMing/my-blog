@@ -14,13 +14,8 @@
 	height: 2.5rem;
 	overflow: hidden;
 	background: transparent;
-	border-top: 1px solid #000;
-	border-bottom: 1px solid #000;
-}
-
-:root.dark .home-ticker {
-	border-top-color: #fff;
-	border-bottom-color: #fff;
+	border-top: 1px solid var(--deep-text);
+	border-bottom: 1px solid var(--deep-text);
 }
 
 .home-ticker__inner {
@@ -72,12 +67,8 @@
 	font-size: 0.8125rem;
 	font-weight: 600;
 	letter-spacing: 0.04em;
-	color: #000;
+	color: var(--deep-text);
 	line-height: 1;
-}
-
-:root.dark .home-ticker__text {
-	color: #fff;
 }
 
 .home-ticker__sep {
@@ -85,14 +76,10 @@
 	margin-inline: var(--home-ticker-separator-gap);
 	font-size: 0.75rem;
 	font-weight: 700;
-	color: #000;
+	color: var(--deep-text);
 	opacity: 0.6;
 	line-height: 1;
 	user-select: none;
-}
-
-:root.dark .home-ticker__sep {
-	color: #fff;
 }
 
 @keyframes home-ticker-scroll {
