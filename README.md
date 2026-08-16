@@ -1,6 +1,6 @@
 # Firefly-Mod
 
-> 基于 [Firefly](https://github.com/CuteLeaf/Firefly) 的个人博客魔改版 `V2.7.0`
+> 基于 [Firefly](https://github.com/CuteLeaf/Firefly) 的个人博客魔改版 `V2.7.1`
 
 ![Node.js >= 22](https://img.shields.io/badge/node.js-%3E%3D22-brightgreen)
 ![pnpm >= 9](https://img.shields.io/badge/pnpm-%3E%3D9-blue)
@@ -14,9 +14,9 @@
 
 PC端
 
-<img alt="博客预览" src="./docs/images/image.webp" />
+<img alt="博客预览" src="./docs/images/image-1.webp" />
 
-新能测试
+性能测试
 
 <img alt="博客预览移动端" src="./docs/images/image-2.webp" />
 
@@ -130,7 +130,7 @@ pnpm build-index -- --force
 |--------|------|
 | 托管平台 | 支持任何静态托管：Cloudflare Pages、Vercel、Netlify、Nginx 等 |
 | 评论服务 | 若启用评论，需自行部署对应后端（Waline / Twikoo / Artalk 等） |
-| 留言板 | 留言板固定使用 Waline `/guestbook/` 频道；启用前需在 `src/config/commentConfig.ts` 中配置 Waline，无需 Cloudflare KV 或项目 Worker 路由 |
+| 留言板 | 留言板固定使用 Waline `/guestbook/` 频道；启用前需在 `src/config/commentConfig.ts` 中配置 Waline（只适配这个，若需要其他评论需要自行对接API） |
 | 统计服务 | 站点访问统计通过 Umami 获取（`siteConfig.ts` 中配置 `analytics.umamiAnalytics`，Worker 中配置 `UMAMI_TOKEN` Secret） |
 | AI 搜索（可选） | 仅在 `aiSearchConfig.ts` 开启后配置：需 Cloudflare Vectorize 索引；构建索引需 `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`；LLM/Embedding 默认走 Workers AI，也可配置第三方 API 并设置 `AI_API_KEY` |
 | 图片上传（可选） | 留言板默认将不超过 128 KB 的图片内嵌到 Waline 留言；如需上传不超过 5 MB 的图片，可在 `commentConfig.waline.imageUploadURL` 中配置兼容的自建上传接口。文章图片仍建议使用独立图床 |
