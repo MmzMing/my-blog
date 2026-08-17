@@ -181,7 +181,6 @@ export default defineConfig({
 		svelte(),
 		sitemap({
 			customPages: [
-				new URL("/knowledge/index.json", siteConfig.site_url).toString(),
 				new URL("/llms.txt", siteConfig.site_url).toString(),
 			],
 			filter: (page) => {

@@ -172,12 +172,6 @@ export type LlmsConfig = {
 			path: string;
 		}>;
 	};
-	topics: {
-		heading: string;
-	};
-	featuredArticles: {
-		heading: string;
-	};
 	usage: {
 		heading: string;
 		description: string;
@@ -211,7 +205,6 @@ export enum LinkPreset {
 	NavPosts = 17,
 	NavMy = 18,
 	Music = 19,
-	Topics = 20,
 }
 
 export type NavBarLink = {

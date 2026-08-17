@@ -434,11 +434,6 @@ export const zh_CN: Translation = {
 	[Key.noDescriptionFallback]: "暂无文章简介，点击查看完整内容。",
 	[Key.searchDescription]: "站内搜索博客的文章内容。",
 	[Key.aboutDescription]: "{name} 的个人介绍、技术方向、博客主题与联系方式。",
-	[Key.topicLibrary]: "主题知识库",
-	[Key.topicLibraryDescription]: "按主题浏览博客中的文章内容",
-	[Key.topicLibraryIntro]:
-		"把零散文章组织成可持续更新的技术主题，方便读者按问题和技术栈继续深入。",
-	[Key.topicNoPosts]: "该主题暂时没有公开文章。",
 	[Key.albumPrefix]: "相册：",
 	[Key.sponsorChooseMethod]: "选择你喜欢的支付方式",
 	[Key.sponsorNotAvailable]: "暂不开通",

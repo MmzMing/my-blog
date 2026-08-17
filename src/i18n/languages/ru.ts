@@ -444,11 +444,6 @@ export const ru: Translation = {
 	[Key.noDescriptionFallback]: "Описание отсутствует. Откройте статью целиком.",
 	[Key.searchDescription]: "Поиск по статьям блога.",
 	[Key.aboutDescription]: "Профиль {name}: направления, темы блога, контакты.",
-	[Key.topicLibrary]: "База тем",
-	[Key.topicLibraryDescription]: "Статьи по темам",
-	[Key.topicLibraryIntro]:
-		"Статьи собраны в живые технические темы, чтобы углубляться по вопросам и стекам.",
-	[Key.topicNoPosts]: "В этой теме пока нет публичных статей.",
 	[Key.albumPrefix]: "Альбом: ",
 	[Key.sponsorChooseMethod]: "Выберите способ оплаты",
 	[Key.sponsorNotAvailable]: "Пока недоступно",

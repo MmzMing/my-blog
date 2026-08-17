@@ -446,11 +446,6 @@ export const en: Translation = {
 	[Key.searchDescription]: "Search the blog's posts.",
 	[Key.aboutDescription]:
 		"{name}'s profile, tech focus, blog topics and contact info.",
-	[Key.topicLibrary]: "Topic Library",
-	[Key.topicLibraryDescription]: "Browse posts by topic",
-	[Key.topicLibraryIntro]:
-		"Posts organized into evolving technical topics, so readers can dig deeper by question and stack.",
-	[Key.topicNoPosts]: "No public posts in this topic yet.",
 	[Key.albumPrefix]: "Album: ",
 	[Key.sponsorChooseMethod]: "Choose your preferred payment method",
 	[Key.sponsorNotAvailable]: "Not available yet",

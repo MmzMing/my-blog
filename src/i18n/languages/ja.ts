@@ -444,11 +444,6 @@ export const ja: Translation = {
 	[Key.noDescriptionFallback]: "概要がありません。クリックして全文を読む。",
 	[Key.searchDescription]: "ブログの記事をサイト内検索。",
 	[Key.aboutDescription]: "{name} の自己紹介・技術方向・ブログテーマ・連絡先。",
-	[Key.topicLibrary]: "トピックライブラリ",
-	[Key.topicLibraryDescription]: "トピックごとに記事を閲覧",
-	[Key.topicLibraryIntro]:
-		"散在する記事を継続的に更新できる技術トピックに整理し、問題や技術スタックごとに深掘りできます。",
-	[Key.topicNoPosts]: "このトピックには公開記事がまだありません。",
 	[Key.albumPrefix]: "アルバム：",
 	[Key.sponsorChooseMethod]: "お好みの支払い方法を選択してください",
 	[Key.sponsorNotAvailable]: "現在未対応",

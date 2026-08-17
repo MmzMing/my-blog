@@ -16,16 +16,14 @@ import type { LlmsConfig } from "@/types/config";
  * 机器入口文档的静态文案和链接配置。
  *
  * 配置字段与 `/llms.txt` 的章节一一对应：作者信息用于说明内容来源，机器
- * 入口用于指向结构化知识库，主题章节标题用于组织主题定义，精选文章由程序
- * 追加，使用说明用于提示引用和内容时效性。主题的 slug、标题、描述和自动
- * 归类关键词统一维护在 `src/config/topics.ts`，本文件不重复保存主题数据。
+ * 入口用于指向结构化知识库，精选文章由程序追加，使用说明用于提示引用和
+ * 内容时效性。
  */
 export const llmsConfig: LlmsConfig = {
 	/** 站点作者和内容领域，帮助 AI 判断知识来源与专业范围。 */
 	author: {
 		heading: "作者",
-		description:
-			"MmzMing，专注 Java、AI、Astro、Redis、认证安全与个人站点工程实践。",
+		description: "Mmzming，专注分享JAVA、python、AI Agent和博客相关内容。",
 	},
 	/**
 	 * 提供给机器读取的稳定入口。
@@ -35,25 +33,11 @@ export const llmsConfig: LlmsConfig = {
 	machineEntrypoints: {
 		heading: "机器入口",
 		items: [
-			// 文章元数据索引：适合先批量发现文章，再按需读取正文。
-			{ label: "文章目录", path: "/knowledge/index.json" },
 			// RSS：提供按发布时间组织的增量内容入口。
 			{ label: "RSS", path: "/rss.xml" },
 			// Sitemap：帮助搜索引擎或抓取程序发现站点页面。
 			{ label: "Sitemap", path: "/sitemap-index.xml" },
 		],
-	},
-	/**
-	 * `/llms.txt` 中主题章节的标题。
-	 * 主题条目由 `src/config/topics.ts` 的 `topicDefinitions` 动态生成，确保
-	 * 专题页、文章自动归类、知识库接口和机器入口使用同一份主题元数据。
-	 */
-	topics: {
-		heading: "主题",
-	},
-	/** 文章列表章节标题；列表内容由公开文章动态生成，不在配置中硬编码。 */
-	featuredArticles: {
-		heading: "精选文章",
 	},
 	/**
 	 * 面向 AI 和引用者的使用边界说明，例如内容归属、时效性和引用方式。
