@@ -388,7 +388,7 @@ export const friendsConfig: FriendLink[] = [
 		tags: ["Blog"],
 		weight: 5,
 		enabled: true,
-	}
+	},
 ];
 
 // 获取启用的友链并进行排序
