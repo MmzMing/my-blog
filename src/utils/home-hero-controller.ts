@@ -2,6 +2,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { HeroMosaicConfig } from "@/types/config";
 import { initHomeHeroDialogue } from "@/utils/home-hero-dialogue";
+import { createFlyText, type FlyTextHandle } from "@/utils/home-hero-fly-text";
 import { getHeroPinEndDistance } from "@/utils/home-hero-motion";
 import { initHomeHeroRain } from "@/utils/home-hero-rain";
 import { initHomeHeroSticker } from "@/utils/home-hero-sticker";
@@ -164,6 +165,12 @@ export function mountHomeHero() {
 	let timeline: ReturnType<typeof gsap.timeline> | null = null;
 	let idleTimer = 0;
 	let idleTween: ReturnType<typeof gsap.timeline> | null = null;
+	let tilesIntroTimeline: ReturnType<typeof gsap.timeline> | null = null;
+	let textIntroTimeline: ReturnType<typeof gsap.timeline> | null = null;
+	let tilesIntroDone = false;
+	let flyHandles: FlyTextHandle[] = [];
+	let contactScatterTimeline: ReturnType<typeof gsap.timeline> | null = null;
+	let flyLayoutTimer = 0;
 	let activeTiles = new Set(
 		tiles.filter((tile) => tile.initiallyVisible).map((tile) => tile.element),
 	);
@@ -243,6 +250,19 @@ export function mountHomeHero() {
 		});
 	};
 
+	// 用户开始滚动时立即完成进行中的入场动画，交由 scrub 时间线接管
+	const completePendingIntros = () => {
+		if (tilesIntroTimeline) {
+			tilesIntroTimeline.progress(1);
+			tilesIntroTimeline = null;
+		}
+		if (textIntroTimeline) {
+			textIntroTimeline.progress(1);
+			textIntroTimeline.kill();
+			textIntroTimeline = null;
+		}
+	};
+
 	const updateSceneState = (progress: number) => {
 		const timelineTime = progress * (timeline?.duration() ?? 1);
 		const rainActive = timelineTime >= RAIN_ACTIVATE_TIME;
@@ -257,7 +277,8 @@ export function mountHomeHero() {
 		rain.setActive(rainActive && !reducedMotionQuery.matches);
 		if (progress > 0.002) {
 			stopIdleRotation();
-		} else if (!idleTimer) {
+			completePendingIntros();
+		} else if (!idleTimer && tilesIntroDone) {
 			resetIdleTiles();
 			startIdleRotation();
 		}
@@ -394,18 +415,8 @@ export function mountHomeHero() {
 			},
 			0,
 		);
-		if (contact) {
-			timeline.to(
-				contact,
-				{
-					xPercent: 36,
-					autoAlpha: 0,
-					duration: 0.14,
-					ease: "power3.in",
-				},
-				0.04,
-			);
-		}
+		// 右下角 contact 的退场不再整体渐隐，改为字符随风散落，
+		// 由 prepareFlyText() 在字体就绪后将 scatter 时间线挂载到 0.04 位置。
 		timeline.to(
 			tiles.map((tile) => tile.element),
 			{
@@ -518,14 +529,148 @@ export function mountHomeHero() {
 		);
 
 		updateSceneState(timeline.scrollTrigger?.progress ?? 0);
-		startIdleRotation();
 		ScrollTrigger.refresh();
+	};
+
+	// 初始可见碎片改为渐入，完成后进入常规 idle 轮换
+	const playTilesIntro = () => {
+		const idleTiles = tiles.filter((tile) => tile.initiallyVisible);
+		if (!idleTiles.length) {
+			tilesIntroDone = true;
+			return;
+		}
+		tilesIntroTimeline = gsap.timeline({
+			onComplete: () => {
+				tilesIntroTimeline = null;
+				tilesIntroDone = true;
+				if (
+					(timeline?.scrollTrigger?.progress ?? 0) <= 0.002 &&
+					!reducedMotionQuery.matches &&
+					!idleTimer
+				) {
+					startIdleRotation();
+				}
+			},
+		});
+		for (const tile of idleTiles) {
+			const transform = getTileIdleTransform(tile);
+			tilesIntroTimeline.fromTo(
+				tile.element,
+				{
+					y: transform.y + 24,
+					scale: transform.scale * 0.92,
+					filter: `blur(${transform.blur + 5}px)`,
+					autoAlpha: 0,
+				},
+				{
+					y: transform.y,
+					scale: transform.scale,
+					filter: `blur(${transform.blur}px)`,
+					autoAlpha: 1,
+					duration: 0.85,
+					ease: "power2.out",
+					immediateRender: true,
+				},
+				0.06 + tile.order * 0.05,
+			);
+		}
+	};
+
+	// 左上角标题与右下角 contact：Scatter random 入场；contact 下滑时字符风散退场
+	const prepareFlyText = () => {
+		const titleHost = hero.querySelector<HTMLElement>(
+			".home-hero__title > span:first-child",
+		);
+		const contactHosts = contact
+			? [
+					hero.querySelector<HTMLElement>(".home-hero__contact-platform"),
+					hero.querySelector<HTMLElement>(".home-hero__contact-handle"),
+				]
+			: [];
+		const hosts = [titleHost, ...contactHosts].filter(
+			(host): host is HTMLElement => host !== null,
+		);
+		const occupation = hero.querySelector<HTMLElement>(
+			".home-hero__occupation",
+		);
+		if (!hosts.length) return;
+
+		// 字体就绪前先隐藏，避免拆字前闪现原始整段文字
+		hosts.forEach((host) => {
+			gsap.set(host, { autoAlpha: 0 });
+		});
+		if (occupation) gsap.set(occupation, { autoAlpha: 0, y: 14 });
+
+		const mountContactScatter = () => {
+			if (!timeline || flyHandles.length < 2) return;
+			if (contactScatterTimeline) timeline.remove(contactScatterTimeline);
+			const scatter = gsap.timeline();
+			for (const handle of flyHandles.slice(1)) {
+				const tl = handle.buildScatter(0.12);
+				if (tl) scatter.add(tl, 0);
+			}
+			contactScatterTimeline = scatter;
+			timeline.add(scatter, 0.04);
+		};
+
+		const handleFlyLayoutChange = () => {
+			window.clearTimeout(flyLayoutTimer);
+			flyLayoutTimer = window.setTimeout(() => {
+				if (hero.dataset.heroMounted !== "true") return;
+				for (const handle of flyHandles) handle.rebuild();
+				flyHandles[0]?.setNatural();
+				mountContactScatter();
+			}, 200);
+		};
+
+		document.fonts.ready.then(() => {
+			if (hero.dataset.heroMounted !== "true") return;
+			flyHandles = hosts.map((host) => createFlyText(host));
+			for (const handle of flyHandles) {
+				handle.prepare();
+				handle.onLayoutChange(handleFlyLayoutChange);
+			}
+			hosts.forEach((host) => {
+				gsap.set(host, { autoAlpha: 1 });
+			});
+
+			mountContactScatter();
+
+			const progress = timeline?.scrollTrigger?.progress ?? 0;
+			if (progress <= 0.01) {
+				const intro = gsap.timeline();
+				const titleEntrance = flyHandles[0]?.buildEntrance(0.8);
+				if (titleEntrance) intro.add(titleEntrance, 0.05);
+				const contactEntrances = flyHandles
+					.slice(1)
+					.map((handle) => handle.buildEntrance(0.8))
+					.filter((tl): tl is ReturnType<typeof gsap.timeline> => tl !== null);
+				contactEntrances.forEach((tl, index) => {
+					intro.add(tl, 0.22 + index * 0.05);
+				});
+				textIntroTimeline = intro;
+			} else {
+				for (const handle of flyHandles) handle.setNatural();
+			}
+
+			if (occupation) {
+				gsap.to(occupation, {
+					autoAlpha: 1,
+					y: 0,
+					duration: 0.7,
+					ease: "power2.out",
+					delay: 0.5,
+				});
+			}
+		});
 	};
 
 	if (reducedMotionQuery.matches) {
 		setReducedMotionState(hero, dialogue);
 	} else {
 		buildTimeline();
+		playTilesIntro();
+		prepareFlyText();
 	}
 
 	if (resetAfterReload) {
@@ -540,6 +685,14 @@ export function mountHomeHero() {
 
 	return () => {
 		stopIdleRotation();
+		window.clearTimeout(flyLayoutTimer);
+		tilesIntroTimeline?.kill();
+		tilesIntroTimeline = null;
+		textIntroTimeline?.kill();
+		textIntroTimeline = null;
+		for (const handle of flyHandles) handle.destroy();
+		flyHandles = [];
+		contactScatterTimeline = null;
 		rain.destroy();
 		dialogue.destroy();
 		destroySticker();

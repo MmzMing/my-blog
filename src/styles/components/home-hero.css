@@ -88,11 +88,6 @@ html:has(.home-hero) #top-row {
 	will-change: transform, opacity, filter;
 }
 
-.home-hero__mosaic-tile.is-idle-visible {
-	opacity: 1;
-	visibility: visible;
-}
-
 .home-hero__mosaic-tile-image {
 	display: block;
 	width: 100%;
@@ -347,6 +342,57 @@ html:has(.home-hero) #top-row {
 @keyframes home-hero-melt {
 	to {
 		background-position: var(--home-hero-melt-size) 0;
+	}
+}
+
+/* 风吹散落文字（Scatter random）：拆字后宿主只负责占位，字符承载渐变与 gooey 效果 */
+.home-hero__title > span:first-child.home-hero__fly-host,
+.home-hero__contact-platform.home-hero__fly-host,
+.home-hero__contact-handle.home-hero__fly-host {
+	position: relative;
+	color: transparent;
+	background-image: none;
+	filter: none;
+	animation: none;
+}
+
+.home-hero__fly-placeholder {
+	visibility: hidden;
+	pointer-events: none;
+	user-select: none;
+}
+
+.home-hero__fly-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.home-hero__fly-char {
+	position: absolute;
+	color: transparent;
+	white-space: nowrap;
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--home-hero-ink) 0 var(--home-hero-melt-width),
+		transparent var(--home-hero-melt-width) calc(var(--home-hero-melt-width) + var(--home-hero-melt-gap))
+	);
+	background-clip: text;
+	background-size: var(--home-hero-melt-size) var(--home-hero-melt-size);
+	background-position: var(--home-hero-fly-bg-x, 0px) var(--home-hero-fly-bg-y, 0px);
+	filter: url("#home-hero-gooey");
+	animation: home-hero-melt-fly 1.25s linear infinite;
+	will-change: transform, opacity;
+}
+
+@keyframes home-hero-melt-fly {
+	to {
+		background-position: calc(var(--home-hero-fly-bg-x, 0px) + var(--home-hero-melt-size))
+			var(--home-hero-fly-bg-y, 0px);
 	}
 }
 
