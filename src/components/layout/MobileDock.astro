@@ -1,367 +1,926 @@
 ---
+import { Picture } from "astro:assets";
+import * as path from "node:path";
 import Icon from "@components/common/Icon.astro";
-/**
- * 移动端底部悬浮 Dock — 仅 ≤768px 显示
- * 5 栏位单浮岛 + 中间凸出搜索按钮 + 工具栏底部 sheet
- * 桌面端保持现有 FloatingDock 与顶部 Navbar 不变
- */
-import { announcementConfig, spineModelConfig } from "@/config";
+import type { ImageMetadata } from "astro";
+import {
+	announcementConfig,
+	navBarConfig,
+	siteConfig,
+	spineModelConfig,
+} from "@/config";
 import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import { musicPlayerConfig } from "@/config/musicConfig";
+import { LinkPresets } from "@/constants/link-presets";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+import { LinkPreset, type NavBarLink } from "@/types/config";
+import { getTagList } from "@/utils/content-utils";
+import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
+import { getTagUrl, url } from "@/utils/url-utils";
 
-// 工具栏 sheet 内按钮显隐条件预计算
+const resolveLink = (link: NavBarLink | LinkPreset): NavBarLink =>
+	typeof link === "number" ? LinkPresets[link] : link;
+
+const navLinks = navBarConfig.links.map(resolveLink).map((link) => ({
+	...link,
+	children: link.children?.map(resolveLink),
+}));
+const tags = await getTagList();
+const announcements = announcementConfig.items
+	.slice()
+	.sort((a, b) => b.sort - a.sort);
+const siteTitle = siteConfig.navbar.title || siteConfig.title;
+const logoValue = siteConfig.navbar.logo?.value || "";
+const isLocalSrcLogo =
+	siteConfig.navbar.logo?.type === "image" &&
+	logoValue &&
+	!logoValue.startsWith("/") &&
+	!logoValue.startsWith("http");
+let logoImg: ImageMetadata | null = null;
+
+if (isLocalSrcLogo) {
+	const files = import.meta.glob<ImageMetadata>(
+		"../../**/*.{png,jpg,jpeg,webp,avif,gif,svg}",
+		{ import: "default" },
+	);
+	const normalizedPath = path
+		.normalize(path.join("../../", logoValue))
+		.replace(/\\/g, "/");
+	const file = files[normalizedPath];
+	if (file) logoImg = await file();
+}
 const showMusic = musicPlayerConfig.showInNavbar !== false;
-const showAnnouncement = announcementConfig.items.length > 0;
+const showAnnouncement = announcements.length > 0;
 const showSpine = !!spineModelConfig?.enable;
 ---
 
-<div class="mobile-dock" id="mobile-dock">
-	<!-- 左1: 首页 -->
-	<button class="mobile-dock__btn" id="mobile-dock-home-btn" aria-label={i18n(I18nKey.home)} type="button">
-		<span class="mobile-dock__icon"><Icon name="material-symbols:home-outline-rounded" is:inline /></span>
-		<span class="mobile-dock__label">{i18n(I18nKey.home)}</span>
-	</button>
-
-	<!-- 左2: 搜索 -->
-	<button class="mobile-dock__btn" id="mobile-dock-search-btn" aria-label={i18n(I18nKey.search)} type="button">
-		<span class="mobile-dock__icon"><Icon name="material-symbols:search-rounded" is:inline /></span>
-		<span class="mobile-dock__label">{i18n(I18nKey.search)}</span>
-	</button>
-
-	<!-- 中: 菜单（凸出） -->
-	<button class="mobile-dock__btn mobile-dock__btn--center" id="mobile-dock-menu-btn" aria-label={i18n(I18nKey.menu)} type="button">
-		<span class="mobile-dock__icon">
-			<Icon name="material-symbols:menu-rounded" is:inline class="mobile-dock-menu-icon-collapsed" />
-			<Icon name="material-symbols:close-rounded" is:inline class="mobile-dock-menu-icon-open" style="display:none" />
-		</span>
-	</button>
-
-	<!-- 右2: 主题切换 -->
-	<button class="mobile-dock__btn" id="mobile-dock-theme-btn" aria-label={i18n(I18nKey.theme)} type="button">
-		<span class="mobile-dock__icon">
-			<Icon name="material-symbols:wb-sunny-outline-rounded" is:inline class="mobile-dock-theme-icon-light" />
-			<Icon name="material-symbols:dark-mode-outline-rounded" is:inline class="mobile-dock-theme-icon-dark" style="display:none" />
-		</span>
-		<span class="mobile-dock__label">{i18n(I18nKey.theme)}</span>
-	</button>
-
-	<!-- 右1: 工具栏 -->
-	<button class="mobile-dock__btn" id="mobile-dock-tools-btn" aria-label={i18n(I18nKey.tools)} type="button">
-		<span class="mobile-dock__icon">
-			<Icon name="material-symbols:more-horiz" is:inline class="mobile-dock-tools-icon-collapsed" />
-			<Icon name="material-symbols:close-rounded" is:inline class="mobile-dock-tools-icon-open" style="display:none" />
-		</span>
-		<span class="mobile-dock__label">{i18n(I18nKey.tools)}</span>
-	</button>
-</div>
-
-<!-- 遮罩（工具栏 sheet 打开时） -->
 <div class="mobile-dock__overlay" id="mobile-dock-overlay" aria-hidden="true"></div>
 
-<!-- 工具栏底部 Sheet -->
-<div class="mobile-dock__sheet" id="mobile-dock-sheet">
-	<div class="mobile-dock__sheet-title">{i18n(I18nKey.tools)}</div>
-	<div class="mobile-dock__sheet-grid">
-		{aiSearchPublicConfig.enabled && (
-			<button class="mobile-dock__sheet-item" id="md-ai-search-btn" aria-label={i18n(I18nKey.aiSearch)} type="button">
-				<span class="mobile-dock__sheet-item-icon"><Icon name="ri:ai" is:inline /></span>
-				<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.aiSearch)}</span>
+<section
+	class="mobile-dock"
+	id="mobile-dock"
+	data-shape="pill"
+	data-view="menu"
+	aria-label={i18n(I18nKey.tools)}
+>
+	<div class="mobile-dock__bar">
+		<div class="mobile-dock__context">
+			<a class="mobile-dock__site-mark" href={url("/")} aria-label={siteTitle}>
+				{siteConfig.navbar.logo?.type === "icon" ? (
+					<Icon name={siteConfig.navbar.logo.value || "material-symbols:home-pin-outline"} is:inline />
+				) : siteConfig.navbar.logo?.type === "image" && logoImg ? (
+					logoImg.format === "svg" ? (
+						<img src={logoImg.src} alt="" />
+					) : (
+						<Picture
+							src={logoImg}
+							alt=""
+							formats={getImageFormats()}
+							fallbackFormat={getFallbackFormat()}
+							widths={[28, 56]}
+							loading="eager"
+						/>
+					)
+				) : siteConfig.navbar.logo?.type === "image" ? (
+					<img src={url(siteConfig.navbar.logo.value)} alt="" />
+				) : siteConfig.navbar.logo?.type === "url" ? (
+					<img src={siteConfig.navbar.logo.value} alt="" />
+				) : (
+					<Icon name="material-symbols:home-pin-outline" is:inline />
+				)}
+			</a>
+			<button
+				class="mobile-dock__context-action"
+				id="mobile-dock-context-btn"
+				type="button"
+				aria-label={siteTitle}
+			>
+				<span class="mobile-dock__status-dot" aria-hidden="true"></span>
+				<span class="mobile-dock__back-mark" aria-hidden="true">
+					<Icon name="material-symbols:arrow-back-rounded" is:inline />
+				</span>
+				<span class="mobile-dock__context-viewport">
+					<span class="mobile-dock__site-title">{siteTitle}</span>
+					<span class="mobile-dock__lyric-viewport" id="mobile-dock-lyric-viewport">
+						<span class="mobile-dock__lyric-text" id="mobile-dock-lyric-text"></span>
+					</span>
+					<span class="mobile-dock__view-title" id="mobile-dock-view-title">{i18n(I18nKey.menu)}</span>
+				</span>
 			</button>
-		)}
-		{showMusic && (
-			<button class="mobile-dock__sheet-item" id="md-music-btn" aria-label={i18n(I18nKey.music)} type="button">
-				<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:music-note-rounded" is:inline /></span>
-				<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.music)}</span>
-			</button>
-		)}
-		{showAnnouncement && (
-			<button class="mobile-dock__sheet-item" id="md-announcement-btn" aria-label={i18n(I18nKey.announcement)} type="button">
-				<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:notifications-outline-rounded" is:inline /></span>
-				<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.announcement)}</span>
-			</button>
-		)}
-		<button class="mobile-dock__sheet-item" id="md-tags-btn" aria-label={i18n(I18nKey.tags)} type="button">
-			<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:label-outline" is:inline /></span>
-			<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.tags)}</span>
-		</button>
-		<button class="mobile-dock__sheet-item hide" id="md-toc-btn" aria-label={i18n(I18nKey.tableOfContents)} type="button">
-			<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:format-list-bulleted" is:inline /></span>
-			<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.tableOfContents)}</span>
-		</button>
-		<button class="mobile-dock__sheet-item hide" id="md-comment-btn" aria-label={i18n(I18nKey.comments)} type="button">
-			<span class="mobile-dock__sheet-item-icon"><Icon name="mingcute:comment-line" is:inline /></span>
-			<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.comments)}</span>
-		</button>
-		<button class="mobile-dock__sheet-item hide" id="md-top-btn" aria-label={i18n(I18nKey.backToTop)} type="button">
-			<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:keyboard-arrow-up-rounded" is:inline /></span>
-			<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.top)}</span>
-		</button>
-		{showSpine && (
-			<button class="mobile-dock__sheet-item" id="md-spine-btn" aria-label={i18n(I18nKey.spineModel)} type="button">
-				<span class="mobile-dock__sheet-item-icon"><Icon name="material-symbols:image-outline" is:inline /></span>
-				<span class="mobile-dock__sheet-item-label">{i18n(I18nKey.spineModel)}</span>
-			</button>
-		)}
-	</div>
-</div>
+		</div>
 
-<!-- 样式已迁移至 src/styles/components/mobile-dock.css -->
+		<button
+			class="mobile-dock__menu-toggle"
+			id="mobile-dock-menu-btn"
+			type="button"
+			aria-label={i18n(I18nKey.menu)}
+			aria-controls="mobile-dock-card"
+			aria-expanded="false"
+		>
+			<span class="mobile-dock__menu-icon" aria-hidden="true">
+				<Icon name="material-symbols:menu-rounded" is:inline />
+			</span>
+			<span class="mobile-dock__close-icon" aria-hidden="true">
+				<Icon name="material-symbols:close-rounded" is:inline />
+			</span>
+		</button>
+	</div>
+
+	<div class="mobile-dock__card" id="mobile-dock-card" aria-hidden="true">
+		<div class="mobile-dock__card-inner" tabindex="-1">
+			<div class="mobile-dock__views">
+				<section class="mobile-dock__view is-active" data-dock-view="menu" data-title={i18n(I18nKey.menu)}>
+					<nav class="mobile-dock__menu" aria-label={i18n(I18nKey.menu)}>
+						{navLinks.map((link, index) =>
+							link.children && link.children.length > 0 ? (
+								<div class="mobile-dock__accordion" data-dock-accordion>
+									<button
+										class="mobile-dock__menu-row mobile-dock__accordion-trigger"
+										type="button"
+										aria-expanded="false"
+										aria-controls={`mobile-dock-submenu-${index}`}
+									>
+										<span class="mobile-dock__menu-row-main">
+											{link.icon && <Icon name={link.icon} is:inline />}
+											<span>{link.name}</span>
+										</span>
+										<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline class="mobile-dock__accordion-arrow" />
+									</button>
+									<div
+										class="mobile-dock__submenu"
+										id={`mobile-dock-submenu-${index}`}
+										aria-hidden="true"
+										inert
+									>
+										<div class="mobile-dock__submenu-inner">
+											{link.children.map((child) =>
+												child.action ? (
+													<button class="mobile-dock__submenu-row" type="button" data-action={child.action}>
+														{child.icon && <Icon name={child.icon} is:inline />}
+														<span>{child.name}</span>
+													</button>
+												) : (
+													<a
+														href={child.external ? child.url : url(child.url)}
+														class="mobile-dock__submenu-row"
+														target={child.external ? "_blank" : undefined}
+														rel={child.external ? "noopener noreferrer" : undefined}
+														data-dock-navigation
+													>
+														{child.icon && <Icon name={child.icon} is:inline />}
+														<span>{child.name}</span>
+														{child.external && <Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="mobile-dock__external-icon" />}
+													</a>
+												))}
+										</div>
+									</div>
+							</div>
+							) : link.action ? (
+								<button class="mobile-dock__menu-row" type="button" data-action={link.action}>
+									<span class="mobile-dock__menu-row-main">
+										{link.icon && <Icon name={link.icon} is:inline />}
+										<span>{link.name}</span>
+									</span>
+								</button>
+							) : (
+								<a
+									href={link.external ? link.url : url(link.url)}
+									class="mobile-dock__menu-row"
+									target={link.external ? "_blank" : undefined}
+									rel={link.external ? "noopener noreferrer" : undefined}
+									data-dock-navigation
+								>
+									<span class="mobile-dock__menu-row-main">
+										{link.icon && <Icon name={link.icon} is:inline />}
+										<span>{link.name}</span>
+									</span>
+									{link.external && <Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="mobile-dock__external-icon" />}
+								</a>
+							)
+						)}
+					</nav>
+				</section>
+
+				{showMusic && (
+					<section class="mobile-dock__view" data-dock-view="music" data-title={i18n(I18nKey.music)} hidden>
+						<div class="mobile-dock__music-now">
+							<div class="mobile-dock__music-cover-wrap">
+								<img class="mobile-dock__music-cover is-hidden" id="mobile-dock-music-cover" alt="" />
+								<span class="mobile-dock__music-cover-fallback" aria-hidden="true">
+									<Icon name="material-symbols:music-note-rounded" is:inline />
+								</span>
+							</div>
+							<div class="mobile-dock__music-meta">
+								<strong id="mobile-dock-music-title">{i18n(I18nKey.music)}</strong>
+								<span id="mobile-dock-music-artist">{i18n(I18nKey.musicNoPlaying)}</span>
+							</div>
+						</div>
+						<div class="mobile-dock__playlist" id="mobile-dock-playlist" role="listbox" aria-label={i18n(I18nKey.musicPlaylist)}>
+							<p class="mobile-dock__empty" id="mobile-dock-music-empty">{i18n(I18nKey.musicNoPlaying)}</p>
+						</div>
+						<div class="mobile-dock__transport">
+							<div class="mobile-dock__progress-row">
+								<span id="mobile-dock-current-time">0:00</span>
+								<input
+									class="mobile-dock__progress"
+									id="mobile-dock-progress"
+									type="range"
+									min="0"
+									max="100"
+									step="0.1"
+									value="0"
+									aria-label={i18n(I18nKey.musicProgress)}
+								/>
+								<span id="mobile-dock-duration">0:00</span>
+							</div>
+							<div class="mobile-dock__transport-buttons">
+								<button type="button" id="mobile-dock-mode-btn" aria-label={i18n(I18nKey.playModeList)} aria-pressed="false">
+									<Icon name="material-symbols:repeat-rounded" is:inline class="mobile-dock__mode-list-icon" />
+									<Icon name="material-symbols:repeat-one-rounded" is:inline class="mobile-dock__mode-single-icon is-hidden" />
+									<Icon name="material-symbols:shuffle-rounded" is:inline class="mobile-dock__mode-shuffle-icon is-hidden" />
+								</button>
+								<button type="button" id="mobile-dock-prev-btn" aria-label={i18n(I18nKey.musicPrev)}>
+									<Icon name="material-symbols:skip-previous-rounded" is:inline />
+								</button>
+								<button class="mobile-dock__play-button" type="button" id="mobile-dock-play-btn" aria-label={i18n(I18nKey.musicPlay)}>
+									<Icon name="material-symbols:play-arrow-rounded" is:inline class="mobile-dock__play-icon" />
+									<Icon name="material-symbols:pause-rounded" is:inline class="mobile-dock__pause-icon is-hidden" />
+								</button>
+								<button type="button" id="mobile-dock-next-btn" aria-label={i18n(I18nKey.musicNext)}>
+									<Icon name="material-symbols:skip-next-rounded" is:inline />
+								</button>
+								<button type="button" id="mobile-dock-mute-btn" aria-label={i18n(I18nKey.musicVolume)} aria-pressed="false">
+									<Icon name="material-symbols:volume-up-rounded" is:inline class="mobile-dock__volume-up-icon" />
+									<Icon name="material-symbols:volume-off-rounded" is:inline class="mobile-dock__volume-off-icon is-hidden" />
+								</button>
+							</div>
+						</div>
+					</section>
+				)}
+
+				{showAnnouncement && (
+					<section class="mobile-dock__view" data-dock-view="announcement" data-title={announcementConfig.title || i18n(I18nKey.announcement)} hidden>
+						<div class="mobile-dock__announcement-list">
+							{announcements.map((item) => {
+								const external = !!item.link && /^https?:\/\//.test(item.link);
+								return (
+									<details class="mobile-dock__announcement">
+										<summary>
+											<span class="mobile-dock__announcement-main">
+												<span class="mobile-dock__announcement-tag">{item.tag}</span>
+												<strong>{item.title}</strong>
+											</span>
+											<time>{item.time}</time>
+										</summary>
+										<div class="mobile-dock__announcement-content">
+											<p>{item.content}</p>
+											{item.link && (
+												<a
+													href={external ? item.link : url(item.link)}
+													target={external ? "_blank" : undefined}
+													rel={external ? "noopener noreferrer" : undefined}
+													data-dock-navigation
+												>
+													{i18n(I18nKey.viewDetails)}
+													<Icon name="material-symbols:arrow-forward-rounded" is:inline />
+												</a>
+											)}
+										</div>
+									</details>
+								);
+							})}
+						</div>
+					</section>
+				)}
+
+				<section class="mobile-dock__view" data-dock-view="tags" data-title={i18n(I18nKey.tags)} hidden>
+					<div class="mobile-dock__tag-list">
+						{tags.map((tag) => (
+							<a href={getTagUrl(tag.name)} class="mobile-dock__tag-row" data-dock-navigation>
+								<span># {tag.name.trim()}</span>
+								<strong>{tag.count}</strong>
+							</a>
+						))}
+					</div>
+				</section>
+
+				<section class="mobile-dock__view" data-dock-view="toc" data-title={i18n(I18nKey.tableOfContents)} hidden>
+					<div class="mobile-dock__toc toc-scroll-container">
+						<div id="mobile-dock-toc-content" class="toc-content"></div>
+					</div>
+				</section>
+			</div>
+
+			<nav class="mobile-dock__toolbar" aria-label={i18n(I18nKey.tools)}>
+				<button type="button" id="mobile-dock-search-btn" aria-label={i18n(I18nKey.search)}>
+					<Icon name="material-symbols:search-rounded" is:inline />
+					<span>{i18n(I18nKey.search)}</span>
+				</button>
+				<button type="button" id="mobile-dock-theme-btn" aria-label={i18n(I18nKey.theme)}>
+					<Icon name="material-symbols:wb-sunny-outline-rounded" is:inline class="mobile-dock__theme-light" />
+					<Icon name="material-symbols:dark-mode-outline-rounded" is:inline class="mobile-dock__theme-dark is-hidden" />
+					<span>{i18n(I18nKey.theme)}</span>
+				</button>
+				{showMusic && (
+					<button type="button" data-view-target="music" aria-label={i18n(I18nKey.music)}>
+						<Icon name="material-symbols:music-note-rounded" is:inline />
+						<span>{i18n(I18nKey.music)}</span>
+					</button>
+				)}
+				{showAnnouncement && (
+					<button type="button" data-view-target="announcement" aria-label={i18n(I18nKey.announcement)}>
+						<Icon name="material-symbols:notifications-outline-rounded" is:inline />
+						<span>{i18n(I18nKey.announcement)}</span>
+					</button>
+				)}
+				<button type="button" data-view-target="tags" aria-label={i18n(I18nKey.tags)}>
+					<Icon name="material-symbols:label-outline" is:inline />
+					<span>{i18n(I18nKey.tags)}</span>
+				</button>
+				<button class="is-hidden" type="button" id="mobile-dock-toc-btn" data-view-target="toc" aria-label={i18n(I18nKey.tableOfContents)}>
+					<Icon name="material-symbols:format-list-bulleted" is:inline />
+					<span>{i18n(I18nKey.tableOfContents)}</span>
+				</button>
+				{aiSearchPublicConfig.enabled && (
+					<button type="button" id="mobile-dock-ai-search-btn" aria-label={i18n(I18nKey.aiSearch)}>
+						<Icon name="ri:ai" is:inline />
+						<span>{i18n(I18nKey.aiSearch)}</span>
+					</button>
+				)}
+				<button class="is-hidden" type="button" id="mobile-dock-comment-btn" aria-label={i18n(I18nKey.comments)}>
+					<Icon name="mingcute:comment-line" is:inline />
+					<span>{i18n(I18nKey.comments)}</span>
+				</button>
+				<button class="is-hidden" type="button" id="mobile-dock-top-btn" aria-label={i18n(I18nKey.backToTop)}>
+					<Icon name="material-symbols:keyboard-arrow-up-rounded" is:inline />
+					<span>{i18n(I18nKey.top)}</span>
+				</button>
+				{showSpine && (
+					<button type="button" id="mobile-dock-spine-btn" aria-label={i18n(I18nKey.spineModel)}>
+						<Icon name="material-symbols:image-outline" is:inline />
+						<span>{i18n(I18nKey.spineModel)}</span>
+					</button>
+				)}
+			</nav>
+		</div>
+	</div>
+</section>
 
 <script>
+	import I18nKey from "@/i18n/i18nKey";
+	import { i18n } from "@/i18n/translation";
 	import { requestSearchModalToggle } from "@/utils/search-modal-controller";
 	import { getStoredTheme, setTheme } from "@/utils/setting-utils";
 
+	type DockShape = "pill" | "bubble" | "card";
+	type DockView = "menu" | "music" | "announcement" | "tags" | "toc";
+	type MusicState = ReturnType<
+		NonNullable<Window["__fireflyMusic"]>["getState"]
+	>;
+	type RuntimeDock = HTMLElement & {
+		__mobileDockAbortController?: AbortController;
+	};
+
 	(function initMobileDock() {
-		const dockEl = document.getElementById("mobile-dock");
-		const overlayEl = document.getElementById("mobile-dock-overlay");
-		const sheetEl = document.getElementById("mobile-dock-sheet");
-		if (!dockEl || !overlayEl || !sheetEl) return;
+		const dock = document.getElementById("mobile-dock") as RuntimeDock;
+		const overlay = document.getElementById("mobile-dock-overlay") as HTMLElement;
+		const card = document.getElementById("mobile-dock-card") as HTMLElement;
+		const cardInner = card?.querySelector<HTMLElement>(".mobile-dock__card-inner") as HTMLElement;
+		const contextButton = document.getElementById("mobile-dock-context-btn") as HTMLButtonElement;
+		const menuButton = document.getElementById("mobile-dock-menu-btn") as HTMLButtonElement;
+		const viewTitle = document.getElementById("mobile-dock-view-title") as HTMLElement;
+		const lyricViewport = document.getElementById("mobile-dock-lyric-viewport") as HTMLElement;
+		const lyricText = document.getElementById("mobile-dock-lyric-text") as HTMLElement;
+		if (!dock || !overlay || !card || !cardInner || !contextButton || !menuButton || !viewTitle || !lyricViewport || !lyricText) return;
 
-		// 显式标注非 null 类型，确保闭包内类型安全
-		const dock: HTMLElement = dockEl;
-		const overlay: HTMLElement = overlayEl;
-		const sheet: HTMLElement = sheetEl;
+		dock.__mobileDockAbortController?.abort();
+		const abortController = new AbortController();
+		dock.__mobileDockAbortController = abortController;
+		const { signal } = abortController;
 
-		// ── 滚动隐藏逻辑 ──
+		const siteTitle = document.querySelector<HTMLElement>(".mobile-dock__site-title")?.textContent?.trim() || document.title;
+		const views = Array.from(dock.querySelectorAll<HTMLElement>("[data-dock-view]"));
+		const viewButtons = Array.from(dock.querySelectorAll<HTMLButtonElement>("[data-view-target]"));
+		const musicCover = document.getElementById("mobile-dock-music-cover") as HTMLImageElement | null;
+		const musicTitle = document.getElementById("mobile-dock-music-title");
+		const musicArtist = document.getElementById("mobile-dock-music-artist");
+		const playlist = document.getElementById("mobile-dock-playlist");
+		const musicEmpty = document.getElementById("mobile-dock-music-empty");
+		const progress = document.getElementById("mobile-dock-progress") as HTMLInputElement | null;
+		const currentTime = document.getElementById("mobile-dock-current-time");
+		const duration = document.getElementById("mobile-dock-duration");
+		const playButton = document.getElementById("mobile-dock-play-btn") as HTMLButtonElement | null;
+		const modeButton = document.getElementById("mobile-dock-mode-btn") as HTMLButtonElement | null;
+		const muteButton = document.getElementById("mobile-dock-mute-btn") as HTMLButtonElement | null;
+		const playIcon = playButton?.querySelector<HTMLElement>(".mobile-dock__play-icon");
+		const pauseIcon = playButton?.querySelector<HTMLElement>(".mobile-dock__pause-icon");
+		const modeListIcon = modeButton?.querySelector<HTMLElement>(".mobile-dock__mode-list-icon");
+		const modeSingleIcon = modeButton?.querySelector<HTMLElement>(".mobile-dock__mode-single-icon");
+		const modeShuffleIcon = modeButton?.querySelector<HTMLElement>(".mobile-dock__mode-shuffle-icon");
+		const volumeUpIcon = muteButton?.querySelector<HTMLElement>(".mobile-dock__volume-up-icon");
+		const volumeOffIcon = muteButton?.querySelector<HTMLElement>(".mobile-dock__volume-off-icon");
+		const tocButton = document.getElementById("mobile-dock-toc-btn");
+		const commentButton = document.getElementById("mobile-dock-comment-btn");
+		const topButton = document.getElementById("mobile-dock-top-btn");
+
+		let shape: DockShape = "pill";
+		let activeView: DockView = "menu";
+		let musicState: MusicState | null = null;
+		let displayedLyric = "";
+		let playlistSignature = "";
+		let lastFocusedPlaylistIndex: number | null = null;
 		let lastScrollY = window.scrollY;
-		let isOverlayOpen = false; // sheet 或菜单抽屉打开时锁定
+		let idleExpandTimer: number | null = null;
+		let previousFocus: HTMLElement | null = null;
+		let previousBodyOverflow = "";
+		let keyboardOpen = false;
+		let mobileTOCManager: { cleanup: () => void } | null = null;
 
-		function onScroll() {
-			if (isOverlayOpen) return;
-			const y = window.scrollY;
-			// 向下滚动超过 100px：隐藏；向上滚动：显示
-			if (y > lastScrollY + 8 && y > 100) {
-				dock.classList.add("is-hidden");
-			} else if (y < lastScrollY - 8) {
-				dock.classList.remove("is-hidden");
+		function setShape(nextShape: DockShape) {
+			if (shape === nextShape) return;
+			const wasCard = shape === "card";
+			shape = nextShape;
+			dock.dataset.shape = shape;
+			const isCard = shape === "card";
+			menuButton.setAttribute("aria-expanded", String(isCard));
+			menuButton.setAttribute("aria-label", isCard ? i18n(I18nKey.close) : i18n(I18nKey.menu));
+			card.setAttribute("aria-hidden", String(!isCard));
+			overlay.classList.toggle("is-open", isCard);
+			overlay.setAttribute("aria-hidden", String(!isCard));
+
+			if (isCard) {
+				previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : menuButton;
+				previousBodyOverflow = document.body.style.overflow;
+				document.body.style.overflow = "hidden";
+				requestAnimationFrame(() => cardInner.focus({ preventScroll: true }));
+			} else if (wasCard) {
+				document.body.style.overflow = previousBodyOverflow;
+				previousFocus?.focus({ preventScroll: true });
+				setView("menu");
 			}
-			lastScrollY = y;
 
-			// 更新回顶部按钮显隐
-			const scrolled = y > 200;
-			document.getElementById("md-top-btn")?.classList.toggle("hide", !scrolled);
+			if (nextShape === "pill") scheduleLyricMarquee();
 		}
 
-		window.addEventListener("scroll", onScroll, { passive: true } as AddEventListenerOptions);
-
-		// ── 主题切换 ──
-		const themeBtn = document.getElementById("mobile-dock-theme-btn");
-		const themeLightIcon = themeBtn?.querySelector(".mobile-dock-theme-icon-light");
-		const themeDarkIcon = themeBtn?.querySelector(".mobile-dock-theme-icon-dark");
-
-		function updateThemeIcon() {
-			const isDark = document.documentElement.classList.contains("dark");
-			if (themeLightIcon) (themeLightIcon as HTMLElement).style.display = isDark ? "none" : "";
-			if (themeDarkIcon) (themeDarkIcon as HTMLElement).style.display = isDark ? "" : "none";
+		function openCard(view: DockView = "menu") {
+			setView(view);
+			setShape("card");
 		}
 
-		themeBtn?.addEventListener("click", (e) => {
-			e.stopPropagation();
-			const current = getStoredTheme();
-			const resolved = current === "system"
-				? (document.documentElement.classList.contains("dark") ? "dark" : "light")
-				: current;
-			const next = resolved === "light" ? "dark" : "light";
-			setTheme(next);
-			updateThemeIcon();
+		function closeCard() {
+			setShape("pill");
+		}
+
+		function setView(nextView: DockView) {
+			const target = views.find((view) => view.dataset.dockView === nextView);
+			if (!target) return;
+			activeView = nextView;
+			dock.dataset.view = activeView;
+			views.forEach((view) => {
+				const active = view === target;
+				view.hidden = !active;
+				view.classList.toggle("is-active", active);
+			});
+			viewButtons.forEach((button) => {
+				const active = button.dataset.viewTarget === activeView;
+				button.classList.toggle("is-active", active);
+				button.setAttribute("aria-pressed", String(active));
+			});
+			viewTitle.textContent = target.dataset.title || i18n(I18nKey.menu);
+			dock.classList.toggle("is-child-view", activeView !== "menu");
+			contextButton.setAttribute("aria-label", activeView === "menu" ? siteTitle : i18n(I18nKey.menu));
+
+			if (activeView === "music") void ensureMusicReady();
+			if (activeView === "toc") void initializeTOC();
+			target.scrollTop = 0;
+		}
+
+		function closeOpenAccordion(except?: HTMLElement) {
+			dock.querySelectorAll<HTMLElement>("[data-dock-accordion]").forEach((accordion) => {
+				if (accordion === except) return;
+				accordion.classList.remove("is-open");
+				const trigger = accordion.querySelector<HTMLButtonElement>(".mobile-dock__accordion-trigger");
+				const panel = accordion.querySelector<HTMLElement>(".mobile-dock__submenu");
+				trigger?.setAttribute("aria-expanded", "false");
+				if (panel) {
+					panel.setAttribute("aria-hidden", "true");
+					panel.inert = true;
+				}
+			});
+		}
+
+		dock.querySelectorAll<HTMLElement>("[data-dock-accordion]").forEach((accordion) => {
+			const trigger = accordion.querySelector<HTMLButtonElement>(".mobile-dock__accordion-trigger");
+			const panel = accordion.querySelector<HTMLElement>(".mobile-dock__submenu");
+			trigger?.addEventListener("click", () => {
+				const willOpen = !accordion.classList.contains("is-open");
+				closeOpenAccordion(accordion);
+				accordion.classList.toggle("is-open", willOpen);
+				trigger.setAttribute("aria-expanded", String(willOpen));
+				if (panel) {
+					panel.setAttribute("aria-hidden", String(!willOpen));
+					panel.inert = !willOpen;
+				}
+			}, { signal });
 		});
 
-		updateThemeIcon();
-		window.addEventListener("theme-change", updateThemeIcon);
-
-		// ── 首页导航 ──
-		// 触摸即预载首页：移动端无 hover，touchstart 提供 ~80ms 提前量
-		document.getElementById("mobile-dock-home-btn")?.addEventListener("touchstart", () => {
-			void window.swup?.preload?.("/")?.catch(() => {});
-		}, { passive: true });
-		document.getElementById("mobile-dock-home-btn")?.addEventListener("click", (e) => {
-			e.stopPropagation();
-			const isHome = window.location.pathname === "/" || window.location.pathname === "";
-			if (!isHome) {
-				window.navigateToPage("/");
-			}
-		});
-
-		// ── 搜索：走全局 SearchModal 控制器，不依赖被移动端 CSS 隐藏的 Navbar ──
-		document.getElementById("mobile-dock-search-btn")?.addEventListener("click", (e) => {
-			e.stopPropagation();
-			requestSearchModalToggle();
-		});
-
-		// ── 菜单（触发隐藏的 Navbar 汉堡按钮） ──
-		const menuBtn = document.getElementById("mobile-dock-menu-btn");
-		const menuCollapsedIcon = menuBtn?.querySelector(".mobile-dock-menu-icon-collapsed");
-		const menuOpenIcon = menuBtn?.querySelector(".mobile-dock-menu-icon-open");
-
-		function setMenuOpenState(open: boolean) {
-			if (menuCollapsedIcon) (menuCollapsedIcon as HTMLElement).style.display = open ? "none" : "";
-			if (menuOpenIcon) (menuOpenIcon as HTMLElement).style.display = open ? "" : "none";
+		function scheduleLyricMarquee() {
+			requestAnimationFrame(() => {
+				lyricText.classList.remove("is-marquee");
+				lyricText.style.removeProperty("--mobile-dock-lyric-offset");
+				lyricText.style.removeProperty("--mobile-dock-lyric-duration");
+				if (!dock.classList.contains("has-playing-context") || shape !== "pill") return;
+				const overflow = lyricText.scrollWidth - lyricViewport.clientWidth;
+				if (overflow <= 2) return;
+				lyricText.style.setProperty("--mobile-dock-lyric-offset", `${-Math.ceil(overflow)}px`);
+				lyricText.style.setProperty("--mobile-dock-lyric-duration", `${Math.max(5, overflow / 28 + 3).toFixed(2)}s`);
+				lyricText.classList.add("is-marquee");
+			});
 		}
 
-		menuBtn?.addEventListener("click", (e) => {
-			e.stopPropagation();
-			document.getElementById("nav-menu-switch")?.click();
-		});
-
-		// 监听 NavMenuPanel 抽屉状态同步菜单图标
-		const navDrawer = document.getElementById("nav-menu-panel");
-		if (navDrawer) {
-			new MutationObserver(() => {
-				const isOpen = navDrawer.classList.contains("is-open");
-				setMenuOpenState(isOpen);
-				isOverlayOpen = isOpen;
-			}).observe(navDrawer, { attributes: true, attributeFilter: ["class"] });
-		}
-
-		// ── 工具栏 sheet 开关 ──
-		const toolsBtn = document.getElementById("mobile-dock-tools-btn");
-		const toolsCollapsedIcon = toolsBtn?.querySelector(".mobile-dock-tools-icon-collapsed");
-		const toolsOpenIcon = toolsBtn?.querySelector(".mobile-dock-tools-icon-open");
-
-		function openSheet() {
-			sheet.classList.add("is-open");
-			overlay.classList.add("is-open");
-			overlay.setAttribute("aria-hidden", "false");
-			if (toolsCollapsedIcon) (toolsCollapsedIcon as HTMLElement).style.display = "none";
-			if (toolsOpenIcon) (toolsOpenIcon as HTMLElement).style.display = "";
-			isOverlayOpen = true;
-		}
-
-		function closeSheet() {
-			sheet.classList.remove("is-open");
-			overlay.classList.remove("is-open");
-			overlay.setAttribute("aria-hidden", "true");
-			if (toolsCollapsedIcon) (toolsCollapsedIcon as HTMLElement).style.display = "";
-			if (toolsOpenIcon) (toolsOpenIcon as HTMLElement).style.display = "none";
-			isOverlayOpen = false;
-		}
-
-		function setGuestbookComposerFocus(active: boolean) {
-			document.documentElement.classList.toggle(
-				"guestbook-composer-focused",
-				active,
-			);
-			dock.classList.toggle("is-keyboard-open", active);
-			if (active) closeSheet();
-		}
-
-		document.addEventListener("focusin", (event) => {
-			const target = event.target;
-			if (
-				target instanceof HTMLTextAreaElement &&
-				target.matches(".guestbook-composer textarea")
-			) {
-				setGuestbookComposerFocus(true);
-			}
-		});
-
-		document.addEventListener("focusout", (event) => {
-			const target = event.target;
-			if (
-				!(target instanceof HTMLTextAreaElement) ||
-				!target.matches(".guestbook-composer textarea")
-			) {
+		function updateContext() {
+			const track = musicState?.track;
+			const isPlaying = !!musicState?.isPlaying && !!track;
+			dock.classList.toggle("has-playing-context", isPlaying);
+			if (!isPlaying || !track) {
+				if (displayedLyric) {
+					displayedLyric = "";
+					lyricText.textContent = "";
+					scheduleLyricMarquee();
+				}
+				contextButton.setAttribute("aria-label", siteTitle);
 				return;
 			}
 
-			requestAnimationFrame(() => {
-				const activeElement = document.activeElement;
-				setGuestbookComposerFocus(
-					activeElement instanceof HTMLTextAreaElement &&
-						activeElement.matches(".guestbook-composer textarea"),
-				);
-			});
-		});
-
-		toolsBtn?.addEventListener("click", (e) => {
-			e.stopPropagation();
-			if (sheet.classList.contains("is-open")) {
-				closeSheet();
-			} else {
-				openSheet();
+			let content = track.name;
+			if (musicState?.lyricsStatus === "loading") {
+				content = i18n(I18nKey.musicLoadingLyrics);
+			} else if (
+				musicState?.lyricsStatus === "loaded" &&
+				musicState.currentLrcIndex >= 0 &&
+				musicState.lyrics[musicState.currentLrcIndex]?.text
+			) {
+				content = musicState.lyrics[musicState.currentLrcIndex].text;
 			}
-		});
-
-		overlay.addEventListener("click", () => closeSheet());
-
-		// Escape 关闭 sheet
-		document.addEventListener("keydown", (e) => {
-			if (e.key === "Escape" && sheet.classList.contains("is-open")) {
-				closeSheet();
+			if (content !== displayedLyric) {
+				displayedLyric = content;
+				lyricText.textContent = content;
+				scheduleLyricMarquee();
 			}
-		});
-
-		// ── sheet 内工具按钮：复用 FloatingDock 按钮逻辑 ──
-		// 通过触发隐藏的 FloatingDock 对应按钮 click，复用其抽屉/功能逻辑
-		const sheetBtnMap: Record<string, string> = {
-			"md-music-btn": "dock-music-btn",
-			"md-announcement-btn": "dock-announcement-btn",
-			"md-tags-btn": "dock-tags-btn",
-			"md-toc-btn": "dock-toc-btn",
-			"md-spine-btn": "dock-spine-btn",
-		};
-
-		Object.entries(sheetBtnMap).forEach(([sheetBtnId, dockBtnId]) => {
-			document.getElementById(sheetBtnId)?.addEventListener("click", (e) => {
-				e.stopPropagation();
-				closeSheet();
-				// 延迟触发，确保 sheet 先关闭
-				setTimeout(() => {
-					document.getElementById(dockBtnId)?.click();
-				}, 50);
-			});
-		});
-
-		// AI 搜索：直接 dispatch 事件
-		document.getElementById("md-ai-search-btn")?.addEventListener("click", (e) => {
-			e.stopPropagation();
-			closeSheet();
-			window.dispatchEvent(new CustomEvent("toggle-ai-search"));
-		});
-
-		// 回顶部
-		document.getElementById("md-top-btn")?.addEventListener("click", (e) => {
-			e.stopPropagation();
-			closeSheet();
-			window.scroll({ top: 0, behavior: "smooth" });
-		});
-
-		// 评论
-		document.getElementById("md-comment-btn")?.addEventListener("click", (e) => {
-			e.stopPropagation();
-			closeSheet();
-			document.getElementById("post-comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
-		});
-
-		// ── 路径相关显隐 ──
-		function updatePathDependent() {
-			const isHome = window.location.pathname === "/" || window.location.pathname === "";
-			const isPost = /\/posts?\//.test(window.location.pathname);
-			const isFriends = /^\/friends\/?$/.test(window.location.pathname);
-			const hasComment = !!document.getElementById("post-comments");
-
-			// 首页按钮：首页时置灰
-			document.getElementById("mobile-dock-home-btn")?.classList.toggle("is-active", !isHome);
-
-			// TOC 按钮：仅文章页显示
-			document.getElementById("md-toc-btn")?.classList.toggle("hide", !isPost);
-
-			// 评论按钮：仅文章页且有评论
-			document.getElementById("md-comment-btn")?.classList.toggle("hide", !(isPost || isFriends) || !hasComment);
+			contextButton.setAttribute("aria-label", `${track.name}: ${content}`);
 		}
 
-		updatePathDependent();
+		function updateMusicHeader() {
+			if (!musicTitle || !musicArtist || !musicCover) return;
+			const track = musicState?.track;
+			musicTitle.textContent = track?.name || i18n(I18nKey.music);
+			musicArtist.textContent = track?.artist || musicState?.error || i18n(I18nKey.musicNoPlaying);
+			if (track?.pic) {
+				musicCover.src = track.pic;
+				musicCover.classList.remove("is-hidden");
+			} else {
+				musicCover.removeAttribute("src");
+				musicCover.classList.add("is-hidden");
+			}
+		}
 
-		// ── Swup 页面加载后重新初始化路径相关状态 ──
-		document.addEventListener("astro:page-load", () => {
-			closeSheet();
-			setGuestbookComposerFocus(false);
-			updatePathDependent();
-			// 重置滚动隐藏状态
-			lastScrollY = window.scrollY;
-			dock.classList.remove("is-hidden");
+		function updateMusicControls() {
+			if (!progress || !currentTime || !duration || !playButton || !playIcon || !pauseIcon) return;
+			const value = musicState?.progress || 0;
+			progress.value = String(value);
+			progress.style.setProperty("--mobile-dock-progress", `${value}%`);
+			currentTime.textContent = musicState?.currentTimeStr || "0:00";
+			duration.textContent = musicState?.durationStr || "0:00";
+			const isPlaying = !!musicState?.isPlaying;
+			playIcon.classList.toggle("is-hidden", isPlaying);
+			pauseIcon.classList.toggle("is-hidden", !isPlaying);
+			playButton.setAttribute("aria-label", isPlaying ? i18n(I18nKey.musicPause) : i18n(I18nKey.musicPlay));
+
+			const playMode = musicState?.playMode || 0;
+			const modeLabel = [I18nKey.playModeList, I18nKey.playModeSingle, I18nKey.playModeShuffle][playMode] || I18nKey.playModeList;
+			modeListIcon?.classList.toggle("is-hidden", playMode !== 0);
+			modeSingleIcon?.classList.toggle("is-hidden", playMode !== 1);
+			modeShuffleIcon?.classList.toggle("is-hidden", playMode !== 2);
+			modeButton?.classList.toggle("is-active", playMode !== 0);
+			modeButton?.setAttribute("aria-label", i18n(modeLabel));
+			modeButton?.setAttribute("aria-pressed", String(playMode !== 0));
+
+			const isMuted = !!musicState?.isMuted || !musicState?.volume;
+			volumeUpIcon?.classList.toggle("is-hidden", isMuted);
+			volumeOffIcon?.classList.toggle("is-hidden", !isMuted);
+			muteButton?.classList.toggle("is-active", isMuted);
+			muteButton?.setAttribute("aria-label", `${i18n(I18nKey.musicVolume)}: ${isMuted ? "0%" : `${Math.round((musicState?.volume || 0) * 100)}%`}`);
+			muteButton?.setAttribute("aria-pressed", String(isMuted));
+		}
+
+		function updatePlaylistState() {
+			if (!playlist || !musicState) return;
+			playlist.querySelectorAll<HTMLElement>(".mobile-dock__playlist-item").forEach((item) => {
+				const index = Number.parseInt(item.dataset.index || "-1", 10);
+				const active = index === musicState?.currentIndex;
+				item.classList.toggle("is-active", active);
+				item.classList.toggle("is-playing", active && !!musicState?.isPlaying);
+				item.setAttribute("aria-selected", String(active));
+				if (active) item.setAttribute("aria-current", "true");
+				else item.removeAttribute("aria-current");
+			});
+			const activeItem = playlist.querySelector<HTMLElement>(".mobile-dock__playlist-item.is-active");
+			if (activeItem && activeView === "music" && lastFocusedPlaylistIndex !== musicState.currentIndex) {
+				activeItem.scrollIntoView({ block: "nearest" });
+				lastFocusedPlaylistIndex = musicState.currentIndex;
+			}
+		}
+
+		function renderPlaylist() {
+			if (!playlist || !musicEmpty || !musicState) return;
+			const signature = musicState.playlist.map((track) => `${track.name}\u0000${track.artist}\u0000${track.url}`).join("\u0001");
+			if (signature === playlistSignature) {
+				updatePlaylistState();
+				return;
+			}
+			playlistSignature = signature;
+			lastFocusedPlaylistIndex = null;
+			playlist.replaceChildren();
+
+			if (musicState.playlist.length === 0) {
+				musicEmpty.textContent = musicState.error || i18n(I18nKey.musicNoSongs);
+				playlist.appendChild(musicEmpty);
+				return;
+			}
+
+			musicState.playlist.forEach((track, index) => {
+				const item = document.createElement("button");
+				item.type = "button";
+				item.className = "mobile-dock__playlist-item";
+				item.dataset.index = String(index);
+				item.setAttribute("role", "option");
+
+				const cover = document.createElement("span");
+				cover.className = "mobile-dock__playlist-cover";
+				if (track.pic) {
+					const image = document.createElement("img");
+					image.src = track.pic;
+					image.alt = "";
+					image.loading = "lazy";
+					image.addEventListener("error", () => image.remove(), { once: true });
+					cover.appendChild(image);
+				}
+
+				const meta = document.createElement("span");
+				meta.className = "mobile-dock__playlist-meta";
+				const name = document.createElement("strong");
+				name.textContent = track.name;
+				const artist = document.createElement("span");
+				artist.textContent = track.artist;
+				meta.appendChild(name);
+				meta.appendChild(artist);
+
+				const equalizer = document.createElement("span");
+				equalizer.className = "mobile-dock__playlist-eq";
+				equalizer.setAttribute("aria-hidden", "true");
+				equalizer.appendChild(document.createElement("i"));
+				equalizer.appendChild(document.createElement("i"));
+				equalizer.appendChild(document.createElement("i"));
+
+				item.appendChild(cover);
+				item.appendChild(meta);
+				item.appendChild(equalizer);
+				item.addEventListener("click", () => window.__fireflyMusic?.playTrackByIndex(index), { signal });
+				playlist.appendChild(item);
+			});
+			updatePlaylistState();
+		}
+
+		function syncMusicState() {
+			const manager = window.__fireflyMusic;
+			if (!manager) return;
+			musicState = manager.getState();
+			updateContext();
+			updateMusicHeader();
+			updateMusicControls();
+			renderPlaylist();
+		}
+
+		async function ensureMusicReady() {
+			const manager = window.__fireflyMusic;
+			if (!manager) return;
+			const state = manager.getState();
+			if (!state.initialized) {
+				if (musicEmpty) musicEmpty.textContent = i18n(I18nKey.musicNoPlaying);
+				await manager.init();
+			}
+			syncMusicState();
+		}
+
+		async function initializeTOC() {
+			mobileTOCManager?.cleanup();
+			try {
+				const { TOCManager } = await import("@/utils/toc-utils");
+				const manager = new TOCManager({
+					contentId: "mobile-dock-toc-content",
+					indicatorId: "mobile-dock-toc-indicator",
+					maxLevel: 3,
+					scrollOffset: 80,
+				});
+				manager.init();
+				mobileTOCManager = manager;
+			} catch {
+				const tocContent = document.getElementById("mobile-dock-toc-content");
+				if (tocContent) tocContent.textContent = i18n(I18nKey.tocEmpty);
+			}
+		}
+
+		function updateThemeIcon() {
+			const isDark = document.documentElement.classList.contains("dark");
+			dock.querySelector<HTMLElement>(".mobile-dock__theme-light")?.classList.toggle("is-hidden", isDark);
+			dock.querySelector<HTMLElement>(".mobile-dock__theme-dark")?.classList.toggle("is-hidden", !isDark);
+		}
+
+		function updatePathDependent() {
+			const pathname = window.location.pathname;
+			const isPost = /\/posts?\//.test(pathname);
+			const isFriends = /^\/friends\/?$/.test(pathname);
+			const hasComment = !!document.getElementById("post-comments");
+			tocButton?.classList.toggle("is-hidden", !isPost);
+			commentButton?.classList.toggle("is-hidden", !(isPost || isFriends) || !hasComment);
+			topButton?.classList.toggle("is-hidden", window.scrollY <= 200);
+			if (!isPost && activeView === "toc") setView("menu");
+		}
+
+		function scheduleIdleExpand() {
+			if (idleExpandTimer !== null) window.clearTimeout(idleExpandTimer);
+			idleExpandTimer = window.setTimeout(() => {
+				if (!keyboardOpen && shape === "bubble") setShape("pill");
+			}, 1800);
+		}
+
+		function onScroll() {
+			const y = window.scrollY;
+			const delta = y - lastScrollY;
+			lastScrollY = y;
+			topButton?.classList.toggle("is-hidden", y <= 200);
+			if (keyboardOpen || shape === "card") return;
+			if (delta >= 8 && y > 80) setShape("bubble");
+			else if (delta <= -8) setShape("pill");
+			scheduleIdleExpand();
+		}
+
+		function setKeyboardOpen(open: boolean) {
+			keyboardOpen = open;
+			dock.classList.toggle("is-keyboard-open", open);
+			if (open && shape === "card") closeCard();
+		}
+
+		menuButton.addEventListener("click", () => {
+			if (shape === "bubble") {
+				setShape("pill");
+				return;
+			}
+			if (shape === "card") closeCard();
+			else openCard("menu");
+		}, { signal });
+
+		contextButton.addEventListener("click", () => {
+			if (shape === "bubble") {
+				setShape("pill");
+				return;
+			}
+			if (shape === "card") {
+				if (activeView !== "menu") setView("menu");
+				return;
+			}
+			if (musicState?.isPlaying && musicState.track) openCard("music");
+			else if (window.location.pathname !== "/") window.navigateToPage("/");
+		}, { signal });
+
+		contextButton.addEventListener("touchstart", () => {
+			if (!musicState?.isPlaying) void window.swup?.preload?.("/")?.catch(() => {});
+		}, { passive: true, signal });
+
+		overlay.addEventListener("click", closeCard, { signal });
+		viewButtons.forEach((button) => {
+			button.addEventListener("click", () => setView(button.dataset.viewTarget as DockView), { signal });
 		});
+
+		dock.addEventListener("click", (event) => {
+			const target = event.target as HTMLElement;
+			const actionButton = target.closest<HTMLElement>("[data-action]");
+			const action = actionButton?.dataset.action;
+			if (action) {
+				window.dispatchEvent(new CustomEvent(action));
+				closeCard();
+			}
+			if (target.closest("[data-dock-navigation]")) closeCard();
+			if (target.closest("#mobile-dock-toc-content a")) window.setTimeout(closeCard, 0);
+		}, { signal });
+
+		document.getElementById("mobile-dock-search-btn")?.addEventListener("click", () => {
+			closeCard();
+			requestSearchModalToggle();
+		}, { signal });
+
+		document.getElementById("mobile-dock-ai-search-btn")?.addEventListener("click", () => {
+			closeCard();
+			window.dispatchEvent(new CustomEvent("toggle-ai-search"));
+		}, { signal });
+
+		document.getElementById("mobile-dock-theme-btn")?.addEventListener("click", () => {
+			const current = getStoredTheme();
+			const resolved = current === "system"
+				? document.documentElement.classList.contains("dark") ? "dark" : "light"
+				: current;
+			setTheme(resolved === "light" ? "dark" : "light");
+			updateThemeIcon();
+		}, { signal });
+
+		document.getElementById("mobile-dock-comment-btn")?.addEventListener("click", () => {
+			closeCard();
+			document.getElementById("post-comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+		}, { signal });
+
+		document.getElementById("mobile-dock-top-btn")?.addEventListener("click", () => {
+			closeCard();
+			window.scroll({ top: 0, behavior: "smooth" });
+		}, { signal });
+
+		document.getElementById("mobile-dock-spine-btn")?.addEventListener("click", (event) => {
+			const target = document.getElementById("spine-model-container");
+			if (!target) return;
+			const hidden = target.style.display === "none";
+			target.style.display = hidden ? "" : "none";
+			localStorage.setItem("spine-hidden", String(!hidden));
+			(event.currentTarget as HTMLElement).setAttribute("aria-pressed", String(hidden));
+			closeCard();
+		}, { signal });
+
+		document.getElementById("mobile-dock-prev-btn")?.addEventListener("click", () => window.__fireflyMusic?.playPrev(), { signal });
+		modeButton?.addEventListener("click", () => window.__fireflyMusic?.cyclePlayMode(), { signal });
+		playButton?.addEventListener("click", () => window.__fireflyMusic?.togglePlay(), { signal });
+		document.getElementById("mobile-dock-next-btn")?.addEventListener("click", () => window.__fireflyMusic?.playNext(), { signal });
+		muteButton?.addEventListener("click", () => window.__fireflyMusic?.toggleMute(), { signal });
+		progress?.addEventListener("input", () => {
+			const value = Number.parseFloat(progress.value);
+			progress.style.setProperty("--mobile-dock-progress", `${value}%`);
+			window.__fireflyMusic?.seek(value / 100);
+		}, { signal });
+
+		musicCover?.addEventListener("error", () => musicCover.classList.add("is-hidden"), { signal });
+		lyricViewport.addEventListener("touchstart", () => lyricText.classList.add("is-paused"), { passive: true, signal });
+		lyricViewport.addEventListener("touchend", () => lyricText.classList.remove("is-paused"), { passive: true, signal });
+
+		const musicEvents = ["fm:init", "fm:track", "fm:play-state", "fm:time", "fm:mode", "fm:volume", "fm:lyrics", "fm:lrc-index", "fm:error"];
+		musicEvents.forEach((eventName) => window.addEventListener(eventName, syncMusicState, { signal }));
+		window.addEventListener("theme-change", updateThemeIcon, { signal });
+		window.addEventListener("resize", scheduleLyricMarquee, { passive: true, signal });
+		window.addEventListener("scroll", onScroll, { passive: true, signal });
+
+		document.addEventListener("focusin", (event) => {
+			const target = event.target;
+			if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) setKeyboardOpen(true);
+		}, { signal });
+		document.addEventListener("focusout", () => requestAnimationFrame(() => {
+			const active = document.activeElement;
+			setKeyboardOpen(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement);
+		}), { signal });
+
+		document.addEventListener("keydown", (event) => {
+			if (shape !== "card") return;
+			if (event.key === "Escape") {
+				event.preventDefault();
+				closeCard();
+				return;
+			}
+			if (event.key !== "Tab") return;
+			const focusable = Array.from(dock.querySelectorAll<HTMLElement>(
+				'a[href]:not([hidden]), button:not([disabled]):not(.is-hidden), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+			)).filter((element) => element.offsetParent !== null);
+			if (focusable.length === 0) return;
+			const first = focusable[0];
+			const last = focusable[focusable.length - 1];
+			if (event.shiftKey && document.activeElement === first) {
+				event.preventDefault();
+				last.focus();
+			} else if (!event.shiftKey && document.activeElement === last) {
+				event.preventDefault();
+				first.focus();
+			}
+		}, { signal });
+
+		document.addEventListener("astro:page-load", () => {
+			mobileTOCManager?.cleanup();
+			mobileTOCManager = null;
+			lastScrollY = window.scrollY;
+			setKeyboardOpen(false);
+			if (shape === "card") closeCard();
+			else setShape("pill");
+			closeOpenAccordion();
+			updatePathDependent();
+			syncMusicState();
+		}, { signal });
+
+		updateThemeIcon();
+		updatePathDependent();
+		syncMusicState();
 	})();
 </script>

@@ -31,6 +31,11 @@
 }
 
 @media (max-width: 768px) {
+	/* 移动端歌词已合并进统一 Dock，避免保留旧底部歌词层。 */
+	.floating-lyrics {
+		display: none !important;
+	}
+
 	.floating-lyrics .lyrics-content {
 		padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0));
 	}
