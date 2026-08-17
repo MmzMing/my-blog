@@ -95,7 +95,7 @@ export default defineConfig({
 			],
 			smoothScrolling: false,
 			cache: true,
-			preload: { hover: true, visible: true },
+			preload: { hover: true, visible: false },
 			loadOnIdle: false,
 			accessibility: true,
 			updateHead: true,
