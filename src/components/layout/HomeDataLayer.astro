@@ -545,6 +545,13 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		cleanupHomeDataLayer();
 		const layer = document.getElementById("home-data-layer");
 		if (!layer) return;
+		// 移动端首页由 HomeMobile 渲染，桌面数据层隐藏时跳过初始化
+		if (
+			document.getElementById("home-mobile") &&
+			window.matchMedia("(max-width: 768px)").matches
+		) {
+			return;
+		}
 		const token = ++guideOpeningToken;
 		initVisitStats(layer);
 		initMetricCards(layer);

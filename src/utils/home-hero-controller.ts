@@ -137,6 +137,17 @@ export function mountHomeHero() {
 	const hero = document.querySelector<HTMLElement>("[data-home-hero]");
 	if (!hero || hero.dataset.heroMounted === "true") return () => undefined;
 
+	// 移动端首页由 HomeMobile 渲染，桌面 Hero 隐藏时跳过挂载（马赛克/雨/对话框等）
+	if (
+		document.getElementById("home-mobile") &&
+		window.matchMedia("(max-width: 768px)").matches
+	) {
+		document
+			.querySelector(".home-page--motion-pending")
+			?.classList.remove("home-page--motion-pending");
+		return () => undefined;
+	}
+
 	const config = parseRuntimeConfig(hero);
 	if (!config) return () => undefined;
 	const resetAfterReload = resetHeroScrollOnReload();

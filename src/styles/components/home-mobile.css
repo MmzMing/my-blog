@@ -1,0 +1,538 @@
+/* ============================================
+   移动端首页 — HomeMobile（仅 ≤768px 显示）
+   第一层：个人信息区（头像/名称/职业/简介/统计/联系图标）
+   第二层：内容区（置顶卡片堆叠 + 最新文章时间线）
+   ============================================ */
+
+.home-mobile {
+	display: none;
+}
+
+@media (max-width: 768px) {
+	.home-mobile {
+		display: block;
+	}
+
+	/* 移动端隐藏桌面端四层结构（元素+类选择器提高优先级，
+	   避免 home-ticker.css 的 display:block 等规则在导入顺序上覆盖） */
+	section.home-hero,
+	home-ticker.home-ticker,
+	section.home-data-layer,
+	section.home-display-layer {
+		display: none;
+	}
+}
+
+/* ============================================
+   第一层：个人信息区
+   ============================================ */
+
+.home-mobile-hero {
+	min-height: 100svh;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	align-items: center;
+	padding: 3.5rem 1.25rem 5.75rem; /* 底部为 MobileDock 留出空间 */
+	text-align: center;
+}
+
+.home-mobile-hero__main {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	/* 整块（头像+名字+职业+简介）统一下移，压缩与底部信息区的空隙 */
+	margin-top: clamp(6.5rem, 24svh, 12rem);
+}
+
+.home-mobile-hero__avatar {
+	width: 7rem;
+	height: 7rem;
+	padding: 4px;
+	border: 2px solid var(--deep-text);
+	border-radius: 50%;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.home-mobile-hero__avatar-img {
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.home-mobile-hero__name {
+	margin-top: 0.5rem;
+	font-size: 2rem;
+	font-weight: 900;
+	letter-spacing: 0.1em;
+	color: var(--deep-text);
+	line-height: 1.2;
+}
+
+.home-mobile-hero__occupation {
+	margin-top: 0.75rem;
+	max-width: 20rem;
+	font-size: 0.875rem;
+	line-height: 1.6;
+	color: var(--content-meta);
+}
+
+.home-mobile-hero__bio {
+	margin-top: 1rem;
+	max-width: 21rem;
+	font-size: 0.75rem;
+	line-height: 1.7;
+	color: var(--content-meta);
+	opacity: 0.9;
+}
+
+.home-mobile-hero__foot {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 1.4rem;
+}
+
+/* —— 站点信息：单行文本，"·" 分隔 —— */
+
+.home-mobile-stats-wrap {
+	position: relative;
+}
+
+.home-mobile-stats {
+	display: flex;
+	align-items: baseline;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 0.15rem 0.45rem;
+}
+
+.home-mobile-stat {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.28rem;
+	padding: 0.15rem 0;
+	appearance: none;
+	background: transparent;
+	border: 0;
+	font: inherit;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.home-mobile-stat:active {
+	opacity: 0.55;
+}
+
+.home-mobile-stats__sep {
+	font-size: 0.75rem;
+	color: var(--content-meta);
+	opacity: 0.7;
+}
+
+.home-mobile-stat__value {
+	font-size: 0.8rem;
+	font-weight: 800;
+	color: var(--deep-text);
+	font-variant-numeric: tabular-nums;
+	line-height: 1.2;
+}
+
+.home-mobile-stat__label {
+	font-size: 0.6875rem;
+	letter-spacing: 0.04em;
+	color: var(--content-meta);
+}
+
+/* —— 统计详情弹窗（统计条上方弹出） —— */
+
+.home-mobile-stats-popup {
+	position: absolute;
+	left: 50%;
+	bottom: calc(100% + 0.6rem);
+	z-index: 20;
+	min-width: 11rem;
+	max-width: 15rem;
+	padding: 0.9rem 1.1rem 0.8rem;
+	border: 2px solid var(--deep-text);
+	border-radius: var(--radius-large);
+	background: var(--page-bg);
+	box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
+	text-align: center;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateX(-50%) translateY(0.5rem) scale(0.92);
+	transform-origin: bottom center;
+	transition:
+		opacity 200ms ease,
+		transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+		visibility 0ms linear 300ms;
+}
+
+.home-mobile-stats-popup.is-open {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateX(-50%) translateY(0) scale(1);
+	transition:
+		opacity 200ms ease,
+		transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+		visibility 0ms;
+}
+
+.home-mobile-stats-popup__value {
+	font-size: 1.5rem;
+	font-weight: 900;
+	color: var(--deep-text);
+	font-variant-numeric: tabular-nums;
+	line-height: 1.15;
+}
+
+.home-mobile-stats-popup__label {
+	margin-top: 0.2rem;
+	font-size: 0.6875rem;
+	letter-spacing: 0.12em;
+	color: var(--content-meta);
+}
+
+.home-mobile-stats-popup__detail {
+	margin-top: 0.5rem;
+	padding-top: 0.45rem;
+	border-top: 1px solid var(--line-divider);
+	font-size: 0.6875rem;
+	line-height: 1.6;
+	color: var(--content-meta);
+}
+
+/* —— 联系图标按钮 —— */
+
+.home-mobile-social {
+	display: flex;
+	justify-content: center;
+	gap: 0.9rem;
+}
+
+.home-mobile-social__btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--deep-text);
+	font-size: 1.35rem;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.home-mobile-social__btn svg {
+	transition: transform 180ms ease;
+}
+
+.home-mobile-social__btn:active svg {
+	transform: scale(0.85);
+}
+
+/* ============================================
+   第二层：内容区
+   ============================================ */
+
+.home-mobile-content {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	padding: 1rem 1.25rem 2rem;
+}
+
+/* —— 分区标题：行标签 + 英文大字 + 线条 —— */
+
+.home-mobile-head {
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+	margin-top: 1rem;
+}
+
+.home-mobile-head__row {
+	display: flex;
+	align-items: baseline;
+	gap: 0.7rem;
+	font-size: 0.95rem;
+	font-weight: 900;
+	letter-spacing: 0.14em;
+	color: var(--deep-text);
+}
+
+.home-mobile-head__index {
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	color: var(--content-meta);
+}
+
+.home-mobile-head__en-mask {
+	display: block;
+	overflow: hidden;
+}
+
+.home-mobile-head__en {
+	display: block;
+	font-size: clamp(2.6rem, 15vw, 3.75rem);
+	font-weight: 900;
+	line-height: 1.08;
+	letter-spacing: -0.02em;
+	text-transform: uppercase;
+	color: var(--deep-text);
+}
+
+.home-mobile-head__rule {
+	display: block;
+	height: 2px;
+	background: var(--deep-text);
+	transform-origin: left center;
+}
+
+.home-mobile-empty {
+	padding: 1.5rem 0;
+	font-size: 0.8rem;
+	color: var(--content-meta);
+	text-align: center;
+}
+
+/* —— 置顶文章：堆叠卡片 —— */
+
+.home-mobile-deck {
+	position: relative;
+	height: 14rem;
+	/* 堆叠卡逐层下探 1rem，为最底层卡预留透出空间 */
+	margin-bottom: 1.9rem;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+}
+
+/* 外壳：仅负责堆叠定位（z 轴 + 层叠位移），滚动视差也作用于此 */
+.home-mobile-deck__card {
+	position: absolute;
+	inset: 0;
+	z-index: calc(10 - var(--deck-index, 0));
+	transform: translateY(calc(var(--deck-index, 0) * 1rem))
+		scale(calc(1 - var(--deck-index, 0) * 0.05));
+	transform-origin: top center;
+	transition:
+		transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 260ms ease;
+}
+
+/* 内层：视觉卡片 + 入场动画载体 */
+.home-mobile-deck__card-inner {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	height: 100%;
+	padding: 1.1rem 1.2rem;
+	border: 2px solid var(--deep-text);
+	border-radius: var(--radius-large);
+	background: var(--page-bg);
+	box-sizing: border-box;
+}
+
+/* 翻页循环态：顶部卡 z 轴沉底，沿堆叠路径向下滑入底层（传送带循环） */
+.home-mobile-deck__card.is-cycling {
+	z-index: 1;
+	pointer-events: none;
+}
+
+.home-mobile-deck__meta {
+	font-size: 0.6875rem;
+	letter-spacing: 0.05em;
+	color: var(--content-meta);
+}
+
+.home-mobile-deck__link {
+	font-size: 1.1rem;
+	font-weight: 800;
+	line-height: 1.45;
+	color: var(--deep-text);
+}
+
+.home-mobile-deck__desc {
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	font-size: 0.8rem;
+	line-height: 1.6;
+	color: var(--content-meta);
+}
+
+/* —— 最新文章：时间线 —— */
+
+.home-mobile-timeline {
+	display: flex;
+	flex-direction: column;
+}
+
+.home-mobile-timeline__item {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+	padding: 0 0 1.5rem 1.75rem;
+}
+
+/* 左侧时间竖线 */
+.home-mobile-timeline__item::before {
+	content: "";
+	position: absolute;
+	left: 0.36rem;
+	top: 0.55rem;
+	bottom: -0.2rem;
+	width: 2px;
+	background: var(--line-divider);
+}
+
+.home-mobile-timeline__item:last-child::before {
+	bottom: auto;
+	height: 1.1rem;
+}
+
+/* 时间线节点圆点 */
+.home-mobile-timeline__item::after {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0.42rem;
+	width: 0.75rem;
+	height: 0.75rem;
+	border: 2px solid var(--deep-text);
+	border-radius: 50%;
+	background: var(--page-bg);
+	box-sizing: border-box;
+}
+
+.home-mobile-timeline__title {
+	font-size: 0.95rem;
+	font-weight: 700;
+	line-height: 1.5;
+	color: var(--deep-text);
+}
+
+.home-mobile-timeline__title:active {
+	color: var(--content-meta);
+}
+
+.home-mobile-timeline__category {
+	font-size: 0.6875rem;
+	letter-spacing: 0.05em;
+	color: var(--content-meta);
+}
+
+.home-mobile-timeline__date {
+	font-size: 0.6875rem;
+	color: var(--content-meta);
+	opacity: 0.85;
+}
+
+/* ============================================
+   入场动效（.is-anim 由预绘内联脚本添加；
+   reduced-motion / 桌面端 / JS 失败时不添加，内容直接可见）
+   ============================================ */
+
+/* —— 名字拆字遮罩（逐字上翻进场） —— */
+
+.home-mobile-hero__name-mask {
+	display: inline-block;
+	overflow: hidden;
+	vertical-align: bottom;
+}
+
+.home-mobile-hero__name-char {
+	display: inline-block;
+}
+
+/* —— 入场初始态（GSAP 接管后动画归位） —— */
+
+.home-mobile.is-anim .home-mobile-hero__name-char {
+	transform: translateY(120%);
+}
+
+.home-mobile.is-anim .home-mobile-hero__avatar {
+	clip-path: circle(0%);
+	transform: scale(0.55);
+}
+
+.home-mobile.is-anim .home-mobile-hero__occupation,
+.home-mobile.is-anim .home-mobile-hero__bio {
+	opacity: 0;
+	transform: translateY(26px);
+}
+
+.home-mobile.is-anim .home-mobile-stats-wrap {
+	opacity: 0;
+	transform: translateY(34px);
+}
+
+.home-mobile.is-anim .home-mobile-social__btn {
+	opacity: 0;
+	transform: scale(0.5);
+}
+
+.home-mobile.is-anim .home-mobile-head__en {
+	transform: translateY(110%) skewY(4deg);
+}
+
+.home-mobile.is-anim .home-mobile-head__row {
+	opacity: 0;
+	transform: translateX(-22px);
+}
+
+.home-mobile.is-anim .home-mobile-head__rule {
+	transform: scaleX(0);
+}
+
+.home-mobile.is-anim .home-mobile-deck__card-inner {
+	opacity: 0;
+	transform: translateY(90px) scale(0.96);
+}
+
+.home-mobile.is-anim .home-mobile-timeline__item {
+	opacity: 0;
+	transform: translateX(-28px);
+}
+
+/* —— 降级动画 —— */
+
+@media (prefers-reduced-motion: reduce) {
+	.home-mobile-deck__card {
+		transition: none;
+	}
+
+	.home-mobile-social__btn svg {
+		transition: none;
+	}
+
+	/* 双保险：即便误加 .is-anim 也保证内容可见 */
+
+	.home-mobile.is-anim :is(
+			.home-mobile-hero__name-char,
+			.home-mobile-hero__avatar,
+			.home-mobile-hero__occupation,
+			.home-mobile-hero__bio,
+			.home-mobile-stats-wrap,
+			.home-mobile-social__btn,
+			.home-mobile-head__en,
+			.home-mobile-head__row,
+			.home-mobile-head__rule,
+			.home-mobile-deck__card-inner,
+			.home-mobile-timeline__item
+		) {
+		opacity: 1;
+		transform: none;
+		clip-path: none;
+	}
+}

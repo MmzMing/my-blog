@@ -1,0 +1,681 @@
+---
+import { Picture } from "astro:assets";
+import * as path from "node:path";
+import Icon from "@components/common/Icon.astro";
+import type { ImageMetadata } from "astro";
+import { homeConfig, siteConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import {
+	getCategoryList,
+	getSortedPosts,
+	getTagList,
+} from "@/utils/content-utils";
+import { formatDateI18n } from "@/utils/date-utils";
+import {
+	countReadableCharacters,
+	formatCompactNumber,
+} from "@/utils/home-data-layer.js";
+import { getGuidePostSets } from "@/utils/home-guide-grid.js";
+import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
+import { getPostUrlBySlug } from "@/utils/url-utils";
+
+const posts = await getSortedPosts();
+const categories = await getCategoryList();
+const tags = await getTagList();
+const totalWords = posts.reduce(
+	(sum, post) => sum + countReadableCharacters(post.body || ""),
+	0,
+);
+const avgWords = posts.length > 0 ? Math.round(totalWords / posts.length) : 0;
+const { pinned: pinnedPosts, recent: recentPosts } = getGuidePostSets(posts, 4);
+const timelinePosts = recentPosts.slice(0, 6);
+const displayName = homeConfig.displayName || homeConfig.name;
+const bioText = Array.isArray(homeConfig.bio)
+	? homeConfig.bio[0] || ""
+	: homeConfig.bio || "";
+
+let avatarImg: ImageMetadata | null = null;
+const avatarValue = homeConfig.avatar || "";
+if (
+	avatarValue &&
+	!avatarValue.startsWith("/") &&
+	!avatarValue.startsWith("http")
+) {
+	const files = import.meta.glob<ImageMetadata>(
+		"../../**/*.{png,jpg,jpeg,webp,avif,gif,svg}",
+		{ import: "default" },
+	);
+	const normalizedPath = path
+		.normalize(path.join("../../", avatarValue))
+		.replace(/\\/g, "/");
+	const file = files[normalizedPath];
+	if (file) avatarImg = await file();
+}
+
+const contactItems = homeConfig.links.map((link) => ({
+	name: link.name,
+	icon: link.icon,
+	href: link.url,
+}));
+const umamiConfig = siteConfig.analytics?.umamiAnalytics;
+const statsBaseUrl = umamiConfig?.scriptUrl
+	? new URL(umamiConfig.scriptUrl).origin
+	: "";
+const statsShareId = umamiConfig?.shareId ?? "";
+---
+
+<div
+	class="home-mobile"
+	id="home-mobile"
+	data-stats-base-url={statsBaseUrl}
+	data-stats-share-id={statsShareId}
+>
+	{/* 第一层：个人信息区 */}
+	<section class="home-mobile-hero">
+		<div class="home-mobile-hero__main">
+			<div class="home-mobile-hero__avatar">
+				{avatarImg ? (
+					<Picture
+						src={avatarImg}
+						alt={displayName}
+						class="home-mobile-hero__avatar-img"
+						formats={getImageFormats()}
+						fallbackFormat={getFallbackFormat()}
+						widths={[96, 160, 256]}
+						loading="eager"
+					/>
+				) : (
+					<img
+						src={avatarValue}
+						alt={displayName}
+						class="home-mobile-hero__avatar-img"
+						loading="eager"
+					/>
+				)}
+			</div>
+			<p class="home-mobile-hero__name" aria-label={displayName}>
+				{
+					displayName.split("").map((char) => (
+						<span class="home-mobile-hero__name-mask" aria-hidden="true">
+							<span class="home-mobile-hero__name-char">{char}</span>
+						</span>
+					))
+				}
+			</p>
+			{homeConfig.occupation && (
+				<p class="home-mobile-hero__occupation">{homeConfig.occupation}</p>
+			)}
+			{bioText && <p class="home-mobile-hero__bio">{bioText}</p>}
+		</div>
+		<div class="home-mobile-hero__foot">
+			<div class="home-mobile-stats-wrap">
+				<div
+					class="home-mobile-stats-popup"
+					data-stats-popup
+					role="dialog"
+					aria-modal="false"
+				>
+					<p class="home-mobile-stats-popup__value" data-popup-value>--</p>
+					<p class="home-mobile-stats-popup__label" data-popup-label></p>
+					<p class="home-mobile-stats-popup__detail" data-popup-detail></p>
+				</div>
+				<div class="home-mobile-stats" aria-label={i18n(I18nKey.siteData)}>
+				<button
+					class="home-mobile-stat"
+					type="button"
+					data-stat-key="posts"
+					data-popup-value={String(posts.length)}
+					data-popup-label={i18n(I18nKey.siteStatsPostCount)}
+					data-popup-detail={`分类 ${categories.length} · 标签 ${tags.length} · 共 ${formatCompactNumber(totalWords)} 字`}
+				>
+					<span class="home-mobile-stat__value">{posts.length}</span>
+					<span class="home-mobile-stat__label">
+						{i18n(I18nKey.siteStatsPostCount)}
+					</span>
+				</button>
+				<span class="home-mobile-stats__sep" aria-hidden="true">·</span>
+				<button
+					class="home-mobile-stat"
+					type="button"
+					data-stat-key="words"
+					data-popup-value={totalWords.toLocaleString()}
+					data-popup-label="总字数"
+					data-popup-detail={`共 ${posts.length} 篇 · 平均约 ${avgWords.toLocaleString()} 字/篇`}
+				>
+					<span class="home-mobile-stat__value">
+						{formatCompactNumber(totalWords)}
+					</span>
+					<span class="home-mobile-stat__label">{i18n(I18nKey.wordCount)}</span>
+				</button>
+				<span class="home-mobile-stats__sep" aria-hidden="true">·</span>
+				<button
+					class="home-mobile-stat"
+					type="button"
+					data-stat-key="uv"
+					data-popup-value="--"
+					data-popup-label={i18n(I18nKey.siteStatsVisitors)}
+					data-popup-detail="数据来源 Umami · 建站起累计"
+				>
+					<span class="home-mobile-stat__value" data-mobile-stat="UV">--</span>
+					<span class="home-mobile-stat__label">
+						{i18n(I18nKey.siteStatsVisitors)}
+					</span>
+				</button>
+				<span class="home-mobile-stats__sep" aria-hidden="true">·</span>
+				<button
+					class="home-mobile-stat"
+					type="button"
+					data-stat-key="pv"
+					data-popup-value="--"
+					data-popup-label={i18n(I18nKey.viewsBrowseLabel)}
+					data-popup-detail="数据来源 Umami · 建站起累计"
+				>
+					<span class="home-mobile-stat__value" data-mobile-stat="PV">--</span>
+					<span class="home-mobile-stat__label">
+						{i18n(I18nKey.viewsBrowseLabel)}
+					</span>
+				</button>
+			</div>
+			</div>
+			<div class="home-mobile-social" aria-label={i18n(I18nKey.contactMethods)}>
+				{
+					contactItems.map((link) => (
+						<a
+							class="home-mobile-social__btn"
+							href={link.href}
+							aria-label={link.name}
+							title={link.name}
+						>
+							<Icon name={link.icon} is:inline />
+						</a>
+					))
+				}
+			</div>
+		</div>
+	</section>
+
+	{/* 第二层：内容区 */}
+	<section class="home-mobile-content">
+		<header class="home-mobile-head" data-mobile-head>
+			<h2 class="home-mobile-head__row" data-head-row>
+				<span class="home-mobile-head__index">01</span>
+				<span class="home-mobile-head__label">{i18n(I18nKey.pinnedPosts)}</span>
+			</h2>
+			<span class="home-mobile-head__en-mask">
+				<span class="home-mobile-head__en" data-head-en>
+					Featured
+				</span>
+			</span>
+			<span class="home-mobile-head__rule" data-head-rule />
+		</header>
+		{pinnedPosts.length > 0 ? (
+			<div class="home-mobile-deck" data-mobile-deck>
+				{pinnedPosts.map((post, index) => (
+					<article
+						class="home-mobile-deck__card"
+						data-deck-card=""
+						style={`--deck-index: ${index}`}
+					>
+						<div class="home-mobile-deck__card-inner">
+							<span class="home-mobile-deck__meta">
+								{post.data.category || i18n(I18nKey.uncategorized)} ·{" "}
+								{formatDateI18n(post.data.published)}
+							</span>
+							<a class="home-mobile-deck__link" href={getPostUrlBySlug(post.id)}>
+								{post.data.title}
+							</a>
+							{post.data.description && (
+								<p class="home-mobile-deck__desc">{post.data.description}</p>
+							)}
+						</div>
+					</article>
+				))}
+			</div>
+		) : (
+			<p class="home-mobile-empty">{i18n(I18nKey.noPinnedContent)}</p>
+		)}
+
+		<header class="home-mobile-head" data-mobile-head>
+			<h2 class="home-mobile-head__row" data-head-row>
+				<span class="home-mobile-head__index">02</span>
+				<span class="home-mobile-head__label">{i18n(I18nKey.latestUpdates)}</span>
+			</h2>
+			<span class="home-mobile-head__en-mask">
+				<span class="home-mobile-head__en" data-head-en>
+					Latest
+				</span>
+			</span>
+			<span class="home-mobile-head__rule" data-head-rule />
+		</header>
+		{timelinePosts.length > 0 ? (
+			<div class="home-mobile-timeline">
+				{timelinePosts.map((post) => (
+					<article class="home-mobile-timeline__item">
+						<a
+							class="home-mobile-timeline__title"
+							href={getPostUrlBySlug(post.id)}
+						>
+							{post.data.title}
+						</a>
+						<span class="home-mobile-timeline__category">
+							{post.data.category || i18n(I18nKey.uncategorized)}
+						</span>
+						<span class="home-mobile-timeline__date">
+							{formatDateI18n(post.data.published)}
+						</span>
+					</article>
+				))}
+			</div>
+		) : (
+			<p class="home-mobile-empty">{i18n(I18nKey.noPosts)}</p>
+		)}
+	</section>
+</div>
+
+<script is:inline>
+	// 预绘阶段标记入场动画，避免内容闪现；reduced-motion / 桌面端不标记
+	(() => {
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+		if (!window.matchMedia("(max-width: 768px)").matches) return;
+		const root = document.currentScript?.previousElementSibling;
+		if (root?.id === "home-mobile") root.classList.add("is-anim");
+	})();
+</script>
+
+<script>
+	import { createCache } from "@/utils/cache-utils";
+	import { formatCompactNumber } from "@/utils/home-data-layer.js";
+
+	type Cleanup = () => void;
+	type ShareData = { websiteId: string; token: string };
+
+	const shareCache = createCache<ShareData>({
+		key: "umami_share_data",
+		ttl: 3_600_000,
+	});
+	let cleanups: Cleanup[] = [];
+
+	function cleanupHomeMobile() {
+		cleanups.forEach((cleanup) => cleanup());
+		cleanups = [];
+	}
+
+	function initVisitStats(root: HTMLElement) {
+		const statsBaseUrl = root.dataset.statsBaseUrl;
+		const statsShareId = root.dataset.statsShareId;
+		if (!statsBaseUrl || !statsShareId) return;
+		const valueNodes = root.querySelectorAll<HTMLElement>("[data-mobile-stat]");
+		if (valueNodes.length === 0) return;
+		shareCache
+			.fetch(async () => {
+				const response = await fetch(`${statsBaseUrl}/api/share/${statsShareId}`);
+				if (!response.ok) throw new Error("获取 Umami 分享信息失败");
+				const share = await response.json() as {
+					websiteId?: string;
+					entityId?: string;
+					token?: string;
+				};
+				const websiteId = share.websiteId || share.entityId;
+				if (!websiteId) throw new Error("Umami 分享信息缺少 websiteId");
+				return { websiteId, token: share.token || statsShareId };
+			})
+			.then(({ websiteId, token }) =>
+				fetch(
+					`${statsBaseUrl}/api/websites/${websiteId}/stats?startAt=0&endAt=${Date.now()}`,
+					{
+						headers: {
+							"x-umami-share-token": token,
+							"x-umami-share-context": "1",
+							"Content-Type": "application/json",
+						},
+					},
+				),
+			)
+			.then((response) => response.json())
+			.then((data: { uv?: number; visitors?: number; pv?: number; pageviews?: number }) => {
+				const uvRaw = data.uv || data.visitors || 0;
+				const pvRaw = data.pv || data.pageviews || 0;
+				valueNodes.forEach((node) => {
+					const isUv = node.dataset.mobileStat === "UV";
+					const raw = isUv ? uvRaw : pvRaw;
+					node.textContent = formatCompactNumber(raw);
+					const button = node.closest<HTMLElement>("[data-stat-key]");
+					if (button) {
+						button.dataset.popupValue = Number(raw).toLocaleString();
+					}
+				});
+			})
+			.catch(() => {
+				valueNodes.forEach((node) => {
+					node.textContent = "--";
+				});
+			});
+	}
+
+	function initStatPopups(root: HTMLElement) {
+		const popup = root.querySelector<HTMLElement>("[data-stats-popup]");
+		const buttons = Array.from(
+			root.querySelectorAll<HTMLButtonElement>("[data-stat-key]"),
+		);
+		if (!popup || buttons.length === 0) return;
+		const valueNode = popup.querySelector<HTMLElement>("[data-popup-value]");
+		const labelNode = popup.querySelector<HTMLElement>("[data-popup-label]");
+		const detailNode = popup.querySelector<HTMLElement>("[data-popup-detail]");
+		if (!valueNode || !labelNode || !detailNode) return;
+
+		let openKey: string | null = null;
+		const close = () => {
+			popup.classList.remove("is-open");
+			openKey = null;
+		};
+		const onStatClick = (event: MouseEvent) => {
+			const button = (event.target as Element).closest<HTMLElement>(
+				"[data-stat-key]",
+			);
+			if (!button) return;
+			const key = button.dataset.statKey ?? "";
+			if (openKey === key) {
+				close();
+				return;
+			}
+			valueNode.textContent = button.dataset.popupValue ?? "--";
+			labelNode.textContent = button.dataset.popupLabel ?? "";
+			detailNode.textContent = button.dataset.popupDetail ?? "";
+			popup.classList.add("is-open");
+			openKey = key;
+		};
+		const onOutsideClick = (event: MouseEvent) => {
+			const target = event.target as Element | null;
+			if (!target) return;
+			if (popup.contains(target) || target.closest("[data-stat-key]")) return;
+			close();
+		};
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") close();
+		};
+
+		root.addEventListener("click", onStatClick);
+		document.addEventListener("click", onOutsideClick);
+		document.addEventListener("keydown", onKeyDown);
+		cleanups.push(() => {
+			root.removeEventListener("click", onStatClick);
+			document.removeEventListener("click", onOutsideClick);
+			document.removeEventListener("keydown", onKeyDown);
+		});
+	}
+
+	function initDeck(root: HTMLElement) {
+		const deck = root.querySelector<HTMLElement>("[data-mobile-deck]");
+		if (!deck) return;
+		const cards = Array.from(deck.querySelectorAll<HTMLElement>("[data-deck-card]"));
+		if (cards.length < 2) return;
+
+		const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		const SWIPE_THRESHOLD = 56;
+		const CYCLE_MS = 420;
+		const AUTO_INTERVAL = 5000;
+		let order = cards.slice();
+		let busy = false;
+		let autoTimer = 0;
+
+		const topCard = () => order[0];
+
+		const applyLayout = () => {
+			order.forEach((card, index) => {
+				card.style.setProperty("--deck-index", String(index));
+			});
+		};
+
+		/** 翻页（传送带循环）：顶部卡沉到堆底 z 轴，沿堆叠路径向下滑入底层，其余卡上移补位 */
+		const advance = () => {
+			if (busy) return;
+			busy = true;
+			const top = topCard();
+			const lastIndex = order.length - 1;
+			// 清除拖拽内联位移，交回 CSS 变量驱动过渡；z 轴立即沉底 = 从其余卡背后滑过
+			top.style.transform = "";
+			top.classList.add("is-cycling");
+			top.style.setProperty("--deck-index", String(lastIndex));
+			order.slice(1).forEach((card, index) => {
+				card.style.setProperty("--deck-index", String(index));
+			});
+			window.setTimeout(() => {
+				top.classList.remove("is-cycling");
+				order.push(order.shift() as HTMLElement);
+				busy = false;
+			}, reduceMotion ? 0 : CYCLE_MS);
+		};
+
+		const stopAuto = () => {
+			window.clearInterval(autoTimer);
+			autoTimer = 0;
+		};
+		const startAuto = () => {
+			stopAuto();
+			if (reduceMotion) return;
+			autoTimer = window.setInterval(() => {
+				if (!document.hidden) advance();
+			}, AUTO_INTERVAL);
+		};
+
+		// —— 拖拽翻页 ——
+		let dragging = false;
+		let startY = 0;
+		let startT = 0;
+		let lastDeltaY = 0;
+		let lastVelocity = 0;
+		let suppressClick = false;
+
+		const onTouchStart = (event: TouchEvent) => {
+			if (busy || event.touches.length !== 1) return;
+			dragging = true;
+			startY = event.touches[0].clientY;
+			startT = performance.now();
+			lastDeltaY = 0;
+			lastVelocity = 0;
+			topCard().style.transition = "none";
+			stopAuto();
+		};
+		const onTouchMove = (event: TouchEvent) => {
+			if (!dragging) return;
+			// 阻止拖拽卡片时页面跟随滚动
+			if (event.cancelable) event.preventDefault();
+			const deltaT = performance.now() - startT;
+			const deltaY = event.touches[0].clientY - startY;
+			if (deltaT > 0) {
+				lastVelocity = ((deltaY - lastDeltaY) / deltaT) * 1000;
+				startT = performance.now();
+				lastDeltaY = deltaY;
+			}
+			topCard().style.transform = `translateY(${deltaY}px) scale(1)`;
+		};
+		const onTouchEnd = () => {
+			if (!dragging) return;
+			dragging = false;
+			const top = topCard();
+			top.style.transition = "";
+			top.style.transform = "";
+			if (Math.abs(lastDeltaY) > SWIPE_THRESHOLD || Math.abs(lastVelocity) > 500) {
+				suppressClick = true;
+				advance();
+			}
+			startAuto();
+		};
+		const onClickCapture = (event: MouseEvent) => {
+			if (!suppressClick) return;
+			suppressClick = false;
+			if ((event.target as Element).closest("a")) event.preventDefault();
+		};
+
+		deck.addEventListener("touchstart", onTouchStart, { passive: true });
+		deck.addEventListener("touchmove", onTouchMove, { passive: false });
+		deck.addEventListener("touchend", onTouchEnd);
+		deck.addEventListener("touchcancel", onTouchEnd);
+		deck.addEventListener("click", onClickCapture, true);
+		applyLayout();
+		startAuto();
+		cleanups.push(() => {
+			stopAuto();
+			deck.removeEventListener("touchstart", onTouchStart);
+			deck.removeEventListener("touchmove", onTouchMove);
+			deck.removeEventListener("touchend", onTouchEnd);
+			deck.removeEventListener("touchcancel", onTouchEnd);
+			deck.removeEventListener("click", onClickCapture, true);
+		});
+	}
+
+	/** 入场动效：开场遮罩 + 依次分层进场；滚动分区标题/卡片/时间线 reveal + 轻视差 */
+	async function initEntrance(root: HTMLElement) {
+		try {
+			const [{ gsap }, { ScrollTrigger }] = await Promise.all([
+				import("gsap"),
+				import("gsap/ScrollTrigger"),
+			]);
+			gsap.registerPlugin(ScrollTrigger);
+			const q = gsap.utils.selector(root);
+
+			const ctx = gsap.context(() => {
+				// CSS 预隐藏的百分比位移在 computed 中会解析为 px，先归一到 GSAP 的百分比状态
+				gsap.set(q(".home-mobile-hero__name-char"), { yPercent: 120, y: 0 });
+				gsap.set(q(".home-mobile-head__en"), { yPercent: 110, y: 0, skewY: 4 });
+
+				// —— 入场：依次从上往下分层进场 ——
+			gsap
+				.timeline()
+				.to(
+					q(".home-mobile-hero__avatar"),
+					{ clipPath: "circle(75%)", scale: 1, duration: 1.15, ease: "expo.out" },
+					0,
+				)
+				.to(
+					q(".home-mobile-hero__name-char"),
+					{ yPercent: 0, duration: 1.05, ease: "power4.out", stagger: 0.05 },
+					0.2,
+				)
+				.fromTo(
+					q(".home-mobile-hero__name"),
+					{ scaleX: 1.05 },
+					{ scaleX: 1, duration: 0.9, ease: "expo.out" },
+					0.25,
+				)
+				.to(
+					q(".home-mobile-hero__occupation"),
+					{ y: 0, opacity: 1, duration: 0.8, ease: "power3.out" },
+					0.55,
+				)
+				.to(
+					q(".home-mobile-hero__bio"),
+					{ y: 0, opacity: 1, duration: 0.8, ease: "power3.out" },
+					0.7,
+				)
+				.to(
+					q(".home-mobile-stats-wrap"),
+					{ y: 0, opacity: 1, duration: 1, ease: "expo.out" },
+					0.85,
+				)
+				.to(
+					q(".home-mobile-social__btn"),
+					{
+						scale: 1,
+						opacity: 1,
+						duration: 0.7,
+						ease: "back.out(1.7)",
+						stagger: 0.06,
+					},
+					1.0,
+				);
+
+				// —— 分区标题：英文大字遮罩进场（大幅位移+归正斜切）→ 行标签 → 线条生长 ——
+				q("[data-mobile-head]").forEach((head) => {
+					const en = head.querySelector(".home-mobile-head__en");
+					const row = head.querySelector(".home-mobile-head__row");
+					const rule = head.querySelector(".home-mobile-head__rule");
+					const t = gsap.timeline({
+						scrollTrigger: { trigger: head, start: "top 85%", once: true },
+					});
+					if (en)
+						t.to(
+							en,
+							{ yPercent: 0, skewY: 0, duration: 1.15, ease: "expo.out" },
+							0,
+						);
+					if (row)
+						t.to(
+							row,
+							{ x: 0, opacity: 1, duration: 0.8, ease: "power3.out" },
+							0.35,
+						);
+					if (rule)
+						t.to(
+							rule,
+							{ scaleX: 1, duration: 0.9, ease: "expo.out" },
+							0.4,
+						);
+				});
+
+				// —— 置顶卡堆：内层依次上浮（外壳留给滚动视差，互不冲突） ——
+				const deck = root.querySelector<HTMLElement>("[data-mobile-deck]");
+				if (deck) {
+					gsap.to(q(".home-mobile-deck__card-inner"), {
+						y: 0,
+						opacity: 1,
+						scale: 1,
+						duration: 1.05,
+						ease: "expo.out",
+						stagger: 0.09,
+						scrollTrigger: { trigger: deck, start: "top 82%", once: true },
+					});
+					gsap.to(deck, {
+						y: -14,
+						ease: "none",
+						scrollTrigger: {
+							trigger: deck,
+							start: "top bottom",
+							end: "bottom top",
+							scrub: 0.6,
+						},
+					});
+				}
+
+				// —— 时间线：条目从左侧依次滑入 ——
+				const timeline = root.querySelector(".home-mobile-timeline");
+				if (timeline) {
+					gsap.to(q(".home-mobile-timeline__item"), {
+						x: 0,
+						opacity: 1,
+						duration: 0.85,
+						ease: "power3.out",
+						stagger: 0.07,
+						scrollTrigger: { trigger: timeline, start: "top 85%", once: true },
+					});
+				}
+			}, root);
+			cleanups.push(() => ctx.revert());
+		} catch {
+			// GSAP 加载失败时解除隐藏，保证内容可见
+			root.classList.remove("is-anim");
+		}
+	}
+
+	function initHomeMobile() {
+		cleanupHomeMobile();
+		const root = document.getElementById("home-mobile");
+		if (!root) return;
+		if (!window.matchMedia("(max-width: 768px)").matches) return;
+		const reduceMotion = window.matchMedia(
+			"(prefers-reduced-motion: reduce)",
+		).matches;
+		if (!reduceMotion) {
+			root.classList.add("is-anim");
+			initEntrance(root);
+		}
+		initVisitStats(root);
+		initStatPopups(root);
+		initDeck(root);
+	}
+
+	initHomeMobile();
+	document.addEventListener("astro:page-load", initHomeMobile);
+	document.addEventListener("swup:willReplaceContent", cleanupHomeMobile);
+</script>
