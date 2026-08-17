@@ -40,6 +40,14 @@ export const llmsConfig: LlmsConfig = {
 		],
 	},
 	/**
+	 * 精选文章章节：从公开文章集合按排序动态生成 Markdown 链接列表，
+	 * 链接数量由 `limit` 控制，避免文件过长。
+	 */
+	featuredPosts: {
+		heading: "精选文章",
+		limit: 10,
+	},
+	/**
 	 * 面向 AI 和引用者的使用边界说明，例如内容归属、时效性和引用方式。
 	 */
 	usage: {

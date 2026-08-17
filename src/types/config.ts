@@ -172,6 +172,10 @@ export type LlmsConfig = {
 			path: string;
 		}>;
 	};
+	featuredPosts: {
+		heading: string;
+		limit: number;
+	};
 	usage: {
 		heading: string;
 		description: string;
