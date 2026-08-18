@@ -1,0 +1,324 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { getPostUrlBySlug } from "@/utils/url-utils";
+
+// ===== 类型定义 =====
+interface Post {
+	id: string;
+	data: {
+		title: string;
+		tags: string[];
+		category?: string | null;
+		published: Date;
+	};
+}
+interface MonthGroup {
+	month: number;
+	posts: Post[];
+}
+interface YearGroup {
+	year: number;
+	months: MonthGroup[];
+	totalCount: number;
+}
+
+// ===== Props =====
+interface Props {
+	sortedPosts: Post[];
+}
+const { sortedPosts } = Astro.props;
+
+// ===== 工具函数 =====
+function formatDate(date: Date): string {
+	const m = (date.getMonth() + 1).toString().padStart(2, "0");
+	const d = date.getDate().toString().padStart(2, "0");
+	return `${m}-${d}`;
+}
+function formatMonthNum(month: number): string {
+	return month.toString().padStart(2, "0");
+}
+function normalizeCategoryName(name: string | null | undefined): string {
+	return (name || "").trim();
+}
+function normalizeTags(tags: string[] | undefined | null): string[] {
+	return Array.from(
+		new Set(
+			(tags || []).map((tag) => tag.trim()).filter((tag) => tag.length > 0),
+		),
+	);
+}
+
+// ===== 分类颜色调色板（与分类名按字典序一一绑定） =====
+const categoryColorPalette = [
+	"#fbbf24",
+	"#fb7185",
+	"#34d399",
+	"#60a5fa",
+	"#a78bfa",
+	"#f472b6",
+	"#2dd4bf",
+	"#fb923c",
+	"#22d3ee",
+	"#818cf8",
+	"#e879f9",
+	"#a3e635",
+	"#f87171",
+	"#a78bfa",
+	"#06b6d4",
+	"#f59e0b",
+	"#f43f5e",
+	"#10b981",
+];
+const categorySet = new Set<string>();
+for (const post of sortedPosts) {
+	const cat = normalizeCategoryName(post.data.category);
+	if (cat) categorySet.add(cat);
+}
+const categoryColors = new Map<string, string>();
+Array.from(categorySet)
+	.sort((a, b) => a.localeCompare(b, "zh-CN"))
+	.forEach((cat, index) => {
+		categoryColors.set(
+			cat,
+			categoryColorPalette[index % categoryColorPalette.length],
+		);
+	});
+
+function getCategoryColor(name: string): string {
+	const color = categoryColors.get(name);
+	return color ? `color: ${color}` : "";
+}
+function getPostCategoryName(post: Post): string {
+	return (
+		normalizeCategoryName(post.data.category) || i18n(I18nKey.uncategorized)
+	);
+}
+
+// ===== 按 年 → 月 分组（新到旧） =====
+function groupByYearMonth(posts: Post[]): YearGroup[] {
+	const yearMap = new Map<number, Map<number, Post[]>>();
+	for (const post of posts) {
+		const y = post.data.published.getFullYear();
+		const mo = post.data.published.getMonth() + 1;
+		if (!yearMap.has(y)) yearMap.set(y, new Map<number, Post[]>());
+		const mm = yearMap.get(y);
+		if (!mm) continue;
+		if (!mm.has(mo)) mm.set(mo, []);
+		const postsList = mm.get(mo);
+		if (postsList) postsList.push(post);
+	}
+	return Array.from(yearMap.keys())
+		.sort((a, b) => b - a)
+		.map((year) => {
+			const mm = yearMap.get(year);
+			if (!mm) return { year, months: [], totalCount: 0 };
+			const months = Array.from(mm.keys())
+				.sort((a, b) => b - a)
+				.map((month) => {
+					const postsForMonth = mm.get(month) ?? [];
+					return { month, posts: postsForMonth };
+				});
+			return {
+				year,
+				months,
+				totalCount: months.reduce((s, m) => s + m.posts.length, 0),
+			};
+		});
+}
+
+const posts = sortedPosts
+	.slice()
+	.sort((a, b) => b.data.published.getTime() - a.data.published.getTime());
+const yearGroups = groupByYearMonth(posts);
+
+function postLabel(count: number): string {
+	return i18n(count === 1 ? I18nKey.postCount : I18nKey.postsCount);
+}
+---
+
+<!--
+  静态站点无法在构建期感知 ?tag= / ?category= 查询参数，
+  因此服务端始终渲染全量分组，行上携带 data-* 属性，
+  由下方脚本在 astro:page-load 时按 URL 参数过滤。
+-->
+<div
+	class="archive-panel"
+	data-label-tags={i18n(I18nKey.tags)}
+	data-label-categories={i18n(I18nKey.categories)}
+	data-label-uncategorized={i18n(I18nKey.uncategorized)}
+	data-label-post-one={i18n(I18nKey.postCount)}
+	data-label-post-many={i18n(I18nKey.postsCount)}
+	data-label-year={i18n(I18nKey.year)}
+>
+	<!-- 筛选器摘要（有筛选参数时由脚本填充并显示） -->
+	<div class="archive-panel__filter mb-6" hidden>
+		<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+			<div class="archive-panel__filter-label min-w-0 text-sm text-75"></div>
+			<div class="archive-panel__filter-stats shrink-0 text-xs text-50"></div>
+		</div>
+	</div>
+
+	<div class="archive-panel__body">
+		{yearGroups.map((yearGroup) => (
+			<section class="archive-panel__year-group">
+				{yearGroup.months.map((monthGroup) => (
+					<section class="archive-panel__month-group">
+						<header class="archive-panel__month-header">
+							<h2 class="archive-panel__month-title">
+								<span class="archive-panel__month-year">{yearGroup.year}</span>
+								<span class="archive-panel__month-sep" aria-hidden="true">·</span>
+								<span class="archive-panel__month-num">{formatMonthNum(monthGroup.month)}</span>
+							</h2>
+							<span class="archive-panel__month-count">
+								<span aria-hidden="true">/</span>
+								<span class="archive-panel__month-count-num">{monthGroup.posts.length}</span>
+								{postLabel(monthGroup.posts.length)}
+							</span>
+						</header>
+
+						<ul class="archive-panel__post-list">
+							{monthGroup.posts.map((post) => {
+								const postTags = normalizeTags(post.data.tags);
+								const visibleTags = postTags.slice(0, 3);
+								const moreCount = Math.max(0, postTags.length - 3);
+								const categoryName = getPostCategoryName(post);
+								const catColor = getCategoryColor(categoryName);
+								return (
+									<li
+										class="archive-panel__post"
+										data-tags={JSON.stringify(postTags)}
+										data-category={normalizeCategoryName(post.data.category)}
+									>
+										<a
+											href={getPostUrlBySlug(post.id)}
+											aria-label={post.data.title}
+											class="archive-panel__post-link group"
+										>
+											<span class="archive-panel__date">{formatDate(post.data.published)}</span>
+											<span class="archive-panel__title group-hover:text-(--primary)">
+												{post.data.title}
+											</span>
+											<span class="archive-panel__meta">
+												<span class="archive-panel__category" style={catColor}>
+													#{categoryName}
+												</span>
+												{visibleTags.length > 0 && (
+													<Fragment>
+														<span class="archive-panel__meta-gap" aria-hidden="true"></span>
+														{visibleTags.map((tag, i) => (
+															<Fragment>
+																<span class="archive-panel__tag">{tag}</span>
+																{i < visibleTags.length - 1 && (
+																	<span class="archive-panel__meta-divider" aria-hidden="true">/</span>
+																)}
+															</Fragment>
+														))}
+													</Fragment>
+												)}
+												{moreCount > 0 && (
+													<span class="archive-panel__tag-more">+{moreCount}</span>
+												)}
+											</span>
+										</a>
+									</li>
+								);
+							})}
+						</ul>
+					</section>
+				))}
+			</section>
+		))}
+	</div>
+</div>
+
+<script>
+	// 静态构建拿不到查询参数，过滤在客户端执行。
+	// 首次加载立即运行一次；之后每次 Swup 导航由 astro:page-load 触发。
+	function applyArchiveFilters() {
+		const panel = document.querySelector<HTMLElement>(".archive-panel");
+		if (!panel) return;
+		const dataset = panel.dataset;
+
+		const params = new URLSearchParams(window.location.search);
+		const normalize = (value: string) => value.trim();
+		const tags = params.has("tag")
+			? params.getAll("tag").map(normalize).filter(Boolean)
+			: [];
+		const categories = params.has("category")
+			? params.getAll("category").map(normalize).filter(Boolean)
+			: [];
+		const uncategorized = params.get("uncategorized");
+		const hasFilter = tags.length > 0 || categories.length > 0 || !!uncategorized;
+
+		let visibleCount = 0;
+		panel.querySelectorAll<HTMLElement>(".archive-panel__post").forEach((row) => {
+			let matched = true;
+			if (hasFilter) {
+				let rowTags: string[] = [];
+				try {
+					rowTags = JSON.parse(row.dataset.tags ?? "[]");
+				} catch {
+					rowTags = [];
+				}
+				const rowCategory = row.dataset.category ?? "";
+				if (tags.length > 0)
+					matched = matched && rowTags.some((tag) => tags.includes(tag));
+				if (categories.length > 0)
+					matched = matched && rowCategory !== "" && categories.includes(rowCategory);
+				if (uncategorized) matched = matched && rowCategory === "";
+			}
+			row.hidden = !matched;
+			if (matched) visibleCount += 1;
+		});
+
+		let visibleYears = 0;
+		panel
+			.querySelectorAll<HTMLElement>(".archive-panel__month-group")
+			.forEach((group) => {
+				const count = group.querySelectorAll(".archive-panel__post:not([hidden])")
+					.length;
+				group.hidden = count === 0;
+				const num = group.querySelector(".archive-panel__month-count-num");
+				if (num) num.textContent = String(count);
+			});
+		panel
+			.querySelectorAll<HTMLElement>(".archive-panel__year-group")
+			.forEach((group) => {
+				const count = group.querySelectorAll(".archive-panel__post:not([hidden])")
+					.length;
+				group.hidden = count === 0;
+				if (count > 0) visibleYears += 1;
+			});
+
+		const filterEl = panel.querySelector<HTMLElement>(".archive-panel__filter");
+		if (!filterEl) return;
+		if (!hasFilter) {
+			filterEl.hidden = true;
+			return;
+		}
+		const summaryParts: string[] = [];
+		if (tags.length > 0)
+			summaryParts.push(
+				`${dataset.labelTags}: ${tags.map((tag) => `#${tag}`).join(" / ")}`,
+			);
+		if (categories.length > 0)
+			summaryParts.push(`${dataset.labelCategories}: ${categories.join(" / ")}`);
+		if (uncategorized)
+			summaryParts.push(
+				`${dataset.labelCategories}: ${dataset.labelUncategorized}`,
+			);
+		const label = filterEl.querySelector(".archive-panel__filter-label");
+		const stats = filterEl.querySelector(".archive-panel__filter-stats");
+		if (label) label.textContent = summaryParts.join("  ·  ");
+		if (stats) {
+			const postLabel =
+				visibleCount === 1 ? dataset.labelPostOne : dataset.labelPostMany;
+			stats.textContent = `${visibleCount} ${postLabel} · ${visibleYears} ${dataset.labelYear}`;
+		}
+		filterEl.hidden = false;
+	}
+
+	applyArchiveFilters();
+	document.addEventListener("astro:page-load", applyArchiveFilters);
+</script>

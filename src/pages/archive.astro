@@ -1,5 +1,5 @@
 ---
-import ArchivePanel from "@components/controls/ArchivePanel.svelte";
+import ArchivePanel from "@components/controls/ArchivePanel.astro";
 import ArchiveStats from "@components/widget/ArchiveStats.svelte";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
@@ -76,7 +76,7 @@ const archivePostSummaries = sortedPostsList.map((post) => ({
         evaluationCompleteTemplate={i18n(I18nKey.archiveStatsEvaluationComplete)}
         client:load
       />
-      <ArchivePanel sortedPosts={sortedPostsList} client:load />
+      <ArchivePanel sortedPosts={sortedPostsList} />
     </div>
   </div>
 </MainGridLayout>

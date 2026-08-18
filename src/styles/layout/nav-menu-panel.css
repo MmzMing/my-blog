@@ -44,6 +44,35 @@
 	transform: translateX(0);
 }
 
+/* —— 顶部品牌区：logo 与导航栏同规格（2.25rem 圆形） —— */
+
+.nav-drawer-brand {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 1rem 1.25rem 0;
+	flex-shrink: 0;
+	text-decoration: none;
+	color: var(--deep-text);
+}
+
+.nav-drawer-brand-logo {
+	width: 2.25rem;
+	height: 2.25rem;
+	flex-shrink: 0;
+	border-radius: 9999px;
+	object-fit: cover;
+}
+
+.nav-drawer-brand-text {
+	min-width: 0;
+	font-size: 1rem;
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .nav-drawer-header {
 	display: flex;
 	align-items: center;

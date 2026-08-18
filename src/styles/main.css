@@ -29,6 +29,7 @@
 /* === 页面层 === */
 @import './pages/categories.css';
 @import './pages/article-list.css';
+@import './pages/archive-panel.css';
 
 
 @plugin '@tailwindcss/typography';

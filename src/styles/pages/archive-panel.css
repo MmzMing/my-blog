@@ -1,0 +1,239 @@
+/* ==========================================================================
+   归档页（标题式列表）
+   结构：大标题年 → 小标题月 → 文章列表，单层平铺，全宽度通用
+   ========================================================================== */
+
+.archive-panel {
+	position: relative;
+}
+
+.archive-panel__body {
+	display: flex;
+	flex-direction: column;
+	row-gap: 3rem;
+}
+
+/* ── 年份分组 ── */
+.archive-panel__year-group {
+	display: flex;
+	flex-direction: column;
+	row-gap: 1.6rem;
+}
+
+/* ── 月份分组（标题即 年 · 月） ── */
+.archive-panel__month-group {
+	display: flex;
+	flex-direction: column;
+	row-gap: 0.8rem;
+}
+
+.archive-panel__month-header {
+	display: flex;
+	align-items: baseline;
+	gap: 0.75rem;
+}
+
+.archive-panel__month-title {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	margin: 0;
+}
+
+/* 月份标题中的年份：仅比月份稍大 */
+.archive-panel__month-year {
+	font-size: 1.4rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	line-height: 1.1;
+	color: var(--deep-text);
+	font-variant-numeric: tabular-nums;
+}
+
+.archive-panel__month-sep {
+	font-size: 1.2rem;
+	font-weight: 400;
+	color: var(--content-meta);
+	line-height: 1;
+}
+
+.archive-panel__month-num {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--deep-text);
+	font-variant-numeric: tabular-nums;
+}
+
+/* 年月标题后的篇章计数：/ 分隔，浅灰色 */
+.archive-panel__month-count {
+	font-size: 0.72rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: color-mix(in oklch, var(--content-meta) 68%, transparent);
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+/* ── 文章行：日期列对齐，无分界线，仅行距 ── */
+.archive-panel__post-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	row-gap: 0.85rem;
+}
+
+.archive-panel__post-link {
+	display: flex;
+	align-items: center;
+	gap: 0.9rem;
+	padding: 0.2rem 0.5rem 0.2rem 0.4rem;
+	border: 2px solid transparent;
+	border-radius: var(--radius-medium);
+	text-decoration: none;
+	transition: border-color 150ms ease;
+}
+
+/* 悬停只出加粗边框，不铺背景：与文章列表置顶卡片的 2px 粗边框一致 */
+.archive-panel__post-link:hover {
+	border-color: var(--deep-text);
+}
+
+.archive-panel__date {
+	flex-shrink: 0;
+	width: 3rem;
+	font-size: 0.875rem;
+	color: var(--content-meta);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	text-align: left;
+}
+
+.archive-panel__title {
+	flex: 1;
+	min-width: 0;
+	display: block;
+	font-size: 1.05rem;
+	font-weight: 550;
+	color: var(--deep-text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	transition: color 150ms ease;
+}
+
+.archive-panel__meta {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	flex-shrink: 0;
+	min-width: 0;
+	white-space: nowrap;
+}
+
+.archive-panel__meta-gap {
+	display: inline-block;
+	width: 0.5rem;
+	flex-shrink: 0;
+}
+
+.archive-panel__category {
+	font-size: 0.82rem;
+	font-weight: 700;
+	white-space: nowrap;
+	flex-shrink: 0;
+	color: var(--content-meta);
+}
+
+.archive-panel__meta-divider {
+	color: var(--meta-divider);
+	font-size: 0.82rem;
+	font-weight: 700;
+	flex-shrink: 0;
+	margin: 0 0.05rem;
+}
+
+.archive-panel__tag,
+.archive-panel__tag-more {
+	font-size: 0.82rem;
+	font-weight: 700;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.archive-panel__tag-more {
+	color: var(--content-meta);
+}
+
+/* ── 移动端：文章行收紧，标签换行 ── */
+@media (max-width: 768px) {
+	.archive-panel__body {
+		row-gap: 2.25rem;
+	}
+
+	.archive-panel__month-year {
+		font-size: 1.3rem;
+	}
+
+	.archive-panel__month-sep {
+		font-size: 1.05rem;
+	}
+
+	.archive-panel__month-num {
+		font-size: 1.1rem;
+	}
+
+	.archive-panel__post-list {
+		row-gap: 0.55rem;
+	}
+
+	.archive-panel__post-link {
+		flex-wrap: wrap;
+		gap: 0.3rem 0.75rem;
+		padding: 0.35rem 0.25rem;
+	}
+
+	.archive-panel__date {
+		width: 2.9rem;
+		font-size: 0.78rem;
+	}
+
+	.archive-panel__title {
+		font-size: 0.95rem;
+		white-space: normal;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		overflow-wrap: anywhere;
+	}
+
+	.archive-panel__meta {
+		flex-basis: 100%;
+		flex-wrap: wrap;
+		gap: 0.2rem;
+		white-space: normal;
+		/* 与标题左缘对齐（日期列宽 + 间距） */
+		padding-left: calc(2.9rem + 0.75rem);
+	}
+
+	.archive-panel__meta-gap {
+		display: none;
+	}
+
+	.archive-panel__category {
+		font-size: 0.75rem;
+	}
+
+	.archive-panel__tag,
+	.archive-panel__tag-more,
+	.archive-panel__meta-divider {
+		font-size: 0.72rem;
+	}
+}
