@@ -44,48 +44,60 @@
 	pointer-events: none;
 }
 
-.home-hero__dialogue-controls {
-	position: absolute;
-	top: clamp(1rem, 3vh, 1.5rem);
-	right: clamp(3rem, 6vw, 7rem);
-	z-index: 5;
-	display: inline-flex;
-	align-items: center;
-	gap: clamp(0.75rem, 1.6vw, 2rem);
-	transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+.home-hero__dialogue[data-hidden="true"] .home-hero__dialogue-menu {
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
 }
 
+.home-hero__dialogue-controls {
+	display: inline-flex;
+	align-items: center;
+	gap: clamp(0.1rem, 0.4vw, 0.4rem);
+}
+
+/* galgame 风纯图标按钮：无边框、无背景，仅保留图标 */
 .home-hero__dialogue-button {
 	display: inline-flex;
-	width: auto;
-	min-width: clamp(6rem, 8vw, 8rem);
-	height: clamp(3rem, 5vh, 3.75rem);
+	width: clamp(2.6rem, 3.4vw, 3.1rem);
+	height: clamp(2.6rem, 3.4vw, 3.1rem);
 	align-items: center;
 	justify-content: center;
-	gap: var(--space-2);
-	padding-inline: clamp(0.9rem, 1.5vw, 1.4rem);
+	padding: 0;
 	border: 0;
-	border-radius: var(--radius-full);
-	background: color-mix(in oklch, var(--home-hero-ink) 10%, transparent);
+	background: transparent;
 	color: inherit;
-	font: inherit;
-	font-size: 0.9375rem;
-	font-weight: 700;
+	opacity: 0.68;
 	cursor: pointer;
-	transition: background-color 150ms ease, transform 150ms ease;
+	transition: opacity 150ms ease, transform 150ms ease;
 }
 
 .home-hero__dialogue-button svg {
-	width: 1.5rem;
-	height: 1.5rem;
+	width: 1.7rem;
+	height: 1.7rem;
 }
 
 .home-hero__dialogue-button:hover,
-.home-hero__dialogue-button:focus-visible,
-.home-hero__dialogue-button[aria-pressed="true"] {
-	background: color-mix(in oklch, var(--home-hero-ink) 20%, transparent);
-	color: var(--home-hero-ink);
+.home-hero__dialogue-button:focus-visible {
+	opacity: 1;
 	transform: translateY(-1px);
+}
+
+.home-hero__dialogue-button[aria-pressed="true"] {
+	opacity: 1;
+}
+
+/* AUTO 开启后图标切换为暂停（两条竖线），默认只显示播放图标 */
+.home-hero__dialogue-icon-pause {
+	display: none;
+}
+
+.home-hero__dialogue-button[aria-pressed="true"] .home-hero__dialogue-icon-play {
+	display: none;
+}
+
+.home-hero__dialogue-button[aria-pressed="true"] .home-hero__dialogue-icon-pause {
+	display: block;
 }
 
 .home-hero__dialogue-button:focus-visible,
@@ -98,6 +110,9 @@
 .home-hero__dialogue-body {
 	min-height: 8.25rem;
 	cursor: pointer;
+	/* galgame 台词文本不参与选中，避免拖选干扰推进交互 */
+	user-select: none;
+	-webkit-user-select: none;
 }
 
 .home-hero__dialogue-nameplate {
@@ -147,39 +162,58 @@
 	animation: home-hero-dialogue-caret 720ms steps(2, start) infinite;
 }
 
+/* 话题选项悬浮在对话框上方居中，沿用快捷入口的气泡风格 */
 .home-hero__dialogue-menu {
-	display: grid;
-	gap: var(--space-2);
-	max-width: 34rem;
-	margin: var(--space-3) 0 0;
+	position: absolute;
+	left: 50%;
+	bottom: calc(100% + clamp(3rem, 20vh, 15rem));
+	z-index: 6;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-3);
+	width: min(26rem, calc(100vw - 2rem));
+	margin: 0;
 	padding: 0;
 	list-style: none;
+	transform: translateX(-50%);
 }
 
 .home-hero__dialogue-menu[hidden] {
 	display: none;
 }
 
-.home-hero__dialogue-menu-item {
-	display: block;
+.home-hero__dialogue-menu li {
+	display: flex;
 	width: 100%;
-	min-height: 2.75rem;
-	padding: var(--space-2) var(--space-3);
+	justify-content: center;
+}
+
+.home-hero__dialogue-menu-item {
+	display: inline-flex;
+	width: 100%;
+	min-height: 4rem;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-5);
 	border: 0;
-	border-radius: var(--radius-small);
-	background: color-mix(in oklch, var(--home-hero-ink) 10%, transparent);
-	color: inherit;
+	border-radius: 1.5rem 1.5rem 0.35rem 1.5rem;
+	background: color-mix(in oklch, var(--home-hero-surface) 52%, transparent);
+	backdrop-filter: blur(8px);
+	color: var(--home-hero-ink);
 	font: inherit;
-	font-size: 0.9375rem;
-	text-align: left;
+	font-size: 1.2rem;
+	font-weight: 650;
+	line-height: 1.2;
 	cursor: pointer;
-	transition: background-color 150ms ease, transform 150ms ease;
+	transition: background-color 160ms ease, transform 160ms ease;
 }
 
 .home-hero__dialogue-menu-item:hover,
 .home-hero__dialogue-menu-item:focus-visible {
-	background: color-mix(in oklch, var(--home-hero-ink) 20%, transparent);
-	transform: translateX(0.2rem);
+	background: color-mix(in oklch, var(--home-hero-ink) 18%, transparent);
+	transform: translateY(-2px);
 }
 
 .home-hero__dialogue-footer {
@@ -191,38 +225,34 @@
 	min-height: 2.75rem;
 	align-items: center;
 	justify-content: end;
+	gap: clamp(0.35rem, 0.8vw, 0.9rem);
 }
 
+/* 「下一句」同为纯图标按钮，箭头轻浮动提示可推进 */
 .home-hero__dialogue-advance {
 	display: inline-flex;
-	min-height: 3rem;
+	width: clamp(2.6rem, 3.4vw, 3.1rem);
+	height: clamp(2.6rem, 3.4vw, 3.1rem);
 	align-items: center;
-	gap: var(--space-1);
+	justify-content: center;
+	padding: 0;
 	border: 0;
-	border-radius: var(--radius-full);
 	background: transparent;
 	color: inherit;
-	font: inherit;
-	font-size: 0.875rem;
-	font-weight: 700;
+	opacity: 0.85;
 	cursor: pointer;
-	transition: background-color 150ms ease, transform 150ms ease;
+	transition: opacity 150ms ease, transform 150ms ease;
 }
 
 .home-hero__dialogue-advance svg {
-	width: 1.1rem;
-	height: 1.1rem;
+	width: 1.7rem;
+	height: 1.7rem;
+	animation: home-hero-dialogue-advance-bob 1.6s ease-in-out infinite;
 }
 
-
-.home-hero__dialogue-advance:hover {
-	background: transparent;
-	transform: none;
-}
-
+.home-hero__dialogue-advance:hover,
 .home-hero__dialogue-advance:focus-visible {
-	background: color-mix(in oklch, var(--home-hero-ink) 16%, transparent);
-	transform: translateY(-1px);
+	opacity: 1;
 }
 
 .home-hero__sticker {
@@ -309,6 +339,16 @@
 	}
 }
 
+@keyframes home-hero-dialogue-advance-bob {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(0.22rem);
+	}
+}
+
 @keyframes home-hero-sticker-blink {
 	0%,
 	46%,
@@ -348,24 +388,16 @@
 		backdrop-filter: blur(7px);
 	}
 
-	.home-hero__dialogue-controls {
-		top: 0.5rem;
-		right: 0.75rem;
-		gap: 9px;
+	.home-hero__dialogue-button,
+	.home-hero__dialogue-advance {
+		width: 2.6rem;
+		height: 2.6rem;
 	}
 
-	.home-hero__dialogue-button {
-		width: auto;
-		min-width: 4.75rem;
-		height: 50px;
-		gap: 0.3rem;
-		padding-inline: 0.55rem;
-		font-size: 0.75rem;
-	}
-
-	.home-hero__dialogue-button svg {
-		width: 1.1rem;
-		height: 1.1rem;
+	.home-hero__dialogue-button svg,
+	.home-hero__dialogue-advance svg {
+		width: 1.35rem;
+		height: 1.35rem;
 	}
 
 	.home-hero__dialogue-body {
@@ -382,19 +414,22 @@
 		line-height: 1.55;
 	}
 
+	.home-hero__dialogue-menu {
+		bottom: calc(100% + clamp(2rem, 14vh, 8rem));
+		width: calc(100vw - 1.5rem);
+		gap: var(--space-2);
+	}
+
 	.home-hero__dialogue-menu-item {
-		min-height: 2.75rem;
-		font-size: 0.875rem;
+		min-height: 3rem;
+		padding: var(--space-2) var(--space-4);
+		font-size: 1rem;
 	}
 
 	.home-hero__dialogue-footer {
 		right: 1.25rem;
 		bottom: 0.25rem;
-	}
-
-	.home-hero__dialogue-advance {
-		min-height: 50px;
-		padding-inline: var(--space-2);
+		gap: 0.25rem;
 	}
 
 	.home-hero__sticker {
@@ -417,6 +452,10 @@
 	}
 
 	.home-hero__dialogue-box[data-typing="true"] .home-hero__dialogue-text::after {
+		animation: none;
+	}
+
+	.home-hero__dialogue-advance svg {
 		animation: none;
 	}
 

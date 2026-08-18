@@ -461,7 +461,7 @@ html {
     }
 
     .dropdown-menu {
-        @apply absolute top-full left-0 pt-2 opacity-0 invisible pointer-events-none transition-all duration-200 ease-out transform translate-y-[-8px] z-50;
+        @apply absolute top-full left-0 pt-5 opacity-0 invisible pointer-events-none transition-all duration-200 ease-out transform translate-y-[-8px] z-50;
     }
 
     .dropdown-container:hover .dropdown-menu,
@@ -476,33 +476,22 @@ html {
 
     .dropdown-content,
     .dropdown-content-wrapper {
-        @apply border border-(--line-divider) py-2 min-w-48 rounded-xl;
-        background: color-mix(in oklch, var(--float-panel-bg) 85%, transparent);
-        backdrop-filter: blur(16px) saturate(180%);
-        -webkit-backdrop-filter: blur(16px) saturate(180%);
-        border-style: solid;
-        transition: border-style 0.15s ease;
-    }
-
-    .dropdown-content:hover,
-    .dropdown-content-wrapper:hover {
-        border-style: dashed;
+        @apply border py-2 min-w-48 rounded-xl;
+        /* 细灰色边框：基于 --deep-text 28% 混色，随主题自动适配 */
+        border-color: color-mix(in oklch, var(--deep-text) 28%, transparent);
+        background: color-mix(in oklch, var(--float-panel-bg) 92%, transparent);
     }
 
     .dropdown-item {
         @apply flex items-center justify-between px-4 py-2.5 text-black/75 dark:text-white/75 hover:text-(--primary) transition-colors duration-150 font-medium;
         border: 1.5px solid transparent;
         border-radius: 0.75rem;
-        background-color: transparent !important;
+        background-color: transparent;
     }
 
+    /* 与导航栏无边框悬停高亮保持一致（navbar-hover-highlight 同款灰色背景） */
     .dropdown-item:hover {
-        border-color: oklch(0.2 0 0);
-        background-color: transparent !important;
-    }
-
-    :root.dark .dropdown-item:hover {
-        border-color: oklch(0.75 0 0);
+        background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
     }
 
     /* 移动端菜单样式 */

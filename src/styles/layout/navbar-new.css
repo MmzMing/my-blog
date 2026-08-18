@@ -23,11 +23,8 @@
 	flex-shrink: 0;
 	border-radius: 9999px;
 	padding: 0.25rem 0.5rem;
-	background: color-mix(in oklch, var(--float-panel-bg) 72%, transparent);
-	backdrop-filter: blur(12px) saturate(1.2);
-	-webkit-backdrop-filter: blur(12px) saturate(1.2);
+	background: color-mix(in oklch, var(--float-panel-bg) 92%, transparent);
 	border: none;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 	transition:
 		max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
 		width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
@@ -39,8 +36,7 @@
 }
 
 :root.dark .navbar-seg {
-	background: color-mix(in oklch, var(--float-panel-bg) 80%, transparent);
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+	background: color-mix(in oklch, var(--float-panel-bg) 92%, transparent);
 }
 
 /* 左段：默认贴最左 */

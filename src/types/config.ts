@@ -939,6 +939,7 @@ export type CollectionApiItem = {
 // 收藏API分类分组
 export type CollectionApiGroup = {
 	category: string; // 分类名称
+	description?: string; // 分类简短说明，显示在标题下方，留空则不显示
 	items: CollectionApiItem[]; // 该分类下的 API 列表
 };
 

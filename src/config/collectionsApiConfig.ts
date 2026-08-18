@@ -13,6 +13,7 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 	apis: [
 		{
 			category: "工具箱",
+			description: "网络测速、图片处理、抠图等日常实用工具",
 			items: [
 				{
 					name: "网络工具 | 中科大测速",
@@ -87,7 +88,8 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 			],
 		},
 		{
-			category: "AI 助手",
+			category: "AI聊天网站",
+			description: "对话式 AI 助手，覆盖写作、编程与日常问答",
 			items: [
 				{
 					name: "豆包",
@@ -130,7 +132,8 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 			],
 		},
 		{
-			category: "AI 工具",
+			category: "AI工具网站",
+			description: "模型排行、图像生成、提示词优化与开发平台",
 			items: [
 				{
 					name: "能力排行榜 | Artificial Analysis",
@@ -219,7 +222,8 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 			],
 		},
 		{
-			category: "AI BOT",
+			category: "BOT开源框架网站",
+			description: "支持 QQ、Discord 等多平台的聊天机器人框架",
 			items: [
 				{
 					name: "NapCat",
@@ -262,6 +266,7 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 		},
 		{
 			category: "前端组件库",
+			description: "设计参考与开源 UI、动效组件库",
 			items: [
 				{
 					name: "One Page Love",
@@ -388,6 +393,7 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 		},
 		{
 			category: "学习知识库",
+			description: "编程学习、算法练习与求职备考平台",
 			items: [
 				{
 					name: "Java 全栈知识体系",
@@ -431,7 +437,8 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 			],
 		},
 		{
-			category: "动漫&漫画",
+			category: "二次元资源站",
+			description: "动漫与漫画资源聚合观看平台",
 			items: [
 				{
 					name: "AGE 动漫",
@@ -451,6 +458,7 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 		},
 		{
 			category: "API 接口",
+			description: "免费与开放的数据 API 服务平台",
 			items: [
 				{
 					name: "小小API",

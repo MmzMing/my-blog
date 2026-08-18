@@ -1,6 +1,5 @@
 <script lang="ts">
 import {
-	ArrowUpToLine,
 	Check,
 	Copy,
 	Laptop,
@@ -119,11 +118,6 @@ async function copyMessage() {
 				<strong>@{message.replyToNick || i18n(I18nKey.gbVisitor)}</strong>
 				<small>{@html quotePreview}</small>
 			</span>
-			<ArrowUpToLine
-				class="guestbook-message__quote-jump"
-				size={15}
-				aria-hidden="true"
-			/>
 		</button>
 	{/if}
 

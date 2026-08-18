@@ -34,23 +34,10 @@ const dialogueConfig = {
 	data-hidden="false"
 	data-scene-visible="false"
 >
+	<ul class="home-hero__dialogue-menu" data-dialogue-menu hidden></ul>
+
 	<div class="home-hero__dialogue-layout">
 		<HeroSticker config={sticker} />
-
-		<div class="home-hero__dialogue-controls">
-			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="back" aria-label={i18n(I18nKey.dialoguePrev)} title={i18n(I18nKey.dialoguePrev)}>
-				<Icon name="material-symbols:undo-rounded" is:inline aria-hidden="true" />
-				<span>BACK</span>
-			</button>
-			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="auto" aria-label={i18n(I18nKey.dialogueAutoPlay)} title={i18n(I18nKey.dialogueAutoPlay)} aria-pressed="false">
-				<Icon name="material-symbols:play-arrow-rounded" is:inline aria-hidden="true" />
-				<span>AUTO</span>
-			</button>
-			<button type="button" class="home-hero__dialogue-button" data-dialogue-action="hide" aria-label={i18n(I18nKey.collapse)} title={i18n(I18nKey.collapse)}>
-				<Icon name="material-symbols:close-rounded" is:inline aria-hidden="true" />
-				<span>CLOSE</span>
-			</button>
-		</div>
 
 		<div class="home-hero__dialogue-box" data-dialogue-box data-speaker="host">
 			<div class="home-hero__dialogue-body" data-dialogue-click>
@@ -58,12 +45,20 @@ const dialogueConfig = {
 					<span class="home-hero__dialogue-name" data-dialogue-name>{dialogueConfig.speakers.host}</span>
 				</div>
 				<p class="home-hero__dialogue-text" data-dialogue-text aria-live="polite"></p>
-				<ul class="home-hero__dialogue-menu" data-dialogue-menu hidden></ul>
 			</div>
 
 			<div class="home-hero__dialogue-footer">
+				<div class="home-hero__dialogue-controls">
+					<button type="button" class="home-hero__dialogue-button" data-dialogue-action="back" aria-label={i18n(I18nKey.dialoguePrev)} title={i18n(I18nKey.dialoguePrev)}>
+						<Icon name="material-symbols:undo-rounded" is:inline aria-hidden="true" />
+					</button>
+					<button type="button" class="home-hero__dialogue-button" data-dialogue-action="auto" aria-label={i18n(I18nKey.dialogueAutoPlay)} title={i18n(I18nKey.dialogueAutoPlay)} aria-pressed="false">
+						<Icon name="material-symbols:play-arrow-rounded" class="home-hero__dialogue-icon-play" is:inline aria-hidden="true" />
+						<Icon name="material-symbols:pause-rounded" class="home-hero__dialogue-icon-pause" is:inline aria-hidden="true" />
+					</button>
+				</div>
 				<button type="button" class="home-hero__dialogue-advance" data-dialogue-advance>
-					<span data-dialogue-advance-label>{i18n(I18nKey.dialogueNext)}</span>
+					<span class="sr-only" data-dialogue-advance-label>{i18n(I18nKey.dialogueNext)}</span>
 					<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline aria-hidden="true" />
 				</button>
 			</div>

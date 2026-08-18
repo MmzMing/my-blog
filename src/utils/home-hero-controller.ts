@@ -409,7 +409,6 @@ export function mountHomeHero() {
 				scrub: config.mosaic.scrub,
 				anticipatePin: 1,
 				invalidateOnRefresh: true,
-				onRefreshInit: () => timeline?.invalidate(),
 				onUpdate: (self) => updateSceneState(self.progress),
 			},
 		});

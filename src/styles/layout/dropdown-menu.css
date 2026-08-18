@@ -76,7 +76,8 @@
 	position: absolute;
 	top: 100%;
 	left: 0;
-	padding-top: 0.75rem;
+	/* 与导航栏拉开距离，保留悬停过渡区防止菜单收起 */
+	padding-top: 1.25rem;
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
@@ -104,13 +105,12 @@
 	min-width: 12rem;
 	border-radius: 0.75rem;
 	padding: 0.5rem;
-	background: color-mix(in oklch, var(--float-panel-bg) 85%, transparent);
-	backdrop-filter: blur(16px) saturate(180%);
-	-webkit-backdrop-filter: blur(16px) saturate(180%);
-	border: 1px solid var(--line-divider);
+	background: color-mix(in oklch, var(--float-panel-bg) 92%, transparent);
+	/* 细灰色边框：基于 --deep-text 28% 混色，随主题自动适配 */
+	border: 1px solid color-mix(in oklch, var(--deep-text) 28%, transparent);
 }
 
-/* 禁用 dropdown item 的 expand-animation 背景，只保留边框效果 */
+/* 禁用 dropdown item 的 expand-animation 背景，悬停高亮由灰色背景接管 */
 .dropdown-content-wrapper .dropdown-item::before,
 .dropdown-content-wrapper .dropdown-item:hover::before,
 .dropdown-content-wrapper .dropdown-item:active::before {
@@ -118,7 +118,7 @@
 }
 
 .dropdown-content-wrapper .dropdown-item:active {
-	background-color: transparent !important;
+	background-color: color-mix(in oklch, var(--deep-text) 12%, transparent);
 }
 
 /* action 按钮：禁用 expand-animation 背景 */

@@ -2,42 +2,10 @@
 import Icon from "@components/common/Icon.astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
-import type { HeroQuickAction } from "@/types/config";
-
-interface Props {
-	actions: HeroQuickAction[];
-}
-
-const { actions } = Astro.props;
 ---
 
 <nav class="home-hero__quick-panel" aria-label={i18n(I18nKey.quickActions)} data-hero-quick-panel>
 	<div class="home-hero__quick-actions">
-		{actions.map((action) => (
-			action.kind === "link" ? (
-				<a
-					class="home-hero__quick-action"
-					href={action.href}
-					data-hero-action
-					data-hero-action-kind="link"
-					data-hero-action-href={action.href}
-				>
-					<Icon name={action.icon} is:inline aria-hidden="true" />
-					<span>{action.label}</span>
-				</a>
-			) : (
-				<button
-					class="home-hero__quick-action"
-					type="button"
-					data-hero-action
-					data-hero-action-kind="music"
-					data-hero-action-href={action.fallbackHref}
-				>
-					<Icon name={action.icon} is:inline aria-hidden="true" />
-					<span>{action.label}</span>
-				</button>
-			)
-		))}
 		<button
 			class="home-hero__quick-action home-hero__dialogue-restore"
 			type="button"

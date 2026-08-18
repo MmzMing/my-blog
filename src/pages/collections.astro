@@ -19,18 +19,10 @@ const description =
 const enabledGroups = collectionsApiConfig.apis
 	.map((group) => ({
 		category: group.category,
+		description: group.description,
 		items: group.items.filter((api) => api.enabled),
 	}))
 	.filter((group) => group.items.length > 0);
-
-// 从分组顺序自动提取分类
-const categories = enabledGroups.map((group) => group.category);
-
-// 计算每个分类的数量
-const categoryCounts: Record<string, number> = {};
-for (const group of enabledGroups) {
-	categoryCounts[group.category] = group.items.length;
-}
 
 const enabledApisCount = enabledGroups.reduce(
 	(sum, group) => sum + group.items.length,
@@ -47,93 +39,25 @@ const enabledApisCount = enabledGroups.reduce(
         <PageTitle title={title} variant="stacked" />
       </div>
 
-      <!-- Tab 分类导航（椭圆胶囊 + 换行） -->
-      {enabledApisCount > 0 && categories.length > 1 && (
-        <div class="tools-tab-wrapper">
-          <div class="tools-tab-pill" data-tools-tab-nav>
-            <div class="tools-tab-indicator" data-tools-tab-indicator></div>
-            <button data-tools-tab="all" class="tools-tab-btn tools-tab-btn-active">
-              {i18n(I18nKey.all)}
-              <span class="tools-tab-badge">{enabledApisCount}</span>
-            </button>
-            {categories.map((cat) => (
-              <button data-tools-tab={cat} class="tools-tab-btn tools-tab-btn-inactive">
-                {cat}
-                <span class="tools-tab-badge">{categoryCounts[cat]}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <!-- 工具卡片内容 -->
+      <!-- 手风琴分类列表 -->
       {enabledApisCount > 0 ? (
-        <div>
-          <!-- 全部：按分类分组显示 -->
-          <div data-tools-section="all">
-            {enabledGroups.map((group) => {
-              const cat = group.category;
-              const catApis = group.items;
-              return (
-                <div class="tools-category-group mt-8 first:mt-0">
-                  <div class="flex items-center gap-3 mb-5">
-                    <div class="flex items-center gap-2">
-                      <Icon name="material-symbols:label-outline" class="text-lg text-neutral-900 dark:text-neutral-100" />
-                      <span class="text-base font-bold text-neutral-900 dark:text-neutral-100">{cat}</span>
-                    </div>
-                    <span class="text-xs text-neutral-400 dark:text-neutral-500">{catApis.length}</span>
-                    <div class="flex-1 h-[2px] bg-black dark:bg-white" />
-                  </div>
-                  <div class="tools-card-grid">
-                    {catApis.map((api, index) => (
-                      <a
-                        href={api.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="tools-card group"
-                        data-category={cat}
-                        style={`animation-delay: ${index * 60}ms`}
-                      >
-                        <div class="tools-card-jump-icon">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M7 17L17 7" />
-                            <path d="M7 7h10v10" />
-                          </svg>
-                        </div>
-                        <div class="flex items-center gap-2 mb-3">
-                          {api.icon ? (
-                            api.icon.startsWith('http') ? (
-                              <img src={api.icon} alt={api.name} loading="lazy" decoding="async" class="w-6 h-6 rounded object-contain shrink-0" />
-                          ) : (
-                              <Icon name={api.icon} class="text-2xl text-neutral-600 dark:text-neutral-300 group-hover:text-black dark:group-hover:text-white transition-colors duration-300 shrink-0" />
-                            )
-                          ) : (
-                            <Icon name="material-symbols:api" class="text-2xl text-neutral-600 dark:text-neutral-300 group-hover:text-black dark:group-hover:text-white transition-colors duration-300 shrink-0" />
-                          )}
-                          <h3 class="text-lg font-bold text-neutral-900 dark:text-neutral-100 group-hover:translate-x-1 transition-transform duration-300 truncate">
-                            {api.name}
-                          </h3>
-                        </div>
-                        <p class="tools-card-desc">{api.description}</p>
-                        <div class="tools-card-footer">
-                          <span class="text-xs text-neutral-400 dark:text-neutral-500 truncate">
-                            {new URL(api.url).hostname}
-                          </span>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <!-- 各分类独立 Tab 内容 -->
-          {enabledGroups.map((group) => {
+        <div class="tools-accordion-list">
+          {enabledGroups.map((group, groupIndex) => {
             const cat = group.category;
             const catApis = group.items;
             return (
-              <div data-tools-section={cat} class="hidden">
+              <section class="tools-accordion" data-tools-accordion data-open={groupIndex === 0 ? "true" : undefined}>
+                <button type="button" class="tools-accordion-header" aria-expanded={groupIndex === 0}>
+                  <div class="tools-accordion-title-wrap">
+                    <span class="tools-accordion-title">{cat}</span>
+                    {group.description && (
+                      <span class="tools-accordion-desc">{group.description}</span>
+                    )}
+                  </div>
+                  <Icon name="material-symbols:keyboard-arrow-down-rounded" class="tools-accordion-arrow" />
+                </button>
+                <div class="tools-accordion-body">
+                  <div class="tools-accordion-body-inner">
                 <div class="tools-card-grid">
                   {catApis.map((api, index) => (
                     <a
@@ -173,7 +97,9 @@ const enabledApisCount = enabledGroups.reduce(
                     </a>
                   ))}
                 </div>
-              </div>
+                  </div>
+                </div>
+              </section>
             );
           })}
         </div>
@@ -186,102 +112,25 @@ const enabledApisCount = enabledGroups.reduce(
     </div>
   </div>
 
-  <!-- 事件委托：document 级别，只注册一次，swup 导航后自动生效 -->
+  <!-- 手风琴展开/收起：纯 CSS 高度过渡，JS 仅切换状态 -->
   <script is:inline>
     (function() {
-      if (window.__collectionsReady) return;
-      window.__collectionsReady = true;
+      if (window.__collectionsAccordionReady) return;
+      window.__collectionsAccordionReady = true;
 
-      function updateIndicator(targetBtn) {
-        if (!targetBtn) return;
-        var nav = targetBtn.closest("[data-tools-tab-nav]");
-        if (!nav) return;
-        var indicator = nav.querySelector("[data-tools-tab-indicator]");
-        if (!indicator) return;
-        indicator.style.left = targetBtn.offsetLeft + "px";
-        indicator.style.top = targetBtn.offsetTop + "px";
-        indicator.style.width = targetBtn.offsetWidth + "px";
-        indicator.style.height = targetBtn.offsetHeight + "px";
-        indicator.style.opacity = "1";
-      }
-
-      function activateTab(targetTab) {
-        if (!targetTab) return;
-        var tabButtons = document.querySelectorAll("[data-tools-tab]");
-        var sections = document.querySelectorAll("[data-tools-section]");
-        var targetButton = null;
-        tabButtons.forEach(function(btn) {
-          if (btn.dataset.toolsTab === targetTab) targetButton = btn;
-        });
-        if (!targetButton) return;
-
-        tabButtons.forEach(function(btn) {
-          btn.classList.remove("tools-tab-btn-active");
-          btn.classList.add("tools-tab-btn-inactive");
-          btn.disabled = false;
-        });
-        targetButton.classList.remove("tools-tab-btn-inactive");
-        targetButton.classList.add("tools-tab-btn-active");
-        targetButton.disabled = true;
-
-        requestAnimationFrame(function() { updateIndicator(targetButton); });
-
-        sections.forEach(function(section) {
-          if (section.dataset.toolsSection === targetTab) {
-            section.classList.remove("hidden");
-            var cards = section.querySelectorAll(".tools-card");
-            cards.forEach(function(card) {
-              card.style.animation = "none";
-              card.offsetHeight;
-              card.style.animation = "";
-            });
-          } else {
-            section.classList.add("hidden");
-          }
-        });
-
-        var nextHash = "#tools-" + encodeURIComponent(targetTab);
-        if (window.location.hash !== nextHash) {
-          window.history.replaceState(null, "", nextHash);
-        }
-      }
-
-      // 事件委托：tools tab 点击
       document.addEventListener("click", function(e) {
-        var btn = e.target.closest("[data-tools-tab]");
-        if (btn) activateTab(btn.dataset.toolsTab);
-      });
-
-      // hashchange
-      window.addEventListener("hashchange", function() {
-        var hash = window.location.hash.replace(/^#tools-/, "");
-        if (hash) {
-          try { hash = decodeURIComponent(hash); } catch(e) { return; }
-          activateTab(hash);
+        var header = e.target.closest(".tools-accordion-header");
+        if (!header) return;
+        var accordion = header.closest("[data-tools-accordion]");
+        if (!accordion) return;
+        var open = accordion.hasAttribute("data-open");
+        if (open) {
+          accordion.removeAttribute("data-open");
+        } else {
+          accordion.setAttribute("data-open", "");
         }
+        header.setAttribute("aria-expanded", open ? "false" : "true");
       });
-
-      // resize
-      window.addEventListener("resize", function() {
-        var activeBtn = document.querySelector(".tools-tab-btn-active");
-        if (activeBtn) updateIndicator(activeBtn);
-      });
-
-      // 初始化
-      function init() {
-        var hash = window.location.hash.replace(/^#tools-/, "");
-        if (hash) {
-          try { hash = decodeURIComponent(hash); } catch(e) { hash = ""; }
-          if (hash) { activateTab(hash); return; }
-        }
-        var activeBtn = document.querySelector(".tools-tab-btn-active");
-        if (activeBtn) {
-          requestAnimationFrame(function() { updateIndicator(activeBtn); });
-        }
-      }
-
-      init();
-      document.addEventListener("astro:page-load", init);
     })();
   </script>
 </MainGridLayout>

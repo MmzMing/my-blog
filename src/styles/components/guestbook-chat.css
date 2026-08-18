@@ -998,8 +998,7 @@ html:has(.guestbook-page) #category-bar-wrapper {
 	width: min(calc(78% + var(--guestbook-avatar-size) + var(--space-3)), 42rem);
 	min-height: var(--control-size);
 	margin: 0 0 var(--space-2) calc(var(--guestbook-avatar-size) / 2);
-	padding: var(--space-1) calc(var(--space-4) + 1rem) var(--space-1)
-		calc(var(--space-3) + 0.75rem);
+	padding: var(--space-1) calc(var(--space-3) + 0.75rem);
 	border: 0;
 	background: transparent;
 	color: var(--guestbook-muted);
@@ -1012,8 +1011,6 @@ html:has(.guestbook-page) #category-bar-wrapper {
 	grid-template-columns: minmax(0, 1fr) 1.75rem;
 	margin-right: calc(var(--guestbook-avatar-size) / 2);
 	margin-left: 0;
-	padding-right: calc(var(--space-3) + 0.75rem);
-	padding-left: calc(var(--space-4) + 1rem);
 	text-align: right;
 }
 
@@ -1089,25 +1086,6 @@ html:has(.guestbook-page) #category-bar-wrapper {
 .guestbook-message__quote-copy {
 	display: block;
 	min-width: 0;
-}
-
-.guestbook-message__quote-jump {
-	position: absolute;
-	top: 50%;
-	right: var(--space-2);
-	transform: translateY(-50%);
-	opacity: 0;
-	transition: opacity 160ms ease;
-}
-
-.guestbook-message.is-admin .guestbook-message__quote-jump {
-	right: auto;
-	left: var(--space-2);
-}
-
-.guestbook-message__quote:hover .guestbook-message__quote-jump,
-.guestbook-message__quote:focus-visible .guestbook-message__quote-jump {
-	opacity: 1;
 }
 
 .guestbook-message__quote-copy strong,
@@ -2068,10 +2046,6 @@ html:has(.guestbook-page) #category-bar-wrapper {
 	}
 
 	.guestbook-message__tools {
-		opacity: 1;
-	}
-
-	.guestbook-message__quote-jump {
 		opacity: 1;
 	}
 

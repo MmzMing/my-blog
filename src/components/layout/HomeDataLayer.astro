@@ -147,7 +147,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				</div>
 			</section>
 
-			<section class="guide-card guide-card--index guide-card--tags" aria-labelledby="guide-tags-title">
+			<section class="guide-card guide-card--index guide-card--tags" data-tag-fan aria-labelledby="guide-tags-title">
 				<p class="guide-card__eyebrow">TAGS</p>
 				<h3 id="guide-tags-title">{i18n(I18nKey.tagIndex)}</h3>
 				<div class="guide-tag-list">
@@ -418,6 +418,90 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		});
 	}
 
+	function initTagFan(layer: HTMLElement) {
+		if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+		const card = layer.querySelector<HTMLElement>("[data-tag-fan]");
+		const list = card?.querySelector<HTMLElement>(".guide-tag-list");
+		if (!card || !list) return;
+		const links = Array.from(list.querySelectorAll<HTMLElement>("a"));
+		if (links.length < 3) return;
+
+		let flat = false;
+		let intentTimer: number | undefined;
+
+		// 每张卡的固定散落姿态（rem 平移 + 旋转），模拟随手丢下的卡牌堆，不围成弧线
+		const SCATTER_POSES = [
+			{ x: -0.55, y: -0.35, rotation: -7 },
+			{ x: 0.18, y: -0.7, rotation: 4 },
+			{ x: 0.62, y: 0.12, rotation: 16 },
+			{ x: -0.32, y: 0.4, rotation: 9 },
+			{ x: 0.12, y: -0.08, rotation: -6 },
+			{ x: 0.48, y: 0.42, rotation: 13 },
+		];
+		const SCATTER_Z = [1, 3, 2, 1, 2, 4];
+
+		const computeScatterTargets = () => {
+			const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+			return links.map((_, index) => {
+				const pose = SCATTER_POSES[index % SCATTER_POSES.length];
+				return {
+					x: pose.x * rem,
+					y: pose.y * rem,
+					rotation: pose.rotation,
+					zIndex: SCATTER_Z[index % SCATTER_Z.length],
+				};
+			});
+		};
+
+		const applyState = (nextFlat: boolean, immediate = false) => {
+			flat = nextFlat;
+			card.classList.toggle("is-flat", flat);
+			const ease = flat ? "power3.out" : "back.out(1.4)";
+			if (flat) {
+				links.forEach((link, index) => {
+					gsap.to(link, { x: 0, y: 0, rotation: 0, zIndex: index, duration: immediate ? 0 : 0.45, ease, overwrite: "auto", delay: immediate ? 0 : index * 0.02 });
+				});
+				return;
+			}
+			const targets = computeScatterTargets();
+			links.forEach((link, index) => {
+				const target = targets[index];
+				if (!target) return;
+				gsap.to(link, { x: target.x, y: target.y, rotation: target.rotation, zIndex: target.zIndex, duration: immediate ? 0 : 0.55, ease, overwrite: "auto", delay: immediate ? 0 : index * 0.03 });
+			});
+		};
+
+		// 悬停意图防抖：快速进出不会反复触发动画，中途切换由 overwrite 平滑接管
+		const scheduleIntent = (nextFlat: boolean, delay: number) => {
+			if (intentTimer !== undefined) window.clearTimeout(intentTimer);
+			intentTimer = undefined;
+			if (flat === nextFlat) return;
+			intentTimer = window.setTimeout(() => { intentTimer = undefined; applyState(nextFlat); }, delay);
+		};
+
+		applyState(false, true);
+
+		const enter = () => scheduleIntent(true, 70);
+		const leave = () => scheduleIntent(false, 140);
+		const focusIn = () => scheduleIntent(true, 0);
+		const focusOut = () => { window.setTimeout(() => { if (!card.contains(document.activeElement)) scheduleIntent(false, 80); }, 0); };
+
+		card.addEventListener("pointerenter", enter);
+		card.addEventListener("pointerleave", leave);
+		card.addEventListener("focusin", focusIn);
+		card.addEventListener("focusout", focusOut);
+		cleanups.push(() => {
+			if (intentTimer !== undefined) window.clearTimeout(intentTimer);
+			card.removeEventListener("pointerenter", enter);
+			card.removeEventListener("pointerleave", leave);
+			card.removeEventListener("focusin", focusIn);
+			card.removeEventListener("focusout", focusOut);
+			gsap.killTweensOf(links);
+			gsap.set(links, { clearProps: "transform,zIndex" });
+			card.classList.remove("is-flat");
+		});
+	}
+
 	function initGuideRotators(layer: HTMLElement) {
 		const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 		const rotators = Array.from(layer.querySelectorAll<HTMLElement>("[data-guide-rotator]"));
@@ -559,6 +643,155 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		});
 	}
 
+	function initContactOverlay(layer: HTMLElement) {
+		if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+		const contact = layer.querySelector<HTMLElement>("[data-guide-contact]");
+		const allRow = contact?.querySelector<HTMLElement>(".guide-contact__all");
+		if (!contact || !allRow) return;
+		const sourceLinks = Array.from(allRow.querySelectorAll<HTMLAnchorElement>("a"));
+		// 联系入口限 5 个：四角各一个 + 中央方块一个，数量不符则不启用覆盖层
+		if (sourceLinks.length !== 5) return;
+
+		const SVG_NS = "http://www.w3.org/2000/svg";
+		const overlay = document.createElement("div");
+		overlay.className = "guide-contact__overlay";
+		overlay.setAttribute("aria-hidden", "true");
+		const svg = document.createElementNS(SVG_NS, "svg");
+		svg.setAttribute("class", "guide-contact__overlay-svg");
+		svg.setAttribute("viewBox", "0 0 100 100");
+		svg.setAttribute("preserveAspectRatio", "none");
+		// 十字切割实线：从中央方块四边中点向卡片四边生长
+		const lineCoords = [
+			[50, 0, 50, 26],
+			[50, 100, 50, 74],
+			[0, 50, 32, 50],
+			[100, 50, 68, 50],
+		];
+		const lines = lineCoords.map(([x1, y1, x2, y2]) => {
+			const line = document.createElementNS(SVG_NS, "line");
+			// 初始为零长度，进场时生长到终点，全程实线不用虚线描边
+			line.setAttribute("x1", String(x1));
+			line.setAttribute("y1", String(y1));
+			line.setAttribute("x2", String(x1));
+			line.setAttribute("y2", String(y1));
+			line.setAttribute("class", "guide-contact__overlay-line");
+			line.setAttribute("vector-effect", "non-scaling-stroke");
+			svg.appendChild(line);
+			return { element: line, x2, y2 };
+		});
+		overlay.appendChild(svg);
+
+		const zones = ["top-left", "top-right", "bottom-left", "bottom-right", "center"];
+		const regions = sourceLinks.map((source, index) => {
+			const region = source.cloneNode(false) as HTMLAnchorElement;
+			region.className = `guide-contact__region guide-contact__region--${zones[index]}`;
+			const icon = source.querySelector("svg");
+			if (icon) region.appendChild(icon.cloneNode(true));
+			overlay.appendChild(region);
+			return region;
+		});
+
+		let active = false;
+		let mounted = false;
+		let pointerInside = false;
+		let intentTimer: number | undefined;
+		let removeTimer: number | undefined;
+
+		// 硬重置到退场终态，保证每次挂载都从干净状态起步
+		const resetVisuals = () => {
+			gsap.set(overlay, { autoAlpha: 0 });
+			gsap.set(regions, { autoAlpha: 0, scale: 0.82 });
+			lines.forEach(({ element }) => {
+				element.setAttribute("x2", element.getAttribute("x1") ?? "");
+				element.setAttribute("y2", element.getAttribute("y1") ?? "");
+			});
+		};
+		resetVisuals();
+
+		// 激活时才注入覆盖层，避免隐藏的区域链接拦截卡片点击；退场动画播完后再移除
+		const mount = () => {
+			if (removeTimer !== undefined) { window.clearTimeout(removeTimer); removeTimer = undefined; }
+			if (mounted) return;
+			mounted = true;
+			resetVisuals();
+			contact.appendChild(overlay);
+			contact.classList.add("has-overlay");
+		};
+		const unmount = () => {
+			if (!mounted || active) return;
+			mounted = false;
+			gsap.killTweensOf([overlay, ...lines.map(({ element }) => element), ...regions]);
+			overlay.remove();
+			contact.classList.remove("has-overlay");
+		};
+
+		const setActive = (next: boolean) => {
+			if (next) {
+				// 先挂载（内部会取消待执行的移除），再判断是否需要播进场，
+				// 避免快速进出时标记与视觉状态不同步导致卡在空白态
+				mount();
+				if (active) return;
+				active = true;
+				// 先播线条生长，线条到位后再弹出区域背景与图标
+				gsap.to(overlay, { autoAlpha: 1, duration: 0.1, ease: "power1.out", overwrite: "auto" });
+				lines.forEach(({ element, x2, y2 }, index) => {
+					gsap.to(element, { attr: { x2, y2 }, duration: 0.2, ease: "power3.out", delay: index * 0.03, overwrite: "auto" });
+				});
+				regions.forEach((region, index) => {
+					gsap.to(region, { autoAlpha: 1, scale: 1, duration: 0.22, ease: "back.out(1.8)", delay: 0.26 + index * 0.03, overwrite: "auto" });
+				});
+				return;
+			}
+			if (!active) return;
+			active = false;
+			gsap.to(regions, { autoAlpha: 0, scale: 0.82, duration: 0.16, ease: "power2.in", overwrite: "auto" });
+			lines.forEach(({ element }, index) => {
+				// 起点坐标在创建时必然存在，兜底仅为类型收窄
+				const x1 = element.getAttribute("x1") ?? element.getAttribute("x2") ?? "0";
+				const y1 = element.getAttribute("y1") ?? element.getAttribute("y2") ?? "0";
+				gsap.to(element, { attr: { x2: x1, y2: y1 }, duration: 0.2, ease: "power3.inOut", delay: 0.04 + index * 0.025, overwrite: "auto" });
+			});
+			gsap.to(overlay, { autoAlpha: 0, duration: 0.16, delay: 0.18, ease: "power1.in", overwrite: "auto" });
+			if (removeTimer !== undefined) window.clearTimeout(removeTimer);
+			removeTimer = window.setTimeout(() => { removeTimer = undefined; unmount(); }, 500);
+		};
+
+		// 综合指针位置与焦点状态决定展开，进出都加意图防抖避免抖动
+		const sync = () => setActive(pointerInside || contact.matches(":focus-within") || contact.classList.contains("is-open"));
+		const schedule = (delay: number) => {
+			if (intentTimer !== undefined) window.clearTimeout(intentTimer);
+			intentTimer = window.setTimeout(() => { intentTimer = undefined; sync(); }, delay);
+		};
+		const enter = () => { pointerInside = true; schedule(70); };
+		const leave = () => { pointerInside = false; schedule(140); };
+		// 自愈：若 pointerenter 因 DOM 变更被吞掉，指针移动时补上进入状态
+		const drift = () => {
+			if (pointerInside) return;
+			pointerInside = true;
+			schedule(0);
+		};
+		const focusIn = () => schedule(0);
+		const focusOut = () => schedule(90);
+
+		contact.addEventListener("pointerenter", enter);
+		contact.addEventListener("pointerleave", leave);
+		contact.addEventListener("pointermove", drift);
+		contact.addEventListener("focusin", focusIn);
+		contact.addEventListener("focusout", focusOut);
+		cleanups.push(() => {
+			if (intentTimer !== undefined) window.clearTimeout(intentTimer);
+			if (removeTimer !== undefined) window.clearTimeout(removeTimer);
+			contact.removeEventListener("pointerenter", enter);
+			contact.removeEventListener("pointerleave", leave);
+			contact.removeEventListener("pointermove", drift);
+			contact.removeEventListener("focusin", focusIn);
+			contact.removeEventListener("focusout", focusOut);
+			gsap.killTweensOf([overlay, ...lines.map(({ element }) => element), ...regions]);
+			overlay.remove();
+			contact.classList.remove("has-overlay");
+		});
+	}
+
 	function initHomeDataLayer() {
 		cleanupHomeDataLayer();
 		const layer = document.getElementById("home-data-layer");
@@ -573,8 +806,10 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		const token = ++guideOpeningToken;
 		initVisitStats(layer);
 		initMetricCards(layer);
+		initTagFan(layer);
 		initGuideRotators(layer);
 		initGuideContact(layer);
+		initContactOverlay(layer);
 		void initGuideOpening(layer, token);
 	}
 
