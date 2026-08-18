@@ -13,7 +13,7 @@
 		--mobile-dock-edge: max(0.75rem, env(safe-area-inset-right, 0px));
 		--mobile-dock-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 		--mobile-dock-motion: cubic-bezier(0.22, 1, 0.36, 1);
-		--mobile-dock-surface: #f1f1f1;
+		--mobile-dock-surface: #f4f4f4;
 		position: fixed;
 		right: var(--mobile-dock-edge);
 		bottom: var(--mobile-dock-bottom);
@@ -21,7 +21,7 @@
 		display: block;
 		width: min(calc(100vw - 1.5rem), 28rem);
 		max-width: calc(100vw - 1.5rem);
-		max-height: 50dvh;
+		max-height: 70dvh;
 		color: var(--deep-text);
 		background: var(--mobile-dock-surface);
 		border: 0;
@@ -336,14 +336,14 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
-		max-height: calc(50dvh - 3.65rem);
+		max-height: calc(70dvh - 3.65rem);
 		overflow: hidden;
 		outline: none;
 	}
 
 	.mobile-dock__views {
 		min-height: 0;
-		max-height: calc(50dvh - 8.2rem);
+		max-height: calc(70dvh - 8.2rem);
 		overflow: hidden;
 	}
 
@@ -351,7 +351,7 @@
 		display: none;
 		flex-direction: column;
 		min-height: 0;
-		max-height: calc(50dvh - 8.2rem);
+		max-height: calc(70dvh - 8.2rem);
 		overflow-y: auto;
 		overflow-x: hidden;
 		overscroll-behavior: contain;
@@ -384,12 +384,16 @@
 		width: 100%;
 		min-height: 3.25rem;
 		padding: 0.65rem 0.4rem;
-		border-bottom: 1px solid var(--line-divider);
 		text-decoration: none;
 		color: inherit;
 		font-size: 1rem;
 		font-weight: 560;
 		transition: color 160ms ease, background-color 160ms ease, padding 180ms ease;
+	}
+
+	.mobile-dock__menu-row,
+	.mobile-dock__tag-row {
+		border-bottom: 1px solid var(--line-divider);
 	}
 
 	.mobile-dock__menu-row:hover,
@@ -550,20 +554,10 @@
 	}
 
 	.mobile-dock__toc {
-		max-height: calc(50dvh - 8.2rem);
+		max-height: calc(70dvh - 8.2rem);
 		padding: 0.65rem 0.8rem 0.9rem;
 	}
 
-	.mobile-dock__music-now {
-		display: flex;
-		align-items: center;
-		gap: 0.7rem;
-		padding: 0.7rem 0.9rem 0.55rem;
-		border-bottom: 1px solid var(--line-divider);
-		flex: 0 0 auto;
-	}
-
-	.mobile-dock__music-cover-wrap,
 	.mobile-dock__playlist-cover {
 		position: relative;
 		display: grid;
@@ -576,7 +570,6 @@
 		flex: 0 0 auto;
 	}
 
-	.mobile-dock__music-cover,
 	.mobile-dock__playlist-cover img {
 		position: absolute;
 		inset: 0;
@@ -585,14 +578,6 @@
 		object-fit: cover;
 	}
 
-	.mobile-dock__music-cover-fallback {
-		display: grid;
-		place-items: center;
-		font-size: 1.25rem;
-		opacity: 0.5;
-	}
-
-	.mobile-dock__music-meta,
 	.mobile-dock__playlist-meta {
 		display: flex;
 		flex-direction: column;
@@ -601,8 +586,6 @@
 		flex: 1;
 	}
 
-	.mobile-dock__music-meta strong,
-	.mobile-dock__music-meta span,
 	.mobile-dock__playlist-meta strong,
 	.mobile-dock__playlist-meta span {
 		overflow: hidden;
@@ -610,11 +593,6 @@
 		white-space: nowrap;
 	}
 
-	.mobile-dock__music-meta strong {
-		font-size: 0.92rem;
-	}
-
-	.mobile-dock__music-meta span,
 	.mobile-dock__playlist-meta span {
 		font-size: 0.72rem;
 		opacity: 0.58;
@@ -624,7 +602,7 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 4rem;
-		padding: 0 0.85rem;
+		padding: 0.35rem 0.85rem 0.5rem;
 		overflow-y: auto;
 		overscroll-behavior: contain;
 		-webkit-overflow-scrolling: touch;
@@ -866,8 +844,6 @@
 		z-index: 73;
 		display: block;
 		background: color-mix(in oklch, var(--deep-text) 28%, transparent);
-		backdrop-filter: blur(2px);
-		-webkit-backdrop-filter: blur(2px);
 		opacity: 0;
 		pointer-events: none;
 		transition: opacity 220ms ease;

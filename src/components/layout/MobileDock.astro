@@ -204,19 +204,7 @@ const showSpine = !!spineModelConfig?.enable;
 
 				{showMusic && (
 					<section class="mobile-dock__view" data-dock-view="music" data-title={i18n(I18nKey.music)} hidden>
-						<div class="mobile-dock__music-now">
-							<div class="mobile-dock__music-cover-wrap">
-								<img class="mobile-dock__music-cover is-hidden" id="mobile-dock-music-cover" alt="" />
-								<span class="mobile-dock__music-cover-fallback" aria-hidden="true">
-									<Icon name="material-symbols:music-note-rounded" is:inline />
-								</span>
-							</div>
-							<div class="mobile-dock__music-meta">
-								<strong id="mobile-dock-music-title">{i18n(I18nKey.music)}</strong>
-								<span id="mobile-dock-music-artist">{i18n(I18nKey.musicNoPlaying)}</span>
-							</div>
-						</div>
-						<div class="mobile-dock__playlist" id="mobile-dock-playlist" role="listbox" aria-label={i18n(I18nKey.musicPlaylist)}>
+					<div class="mobile-dock__playlist" id="mobile-dock-playlist" role="listbox" aria-label={i18n(I18nKey.musicPlaylist)}>
 							<p class="mobile-dock__empty" id="mobile-dock-music-empty">{i18n(I18nKey.musicNoPlaying)}</p>
 						</div>
 						<div class="mobile-dock__transport">
@@ -402,9 +390,6 @@ const showSpine = !!spineModelConfig?.enable;
 		const siteTitle = document.querySelector<HTMLElement>(".mobile-dock__site-title")?.textContent?.trim() || document.title;
 		const views = Array.from(dock.querySelectorAll<HTMLElement>("[data-dock-view]"));
 		const viewButtons = Array.from(dock.querySelectorAll<HTMLButtonElement>("[data-view-target]"));
-		const musicCover = document.getElementById("mobile-dock-music-cover") as HTMLImageElement | null;
-		const musicTitle = document.getElementById("mobile-dock-music-title");
-		const musicArtist = document.getElementById("mobile-dock-music-artist");
 		const playlist = document.getElementById("mobile-dock-playlist");
 		const musicEmpty = document.getElementById("mobile-dock-music-empty");
 		const progress = document.getElementById("mobile-dock-progress") as HTMLInputElement | null;
@@ -487,7 +472,7 @@ const showSpine = !!spineModelConfig?.enable;
 				button.classList.toggle("is-active", active);
 				button.setAttribute("aria-pressed", String(active));
 			});
-			viewTitle.textContent = target.dataset.title || i18n(I18nKey.menu);
+			viewTitle.textContent = (nextView === "music" && musicState?.track?.name) || target.dataset.title || i18n(I18nKey.menu);
 			dock.classList.toggle("is-child-view", activeView !== "menu");
 			contextButton.setAttribute("aria-label", activeView === "menu" ? siteTitle : i18n(I18nKey.menu));
 
@@ -571,18 +556,9 @@ const showSpine = !!spineModelConfig?.enable;
 			contextButton.setAttribute("aria-label", `${track.name}: ${content}`);
 		}
 
-		function updateMusicHeader() {
-			if (!musicTitle || !musicArtist || !musicCover) return;
-			const track = musicState?.track;
-			musicTitle.textContent = track?.name || i18n(I18nKey.music);
-			musicArtist.textContent = track?.artist || musicState?.error || i18n(I18nKey.musicNoPlaying);
-			if (track?.pic) {
-				musicCover.src = track.pic;
-				musicCover.classList.remove("is-hidden");
-			} else {
-				musicCover.removeAttribute("src");
-				musicCover.classList.add("is-hidden");
-			}
+		function updateMusicViewTitle() {
+			if (activeView !== "music") return;
+			viewTitle.textContent = musicState?.track?.name || i18n(I18nKey.music);
 		}
 
 		function updateMusicControls() {
@@ -696,10 +672,10 @@ const showSpine = !!spineModelConfig?.enable;
 			const manager = window.__fireflyMusic;
 			if (!manager) return;
 			musicState = manager.getState();
-			updateContext();
-			updateMusicHeader();
-			updateMusicControls();
-			renderPlaylist();
+		updateContext();
+		updateMusicViewTitle();
+		updateMusicControls();
+		renderPlaylist();
 		}
 
 		async function ensureMusicReady() {
@@ -865,7 +841,6 @@ const showSpine = !!spineModelConfig?.enable;
 			window.__fireflyMusic?.seek(value / 100);
 		}, { signal });
 
-		musicCover?.addEventListener("error", () => musicCover.classList.add("is-hidden"), { signal });
 		lyricViewport.addEventListener("touchstart", () => lyricText.classList.add("is-paused"), { passive: true, signal });
 		lyricViewport.addEventListener("touchend", () => lyricText.classList.remove("is-paused"), { passive: true, signal });
 
