@@ -23,8 +23,6 @@ const albums = galleryConfig.albums.map((album) => {
 	return { ...album, cover, photoCount: photos.length };
 });
 
-const allTags = [...new Set(albums.flatMap((a) => a.tags || []))].sort();
-
 const tabs = [
 	{
 		id: "local",
@@ -72,28 +70,6 @@ const tabs = [
       </div>
 
       <div data-gallery-section="local">
-        {albums.length > 0 && allTags.length > 0 && (
-          <div class="tools-tab-wrapper">
-            <div class="tools-tab-pill" data-gallery-filter>
-              <div class="tools-tab-indicator gallery-filter-indicator" style="opacity:0;"></div>
-              <button
-                data-tag="all"
-                class="tools-tab-btn tools-tab-btn-active"
-              >
-                {i18n(I18nKey.all)}
-              </button>
-              {allTags.map((tag) => (
-                <button
-                  data-tag={tag}
-                  class="tools-tab-btn tools-tab-btn-inactive"
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {albums.length > 0 ? (
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6">
             {albums.map((album) => (
@@ -217,66 +193,6 @@ const tabs = [
 
       initGalleryFromHash();
       document.addEventListener("astro:page-load", initGalleryFromHash);
-
-      /* ---- Gallery Filter 筛选 ---- */
-      function updateFilterIndicator(container, button) {
-        var indicator = container.querySelector(".gallery-filter-indicator");
-        if (!indicator || !button) return;
-        indicator.style.left = button.offsetLeft + "px";
-        indicator.style.top = button.offsetTop + "px";
-        indicator.style.width = button.offsetWidth + "px";
-        indicator.style.height = button.offsetHeight + "px";
-        indicator.style.opacity = "1";
-      }
-
-      // 事件委托：gallery filter 点击
-      document.addEventListener("click", function(e) {
-        var button = e.target.closest("[data-gallery-filter] .tools-tab-btn");
-        if (!button) return;
-        var container = button.closest("[data-gallery-filter]");
-        if (!container) return;
-        var cardContainer = container.closest(".card-base");
-        if (!cardContainer) return;
-
-        var selectedTag = button.dataset.tag;
-        var filters = container.querySelectorAll(".tools-tab-btn");
-
-        filters.forEach(function(f) {
-          f.classList.remove("tools-tab-btn-active");
-          f.classList.add("tools-tab-btn-inactive");
-          f.disabled = false;
-        });
-        button.classList.remove("tools-tab-btn-inactive");
-        button.classList.add("tools-tab-btn-active");
-        button.disabled = true;
-
-        updateFilterIndicator(container, button);
-
-        var cards = cardContainer.querySelectorAll(".album-card");
-        cards.forEach(function(card) {
-          var tags = (card.dataset.tags || "").split(",");
-          if (selectedTag === "all" || (selectedTag && tags.includes(selectedTag))) {
-            card.style.display = "";
-            card.classList.remove("gallery-card-fade-in");
-            void card.offsetHeight;
-            card.classList.add("gallery-card-fade-in");
-          } else {
-            card.style.display = "none";
-            card.classList.remove("gallery-card-fade-in");
-          }
-        });
-      });
-
-      // 初始化 filter 指示器
-      function initFilterIndicator() {
-        var filterEl = document.querySelector("[data-gallery-filter]");
-        if (!filterEl) return;
-        var allBtn = filterEl.querySelector('[data-tag="all"]');
-        if (allBtn) updateFilterIndicator(filterEl, allBtn);
-      }
-
-      initFilterIndicator();
-      document.addEventListener("astro:page-load", initFilterIndicator);
     })();
   </script>
 </MainGridLayout>
