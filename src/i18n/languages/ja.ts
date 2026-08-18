@@ -335,7 +335,7 @@ export const ja: Translation = {
 	[Key.categoryUnit]: "個のカテゴリ",
 	[Key.tagIndex]: "タグインデックス",
 	[Key.tagUnit]: "個のタグ",
-	[Key.browseAllTags]: "すべてのタグを見る",
+	[Key.browseAllTags]: "すべてのタグ",
 	[Key.subscribeContact]: "購読と連絡",
 	[Key.contactMethods]: "主な連絡先",
 	[Key.expandContacts]: "すべての連絡先を展開",

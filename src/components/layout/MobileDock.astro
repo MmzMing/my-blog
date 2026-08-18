@@ -259,7 +259,10 @@ const showSpine = !!spineModelConfig?.enable;
 												<span class="mobile-dock__announcement-tag">{item.tag}</span>
 												<strong>{item.title}</strong>
 											</span>
-											<time>{item.time}</time>
+											<span class="mobile-dock__announcement-side">
+												<time>{item.time}</time>
+												<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline class="mobile-dock__announcement-arrow" />
+											</span>
 										</summary>
 										<div class="mobile-dock__announcement-content">
 											<p>{item.content}</p>

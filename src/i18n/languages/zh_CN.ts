@@ -328,7 +328,7 @@ export const zh_CN: Translation = {
 	[Key.categoryUnit]: "个分类",
 	[Key.tagIndex]: "标签索引",
 	[Key.tagUnit]: "个标签",
-	[Key.browseAllTags]: "浏览全部标签",
+	[Key.browseAllTags]: "全部标签",
 	[Key.subscribeContact]: "订阅与联系",
 	[Key.contactMethods]: "常用联系方式",
 	[Key.expandContacts]: "展开全部联系方式",

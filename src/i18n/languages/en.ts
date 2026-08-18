@@ -336,7 +336,7 @@ export const en: Translation = {
 	[Key.categoryUnit]: " categories",
 	[Key.tagIndex]: "Tag Index",
 	[Key.tagUnit]: " tags",
-	[Key.browseAllTags]: "Browse all tags",
+	[Key.browseAllTags]: "All Tags",
 	[Key.subscribeContact]: "Subscribe & Contact",
 	[Key.contactMethods]: "Contact",
 	[Key.expandContacts]: "Expand all contacts",

@@ -282,12 +282,12 @@
 	transition: opacity 180ms ease, transform 180ms ease, color 180ms ease;
 }
 
-.guide-rotator__title-row:hover,
+.guide-rotator__slide:hover .guide-rotator__title-row,
 .guide-rotator__title-row:focus-within {
 	transform: translateY(-0.3rem);
 }
 
-.guide-rotator__title-row:hover .guide-card__article-action,
+.guide-rotator__slide:hover .guide-card__article-action,
 .guide-rotator__title-row:focus-within .guide-card__article-action {
 	opacity: 1;
 	transform: translateX(0);
@@ -306,6 +306,7 @@
 	position: absolute;
 	inset: 0;
 	justify-content: center;
+	cursor: pointer;
 }
 
 .guide-card--pinned .guide-rotator__slides {
@@ -322,8 +323,13 @@
 }
 
 .guide-card--pinned .guide-rotator__dots button {
-	width: 0.6rem;
-	height: 0.6rem;
+	width: 0.5rem;
+	height: 0.5rem;
+}
+
+.guide-card--pinned .guide-rotator__dots button[aria-current="true"] {
+	width: 0.5rem;
+	height: 1.45rem;
 }
 
 .guide-card__topline {
@@ -397,10 +403,10 @@
 	font-weight: 700;
 	line-height: 1.4;
 	color: var(--guide-muted);
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
+	display: block;
 	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .guide-rotator__meta {
@@ -415,20 +421,33 @@
 	margin-top: auto;
 }
 
+/* 分页圆点：默认纯色小圆点（无边框），当前项动效延展为小长条 */
 .guide-rotator__dots button {
-	width: 0.55rem;
-	height: 0.55rem;
+	width: 0.5rem;
+	height: 0.5rem;
 	padding: 0;
-	border: 1px solid currentColor;
-	border-radius: 50%;
-	background: transparent;
+	border: 0;
+	border-radius: 999px;
+	background: var(--guide-fg);
+	opacity: 0.32;
 	cursor: pointer;
-	transition: transform 160ms ease, background-color 160ms ease;
+	transition:
+		width 280ms cubic-bezier(0.16, 1, 0.3, 1),
+		height 280ms cubic-bezier(0.16, 1, 0.3, 1),
+		opacity 180ms ease;
+}
+
+.guide-rotator__dots button:hover {
+	opacity: 0.6;
+}
+
+.guide-rotator__dots button[aria-current="true"],
+.guide-rotator__dots button[aria-current="true"]:hover {
+	opacity: 1;
 }
 
 .guide-rotator__dots button[aria-current="true"] {
-	background: var(--guide-fg);
-	transform: scale(1.25);
+	width: 1.45rem;
 }
 
 .guide-card--categories,
@@ -456,13 +475,12 @@
 
 .guide-link-list a {
 	padding: 0.2rem 0;
-	border-bottom: 1px solid color-mix(in srgb, var(--guide-fg) 20%, transparent);
-	transition: color 240ms ease, border-color 240ms ease, transform 240ms ease;
+	transition: color 240ms ease, transform 240ms ease;
 }
 
 .guide-card--categories .guide-link-list a {
 	padding-inline: 0.55rem;
-	transition: background-color 180ms ease, border-color 180ms ease, color 0ms, transform 180ms ease;
+	transition: none;
 }
 
 .guide-link-list a:hover {
@@ -474,54 +492,52 @@
 	font-size: 0.72rem;
 }
 
-.guide-card--categories:hover .guide-link-list a,
-.guide-card--categories:focus-within .guide-link-list a {
-	border-color: color-mix(in srgb, var(--guide-bg) 28%, transparent);
-	color: var(--guide-bg);
-}
-
-.guide-card--categories:hover .guide-link-list a:nth-child(1),
-.guide-card--categories:focus-within .guide-link-list a:nth-child(1) { transition-delay: 70ms; }
-.guide-card--categories:hover .guide-link-list a:nth-child(2),
-.guide-card--categories:focus-within .guide-link-list a:nth-child(2) { transition-delay: 110ms; }
-.guide-card--categories:hover .guide-link-list a:nth-child(3),
-.guide-card--categories:focus-within .guide-link-list a:nth-child(3) { transition-delay: 150ms; }
-
-.guide-card--categories:hover .guide-link-list a:hover,
-.guide-card--categories:focus-within .guide-link-list a:hover {
-	color: var(--guide-accent);
-	transform: translateX(0.2rem);
-}
-
 .guide-tag-list {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.4rem;
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.5rem;
 	margin-top: 0.75rem;
 }
 
 .guide-tag-list a {
-	display: inline-flex;
+	display: flex;
+	flex-direction: column;
 	align-items: center;
+	justify-content: center;
 	gap: 0.3rem;
-	padding: 0.32rem 0.5rem;
-	border: 1px solid color-mix(in srgb, var(--guide-fg) 42%, transparent);
-	border-radius: 999px;
+	min-height: 3.1rem;
+	padding: 0.45rem 0.35rem;
+	border: 1px solid color-mix(in srgb, var(--guide-fg) 28%, transparent);
+	border-radius: 0.8rem;
+	background: transparent;
 	color: inherit;
-	font-size: 0.72rem;
+	font-size: 0.78rem;
 	font-weight: 800;
-	line-height: 1;
+	line-height: 1.2;
 	text-decoration: none;
-	transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+	transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
 }
 
 .guide-tag-list a:hover {
+	border-color: var(--guide-fg);
 	background: var(--guide-fg);
 	color: var(--guide-bg);
 }
 
-.guide-tag-list span {
-	opacity: 0.62;
+/* 计数徽章 */
+.guide-tag-list a span {
+	padding: 0.06rem 0.5rem;
+	border: 1px solid color-mix(in srgb, var(--guide-fg) 28%, transparent);
+	border-radius: 999px;
+	background: transparent;
+	font-size: 0.66rem;
+	font-weight: 900;
+	transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.guide-tag-list a:hover span {
+	border-color: transparent;
+	background: color-mix(in srgb, var(--guide-bg) 24%, transparent);
 }
 
 .guide-tag-list__all {
@@ -587,7 +603,6 @@
 
 .guide-card--index:hover .guide-link-list a,
 .guide-card--index:focus-within .guide-link-list a {
-	border-color: color-mix(in srgb, var(--guide-fg) 20%, transparent);
 	color: var(--guide-fg);
 	transform: none;
 	transition-delay: 0;
@@ -596,87 +611,31 @@
 .guide-card--index:hover .guide-link-list a:hover,
 .guide-card--index:focus-within .guide-link-list a:hover,
 .guide-card--index .guide-link-list a:focus-visible {
-	border-color: var(--guide-fg);
 	background: var(--guide-fg);
 	color: var(--guide-bg);
 	transform: none;
 }
 
-.guide-card--categories .guide-link-list a:hover strong,
-.guide-card--categories .guide-link-list a:focus-visible strong {
-	font-size: 0;
-	color: transparent;
-}
-
-.guide-card--categories .guide-link-list a:hover strong::after,
-.guide-card--categories .guide-link-list a:focus-visible strong::after {
-	content: "→";
-	font-size: 1.05rem;
-	font-weight: 900;
-	color: var(--guide-bg);
-}
-
-/* 分类行采用独立合成层遮罩，避免直接变更字体尺寸和背景造成抖动。 */
+/* 分类行悬停直接显示高亮背景，不做遮罩过渡动画，避免行间切换时的消失/重绘开销。 */
 .guide-card--categories .guide-link-list a {
-	position: relative;
-	isolation: isolate;
-	overflow: hidden;
-	transition: border-color 160ms ease;
+	border-radius: 0.65rem;
 }
 
-.guide-card--categories .guide-link-list a::before {
+/* 书本目录式点状引导线：连接名称与数量 */
+.guide-card--categories .guide-link-list a > span {
+	display: flex;
+	align-items: center;
+	flex: 1;
+	min-width: 0;
+}
+
+.guide-card--categories .guide-link-list a > span::after {
 	content: "";
-	position: absolute;
-	inset: 0;
-	z-index: 0;
-	background: var(--guide-fg);
-	transform: scaleX(0);
-	transform-origin: left center;
-	transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
-	will-change: transform;
-}
-
-.guide-card--categories .guide-link-list a > span,
-.guide-card--categories .guide-link-list a > strong {
-	position: relative;
-	z-index: 1;
-	transition: color 0ms;
-}
-
-.guide-card--categories .guide-link-list a:hover,
-.guide-card--categories .guide-link-list a:focus-visible {
-	border-color: var(--guide-fg);
-	background: transparent;
-	color: var(--guide-bg);
-}
-
-.guide-card--categories .guide-link-list a:hover::before,
-.guide-card--categories .guide-link-list a:focus-visible::before {
-	transform: scaleX(1);
-}
-
-.guide-card--categories .guide-link-list a:hover strong,
-.guide-card--categories .guide-link-list a:focus-visible strong {
-	font-size: 0.72rem;
-	color: transparent;
-}
-
-.guide-card--categories .guide-link-list a strong::after {
-	position: absolute;
-	top: 50%;
-	right: 0;
-	font-size: 1.05rem;
-	font-weight: 900;
-	color: var(--guide-bg);
-	opacity: 0;
-	transform: translateY(-50%) translateX(-0.25rem);
-	transition: opacity 120ms ease, transform 160ms ease;
-}
-
-.guide-card--categories .guide-link-list a:hover strong::after,
-.guide-card--categories .guide-link-list a:focus-visible strong::after {
-	opacity: 1;
-	transform: translateY(-50%) translateX(0);
+	flex: 1;
+	min-width: 1rem;
+	height: 0;
+	margin-left: 0.45rem;
+	border-bottom: 2px dotted color-mix(in srgb, var(--guide-fg) 32%, transparent);
 }
 
 .guide-tag-list {
@@ -684,18 +643,19 @@
 	margin-top: 0.9rem;
 }
 
-.guide-tag-list a,
-.guide-tag-list__all {
-	padding: 0.45rem 0.72rem;
-	font-size: 0.88rem;
-	transition: color 180ms ease, border-color 180ms ease;
+.guide-tag-list a.guide-tag-list__all {
+	flex-direction: row;
+	justify-content: center;
+	gap: 0.3rem;
+	min-height: 3.1rem;
+	padding: 0.5rem 0.72rem;
+	font-size: 0.82rem;
 }
 
 .guide-tag-list__all,
 .guide-card--tags:hover .guide-tag-list__all,
 .guide-card--tags:focus-within .guide-tag-list__all {
-	display: inline-flex !important;
-	border-color: color-mix(in srgb, var(--guide-fg) 42%, transparent);
+	display: flex !important;
 	background: transparent;
 	color: inherit;
 	transform: none;
@@ -706,7 +666,7 @@
 .guide-card--tags:focus-within .guide-tag-list a,
 .guide-card--tags:hover .guide-tag-list a:nth-child(n),
 .guide-card--tags:focus-within .guide-tag-list a:nth-child(n) {
-	border-color: color-mix(in srgb, var(--guide-fg) 42%, transparent);
+	border-color: color-mix(in srgb, var(--guide-fg) 28%, transparent);
 	background: transparent;
 	color: var(--guide-fg);
 	transform: none;
@@ -802,31 +762,60 @@
 }
 
 .guide-contact__all a {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	gap: 0.3rem;
 	min-height: 5.6rem;
-	border-right: 1px solid color-mix(in srgb, var(--guide-fg) 26%, transparent);
 	color: inherit;
 	font-size: 2.2rem;
 	text-decoration: none;
-	transition: color 160ms ease, transform 160ms ease;
 }
 
-.guide-contact__all a:last-child {
-	border-right: 0;
+/* 条目间以居中圆点分隔（替代竖线） */
+.guide-contact__all a:not(:last-child)::after {
+	content: "·";
+	position: absolute;
+	top: 50%;
+	left: calc(100% + 0.225rem);
+	transform: translate(-50%, -50%);
+	font-size: 1.1rem;
+	font-weight: 700;
+	line-height: 1;
+	opacity: 0.45;
+	pointer-events: none;
 }
 
+/* 名称默认隐藏（脱离文档流，保证图标处于条目垂直中心），悬停单个条目时才显示 */
 .guide-contact__all span {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0.45rem;
+	text-align: center;
 	font-size: 0.7rem;
 	font-weight: 850;
+	opacity: 0;
+	transform: translateY(0.2rem);
+	transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.guide-contact__all a:hover {
-	color: color-mix(in srgb, var(--guide-fg) 58%, var(--guide-accent));
-	transform: translateY(-2px);
+.guide-contact__all a:hover span,
+.guide-contact__all a:focus-visible span {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+/* 悬停不再变绿，图标轻微向右倾斜 */
+.guide-contact__all a svg {
+	transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.guide-contact__all a:hover svg,
+.guide-contact__all a:focus-visible svg {
+	transform: rotate(8deg);
 }
 
 .guide-card--contact:hover .guide-contact__primary,
@@ -924,6 +913,12 @@
 		transform: none;
 		pointer-events: auto;
 	}
+
+	/* 触屏无悬停：展开状态下直接显示联系方式名称 */
+	.guide-card--contact.is-open .guide-contact__all span {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -931,6 +926,7 @@
 	.guide-card::after,
 	.guide-card__visual img,
 	.guide-rotator__slide,
+	.guide-rotator__dots button,
 	.guide-contact__primary,
 	.guide-contact__all,
 	.guide-contact__primary a,
