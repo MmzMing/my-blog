@@ -378,6 +378,7 @@ export const en: Translation = {
 	[Key.siteDescLabel]: "Site description",
 	[Key.siteUrlLabel]: "Site URL",
 	[Key.siteAvatarLabel]: "Avatar URL",
+	[Key.friendApplyUnderstood]: "Got it, apply now",
 	[Key.applyProcess]: "How to Apply",
 	[Key.applyStep1Title]: "Add our link",
 	[Key.applyStep1Desc]:

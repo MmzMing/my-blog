@@ -370,6 +370,7 @@ export const zh_CN: Translation = {
 	[Key.siteDescLabel]: "站点描述",
 	[Key.siteUrlLabel]: "站点链接",
 	[Key.siteAvatarLabel]: "头像链接",
+	[Key.friendApplyUnderstood]: "已了解，申请友链",
 	[Key.applyProcess]: "申请流程",
 	[Key.applyStep1Title]: "添加本站友链",
 	[Key.applyStep1Desc]:

@@ -741,6 +741,7 @@ export type FriendLink = {
 	imgurl: string; // 头像图片URL
 	desc: string; // 友链描述
 	siteurl: string; // 友链地址
+	image?: string; // 封面图片URL（可选，不填则卡片显示无图形态）
 	tags?: string[]; // 标签数组
 	weight: number; // 权重，数字越大排序越靠前
 	enabled: boolean; // 是否启用
@@ -759,14 +760,21 @@ export type FriendNote = {
 	content: string; // 注意事项内容
 };
 
+export type FriendChatMessage = {
+	role: "cat" | "owner"; // cat=喵墩（左侧，作者头像），owner=站长（右侧，文字头像）
+	name: string; // 气泡署名
+	text: string; // 气泡文字，打字机逐字显示
+};
+
 export type FriendsPageConfig = {
 	title?: string; // 页面标题，留空则使用 i18n 中的翻译
 	description?: string; // 页面描述，留空则使用 i18n 中的翻译
 	showComment?: boolean; // 是否显示评论区，默认 true
 	randomizeSort?: boolean; // 是否打乱排序，如果为 true，将忽略 weight，随机排序
 	applyLink?: string; // 友链申请链接，跳转到 GitHub Issue 等
-	siteInfo?: FriendSiteInfo; // 本站信息，用于友链申请指南弹窗
-	notes?: FriendNote[]; // 注意事项，用于友链申请指南弹窗
+	siteInfo?: FriendSiteInfo; // 本站信息，用于复制展示
+	notes?: FriendNote[]; // 注意事项，用于申请区展示
+	chat?: FriendChatMessage[]; // 对话气泡文案，滚动到该区域时逐个弹出并打字机显示
 };
 
 // 音乐播放器配置

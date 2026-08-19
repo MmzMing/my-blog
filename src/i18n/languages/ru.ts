@@ -378,6 +378,7 @@ export const ru: Translation = {
 	[Key.siteDescLabel]: "Описание сайта",
 	[Key.siteUrlLabel]: "Ссылка на сайт",
 	[Key.siteAvatarLabel]: "Ссылка на аватар",
+	[Key.friendApplyUnderstood]: "Понятно, подать заявку",
 	[Key.applyProcess]: "Процесс заявки",
 	[Key.applyStep1Title]: "Добавьте нашу ссылку",
 	[Key.applyStep1Desc]:

@@ -377,6 +377,7 @@ export const ja: Translation = {
 	[Key.siteDescLabel]: "サイト説明",
 	[Key.siteUrlLabel]: "サイトURL",
 	[Key.siteAvatarLabel]: "アバターURL",
+	[Key.friendApplyUnderstood]: "了解しました、申請する",
 	[Key.applyProcess]: "申請の流れ",
 	[Key.applyStep1Title]: "当サイトのリンクを追加",
 	[Key.applyStep1Desc]:

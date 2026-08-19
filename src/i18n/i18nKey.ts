@@ -366,6 +366,7 @@ enum I18nKey {
 	siteDescLabel = "siteDescLabel",
 	siteUrlLabel = "siteUrlLabel",
 	siteAvatarLabel = "siteAvatarLabel",
+	friendApplyUnderstood = "friendApplyUnderstood",
 	applyProcess = "applyProcess",
 	applyStep1Title = "applyStep1Title",
 	applyStep1Desc = "applyStep1Desc",

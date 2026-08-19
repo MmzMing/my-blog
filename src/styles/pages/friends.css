@@ -1,0 +1,658 @@
+/* ===== 友链页样式 ===== */
+
+/* ---------------------------------- */
+/* 折叠分类（复刻工具导航手风琴交互）  */
+/* ---------------------------------- */
+
+/* 手风琴分组列表：组间细横线分隔 */
+.friend-accordion + .friend-accordion {
+	border-top: 1px solid var(--line-divider);
+}
+.friend-accordion-list .friend-accordion:last-child {
+	border-bottom: 1px solid var(--line-divider);
+}
+
+/* 分组头部（点击展开/收起） */
+.friend-accordion-header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	width: 100%;
+	text-align: start;
+	/* 左侧贴边，与页面标题对齐 */
+	padding: 1.25rem 0.25rem 1.25rem 0;
+	cursor: pointer;
+	background: transparent;
+	border: none;
+}
+.friend-accordion-header:focus-visible {
+	outline: 2px solid #00a29b;
+	outline-offset: 2px;
+	border-radius: 0.5rem;
+}
+
+/* 左侧青色胶囊长条 + 右侧紧贴分类标题 */
+.friend-accordion-title-wrap {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+}
+.friend-accordion-title-wrap::before {
+	content: "";
+	position: absolute;
+	left: -0.75rem;
+	top: 0.15rem;
+	bottom: 0.15rem;
+	width: 5px;
+	/* 胶囊形椭圆长条，纯色 */
+	border-radius: 999px;
+	background: #00a29b;
+}
+
+.friend-accordion-title {
+	font-size: 1.5rem;
+	font-weight: 700;
+	line-height: 1.2;
+	color: var(--deep-text);
+}
+
+.friend-accordion-count {
+	font-size: 0.8rem;
+	font-weight: 500;
+	color: var(--content-meta);
+}
+
+/* 右侧展开/收起箭头 */
+.friend-accordion-arrow {
+	margin-left: auto;
+	width: 1.5rem;
+	height: 1.5rem;
+	flex-shrink: 0;
+	color: oklch(0.6 0 0);
+	transition:
+		rotate 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+		color 0.2s ease;
+}
+.friend-accordion-header:hover .friend-accordion-arrow {
+	color: var(--deep-text);
+}
+.friend-accordion[data-open] .friend-accordion-arrow {
+	rotate: 180deg;
+}
+
+/* 展开/收起主体：grid-template-rows 过渡（合成层友好，60fps），贝塞尔缓动 */
+.friend-accordion-body {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.friend-accordion[data-open] .friend-accordion-body {
+	grid-template-rows: 1fr;
+}
+.friend-accordion-body-inner {
+	overflow: hidden;
+	min-height: 0;
+}
+/* 展开时卡片淡入上移；收起时不播放入场动画 */
+.friend-accordion:not([data-open]) .friend-card {
+	animation: none;
+	opacity: 0;
+	transform: translateY(20px);
+}
+
+/* 展开后的卡片区域：与标题严格左对齐 */
+.friend-accordion .friend-card-grid {
+	padding: 0.25rem 0 1.5rem;
+}
+
+/* ---------------------------------- */
+/* 友链卡片                            */
+/* ---------------------------------- */
+
+.friend-card-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 1rem;
+}
+@media (max-width: 1024px) {
+	.friend-card-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+@media (max-width: 640px) {
+	.friend-card-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.friend-card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	border-radius: var(--radius-large, 0.75rem);
+	border: 2px solid var(--deep-text);
+	background: var(--page-bg);
+	color: var(--deep-text);
+	text-decoration: none;
+	overflow: hidden;
+	opacity: 0;
+	transform: translateY(20px);
+	animation: friendCardSlideIn 0.5s ease-out forwards;
+	transition:
+		border-color 300ms ease,
+		box-shadow 300ms ease,
+		transform 300ms ease,
+		background-color 300ms ease;
+}
+.friend-card:hover {
+	border-color: var(--deep-text);
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+	transform: translateY(-2px);
+}
+:root.dark .friend-card:hover {
+	box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
+}
+
+/* 封面图 + 波浪分界线 */
+.friend-card__cover {
+	position: relative;
+	display: block;
+	height: 7rem;
+	overflow: hidden;
+}
+.friend-card__cover-img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+	transition: transform 400ms ease;
+}
+.friend-card:hover .friend-card__cover-img {
+	transform: scale(1.04);
+}
+/* 波浪填充色与卡片背景一致，自然衔接信息层 */
+.friend-card__wave {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: -1px;
+	width: 100%;
+	height: 1.25rem;
+	color: var(--page-bg);
+	display: block;
+	pointer-events: none;
+}
+
+/* 信息层 */
+.friend-card__body {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	padding: 0.875rem 1rem 0.875rem;
+}
+
+/* 左头像 + 右两层（名字/双行介绍） */
+.friend-card__info {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.friend-card__avatar {
+	position: relative;
+	width: 2.75rem;
+	height: 2.75rem;
+	flex-shrink: 0;
+	border-radius: 999px;
+	overflow: hidden;
+	border: 2px solid var(--deep-text);
+	background: var(--page-bg);
+}
+.friend-card__avatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+/* 头像加载失败时回退首字母 */
+.friend-card__avatar-fallback {
+	position: absolute;
+	inset: 0;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.125rem;
+	font-weight: 700;
+	color: var(--deep-text);
+}
+.friend-card__avatar.is-error img {
+	display: none;
+}
+.friend-card__avatar.is-error .friend-card__avatar-fallback {
+	display: flex;
+}
+
+.friend-card__meta {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+	min-width: 0;
+	flex: 1;
+}
+.friend-card__name {
+	font-size: 1rem;
+	font-weight: 700;
+	line-height: 1.3;
+	color: var(--deep-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.friend-card__desc {
+	font-size: 0.8rem;
+	line-height: 1.5;
+	color: var(--content-meta);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+/* 第三层：细分界线 + 地址 */
+.friend-card__divider {
+	height: 1px;
+	background: var(--line-divider);
+	margin: 0.75rem 0 0.625rem;
+}
+.friend-card__footer {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	margin-top: auto;
+}
+.friend-card__link-icon {
+	width: 0.875rem;
+	height: 0.875rem;
+	flex-shrink: 0;
+	color: var(--content-meta);
+	transition: color 200ms ease;
+}
+.friend-card:hover .friend-card__link-icon {
+	color: #00a29b;
+}
+.friend-card__url {
+	font-size: 0.75rem;
+	font-weight: 500;
+	color: var(--content-meta);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	transition: color 200ms ease;
+}
+.friend-card:hover .friend-card__url {
+	color: var(--deep-text);
+}
+
+/* 空分组提示 */
+.friend-empty {
+	padding: 2rem 0;
+	text-align: center;
+	color: var(--content-meta);
+	font-size: 0.9rem;
+}
+
+/* ---------------------------------- */
+/* 对话气泡区                          */
+/* ---------------------------------- */
+
+.friend-chat {
+	margin-top: 3rem;
+}
+
+.friend-chat__messages {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+/* 单条消息：默认隐藏，触发后弹出；左右气泡分别贴内容区两侧 */
+.friend-chat__item {
+	display: flex;
+	align-items: flex-end;
+	gap: 0.625rem;
+	max-width: min(34rem, 78vw);
+	opacity: 0;
+	transform: translateY(14px) scale(0.9);
+}
+.friend-chat__item.is-active {
+	animation: friendBubblePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.friend-chat__item--right {
+	flex-direction: row-reverse;
+	align-self: flex-end;
+	margin-left: auto;
+}
+
+/* 头像 */
+.friend-chat__avatar {
+	width: 2.75rem;
+	height: 2.75rem;
+	flex-shrink: 0;
+	border-radius: 999px;
+	overflow: hidden;
+	border: 2px solid var(--deep-text);
+	background: var(--page-bg);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.friend-chat__avatar-img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+/* 站长文字头像 */
+.friend-chat__avatar-text {
+	font-size: 0.875rem;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	color: var(--deep-text);
+}
+
+/* 气泡 */
+.friend-chat__bubble {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	padding: 0.625rem 0.875rem;
+	border-radius: 1rem;
+	border: 2px solid var(--deep-text);
+	background: var(--page-bg);
+	max-width: min(30rem, 74vw);
+	min-height: 2.5rem;
+}
+/* 气泡尾巴指向头像一侧 */
+.friend-chat__item--left .friend-chat__bubble {
+	border-bottom-left-radius: 0.25rem;
+}
+.friend-chat__item--right .friend-chat__bubble {
+	border-bottom-right-radius: 0.25rem;
+	background: var(--deep-text);
+	color: var(--page-bg);
+}
+
+.friend-chat__name {
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: #00a29b;
+	letter-spacing: 0.04em;
+}
+.friend-chat__text {
+	margin: 0;
+	font-size: 0.9rem;
+	line-height: 1.6;
+	min-height: 1.45em;
+	word-break: break-word;
+}
+/* 打字机光标 */
+.friend-chat__item.is-typing .friend-chat__text::after {
+	content: "";
+	display: inline-block;
+	width: 2px;
+	height: 1em;
+	margin-left: 2px;
+	vertical-align: -0.15em;
+	background: currentColor;
+	animation: friendCaretBlink 0.7s steps(1) infinite;
+}
+
+/* ---------------------------------- */
+/* 规则与复制区                        */
+/* ---------------------------------- */
+
+.friend-apply {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1.25rem;
+	margin-top: 2.5rem;
+}
+@media (max-width: 768px) {
+	.friend-apply {
+		grid-template-columns: 1fr;
+	}
+}
+/* 允许 grid 项收缩，避免长 URL 等不可断行内容撑爆 1fr 轨道（移动端溢出） */
+.friend-apply__notes,
+.friend-apply__site {
+	min-width: 0;
+}
+
+/* 左：注意事项（纯背景无边框） */
+.friend-apply__notes {
+	display: flex;
+	flex-direction: column;
+	padding: 1.25rem;
+	border-radius: var(--radius-large, 0.75rem);
+	background: color-mix(in oklch, var(--deep-text) 5%, transparent);
+}
+
+.friend-apply__notes-title {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0 0 0.875rem;
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--deep-text);
+}
+.friend-apply__notes-icon {
+	width: 1.125rem;
+	height: 1.125rem;
+	color: #00a29b;
+}
+
+.friend-apply__note-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.625rem;
+}
+.friend-apply__note {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+}
+.friend-apply__note p {
+	margin: 0;
+	font-size: 0.825rem;
+	line-height: 1.6;
+	color: var(--content-meta);
+}
+.friend-apply__note strong {
+	color: var(--deep-text);
+}
+.friend-apply__note-dot {
+	width: 5px;
+	height: 5px;
+	flex-shrink: 0;
+	border-radius: 999px;
+	background: #00a29b;
+}
+
+/* 申请按钮：无边框无背景，置于注意事项卡片底部右下角 */
+.friend-apply__btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	padding: 0.5rem 0.375rem;
+	border: none;
+	background: transparent;
+	color: var(--content-meta);
+	font-size: 0.875rem;
+	font-weight: 600;
+	text-decoration: none;
+	margin-top: 0.875rem;
+	align-self: flex-end;
+	transition:
+		color 200ms ease,
+		gap 200ms ease;
+}
+.friend-apply__btn:hover {
+	color: #00a29b;
+}
+.friend-apply__btn-icon {
+	width: 1rem;
+	height: 1rem;
+	flex-shrink: 0;
+}
+
+/* 右：本站信息（用于复制） */
+.friend-apply__site {
+	padding: 1.25rem;
+	border-radius: var(--radius-large, 0.75rem);
+	border: 2px solid var(--deep-text);
+	background: var(--page-bg);
+}
+
+.friend-apply__site-title {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0 0 0.875rem;
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--deep-text);
+}
+.friend-apply__site-icon {
+	width: 1.125rem;
+	height: 1.125rem;
+	color: #00a29b;
+}
+
+.friend-apply__rows {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+.friend-apply__row {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.5rem 0.625rem;
+	border-radius: var(--radius-medium, 0.5rem);
+	background: color-mix(in oklch, var(--deep-text) 4%, transparent);
+	transition: background-color 150ms ease;
+}
+.friend-apply__row:hover {
+	background: color-mix(in oklch, var(--deep-text) 8%, transparent);
+}
+.friend-apply__row-text {
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
+	min-width: 0;
+	flex: 1;
+}
+.friend-apply__row-label {
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: var(--content-meta);
+	letter-spacing: 0.04em;
+}
+.friend-apply__row-value {
+	font-size: 0.825rem;
+	color: var(--deep-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* 复制按钮：默认复制图标，复制后切换为对勾 */
+.friend-apply__copy {
+	position: relative;
+	width: 2rem;
+	height: 2rem;
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-small, 0.25rem);
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	color: var(--content-meta);
+	transition: color 200ms ease;
+}
+.friend-apply__copy:hover {
+	color: #00a29b;
+}
+.friend-apply__copy-icon,
+.friend-apply__check-icon {
+	width: 1rem;
+	height: 1rem;
+	position: absolute;
+	transition:
+		opacity 150ms ease,
+		transform 150ms ease;
+}
+.friend-apply__check-icon {
+	opacity: 0;
+	transform: scale(0.6);
+	color: #00a29b;
+}
+.friend-apply__copy.is-copied .friend-apply__copy-icon {
+	opacity: 0;
+	transform: scale(0.6);
+}
+.friend-apply__copy.is-copied .friend-apply__check-icon {
+	opacity: 1;
+	transform: scale(1);
+}
+
+/* ---------------------------------- */
+/* 动画关键帧                          */
+/* ---------------------------------- */
+
+@keyframes friendCardSlideIn {
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes friendBubblePop {
+	0% {
+		opacity: 0;
+		transform: translateY(14px) scale(0.9);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes friendCaretBlink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+
+/* 减少动态偏好：气泡直接显示 */
+@media (prefers-reduced-motion: reduce) {
+	.friend-chat__item {
+		opacity: 1;
+		transform: none;
+	}
+	.friend-chat__item.is-active {
+		animation: none;
+	}
+}

@@ -30,6 +30,7 @@
 @import './pages/categories.css';
 @import './pages/article-list.css';
 @import './pages/archive-panel.css';
+@import './pages/friends.css';
 
 
 @plugin '@tailwindcss/typography';

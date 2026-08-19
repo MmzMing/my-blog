@@ -1,0 +1,90 @@
+---
+import Icon from "@components/common/Icon.astro";
+import type { FriendLink } from "@/types/config";
+
+interface Props {
+	friend: FriendLink;
+	index: number;
+}
+
+const { friend, index } = Astro.props;
+
+const hasImage = Boolean(friend.image);
+
+// 头像加载失败时的首字母回退
+const initial = friend.title.trim().charAt(0).toUpperCase() || "?";
+
+// 地址简化显示为域名，解析失败时回退原始链接
+let hostname = friend.siteurl;
+try {
+	hostname = new URL(friend.siteurl).hostname;
+} catch {
+	// 保留原始字符串
+}
+---
+
+<a
+	class:list={["friend-card", hasImage && "friend-card--with-image"]}
+	href={friend.siteurl}
+	target="_blank"
+	rel="noopener noreferrer"
+	style={`animation-delay: ${index * 60}ms`}
+>
+	{hasImage && (
+		<span class="friend-card__cover" aria-hidden="true">
+			<img
+				class="friend-card__cover-img"
+				src={friend.image}
+				alt=""
+				loading="lazy"
+				decoding="async"
+			/>
+			{/* 波浪分界线：填充色与卡片背景一致，衔接封面与信息层 */}
+			<svg
+				class="friend-card__wave"
+				viewBox="0 0 400 24"
+				preserveAspectRatio="none"
+				aria-hidden="true"
+			>
+				<path
+					d="M0,12 Q50,2 100,12 T200,12 T300,12 T400,12 V24 H0 Z"
+					fill="currentColor"
+				/>
+			</svg>
+		</span>
+	)}
+
+	<span class="friend-card__body">
+		<span class="friend-card__info">
+			<span class="friend-card__avatar" data-friend-avatar>
+				<img
+					src={friend.imgurl}
+					alt=""
+					loading="lazy"
+					decoding="async"
+				/>
+				<span class="friend-card__avatar-fallback" aria-hidden="true">
+					{initial}
+				</span>
+			</span>
+			<span class="friend-card__meta">
+				<strong class="friend-card__name" title={friend.title}>
+					{friend.title}
+				</strong>
+				<span class="friend-card__desc" title={friend.desc}>
+					{friend.desc}
+				</span>
+			</span>
+		</span>
+
+		<span class="friend-card__divider" aria-hidden="true"></span>
+
+		<span class="friend-card__footer">
+			<Icon
+				name="material-symbols:arrow-outward-rounded"
+				class="friend-card__link-icon"
+			/>
+			<span class="friend-card__url">{hostname}</span>
+		</span>
+	</span>
+</a>

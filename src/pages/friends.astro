@@ -1,8 +1,9 @@
 ---
 import { getEntry } from "astro:content";
 import Comment from "@components/comment/index.astro";
-import FriendLinkTerminal from "@components/features/FriendLinkTerminal.svelte";
-import FriendRulesModal from "@components/features/FriendRulesModal.astro";
+import Icon from "@components/common/Icon.astro";
+import FriendCard from "@components/features/FriendCard.astro";
+import FriendChat from "@components/features/FriendChat.astro";
 import PageTitle from "@/components/common/PageTitle.astro";
 import {
 	commentConfig,
@@ -13,7 +14,6 @@ import {
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
-import "@/styles/components/friend-rules-modal.css";
 
 // 检查页面是否启用
 if (!siteConfig.pages.friends) {
@@ -35,29 +35,92 @@ const isCommentEnabled =
 // 使用配置文件中的友链数据，按权重排序
 const items = getEnabledFriends();
 
-// 页面标题和描述
+// 按 tags 分组（与原 tabs 一致的排序规则），无标签的归入未分类
+const groupMap = new Map<string, typeof items>();
+for (const friend of items) {
+	const tags = friend.tags?.length ? friend.tags : [null];
+	for (const tag of tags) {
+		const key = tag ?? "__uncategorized__";
+		const list = groupMap.get(key) ?? [];
+		list.push(friend);
+		groupMap.set(key, list);
+	}
+}
+const groups = [...groupMap.entries()]
+	.map(([key, list]) => ({
+		label: key === "__uncategorized__" ? i18n(I18nKey.uncategorized) : key,
+		items: list,
+	}))
+	.sort((a, b) => a.label.localeCompare(b.label));
+
+const chatMessages = friendsPageConfig.chat ?? [];
+
+// 页面标题和描述（描述仅用于 SEO meta，不再在页面内显示）
 const title = friendsPageConfig.title || i18n(I18nKey.friends);
 const description =
 	friendsPageConfig.description || i18n(I18nKey.friendsDescription);
 ---
 
 <MainGridLayout title={title} description={description} hasOwnH1={true}>
-  <div
-    class="flex w-full rounded-(--radius-large) relative min-h-32"
-  >
+  <div class="flex w-full rounded-(--radius-large) relative min-h-32">
     <div class="card-base z-10 px-4 sm:px-6 lg:px-9 py-6 relative w-full">
-      <!-- 页面标题和描述 -->
-      <div class="mb-5">
+      <!-- 页面标题 -->
+      <div class="mb-8">
         <PageTitle title={title} variant="stacked" />
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-(--content-meta)">{description}</p>
       </div>
 
-      <FriendLinkTerminal
-        client:load
-        items={items}
-        allLabel={i18n(I18nKey.all)}
-        applyEnabled={Boolean(friendsPageConfig.applyLink)}
-      />
+      <!-- 折叠分类列表 -->
+      {groups.length > 0 ? (
+        <div class="friend-accordion-list">
+          {groups.map((group) => (
+            <section
+              class="friend-accordion"
+              data-friend-accordion
+              data-open="true"
+            >
+              <button
+                type="button"
+                class="friend-accordion-header"
+                aria-expanded={true}
+              >
+                <div class="friend-accordion-title-wrap">
+                  <span class="friend-accordion-title">{group.label}</span>
+                </div>
+                <span class="friend-accordion-count">{group.items.length}</span>
+                <Icon
+                  name="material-symbols:keyboard-arrow-down-rounded"
+                  class="friend-accordion-arrow"
+                />
+              </button>
+              <div class="friend-accordion-body">
+                <div class="friend-accordion-body-inner">
+                  <div class="friend-card-grid">
+                    {group.items.map((friend, index) => (
+                      <FriendCard friend={friend} index={index} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <div class="text-center py-16">
+          <Icon
+            name="material-symbols:link-off-rounded"
+            class="text-5xl text-neutral-300 dark:text-neutral-600 mb-4"
+          />
+          <p class="text-neutral-500 dark:text-neutral-400">
+            {i18n(I18nKey.friendEmptyTitle)}
+          </p>
+          <p class="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
+            {i18n(I18nKey.friendEmptyHint)}
+          </p>
+        </div>
+      )}
+
+      <!-- 对话气泡 + 友链规则/本站信息 -->
+      <FriendChat messages={chatMessages} />
     </div>
   </div>
 
@@ -67,8 +130,57 @@ const description =
       <Comment post={friendsPost} customPath="/friends/" />
     </div>
   )}
-
-  <!-- 友链申请指南弹窗 -->
-  <FriendRulesModal applyLink={friendsPageConfig.applyLink} commentEnabled={isCommentEnabled} />
-
 </MainGridLayout>
+
+<!-- 手风琴展开/收起：纯 CSS 高度过渡，JS 仅切换状态 -->
+<script is:inline>
+  (function () {
+    if (window.__friendsAccordionReady) return;
+    window.__friendsAccordionReady = true;
+
+    document.addEventListener("click", function (e) {
+      var header = e.target.closest(".friend-accordion-header");
+      if (!header) return;
+      var accordion = header.closest("[data-friend-accordion]");
+      if (!accordion) return;
+      var open = accordion.hasAttribute("data-open");
+      if (open) {
+        accordion.removeAttribute("data-open");
+      } else {
+        accordion.setAttribute("data-open", "");
+      }
+      header.setAttribute("aria-expanded", open ? "false" : "true");
+    });
+  })();
+</script>
+
+<!-- 头像加载失败回退首字母 -->
+<script>
+  function initFriendAvatars(): void {
+    document
+      .querySelectorAll<HTMLElement>("[data-friend-avatar]")
+      .forEach((box) => {
+        if (box.dataset.avatarBound === "true") return;
+        box.dataset.avatarBound = "true";
+
+        const img = box.querySelector("img");
+        if (!img) return;
+
+        const markError = () => box.classList.add("is-error");
+        if (img.complete && img.naturalWidth === 0) markError();
+        img.addEventListener("error", markError, { once: true });
+        img.addEventListener(
+          "load",
+          () => box.classList.remove("is-error"),
+          { once: true },
+        );
+      });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initFriendAvatars);
+  } else {
+    initFriendAvatars();
+  }
+  document.addEventListener("astro:page-load", initFriendAvatars);
+</script>

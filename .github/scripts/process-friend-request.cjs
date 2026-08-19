@@ -42,6 +42,7 @@ function parseIssueBody(body) {
 		friend_page_url: '',
 		site_desc: '',
 		site_avatar: '',
+		site_image: '',
 		site_tag: DEFAULT_TAG,
 	};
 
@@ -67,6 +68,9 @@ function parseIssueBody(body) {
 				break;
 			case 'site_avatar':
 				data.site_avatar = normalizeUrl(trimmed);
+				break;
+			case 'site_image':
+				data.site_image = normalizeUrl(trimmed);
 				break;
 			case 'site_tag':
 				data.site_tag = trimmed || DEFAULT_TAG;
@@ -98,6 +102,10 @@ function parseIssueBody(body) {
 			pendingField = 'site_avatar';
 			continue;
 		}
+		if (/^#+\s*(封面图片|封面图|封面)/.test(line)) {
+			pendingField = 'site_image';
+			continue;
+		}
 		if (/^#+\s*(网站标签|标签|分类)/.test(line)) {
 			pendingField = 'site_tag';
 			continue;
@@ -119,6 +127,7 @@ function parseIssueBody(body) {
 			else if (/友链页面|友链地址/.test(key)) assignField('friend_page_url', value);
 			else if (/描述|简介/.test(key)) assignField('site_desc', value);
 			else if (/头像|图标/.test(key)) assignField('site_avatar', value);
+			else if (/封面/.test(key)) assignField('site_image', value);
 			else if (/标签|分类/.test(key)) assignField('site_tag', value);
 		}
 	}
@@ -162,6 +171,7 @@ function parseFriendsConfig(content) {
 		imgurl: extractString(block, 'imgurl'),
 		desc: extractString(block, 'desc'),
 		siteurl: extractString(block, 'siteurl'),
+		image: extractString(block, 'image'),
 		tags: extractTags(block),
 		weight: extractNumber(block, 'weight', 5),
 		enabled: extractBoolean(block, 'enabled', true),
@@ -173,17 +183,25 @@ function renderFriend(friend, indent) {
 		.map((tag) => `"${escapeString(tag)}"`)
 		.join(', ');
 
-	return [
+	const lines = [
 		`${indent}{`,
 		`${indent}\ttitle: "${escapeString(friend.title)}",`,
 		`${indent}\timgurl: "${escapeString(friend.imgurl)}",`,
 		`${indent}\tdesc: "${escapeString(friend.desc)}",`,
 		`${indent}\tsiteurl: "${escapeString(friend.siteurl)}",`,
+	];
+	// 封面图为可选字段，仅在填写时写入，保证与旧数据格式兼容
+	if (friend.image) {
+		lines.push(`${indent}\timage: "${escapeString(friend.image)}",`);
+	}
+	lines.push(
 		`${indent}\ttags: [${tags}],`,
 		`${indent}\tweight: ${Number.isFinite(friend.weight) ? friend.weight : 5},`,
 		`${indent}\tenabled: ${friend.enabled !== false},`,
 		`${indent}},`,
-	].join('\n');
+	);
+
+	return lines.join('\n');
 }
 
 function updateFriendsConfig(repoRoot, data) {
@@ -201,6 +219,7 @@ function updateFriendsConfig(repoRoot, data) {
 		imgurl: data.site_avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(data.site_name)}`,
 		desc: data.site_desc || '',
 		siteurl: data.site_url,
+		image: data.site_image || '',
 		tags: [data.site_tag || DEFAULT_TAG],
 		weight: 5,
 		enabled: true,
@@ -208,6 +227,10 @@ function updateFriendsConfig(repoRoot, data) {
 
 	const existingIndex = friends.findIndex((friend) => trimTrailingSlash(friend.siteurl) === normalizedUrl);
 	if (existingIndex >= 0) {
+		// 重复申请且未提交封面图时，保留旧数据中的封面图
+		if (!nextFriend.image && friends[existingIndex].image) {
+			nextFriend.image = friends[existingIndex].image;
+		}
 		friends[existingIndex] = nextFriend;
 	} else {
 		friends.push(nextFriend);
@@ -501,7 +524,8 @@ module.exports = async function processFriendRequest({ github, context }) {
 - 名称: ${formData.site_name}
 - 链接: ${formData.site_url}
 - 描述: ${formData.site_desc || '无'}
-- 头像: ${formData.site_avatar || updateResult.friend.imgurl}`
+- 头像: ${formData.site_avatar || updateResult.friend.imgurl}
+${formData.site_image ? `- 封面图: ${formData.site_image}\n` : ''}`
 			: `✅ 友链信息已经是最新状态，无需重复提交。
 
 **网站**：${formData.site_name}

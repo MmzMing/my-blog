@@ -1,0 +1,248 @@
+---
+import { join, normalize } from "node:path";
+import Icon from "@components/common/Icon.astro";
+import { friendsPageConfig, homeConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { FriendChatMessage } from "@/types/config";
+
+interface Props {
+	messages: FriendChatMessage[];
+}
+
+const { messages } = Astro.props;
+
+const site = friendsPageConfig.siteInfo;
+const notes = friendsPageConfig.notes;
+const applyLink = friendsPageConfig.applyLink;
+
+// 喵墩头像：使用作者头像（homeConfig.avatar，本地资源走 glob 导入，取构建后 src）
+let catAvatarImg: string | null = null;
+const avatarValue = homeConfig.avatar || "";
+if (
+	avatarValue &&
+	!avatarValue.startsWith("/") &&
+	!avatarValue.startsWith("http")
+) {
+	const files = import.meta.glob<ImageMetadata>(
+		"../../assets/**/*.{png,jpg,jpeg,webp,avif,gif,svg}",
+		{ import: "default" },
+	);
+	const normalizedPath = normalize(join("../../", avatarValue)).replace(
+		/\\/g,
+		"/",
+	);
+	const mod = await files[normalizedPath]?.();
+	if (mod?.src) catAvatarImg = mod.src;
+}
+
+const siteInfoRows = site
+	? [
+			{ label: i18n(I18nKey.siteNameLabel), value: site.name },
+			{ label: i18n(I18nKey.siteDescLabel), value: site.desc },
+			{ label: i18n(I18nKey.siteUrlLabel), value: site.url },
+			{ label: i18n(I18nKey.siteAvatarLabel), value: site.avatar },
+		].filter((row) => Boolean(row.value))
+	: [];
+---
+
+<section class="friend-chat" data-friend-chat>
+  <!-- 对话气泡：滚动进入视口后逐个弹出，气泡内打字机逐字显示 -->
+  <div class="friend-chat__messages" aria-label={i18n(I18nKey.friendRulesTitle)}>
+    {messages.map((msg) => (
+      <div
+        class:list={[
+          "friend-chat__item",
+          msg.role === "owner" ? "friend-chat__item--right" : "friend-chat__item--left",
+        ]}
+        data-friend-chat-item
+        data-text={msg.text}
+      >
+        <span class:list={["friend-chat__avatar", msg.role === "owner" && "friend-chat__avatar--text"]} aria-hidden="true">
+          {msg.role === "cat"
+            ? (
+              catAvatarImg || avatarValue ? (
+                <img
+                  class="friend-chat__avatar-img"
+                  src={catAvatarImg || avatarValue}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span class="friend-chat__avatar-text">{msg.name}</span>
+              )
+            )
+            : <span class="friend-chat__avatar-text">{msg.name}</span>}
+        </span>
+        <div class="friend-chat__bubble">
+          <span class="friend-chat__name">{msg.name}</span>
+          <p class="friend-chat__text" data-friend-chat-text></p>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <!-- 规则与复制区 -->
+  <div class="friend-apply">
+    <!-- 左：注意事项（纯背景无边框），申请按钮置于卡片内底部右下角 -->
+    {(notes?.length || applyLink) && (
+      <div class="friend-apply__notes">
+        {notes && notes.length > 0 && (
+          <>
+            <h3 class="friend-apply__notes-title">
+              <Icon name="material-symbols:info-outline-rounded" class="friend-apply__notes-icon" />
+              {i18n(I18nKey.friendNotesTitle)}
+            </h3>
+            <ul class="friend-apply__note-list">
+              {notes.map((item) => (
+                <li class="friend-apply__note">
+                  <span class="friend-apply__note-dot" aria-hidden="true"></span>
+                  <p><strong>{item.title}</strong>：{item.content}</p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {applyLink && (
+          <a
+            class="friend-apply__btn"
+            href={applyLink}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon name="material-symbols:edit-square-outline" class="friend-apply__btn-icon" />
+            {i18n(I18nKey.friendApplyUnderstood)}
+          </a>
+        )}
+      </div>
+    )}
+
+    <!-- 右：本站信息（用于复制） -->
+    {site && siteInfoRows.length > 0 && (
+      <div class="friend-apply__site">
+        <h3 class="friend-apply__site-title">
+          <Icon name="material-symbols:content-copy-outline-rounded" class="friend-apply__site-icon" />
+          {i18n(I18nKey.friendSiteInfo)}
+        </h3>
+        <div class="friend-apply__rows">
+          {siteInfoRows.map((row) => (
+            <div class="friend-apply__row">
+              <div class="friend-apply__row-text">
+                <span class="friend-apply__row-label">{row.label}</span>
+                <span class="friend-apply__row-value" title={row.value}>{row.value}</span>
+              </div>
+              <button
+                type="button"
+                class="friend-apply__copy"
+                data-copy-text={row.value}
+                aria-label={`${i18n(I18nKey.copyPrefix)}${row.label}`}
+              >
+                <Icon name="material-symbols:content-copy-outline-rounded" class="friend-apply__copy-icon" />
+                <Icon name="material-symbols:check-rounded" class="friend-apply__check-icon" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+</section>
+
+<script>
+  // 已播放过的对话根节点，防止重复触发
+  const playedRoots = new WeakSet<HTMLElement>();
+
+  function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // 打字机：逐字写入气泡文本，打字期间显示光标
+  async function typewriter(el: HTMLElement, text: string): Promise<void> {
+    const speed = 40;
+    for (let i = 1; i <= text.length; i++) {
+      el.textContent = text.slice(0, i);
+      await sleep(speed);
+    }
+  }
+
+  async function playChat(root: HTMLElement): Promise<void> {
+    if (playedRoots.has(root)) return;
+    playedRoots.add(root);
+
+    const items = Array.from(
+      root.querySelectorAll<HTMLElement>("[data-friend-chat-item]"),
+    );
+
+    // 尊重减少动态偏好：直接显示全部内容
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    for (const item of items) {
+      const text = item.dataset.text ?? "";
+      const textEl = item.querySelector<HTMLElement>("[data-friend-chat-text]");
+
+      item.classList.add("is-active");
+      if (!textEl) continue;
+
+      if (reduced) {
+        textEl.textContent = text;
+        continue;
+      }
+
+      item.classList.add("is-typing");
+      await sleep(350);
+      await typewriter(textEl, text);
+      item.classList.remove("is-typing");
+      await sleep(300);
+    }
+  }
+
+  function initFriendChat(): void {
+    const roots = document.querySelectorAll<HTMLElement>("[data-friend-chat]");
+    if (!roots.length) return;
+
+    roots.forEach((root) => {
+      if (playedRoots.has(root)) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              observer.disconnect();
+              void playChat(root);
+            }
+          }
+        },
+        { threshold: 0.3 },
+      );
+      observer.observe(root);
+    });
+  }
+
+  // 复制按钮：点击后图标切换为对勾 1.5s
+  function initFriendCopy(): void {
+    document
+      .querySelectorAll<HTMLElement>(".friend-apply__copy[data-copy-text]")
+      .forEach((btn) => {
+        if (btn.dataset.copyBound === "true") return;
+        btn.dataset.copyBound = "true";
+        btn.addEventListener("click", () => {
+          void navigator.clipboard.writeText(btn.dataset.copyText ?? "");
+          btn.classList.add("is-copied");
+          setTimeout(() => btn.classList.remove("is-copied"), 1500);
+        });
+      });
+  }
+
+  function initAll(): void {
+    initFriendChat();
+    initFriendCopy();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAll);
+  } else {
+    initAll();
+  }
+  document.addEventListener("astro:page-load", initAll);
+</script>
