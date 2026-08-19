@@ -22,13 +22,10 @@ const initialStatus =
 	class="tag-graph"
 	data-graph={JSON.stringify(graph)}
 >
-  <div class="tag-graph__header">
-    <p class="tag-graph__description">
-      {i18n(I18nKey.tagGraphCreditPrefix)}
-      <a href="https://d3js.org/" target="_blank" rel="noopener noreferrer">D3.js</a>
-      {i18n(I18nKey.tagGraphCreditSuffix)}
-    </p>
-  </div>
+  <h2 class="category-section-title">
+    <span class="category-section-title__bar" aria-hidden="true"></span>
+    {i18n(I18nKey.tagGraphSectionTitle)}
+  </h2>
 
   <div
     id="tag-graph-chart"

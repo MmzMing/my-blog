@@ -76,7 +76,7 @@ const enabledApisCount = enabledGroups.reduce(
                       <div class="flex items-center gap-2 mb-3">
                         {api.icon ? (
                           api.icon.startsWith('http') ? (
-                            <img src={api.icon} alt={api.name} loading="lazy" decoding="async" class="w-6 h-6 rounded object-contain shrink-0" />
+                            <img data-src={api.icon} alt={api.name} loading="lazy" decoding="async" class="w-6 h-6 rounded object-contain shrink-0" />
                           ) : (
                             <Icon name={api.icon} class="text-2xl text-neutral-600 dark:text-neutral-300 group-hover:text-black dark:group-hover:text-white transition-colors duration-300 shrink-0" />
                           )
@@ -112,8 +112,20 @@ const enabledApisCount = enabledGroups.reduce(
   </div>
 
   <!-- 手风琴展开/收起：纯 CSS 高度过渡，JS 仅切换状态 -->
+  <!-- 图标懒加载：收起的手风琴不请求 logo，首次展开时才把 data-src 换成 src -->
   <script is:inline>
     (function() {
+      function activateIcons(accordion) {
+        accordion.querySelectorAll("img[data-src]").forEach(function(img) {
+          img.setAttribute("src", img.getAttribute("data-src"));
+          img.removeAttribute("data-src");
+        });
+      }
+
+      // 已展开的手风琴（默认第一组）：立即加载图标
+      // 放在 ready 守卫之前，swup 切回本页（DOM 重建）时也能重新激活
+      document.querySelectorAll("[data-tools-accordion][data-open]").forEach(activateIcons);
+
       if (window.__collectionsAccordionReady) return;
       window.__collectionsAccordionReady = true;
 
@@ -127,6 +139,7 @@ const enabledApisCount = enabledGroups.reduce(
           accordion.removeAttribute("data-open");
         } else {
           accordion.setAttribute("data-open", "");
+          activateIcons(accordion);
         }
         header.setAttribute("aria-expanded", open ? "false" : "true");
       });

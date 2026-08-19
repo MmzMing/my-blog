@@ -238,10 +238,10 @@ export const en: Translation = {
 	// Calendar page
 	[Key.calendar]: "Calendar",
 	[Key.feibichi]: "Feibichi",
-	[Key.contactMe]: "Contact Me",
+	[Key.contactMe]: "Contact",
 	[Key.qqGroup]: "QQ Group",
 	[Key.navPosts]: "Posts",
-	[Key.navMy]: "My",
+	[Key.navMy]: "Others",
 	[Key.calendarDescription]:
 		"Holidays, birthdays, schedules and post updates at a glance",
 	[Key.calendarToday]: "Today",
@@ -440,7 +440,9 @@ export const en: Translation = {
 	[Key.tagGraphPageTitle]: "Tag Graph",
 	[Key.tagGraphPageDescription]:
 		"Browse post relations via the category and tag graph.",
-	[Key.categoryFoldersAria]: "Category folders",
+	[Key.categoryExplorerTitle]: "Categories & Tags",
+	[Key.categoryExplorerViewPosts]: "Browse posts",
+	[Key.categoryExplorerAria]: "Category and tag browser",
 	[Key.listDescription]:
 		"Browse all blog posts by topic, category, tags, publish date, and popularity.",
 	[Key.noDescriptionFallback]: "No description. Click to read the full post.",
@@ -627,8 +629,7 @@ export const en: Translation = {
 		"Tag relation graph, {tags} tags and {links} links in total. Use arrow keys to select a tag, Enter to open.",
 	[Key.tagGraphEmpty]: "No tag relations yet",
 	[Key.tagGraphPreparing]: "Preparing the graph…",
-	[Key.tagGraphCreditPrefix]: "This graph is rendered with",
-	[Key.tagGraphCreditSuffix]: ".",
+	[Key.tagGraphSectionTitle]: "Tag Relationship Graph",
 	[Key.tagGraphFailed]: "Failed to load the graph",
 	[Key.switchPinnedAria]: "Switch pinned posts",
 	[Key.switchLatestAria]: "Switch latest posts",

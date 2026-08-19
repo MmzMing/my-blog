@@ -239,10 +239,10 @@ export const ja: Translation = {
 	// カレンダーページ
 	[Key.calendar]: "カレンダー",
 	[Key.feibichi]: "个人主站",
-	[Key.contactMe]: "お問い合わせ",
+	[Key.contactMe]: "連絡",
 	[Key.qqGroup]: "QQグループ",
 	[Key.navPosts]: "記事",
-	[Key.navMy]: "マイ",
+	[Key.navMy]: "その他",
 	[Key.calendarDescription]: "祝日・誕生日・予定・記事更新の総合カレンダー",
 	[Key.calendarToday]: "今日",
 	[Key.calendarBirthday]: "誕生日",
@@ -439,7 +439,9 @@ export const ja: Translation = {
 	[Key.tagGraphPageTitle]: "タググラフ",
 	[Key.tagGraphPageDescription]:
 		"カテゴリとタグの関係グラフで記事のつながりを閲覧できます。",
-	[Key.categoryFoldersAria]: "カテゴリフォルダ",
+	[Key.categoryExplorerTitle]: "カテゴリとタグ",
+	[Key.categoryExplorerViewPosts]: "記事を見る",
+	[Key.categoryExplorerAria]: "カテゴリとタグのブラウザ",
 	[Key.listDescription]:
 		"トピック、カテゴリ、タグ、公開日時、閲覧数でブログの全記事を閲覧。",
 	[Key.noDescriptionFallback]: "概要がありません。クリックして全文を読む。",
@@ -636,8 +638,7 @@ export const ja: Translation = {
 		"タグ関係グラフ、タグ {tags} 個・関連 {links} 件。方向キーでタグを選択し、Enter で開きます。",
 	[Key.tagGraphEmpty]: "タグ関係はまだありません",
 	[Key.tagGraphPreparing]: "グラフを準備中…",
-	[Key.tagGraphCreditPrefix]: "この関係グラフは",
-	[Key.tagGraphCreditSuffix]: "で描画されています。",
+	[Key.tagGraphSectionTitle]: "タグ関係グラフ",
 	[Key.tagGraphFailed]: "グラフの読み込みに失敗しました",
 	[Key.switchPinnedAria]: "ピン留め記事を切替",
 	[Key.switchLatestAria]: "最新記事を切替",

@@ -1,0 +1,202 @@
+---
+import Icon from "@/components/common/Icon.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { CategoryTagGroup } from "@/utils/content-utils";
+
+interface Props {
+	groups: CategoryTagGroup[];
+}
+
+const { groups } = Astro.props;
+---
+
+{groups.length > 0 && (
+	<section class="category-explorer" aria-label={i18n(I18nKey.categoryExplorerAria)}>
+		<h2 class="category-section-title">
+			<span class="category-section-title__bar" aria-hidden="true"></span>
+			{i18n(I18nKey.categoryExplorerTitle)}
+		</h2>
+
+		<div
+			class="category-explorer__grid"
+			data-cat-explorer
+			style={`grid-template-rows: repeat(${groups.length}, auto)`}
+		>
+			{groups.map((group, index) => {
+				const metaText = i18n(I18nKey.categoryFolderMeta)
+					.replace("{posts}", `${group.count}`)
+					.replace("{tags}", `${group.tags.length}`);
+				const btnId = `cat-explorer-btn-${index}`;
+				const panelId = `cat-explorer-panel-${index}`;
+				return (
+					<article class="cat-item" data-cat-item data-active={index === 0 ? "" : undefined}>
+						<button
+							type="button"
+							id={btnId}
+							class="cat-item__header"
+							aria-expanded={index === 0 ? "true" : "false"}
+							aria-controls={panelId}
+						>
+							<span class="cat-item__heading">
+								<span class="cat-item__name">{group.name}</span>
+								<span class="cat-item__meta">{metaText}</span>
+							</span>
+							<span class="cat-item__pin" aria-hidden="true">
+								<Icon name="material-symbols:keep-rounded" />
+							</span>
+							<Icon
+								name="material-symbols:keyboard-arrow-down-rounded"
+								class="cat-item__chevron"
+								aria-hidden="true"
+							/>
+						</button>
+
+						<div
+							id={panelId}
+							class="cat-item__panel"
+							role="region"
+							aria-labelledby={btnId}
+						>
+							<div class="cat-item__panel-collapse">
+								<div class="cat-panel-card">
+									<div class="cat-panel-card__head">
+										<div class="cat-panel-card__titles">
+											<h3 class="cat-panel-card__name">{group.name}</h3>
+											<p class="cat-panel-card__meta">{metaText}</p>
+										</div>
+										<a href={group.url} class="cat-panel-card__link">
+											{i18n(I18nKey.categoryExplorerViewPosts)}
+											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+												<path d="M7 17L17 7" />
+												<path d="M7 7h10v10" />
+											</svg>
+										</a>
+									</div>
+									{group.tags.length > 0 ? (
+										<div class="cat-panel-card__tags">
+											{group.tags.map((tag) => (
+												<a href={tag.url} class="cat-tag">
+													<span class="cat-tag__name">#{tag.name}</span>
+													<span class="cat-tag__count">{tag.count}</span>
+												</a>
+											))}
+										</div>
+									) : (
+										<p class="cat-panel-card__empty">{i18n(I18nKey.noTags)}</p>
+									)}
+								</div>
+							</div>
+						</div>
+					</article>
+				);
+			})}
+		</div>
+	</section>
+)}
+
+<script>
+	// 分类浏览器:悬停预览、点击固定(桌面);点按展开/收起(移动端手风琴)
+	// 全量面板在构建期渲染,交互仅切换 data-active / data-pinned 属性,零 DOM 创建
+	const desktopQuery = window.matchMedia("(min-width: 768px)");
+
+	let root: HTMLElement | null = null;
+	let items: HTMLElement[] = [];
+	let pinnedIndex: number | null = null;
+	let activeIndex = 0;
+
+	function setExpanded(index: number, expanded: boolean) {
+		items[index]
+			?.querySelector(".cat-item__header")
+			?.setAttribute("aria-expanded", String(expanded));
+	}
+
+	function setActive(index: number) {
+		if (index === activeIndex) return;
+		items[activeIndex]?.removeAttribute("data-active");
+		setExpanded(activeIndex, false);
+		items[index]?.setAttribute("data-active", "");
+		setExpanded(index, true);
+		activeIndex = index;
+	}
+
+	function setPinned(index: number | null) {
+		// 全量清理再设置,避免状态与 DOM 脱节时残留标记
+		items.forEach((el) => el.removeAttribute("data-pinned"));
+		pinnedIndex = index;
+		if (index !== null) items[index]?.setAttribute("data-pinned", "");
+	}
+
+	function itemIndexOf(target: EventTarget | null): number {
+		const item =
+			target instanceof Element ? target.closest<HTMLElement>("[data-cat-item]") : null;
+		return item ? items.indexOf(item) : -1;
+	}
+
+	// 委托在 document 上:页面切换(swap DOM)后无需重新绑定
+	document.addEventListener("mouseover", (event) => {
+		if (!root || pinnedIndex !== null || !desktopQuery.matches) return;
+		const index = itemIndexOf(event.target);
+		if (index >= 0) setActive(index);
+	});
+
+	// 仅响应键盘导航的聚焦切换;触摸/鼠标点按引发的焦点交给 click 处理,
+	// 否则移动端首次点按会先被 focusin 展开、又被 click 判定为"点击已展开项"而收起
+	document.addEventListener("focusin", (event) => {
+		if (!root || pinnedIndex !== null) return;
+		const target = event.target;
+		if (!(target instanceof Element) || !target.matches(":focus-visible")) return;
+		const index = itemIndexOf(target);
+		if (index >= 0) setActive(index);
+	});
+
+	document.addEventListener("click", (event) => {
+		if (!root) return;
+		const header =
+			event.target instanceof Element
+				? event.target.closest<HTMLElement>(".cat-item__header")
+				: null;
+		if (!header || !root.contains(header)) return;
+		const index = itemIndexOf(header);
+		if (index < 0) return;
+		if (desktopQuery.matches) {
+			if (index !== activeIndex) setActive(index);
+			// 以 DOM 当前标记为准切换固定态,避免缓存状态与 DOM 脱节
+			setPinned(items[index]?.hasAttribute("data-pinned") ? null : index);
+		} else if (index === activeIndex) {
+			items[index]?.removeAttribute("data-active");
+			setExpanded(index, false);
+			activeIndex = -1;
+		} else {
+			setActive(index);
+		}
+	});
+
+	desktopQuery.addEventListener("change", () => {
+		// 断点切换:清除固定态,并保证桌面端恰有一项激活
+		setPinned(null);
+		if (
+			desktopQuery.matches &&
+			items.length > 0 &&
+			!items.some((el) => el.hasAttribute("data-active"))
+		) {
+			activeIndex = -1;
+			setActive(0);
+		}
+	});
+
+	function initCategoryExplorer() {
+		root = document.querySelector<HTMLElement>("[data-cat-explorer]");
+		items = [];
+		pinnedIndex = null;
+		if (!root) return;
+		items = Array.from(root.querySelectorAll<HTMLElement>("[data-cat-item]"));
+		// 重新初始化时清理残留固定标记,保证状态与 DOM 一致
+		items.forEach((el) => el.removeAttribute("data-pinned"));
+		// -1 表示无激活项(移动端全部收起),与 DOM 保持一致
+		activeIndex = items.findIndex((el) => el.hasAttribute("data-active"));
+	}
+
+	initCategoryExplorer();
+	document.addEventListener("astro:page-load", initCategoryExplorer);
+</script>

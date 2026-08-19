@@ -1,5 +1,5 @@
 ---
-import CategoryFolders from "@components/widget/CategoryFolders.astro";
+import CategoryExplorer from "@components/widget/CategoryExplorer.astro";
 import TagGraph from "@components/widget/TagGraph.astro";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import PageTitle from "@/components/common/PageTitle.astro";
@@ -26,8 +26,8 @@ const description = i18n(I18nKey.tagGraphPageDescription);
       <TagGraph graph={tagGraph} />
     </section>
 
-    <section class="categories-page__folders" aria-label={i18n(I18nKey.categoryFoldersAria)}>
-      <CategoryFolders groups={categoryGroups} />
+    <section class="categories-page__folders" aria-label={i18n(I18nKey.categoryExplorerAria)}>
+      <CategoryExplorer groups={categoryGroups} />
     </section>
   </div>
 </MainGridLayout>
