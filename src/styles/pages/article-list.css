@@ -4,11 +4,10 @@
 
 .article-list-page {
 	width: 100%;
-	padding-top: var(--space-2);
 }
 
 .article-list-page__header {
-	margin-bottom: var(--space-8);
+	margin-bottom: var(--space-6);
 }
 
 .article-list {
