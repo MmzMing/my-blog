@@ -106,10 +106,7 @@ pnpm build-index -- --force
 | 工作流 | 触发条件 | 说明 |
 |--------|----------|------|
 | `ci.yml` | push/PR 到 master | Astro 类型检查 + Biome Lint 代码质量检查 |
-| `cron-check.yml` | 每日 08:00 + 手动触发 | 友链可达性巡检，使用 Playwright 逐个访问，异常自动创建 Issue 报告 |
 | `friend-link-checker.yml` | Issue 创建/评论 | 通过 Issue 自动处理友链申请，提取信息并提交 PR |
-| `claude.yml` | Issue/PR 评论、Issue 创建、PR Review | 提及 `@claude` 时触发 AI 响应 |
-| `claude-review.yml` | PR 创建/更新 | 自动进行 AI 代码审查 |
 
 注意：建议在 GitHub 仓库设置中关闭邮箱订阅，避免 CI 工作流频繁触发邮件通知。
 
