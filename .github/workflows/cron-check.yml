@@ -66,37 +66,9 @@ jobs:
               process.exit(1);
             }
 
-            // 解析为JSON数组（TS对象 → JSON）
-            // 策略：先把所有字符串字面量占位保护起来，再删注释，最后还原字符串
-            const stringPlaceholders = [];
-            let protectedRaw = match[1]
-              // 保护多行/单行字符串字面量（包括引号本身）
-              .replace(/"(?:[^"\\]|\\.)*"/g, (m) => {
-                stringPlaceholders.push(m);
-                return `__STRING_${stringPlaceholders.length - 1}__`;
-              });
-
-            // 删除行内注释和块注释（此时字符串已安全）
-            protectedRaw = protectedRaw
-              .replace(/\/\/.*$/gm, '')
-              .replace(/\/\*[\s\S]*?\*\//g, '');
-
-            // 还原字符串
-            let raw = protectedRaw.replace(/__STRING_(\d+)__/g, (_, i) => stringPlaceholders[+i]);
-
-            // TS 对象属性名加引号，转成合法 JSON
-            raw = raw
-              .replace(/\btitle\s*:/g, '"title":')
-              .replace(/\bimgurl\s*:/g, '"imgurl":')
-              .replace(/\bdesc\s*:/g, '"desc":')
-              .replace(/\bsiteurl\s*:/g, '"siteurl":')
-              .replace(/\btags\s*:/g, '"tags":')
-              .replace(/\bweight\s*:/g, '"weight":')
-              .replace(/\benabled\s*:/g, '"enabled":')
-              // 删除对象 / 数组尾部可能存在的 trailing commas
-              .replace(/,\s*(?=[\]}])/g, '');
-
-            const friends = JSON.parse(raw);
+            // 解析为JS数组：提取出的内容本身就是合法的 JS 数组字面量，
+            // 直接求值即可，无需手动转 JSON（自动兼容注释、尾逗号、未加引号的属性名及后续新增字段）
+            const friends = new Function(`return ${match[1]};`)();
             const results = [];
 
             const browser = await chromium.launch({ headless: true });
