@@ -1,5 +1,4 @@
 ---
-import { getEntry } from "astro:content";
 import Comment from "@components/comment/index.astro";
 import Icon from "@components/common/Icon.astro";
 import FriendCard from "@components/features/FriendCard.astro";
@@ -18,12 +17,6 @@ import MainGridLayout from "@/layouts/MainGridLayout.astro";
 // 检查页面是否启用
 if (!siteConfig.pages.friends) {
 	return Astro.redirect("/404/");
-}
-
-const friendsPost = await getEntry("spec", "friends");
-
-if (!friendsPost) {
-	throw new Error("friends page content not found");
 }
 
 // 检查评论系统是否启用
@@ -292,7 +285,7 @@ const description =
   <!-- 评论区 -->
   {isCommentEnabled && (
     <div class="mt-4">
-      <Comment post={friendsPost} customPath="/friends/" />
+      <Comment customPath="/friends/" title={title} />
     </div>
   )}
 </MainGridLayout>
