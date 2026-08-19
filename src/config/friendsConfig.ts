@@ -455,6 +455,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "闪程-猫条的笔记",
+		imgurl: "https://rustfsapi.rainyunrgs.cn/blog/avatar.jpg",
+		desc: "分享技术与生活的小天地~",
+		siteurl: "https://blog.rainyunrgs.cn/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
