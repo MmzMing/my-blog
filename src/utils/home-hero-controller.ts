@@ -12,8 +12,8 @@ gsap.registerPlugin(ScrollTrigger);
 
 const RAIN_ACTIVATE_TIME = 0.99;
 const DIALOGUE_REVEAL_TIME = 1.08;
-const QUICK_ACTIONS_REVEAL_TIME = 1.23;
-const INTERACTION_HOLD_START = 1.43;
+const QUICK_ACTIONS_REVEAL_TIME = 1.14;
+const INTERACTION_HOLD_START = 1.31;
 let initialReloadHandled = false;
 
 function resetHeroScrollOnReload() {

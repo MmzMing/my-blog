@@ -37,7 +37,7 @@ export const homeConfig: HomeConfig = {
 			mobileScrollDistance: 4600,
 			desktopMinViewports: 8.1,
 			mobileMinViewports: 6.1,
-			interactionHold: 0.17,
+			interactionHold: 0.06,
 		},
 		quickActions: [
 			{
