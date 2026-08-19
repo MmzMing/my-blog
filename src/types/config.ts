@@ -387,8 +387,6 @@ export type HomeConfig = {
 	displayName?: string; // 首页展示名字（如 MmMing）
 	occupation?: string; // 职业/身份标签（如 后端开发 / 技术博主）
 	bio?: string | string[];
-	// 关于页 3D 文字球贴图（public 目录路径）
-	aboutCanvasTexture: string;
 	hero: {
 		backgroundImage: string;
 		backgroundImageMobile?: string;

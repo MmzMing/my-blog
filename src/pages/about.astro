@@ -1,32 +1,34 @@
 ---
-
 import { getEntry, render } from "astro:content";
-import AboutCanvas from "@components/about/AboutCanvas.svelte";
+import ChangelogGraph from "@components/about/ChangelogGraph.astro";
+import Markdown from "@components/common/Markdown.astro";
+import PageTitle from "@/components/common/PageTitle.astro";
 import SiteStructuredData from "@/components/seo/SiteStructuredData.astro";
 import { homeConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
-import "@/styles/components/about-canvas.css";
 
 const aboutPost = await getEntry("spec", "about");
 if (!aboutPost) {
 	throw new Error("About page content not found");
 }
 
-// 提取 Markdown 源文本传给客户端
-const aboutText = aboutPost.body ?? "";
 const { Content } = await render(aboutPost);
 ---
 
 <MainGridLayout title={i18n(I18nKey.about)} description={i18n(I18nKey.aboutDescription).replace("{name}", homeConfig.name)} hasOwnH1={true}>
 	<SiteStructuredData slot="head" includeProfilePage={true} />
-	<div class="about-canvas-container">
-        <AboutCanvas text={aboutText} client:only="svelte" />
-    </div>
-	<div class="about-text-fallback sr-only" data-pagefind-body>
-		<article class="custom-md markdown-bordered">
+	<div class="about-page card-base z-10 px-4 py-6 md:px-9 relative w-full">
+		<div class="mb-6">
+			<PageTitle title={i18n(I18nKey.about)} variant="stacked" />
+		</div>
+		<Markdown class="mb-6 markdown-content onload-animation">
 			<Content />
-		</article>
+		</Markdown>
+		<section class="about-page__changelog" aria-label={i18n(I18nKey.aboutChangelogTitle)}>
+			<h2 class="changelog__section-title">{i18n(I18nKey.aboutChangelogTitle)}</h2>
+			<ChangelogGraph />
+		</section>
 	</div>
 </MainGridLayout>

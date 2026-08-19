@@ -1,0 +1,552 @@
+/* ==========================================================================
+   关于页 · 更新日志链路图谱
+   蛇形网格 + 行间回环箭头 + 悬停 SVG 虚线关联
+   ========================================================================== */
+
+.changelog {
+	position: relative;
+	margin-top: 3rem;
+}
+
+/* 区块标题（与分类页 category-section-title 同款） */
+.changelog__section-title {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	margin: 0 0 1.25rem;
+	color: var(--deep-text);
+	font-size: 1.25rem;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.changelog__section-title::before {
+	content: "";
+	width: 5px;
+	height: 1.375rem;
+	flex: 0 0 5px;
+	border-radius: 999px;
+	background: #00a29b;
+}
+
+/* ── SVG 连线层（行箭头 + 悬停虚线） ── */
+.changelog__wires {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.changelog-wire {
+	fill: none;
+	stroke-width: 1.5;
+}
+
+.changelog-wire--row {
+	stroke: #00a29b;
+	opacity: 0.35;
+}
+
+.changelog-wire--hover {
+	stroke: #00a29b;
+	stroke-width: 1.75;
+}
+
+/* 绘制完成后切换为流动虚线 */
+.changelog-wire--hover.is-drawn {
+	stroke-dasharray: 6 5;
+	animation: changelog-dash 0.7s linear infinite;
+}
+
+/* 钉在线条绘制最前端、随绘制同步推进的箭头 */
+.changelog-wire-arrow {
+	fill: #00a29b;
+}
+
+/* 悬停关联线中点的关联条件标签（绘制完成后渐入） */
+.changelog-wire-label {
+	position: absolute;
+	z-index: 3;
+	max-width: 12rem;
+	padding: 0.25rem 0.625rem;
+	overflow: hidden;
+	border: 1px solid rgb(0 162 155 / 0.35);
+	border-radius: 999px;
+	background: #fafafa;
+	box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+	color: #00a29b;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	line-height: 1.4;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	transform: translate(-50%, -50%);
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		opacity 0.35s ease 0.1s,
+		visibility 0.35s ease 0.1s;
+	visibility: hidden;
+}
+
+.changelog-wire-label.is-in {
+	opacity: 1;
+	visibility: visible;
+}
+
+:root.dark .changelog-wire-label {
+	background: #17181c;
+}
+
+@keyframes changelog-dash {
+	to {
+		stroke-dashoffset: -11;
+	}
+}
+
+/* ── 蛇形网格 ── */
+.changelog__grid {
+	position: relative;
+	z-index: 1;
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	gap: 0.875rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* ── 卡片 ── */
+.changelog-card {
+	position: relative;
+	min-width: 0;
+	transition: opacity 0.25s ease;
+}
+
+.changelog-card__inner {
+	position: relative;
+	display: flex;
+	width: 100%;
+	height: 100%;
+	min-height: 7.75rem;
+	flex-direction: column;
+	gap: 0.375rem;
+	padding: 0.875rem 1rem;
+	overflow: hidden;
+	border: 0;
+	border-radius: var(--radius-medium);
+	background: #fafafa;
+	text-align: start;
+	cursor: pointer;
+	transition:
+		transform 0.18s ease,
+		box-shadow 0.18s ease,
+		background-color 0.18s ease;
+}
+
+:root.dark .changelog-card__inner {
+	background: #17181c;
+}
+
+.changelog-card__inner:hover {
+	transform: translateY(-2px);
+}
+
+.changelog-card__inner:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+/* 右下角大号半透明编号（参考截图风格） */
+.changelog-card__num {
+	position: absolute;
+	right: 0.625rem;
+	bottom: -0.625rem;
+	color: var(--deep-text);
+	font-size: 2.75rem;
+	font-weight: 800;
+	line-height: 1;
+	opacity: 0.09;
+	pointer-events: none;
+	user-select: none;
+}
+
+.changelog-card__meta {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.75rem;
+	line-height: 1.4;
+}
+
+/* 类型标签：左侧色点 + 文字 */
+.changelog-card__type {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3125rem;
+	font-weight: 700;
+}
+
+.changelog-card__type::before {
+	content: "";
+	width: 0.4375rem;
+	height: 0.4375rem;
+	flex: 0 0 0.4375rem;
+	border-radius: 999px;
+	background: var(--changelog-type-color, var(--primary));
+}
+
+.changelog-card[data-type="feat"] {
+	--changelog-type-color: #1d9e75;
+}
+.changelog-card[data-type="fix"] {
+	--changelog-type-color: #e24b4a;
+}
+.changelog-card[data-type="style"] {
+	--changelog-type-color: #7f77dd;
+}
+.changelog-card[data-type="refactor"] {
+	--changelog-type-color: #ef9f27;
+}
+
+.changelog-card[data-type="chore"] {
+	--changelog-type-color: #64748b;
+}
+
+.changelog-card__type {
+	color: var(--changelog-type-color, var(--primary));
+}
+
+.changelog-card__date {
+	color: var(--content-meta);
+}
+
+.changelog-card__title {
+	color: var(--deep-text);
+	font-size: 0.9375rem;
+	font-weight: 700;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+.changelog-card__summary {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	color: var(--content-meta);
+	font-size: 0.8125rem;
+	line-height: 1.5;
+}
+
+/* ── 悬停联动：无关卡片变暗，悬停卡与关联卡高亮 ── */
+.changelog.is-hovering .changelog-card {
+	opacity: 0.3;
+}
+
+.changelog.is-hovering .changelog-card.is-active,
+.changelog.is-hovering .changelog-card.is-linked {
+	opacity: 1;
+}
+
+.changelog-card.is-active .changelog-card__inner {
+	transform: translateY(-2px);
+	box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.12);
+}
+
+.changelog-card.is-linked .changelog-card__inner {
+	box-shadow: inset 0 0 0 1.5px #00a29b;
+}
+
+/* 相关更新跳转后的闪烁提示 */
+.changelog-card.is-flash .changelog-card__inner {
+	animation: changelog-flash 1.3s ease;
+}
+
+@keyframes changelog-flash {
+	0%,
+	55% {
+		box-shadow: inset 0 0 0 2px #00a29b;
+	}
+	100% {
+		box-shadow: none;
+	}
+}
+
+/* ── 详情弹窗 ── */
+.changelog-dialog {
+	position: fixed;
+	inset: 0;
+	z-index: 999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+}
+
+.changelog-dialog[hidden] {
+	display: none;
+}
+
+html.changelog-dialog-open {
+	overflow: hidden;
+}
+
+.changelog-dialog__overlay {
+	position: absolute;
+	inset: 0;
+	background: rgb(0 0 0 / 0.45);
+	backdrop-filter: blur(2px);
+}
+
+.changelog-dialog__panel {
+	position: relative;
+	width: min(34rem, 100%);
+	max-height: 82vh;
+	padding: 1.5rem 1.75rem;
+	overflow-y: auto;
+	border-radius: var(--radius-large);
+	background: var(--page-bg);
+	box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 0.28);
+	animation: changelog-dialog-in 0.22s ease;
+}
+
+@keyframes changelog-dialog-in {
+	from {
+		opacity: 0;
+		transform: translateY(0.75rem) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.changelog-dialog__close {
+	position: absolute;
+	top: 0.875rem;
+	right: 0.875rem;
+	display: inline-grid;
+	width: 2.25rem;
+	height: 2.25rem;
+	place-items: center;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--content-meta);
+	font-size: 1.375rem;
+	line-height: 1;
+	cursor: pointer;
+	transition:
+		background-color 0.18s ease,
+		color 0.18s ease;
+}
+
+.changelog-dialog__close:hover {
+	background: var(--btn-plain-bg-hover);
+	color: var(--deep-text);
+}
+
+.changelog-dialog__meta {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	margin-bottom: 0.625rem;
+	font-size: 0.8125rem;
+}
+
+.changelog-dialog__num {
+	color: var(--content-meta);
+	font-weight: 800;
+}
+
+.changelog-dialog__type {
+	font-weight: 700;
+}
+
+.changelog-dialog__type[data-type="feat"] {
+	color: #1d9e75;
+}
+.changelog-dialog__type[data-type="fix"] {
+	color: #e24b4a;
+}
+.changelog-dialog__type[data-type="style"] {
+	color: #7f77dd;
+}
+.changelog-dialog__type[data-type="refactor"] {
+	color: #ef9f27;
+}
+
+.changelog-dialog__type[data-type="chore"] {
+	color: #64748b;
+}
+
+.changelog-dialog__date {
+	color: var(--content-meta);
+}
+
+.changelog-dialog__title {
+	margin: 0 0 0.625rem;
+	padding-right: 2.5rem;
+	color: var(--deep-text);
+	font-size: 1.25rem;
+	font-weight: 800;
+	line-height: 1.35;
+}
+
+.changelog-dialog__detail {
+	margin: 0 0 1.25rem;
+	color: var(--deep-text);
+	font-size: 0.9375rem;
+	line-height: 1.7;
+}
+
+.changelog-dialog__detail p {
+	margin: 0 0 0.625rem;
+}
+
+.changelog-dialog__detail p:last-child {
+	margin-bottom: 0;
+}
+
+.changelog-dialog__section {
+	margin-top: 1rem;
+}
+
+.changelog-dialog__label {
+	display: block;
+	margin-bottom: 0.5rem;
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+}
+
+.changelog-dialog__pages,
+.changelog-card__pages {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.changelog-card__page-chip {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.3125rem 0.75rem;
+	border-radius: 999px;
+	background: var(--btn-plain-bg-hover);
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+	font-weight: 700;
+	text-decoration: none;
+	transition:
+		background-color 0.18s ease,
+		color 0.18s ease;
+}
+
+a.changelog-card__page-chip:hover {
+	background: #00a29b;
+	color: #fff;
+}
+
+.changelog-dialog__related {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.changelog-dialog__related-btn {
+	display: grid;
+	width: 100%;
+	grid-template-columns: auto 1fr;
+	gap: 0.125rem 0.625rem;
+	align-items: baseline;
+	padding: 0.625rem 0.875rem;
+	border: 0;
+	border-radius: var(--radius-medium);
+	background: #fafafa;
+	text-align: start;
+	cursor: pointer;
+	transition: background-color 0.18s ease;
+}
+
+:root.dark .changelog-dialog__related-btn {
+	background: #17181c;
+}
+
+.changelog-dialog__related-btn:hover {
+	background: var(--btn-plain-bg-hover);
+}
+
+.changelog-dialog__related-num {
+	color: #00a29b;
+	font-size: 0.8125rem;
+	font-weight: 800;
+}
+
+.changelog-dialog__related-title {
+	color: var(--deep-text);
+	font-size: 0.875rem;
+	font-weight: 700;
+	line-height: 1.4;
+}
+
+.changelog-dialog__related-pages {
+	grid-column: 2;
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	line-height: 1.5;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 1024px) {
+	.changelog__grid {
+		grid-template-columns: repeat(4, 1fr);
+	}
+}
+
+@media (max-width: 768px) {
+	.changelog__grid {
+		grid-template-columns: repeat(3, 1fr);
+	}
+}
+
+@media (max-width: 560px) {
+	.changelog__grid {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.625rem;
+	}
+
+	.changelog-card__inner {
+		min-height: 7rem;
+		padding: 0.75rem 0.875rem;
+	}
+
+	.changelog-card__num {
+		font-size: 2.25rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.changelog-wire--hover,
+	.changelog-wire--hover.is-drawn {
+		animation: none;
+	}
+
+	.changelog-wire-label {
+		transition: none;
+	}
+
+	.changelog-card__inner,
+	.changelog-card,
+	.changelog-dialog__panel {
+		transition: none;
+		animation: none;
+	}
+}

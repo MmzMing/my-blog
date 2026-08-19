@@ -26,9 +26,6 @@ importers:
       '@astrojs/svelte':
         specifier: 9.0.1
         version: 9.0.1(@types/node@26.1.2)(astro@7.1.6(@astrojs/markdown-remark@7.2.2)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@26.1.2)(jiti@2.7.0)(rollup@2.80.0)(stylus@0.64.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))(esbuild@0.28.1)(jiti@2.7.0)(stylus@0.64.0)(svelte@5.56.8)(terser@5.49.0)(tsx@4.23.1)(typescript@5.9.3)(yaml@2.9.0)
-      '@chenglou/pretext':
-        specifier: ^0.0.7
-        version: 0.0.7
       '@expressive-code/core':
         specifier: ^0.41.7
         version: 0.41.7
@@ -1072,9 +1069,6 @@ packages:
   '@capsizecss/unpack@4.0.1':
     resolution: {integrity: sha512-CuNiSqg7+e1cO/GjffyMOm5Tt2jUF9CWHHnvQ/UkqvtkGfHdgwEC0wpmq7fkN3gxwpRnrAN0WzO3vREKmNolMQ==}
     engines: {node: '>=18'}
-
-  '@chenglou/pretext@0.0.7':
-    resolution: {integrity: sha512-FV5hj3fGqpBlzbANUbR+s+6XuNRrghVVyuNs33zdH2SzU7MvK+7GlW6xREjDCreixKbexEn7OEkDgAFeWuu5Hg==}
 
   '@clack/core@1.4.3':
     resolution: {integrity: sha512-/kr3UWNtdJfxZtPgDqUOmG2pvwlmcLGheex5yiZKdwbzZJxhV+HMNR9QNmyY5cGwTNV6LrR7Jtp+KjhUAP1qBQ==}
@@ -7194,8 +7188,6 @@ snapshots:
   '@capsizecss/unpack@4.0.1':
     dependencies:
       fontkitten: 1.0.3
-
-  '@chenglou/pretext@0.0.7': {}
 
   '@clack/core@1.4.3':
     dependencies:
