@@ -45,6 +45,13 @@
   /* 胶囊形椭圆长条，纯色 */
   border-radius: 999px;
   background: #00a29b;
+  /* 悬停时伸长（与文章列表标题长条一致） */
+  transform-origin: center;
+  transition: transform 180ms ease;
+}
+.tools-accordion-header:hover .tools-accordion-title-wrap::before,
+.tools-accordion-header:focus-visible .tools-accordion-title-wrap::before {
+  transform: scaleY(1.12);
 }
 
 .tools-accordion-title {
@@ -52,6 +59,16 @@
   font-weight: 700;
   line-height: 1.2;
   color: var(--deep-text);
+  /* 悬停下划线（与文章列表标题一致）：透明色过渡淡入 */
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 180ms ease;
+}
+.tools-accordion-header:hover .tools-accordion-title,
+.tools-accordion-header:focus-visible .tools-accordion-title {
+  text-decoration-line: underline;
+  text-decoration-color: currentColor;
 }
 
 /* 标题下方的小字灰色说明 */
@@ -92,12 +109,6 @@
   overflow: hidden;
   min-height: 0;
 }
-/* 展开时卡片淡入上移；收起时不播放入场动画 */
-.tools-accordion:not([data-open]) .tools-card {
-  animation: none;
-  opacity: 0;
-  transform: translateY(20px);
-}
 
 /* 展开后的卡片区域：左右不加内边距，卡片与标题严格左对齐 */
 .tools-accordion .tools-card-grid {
@@ -132,9 +143,6 @@
   background: var(--page-bg);
   text-decoration: none;
   overflow: hidden;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: toolsCardSlideIn 0.5s ease-out forwards;
   transition: border-color 300ms ease, box-shadow 300ms ease, transform 300ms ease, background-color 300ms ease;
 }
 .tools-card:hover {
@@ -203,11 +211,4 @@
 }
 :root.dark .tools-card-footer {
   border-color: oklch(0.2 0 0);
-}
-
-@keyframes toolsCardSlideIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }

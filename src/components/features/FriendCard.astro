@@ -4,10 +4,9 @@ import type { FriendLink } from "@/types/config";
 
 interface Props {
 	friend: FriendLink;
-	index: number;
 }
 
-const { friend, index } = Astro.props;
+const { friend } = Astro.props;
 
 const hasImage = Boolean(friend.image);
 
@@ -28,10 +27,12 @@ try {
 	href={friend.siteurl}
 	target="_blank"
 	rel="noopener noreferrer"
-	style={`animation-delay: ${index * 60}ms`}
+	data-friend-image={hasImage ? friend.image : undefined}
 >
 	{hasImage && (
-		<span class="friend-card__cover" aria-hidden="true">
+		<span class="friend-card__cover" data-friend-cover>
+			{/* 加载动效：图片加载完成后由脚本隐藏 */}
+			<span class="friend-card__cover-loader" aria-hidden="true"></span>
 			<img
 				class="friend-card__cover-img"
 				src={friend.image}
@@ -68,23 +69,24 @@ try {
 				</span>
 			</span>
 			<span class="friend-card__meta">
-				<strong class="friend-card__name" title={friend.title}>
-					{friend.title}
-				</strong>
-				<span class="friend-card__desc" title={friend.desc}>
-					{friend.desc}
+				<span class="friend-card__name-row">
+					<strong class="friend-card__name" title={friend.title}>
+						{friend.title}
+					</strong>
+					{/* 跳转图标：悬停卡片时在名字右侧浮现 */}
+					<Icon
+						name="material-symbols:arrow-outward-rounded"
+						class="friend-card__jump-icon"
+					/>
+				</span>
+				<span class="friend-card__url" title={friend.siteurl}>
+					{hostname}
 				</span>
 			</span>
 		</span>
 
 		<span class="friend-card__divider" aria-hidden="true"></span>
 
-		<span class="friend-card__footer">
-			<Icon
-				name="material-symbols:arrow-outward-rounded"
-				class="friend-card__link-icon"
-			/>
-			<span class="friend-card__url">{hostname}</span>
-		</span>
+		<span class="friend-card__desc">{friend.desc}</span>
 	</span>
 </a>

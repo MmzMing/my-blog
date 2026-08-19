@@ -35,6 +35,7 @@ declare global {
 		__searchLoadersReady?: boolean;
 		__aiSearchMounted?: boolean;
 		__searchModalMounted?: boolean;
+		__friendImagePreviewReady?: boolean;
 		_showLive2DWidget?: () => void;
 		_closeLive2DWidget?: () => void;
 		// biome-ignore lint/suspicious/noExplicitAny: External library

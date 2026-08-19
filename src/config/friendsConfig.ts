@@ -339,6 +339,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://blog.xuioo.com/avatar.jpg",
 		desc: "「纯粹祈愿皆成真」",
 		siteurl: "https://blog.xuioo.com/",
+		image: "/assets/images/friends/xuioo.webp",
 		tags: ["Blog"],
 		weight: 5,
 		enabled: true,
