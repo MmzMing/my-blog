@@ -3,9 +3,13 @@
    蛇形网格 + 行间回环箭头 + 悬停 SVG 虚线关联
    ========================================================================== */
 
+.about-page__changelog {
+	margin-top: 0.625rem;
+}
+
 .changelog {
 	position: relative;
-	margin-top: 3rem;
+	margin-top: 0.875rem;
 }
 
 /* 区块标题（与分类页 category-section-title 同款） */

@@ -1,0 +1,296 @@
+---
+import Icon from "@components/common/Icon.astro";
+
+interface TechItem {
+	name: string;
+	desc: string;
+	icon: string;
+	url: string;
+	color: string;
+	darkColor?: string;
+}
+
+interface TechGroup {
+	id: string;
+	label: string;
+	icon: string;
+	items: TechItem[];
+}
+
+/* 站点技术栈分组：图标使用 simple-icons 官方品牌色（黑白 logo 按明暗主题反转） */
+const techGroups: TechGroup[] = [
+	{
+		id: "core",
+		label: "核心框架",
+		icon: "material-symbols:code-blocks",
+		items: [
+			{
+				name: "Astro 7",
+				desc: "站点骨架，内容驱动的静态框架",
+				icon: "simple-icons:astro",
+				url: "https://astro.build",
+				color: "#ff5d01",
+			},
+			{
+				name: "Svelte 5",
+				desc: "交互组件，留言板与 AI 搜索的引擎",
+				icon: "simple-icons:svelte",
+				url: "https://svelte.dev",
+				color: "#ff3e00",
+			},
+			{
+				name: "TypeScript",
+				desc: "全站类型安全",
+				icon: "simple-icons:typescript",
+				url: "https://www.typescriptlang.org",
+				color: "#3178c6",
+			},
+			{
+				name: "Tailwind CSS 4",
+				desc: "原子化样式引擎",
+				icon: "simple-icons:tailwindcss",
+				url: "https://tailwindcss.com",
+				color: "#38bdf8",
+			},
+		],
+	},
+	{
+		id: "motion",
+		label: "体验与动效",
+		icon: "material-symbols:auto-awesome",
+		items: [
+			{
+				name: "Swup 4",
+				desc: "页面无缝过渡，丝滑不闪屏",
+				icon: "material-symbols:transition-fade",
+				url: "https://swup.js.org",
+				color: "#0ea5e9",
+			},
+			{
+				name: "GSAP",
+				desc: "动效编排，魔法环的幕后推手",
+				icon: "simple-icons:gsap",
+				url: "https://gsap.com",
+				color: "#88ce02",
+			},
+			{
+				name: "Three.js",
+				desc: "3D 元素渲染",
+				icon: "simple-icons:threedotjs",
+				url: "https://threejs.org",
+				color: "#111111",
+				darkColor: "#ffffff",
+			},
+			{
+				name: "D3.js",
+				desc: "数据可视化与关系图谱",
+				icon: "simple-icons:d3",
+				url: "https://d3js.org",
+				color: "#f9a03c",
+			},
+			{
+				name: "Pagefind",
+				desc: "静态全文搜索",
+				icon: "material-symbols:search",
+				url: "https://pagefind.app",
+				color: "#2563eb",
+			},
+		],
+	},
+	{
+		id: "content",
+		label: "内容与渲染",
+		icon: "material-symbols:terminal",
+		items: [
+			{
+				name: "MDX",
+				desc: "关于页的组件化内容",
+				icon: "simple-icons:mdx",
+				url: "https://mdxjs.com",
+				color: "#f9ac00",
+			},
+			{
+				name: "Expressive Code",
+				desc: "代码块美化",
+				icon: "material-symbols:data-object",
+				url: "https://expressive-code.com",
+				color: "#8b5cf6",
+			},
+			{
+				name: "KaTeX",
+				desc: "数学公式渲染",
+				icon: "material-symbols:functions",
+				url: "https://katex.org",
+				color: "#4f6bed",
+			},
+			{
+				name: "Mermaid",
+				desc: "流程图与图表",
+				icon: "simple-icons:mermaid",
+				url: "https://mermaid.js.org",
+				color: "#ff3670",
+			},
+			{
+				name: "Waline",
+				desc: "评论系统",
+				icon: "material-symbols:chat-bubble-outline",
+				url: "https://waline.js.org",
+				color: "#39a9f5",
+			},
+		],
+	},
+	{
+		id: "deploy",
+		label: "部署与数据",
+		icon: "material-symbols:rocket-launch",
+		items: [
+			{
+				name: "Vercel",
+				desc: "站点托管与全球加速",
+				icon: "simple-icons:vercel",
+				url: "https://vercel.com",
+				color: "#111111",
+				darkColor: "#ffffff",
+			},
+			{
+				name: "Cloudflare",
+				desc: "DNS · Workers · KV 访客计数",
+				icon: "simple-icons:cloudflare",
+				url: "https://www.cloudflare.com",
+				color: "#f38020",
+			},
+			{
+				name: "Umami",
+				desc: "隐私友好的访问统计",
+				icon: "simple-icons:umami",
+				url: "https://umami.is",
+				color: "#111111",
+				darkColor: "#ffffff",
+			},
+			{
+				name: "AI 搜索",
+				desc: "向量检索 + 智能问答",
+				icon: "simple-icons:openai",
+				url: "https://openai.com",
+				color: "#111111",
+				darkColor: "#ffffff",
+			},
+		],
+	},
+	{
+		id: "engineering",
+		label: "工程化",
+		icon: "material-symbols:commit",
+		items: [
+			{
+				name: "pnpm",
+				desc: "包管理",
+				icon: "simple-icons:pnpm",
+				url: "https://pnpm.io",
+				color: "#f9ad00",
+			},
+			{
+				name: "Biome",
+				desc: "Lint 与格式化",
+				icon: "simple-icons:biome",
+				url: "https://biomejs.dev",
+				color: "#6f7bf7",
+			},
+			{
+				name: "Vitest",
+				desc: "单元测试",
+				icon: "simple-icons:vitest",
+				url: "https://vitest.dev",
+				color: "#6da918",
+			},
+			{
+				name: "Playwright",
+				desc: "端到端测试",
+				icon: "simple-icons:playwright",
+				url: "https://playwright.dev",
+				color: "#2ead33",
+			},
+			{
+				name: "GitHub Actions",
+				desc: "CI 流水线",
+				icon: "simple-icons:githubactions",
+				url: "https://github.com/features/actions",
+				color: "#2088ff",
+			},
+		],
+	},
+];
+
+const totalTech = techGroups.reduce(
+	(sum, group) => sum + group.items.length,
+	0,
+);
+---
+
+<section class="about-tech-stack" aria-label={`站点技术栈（共 ${totalTech} 项）`}>
+	{techGroups.map((group, index) => (
+		<div
+			class="tech-accordion"
+			data-tech-accordion={index === 0 ? "open" : "closed"}
+		>
+			<button
+				type="button"
+				class="tech-accordion__head"
+				aria-expanded={index === 0 ? "true" : "false"}
+			>
+				<span class="tech-accordion__group-icon" aria-hidden="true">
+					<Icon name={group.icon} />
+				</span>
+				<span class="tech-accordion__label">{group.label}</span>
+				<span class="tech-accordion__count">{group.items.length} 项</span>
+				<Icon
+					name="material-symbols:keyboard-arrow-down-rounded"
+					class="tech-accordion__arrow"
+					aria-hidden="true"
+				/>
+			</button>
+			<div class="tech-accordion__body">
+				<div class="tech-accordion__body-inner">
+					<div class="tech-accordion__grid">
+						{group.items.map((item, itemIndex) => (
+							<a
+								class="tech-card"
+								href={item.url}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label={`${item.name}：${item.desc}`}
+								style={`--tech-color: ${item.color};${
+									item.darkColor ? `--tech-color-dark: ${item.darkColor};` : ""
+								}--i: ${itemIndex};`}
+							>
+								<span class="tech-card__icon" aria-hidden="true">
+									<Icon name={item.icon} />
+								</span>
+								<span class="tech-card__name">{item.name}</span>
+								<span class="tech-card__desc">{item.desc}</span>
+							</a>
+						))}
+					</div>
+				</div>
+			</div>
+		</div>
+	))}
+</section>
+
+<!-- 手风琴展开/收起：纯 CSS 高度过渡，JS 仅切换状态（事件委托，Swup 页面切换安全） -->
+<script is:inline>
+	(function () {
+		if (window.__aboutTechAccordionReady) return;
+		window.__aboutTechAccordionReady = true;
+
+		document.addEventListener("click", function (e) {
+			var head = e.target.closest(".tech-accordion__head");
+			if (!head) return;
+			var item = head.closest("[data-tech-accordion]");
+			if (!item) return;
+			var open = item.getAttribute("data-tech-accordion") === "open";
+			item.setAttribute("data-tech-accordion", open ? "closed" : "open");
+			head.setAttribute("aria-expanded", open ? "false" : "true");
+		});
+	})();
+</script>

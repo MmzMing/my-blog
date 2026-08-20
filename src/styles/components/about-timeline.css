@@ -1,0 +1,265 @@
+/* ==========================================================================
+   关于页 · 站点更新时间戳（魔改时间线）
+   时间戳 + 轨道圆点 + 节点卡片，入场依次生长
+   轨道用绝对定位铺满节点（含间距）保证竖线连续不断开
+   ========================================================================== */
+
+.about-timeline {
+	margin: 1.25rem 0 1.75rem;
+}
+
+.about-timeline__list {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* ── 节点：时间 | 轨道 | 卡片 ── */
+/* 间距放在节点内部（padding-bottom），轨道延伸到下一节点顶部保证连线连续 */
+.about-timeline__item {
+	--node-gap: 1.125rem;
+	position: relative;
+	display: grid;
+	grid-template-columns: 4.5rem 1.75rem minmax(0, 1fr);
+	grid-template-areas: "date rail card";
+	gap: 0 0.75rem;
+	align-items: start;
+	padding-bottom: var(--node-gap);
+	opacity: 0;
+	animation: timeline-item-in 0.5s ease both;
+	animation-delay: calc(var(--i, 0) * 0.12s);
+}
+
+.about-timeline__item:last-child {
+	--node-gap: 0px;
+	padding-bottom: 0;
+}
+
+@keyframes timeline-item-in {
+	from {
+		opacity: 0;
+		transform: translateY(0.75rem);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* ── 时间戳 ── */
+.about-timeline__date {
+	grid-area: date;
+	padding-top: 0.25rem;
+	color: #00a29b;
+	font-family:
+		ui-monospace, "JetBrains Mono Variable", SFMono-Regular, Menlo, Consolas,
+		monospace;
+	font-size: 0.875rem;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	line-height: 1.4;
+	text-align: right;
+	white-space: nowrap;
+}
+
+/* ── 轨道：竖线 + 圆点 ── */
+/* 绝对定位铺满节点（向下延伸一整个间距），不依赖百分比高度（auto 轨道下 100% 会失效） */
+.about-timeline__rail {
+	position: absolute;
+	top: 0;
+	bottom: calc(-1 * var(--node-gap));
+	left: 5.25rem;
+	width: 1.75rem;
+}
+
+.about-timeline__rail::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	width: 2px;
+	border-radius: 999px;
+	background: rgb(0 162 155 / 0.25);
+	transform: translateX(-50%) scaleY(0);
+	transform-origin: top;
+	animation: timeline-line-grow 0.6s ease both;
+	animation-delay: calc(var(--i, 0) * 0.12s + 0.1s);
+}
+
+@keyframes timeline-line-grow {
+	from {
+		transform: translateX(-50%) scaleY(0);
+	}
+
+	to {
+		transform: translateX(-50%) scaleY(1);
+	}
+}
+
+/* 首尾节点的轨道只画到圆点处，中间节点全高贯通保证连线连续 */
+.about-timeline__item:first-child .about-timeline__rail::before {
+	top: 1.6rem;
+}
+
+.about-timeline__item:last-child .about-timeline__rail::before {
+	bottom: auto;
+	height: 1.6rem;
+}
+
+/* 圆点：静态 transform 即最终态（入场随节点整体渐入），悬停放大 + 伪元素脉冲 */
+.about-timeline__dot {
+	position: absolute;
+	top: 1.15rem;
+	left: 50%;
+	width: 0.75rem;
+	height: 0.75rem;
+	border-radius: 999px;
+	background: #00a29b;
+	box-shadow:
+		0 0 0 3px rgb(0 162 155 / 0.15),
+		0 0 0.5rem rgb(0 162 155 / 0.35);
+	transform: translateX(-50%);
+	transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.about-timeline__dot::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 999px;
+}
+
+/* ── 节点卡片 ── */
+.about-timeline__card {
+	grid-area: card;
+	padding: 0.875rem 1.125rem;
+	border-radius: var(--radius-medium);
+	background: var(--tag-graph-surface);
+	transition:
+		background-color 0.18s ease,
+		transform 0.18s ease,
+		box-shadow 0.18s ease;
+}
+
+.about-timeline__item:hover .about-timeline__card {
+	background: var(--btn-card-bg-hover);
+	transform: translateX(0.25rem);
+	box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 0.1);
+}
+
+/* 悬停时圆点放大 + 光晕脉冲扩散（脉冲在伪元素上，不影响圆点本体） */
+.about-timeline__item:hover .about-timeline__dot {
+	transform: translateX(-50%) scale(1.2);
+}
+
+.about-timeline__item:hover .about-timeline__dot::after {
+	animation: timeline-dot-pulse 0.9s ease-out infinite;
+}
+
+@keyframes timeline-dot-pulse {
+	0% {
+		box-shadow: 0 0 0 0 rgb(0 162 155 / 0.35);
+	}
+
+	100% {
+		box-shadow: 0 0 0 0.65rem rgb(0 162 155 / 0);
+	}
+}
+
+.about-timeline__card-head {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+.about-timeline__title {
+	color: var(--deep-text);
+	font-size: 0.9375rem;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.about-timeline__tag {
+	flex: 0 0 auto;
+	padding: 0.125rem 0.5rem;
+	border-radius: 999px;
+	background: rgb(0 162 155 / 0.12);
+	color: #00a29b;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	line-height: 1.5;
+}
+
+.about-timeline__desc {
+	margin: 0.25rem 0 0;
+	color: var(--content-meta);
+	font-size: 0.8125rem;
+	line-height: 1.6;
+}
+
+/* ── 响应式：时间戳挪到卡片上方 ── */
+@media (max-width: 768px) {
+	.about-timeline__item {
+		grid-template-columns: 1.25rem minmax(0, 1fr);
+		grid-template-areas:
+			"rail date"
+			"rail card";
+		gap: 0.375rem 0.625rem;
+	}
+
+	.about-timeline__date {
+		padding-top: 0;
+		text-align: left;
+		white-space: normal;
+	}
+
+	.about-timeline__rail {
+		left: 0;
+		width: 1.25rem;
+	}
+
+	.about-timeline__dot {
+		top: 0.5rem;
+	}
+
+	.about-timeline__item:first-child .about-timeline__rail::before {
+		top: 0.95rem;
+	}
+
+	.about-timeline__item:last-child .about-timeline__rail::before {
+		bottom: auto;
+		height: 0.95rem;
+	}
+
+	.about-timeline__item:hover .about-timeline__card {
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.about-timeline__item,
+	.about-timeline__rail::before,
+	.about-timeline__card,
+	.about-timeline__dot {
+		animation: none;
+		transition: none;
+	}
+
+	.about-timeline__item:hover .about-timeline__dot,
+	.about-timeline__item:hover .about-timeline__dot::after {
+		animation: none;
+	}
+
+	.about-timeline__rail::before {
+		transform: translateX(-50%) scaleY(1);
+	}
+
+	.about-timeline__item {
+		opacity: 1;
+	}
+}

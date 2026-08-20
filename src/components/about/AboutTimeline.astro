@@ -1,0 +1,53 @@
+---
+interface Milestone {
+	date: string;
+	title: string;
+	desc: string;
+	tag?: string;
+}
+
+/* 站点魔改时间线：新增节点直接往数组头部追加即可 */
+const milestones: Milestone[] = [
+	{
+		date: "2026.05",
+		title: "fork 一份博客，开始魔改",
+		desc: "爸爸把开源模板 fork 回家，拉着本喵开始了大改造喵～",
+		tag: "起点",
+	},
+	{
+		date: "2026.06",
+		title: "备案完成",
+		desc: "材料提交折腾了一轮又一轮，小窝总算有了正经“户口”喵～",
+	},
+	{
+		date: "2026.08",
+		title: "又重构了一遍",
+		desc: "日志图谱上线不说，友链页也翻新了……魔改的手就没停过喵～",
+	},
+];
+---
+
+<section class="about-timeline" aria-label="站点更新时间线">
+	<ol class="about-timeline__list">
+		{milestones.map((milestone, index) => (
+			<li
+				class="about-timeline__item"
+				style={`--i: ${index};`}
+			>
+				<span class="about-timeline__date">{milestone.date}</span>
+				<span class="about-timeline__rail" aria-hidden="true">
+					<span class="about-timeline__dot"></span>
+				</span>
+				<div class="about-timeline__card">
+					<div class="about-timeline__card-head">
+						<span class="about-timeline__title">{milestone.title}</span>
+						{milestone.tag && (
+							<span class="about-timeline__tag">{milestone.tag}</span>
+						)}
+					</div>
+					<p class="about-timeline__desc">{milestone.desc}</p>
+				</div>
+			</li>
+		))}
+	</ol>
+</section>

@@ -1,0 +1,56 @@
+---
+import Icon from "@components/common/Icon.astro";
+
+const socialLinks = [
+	{
+		platform: "GitHub",
+		handle: "MmzMing",
+		note: "代码与项目",
+		href: "https://github.com/MmzMing",
+		icon: "fa7-brands:github",
+		brand: "github",
+	},
+	{
+		platform: "B站",
+		handle: "Mmz明崽",
+		note: "关注一下，谢谢喵～",
+		href: "https://space.bilibili.com/15446538",
+		icon: "fa7-brands:bilibili",
+		brand: "bilibili",
+	},
+	{
+		platform: "QQ群",
+		handle: "加入群聊",
+		note: "吹水摸鱼都可以喵～",
+		href: "https://qm.qq.com/q/2R07cjGTZ0",
+		icon: "fa7-brands:qq",
+		brand: "qq",
+	},
+];
+---
+
+<section class="about-social-links" aria-label="站长社交账号">
+	{socialLinks.map((link) => (
+		<a
+			class={`about-social-links__item about-social-links__item--${link.brand} no-styling`}
+			href={link.href}
+			target="_blank"
+			rel="noopener noreferrer"
+			aria-label={`${link.platform}：${link.handle}`}
+		>
+			<span class="about-social-links__icon" aria-hidden="true">
+				<Icon name={link.icon} />
+			</span>
+			<span class="about-social-links__content">
+				<span class="about-social-links__platform">{link.platform}</span>
+				<span class="about-social-links__handle">{link.handle}</span>
+				<span class="about-social-links__note">{link.note}</span>
+			</span>
+			<Icon
+				name="material-symbols:arrow-outward-rounded"
+				class="about-social-links__arrow"
+				aria-hidden="true"
+			/>
+		</a>
+	))}
+</section>

@@ -460,6 +460,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://rustfsapi.rainyunrgs.cn/blog/avatar.jpg",
 		desc: "分享技术与生活的小天地~",
 		siteurl: "https://blog.rainyunrgs.cn/",
+		image: "/assets/images/friends/rainyunrgs.webp",
 		tags: ["Blog"],
 		weight: 5,
 		enabled: true,

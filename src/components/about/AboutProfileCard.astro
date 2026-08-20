@@ -1,0 +1,41 @@
+---
+import type { ImageMetadata } from "astro";
+
+interface Props {
+	id: string;
+	trigger?: string;
+	name: string;
+	role: string;
+	description: string;
+	avatar?: ImageMetadata | string;
+}
+
+const { id, trigger, name, role, description, avatar } = Astro.props;
+const triggerText = trigger || name;
+const avatarSrc = typeof avatar === "string" ? avatar : avatar?.src;
+const cardId = "about-profile-card-" + id;
+---
+
+<span class="about-profile-card" tabindex="0" aria-describedby={cardId}>
+	<span class="about-profile-card__trigger">{triggerText}</span>
+	<span id={cardId} class="about-profile-card__card" role="tooltip">
+		<span class="about-profile-card__avatar" aria-hidden="true">
+			{avatarSrc ? (
+				<img
+					class="about-profile-card__avatar-image"
+					src={avatarSrc}
+					alt=""
+					loading="lazy"
+					decoding="async"
+				/>
+			) : (
+				<span class="about-profile-card__avatar-fallback">{name}</span>
+			)}
+		</span>
+		<span class="about-profile-card__content">
+			<span class="about-profile-card__name">{name}</span>
+			<span class="about-profile-card__role">{role}</span>
+			<span class="about-profile-card__description">{description}</span>
+		</span>
+	</span>
+</span>

@@ -1,0 +1,110 @@
+.about-profile-card {
+	position: relative;
+	display: inline-flex;
+	vertical-align: baseline;
+	outline: none;
+}
+
+.about-profile-card__trigger {
+	border-bottom: 1px dashed currentColor;
+	color: var(--article-title-marker);
+	font-weight: 700;
+	cursor: help;
+}
+
+.about-profile-card:focus-visible .about-profile-card__trigger {
+	border-radius: var(--radius-small);
+	outline: 2px solid var(--primary);
+	outline-offset: 0.1875rem;
+}
+
+.about-profile-card__card {
+	position: absolute;
+	top: calc(100% + 0.625rem);
+	left: 0;
+	z-index: 20;
+	display: grid;
+	width: min(19rem, calc(100vw - 3rem));
+	grid-template-columns: 3rem minmax(0, 1fr);
+	gap: 0.75rem;
+	padding: 0.75rem;
+	border: 2px solid var(--deep-text);
+	border-radius: var(--radius-medium);
+	background: var(--page-bg);
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	transform: translateY(0.25rem);
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		opacity 0.16s ease,
+		transform 0.16s ease,
+		visibility 0.16s ease;
+	visibility: hidden;
+}
+
+.about-profile-card:hover .about-profile-card__card,
+.about-profile-card:focus-within .about-profile-card__card {
+	transform: none;
+	opacity: 1;
+	pointer-events: auto;
+	visibility: visible;
+}
+
+.about-profile-card__avatar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3rem;
+	height: 3rem;
+	overflow: hidden;
+	border: 1px solid var(--deep-text);
+	border-radius: var(--radius-full);
+	background: var(--page-bg);
+}
+
+.about-profile-card__avatar-image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.about-profile-card__avatar-fallback {
+	font-size: 0.6875rem;
+	font-weight: 700;
+}
+
+.about-profile-card__content {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+}
+
+.about-profile-card__name {
+	color: var(--article-title-marker);
+	font-size: 0.875rem;
+	font-weight: 700;
+}
+
+.about-profile-card__role {
+	color: var(--content-meta);
+	font-size: 0.75rem;
+}
+
+.about-profile-card__description {
+	margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+	.about-profile-card__card {
+		width: min(17rem, calc(100vw - 2.5rem));
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.about-profile-card__card {
+		transition: none;
+	}
+}

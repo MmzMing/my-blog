@@ -1,0 +1,44 @@
+---
+import { join, normalize } from "node:path";
+import { homeConfig } from "@/config";
+
+const avatarValue = homeConfig.avatar || "";
+let avatarSrc: string | null = null;
+
+if (
+	avatarValue &&
+	!avatarValue.startsWith("/") &&
+	!avatarValue.startsWith("http")
+) {
+	const files = import.meta.glob<ImageMetadata>(
+		"../../assets/**/*.{png,jpg,jpeg,webp,avif,gif,svg}",
+		{ import: "default" },
+	);
+	const normalizedPath = normalize(join("../../", avatarValue)).replace(
+		/\\/g,
+		"/",
+	);
+	const module = await files[normalizedPath]?.();
+	if (module?.src) avatarSrc = module.src;
+}
+---
+
+<div class="about-chat-bubble">
+	<span class="about-chat-bubble__avatar" aria-hidden="true">
+		{avatarSrc || avatarValue ? (
+			<img
+				class="about-chat-bubble__avatar-image"
+				src={avatarSrc || avatarValue}
+				alt=""
+				loading="lazy"
+				decoding="async"
+			/>
+		) : (
+			<span class="about-chat-bubble__avatar-fallback">喵墩</span>
+		)}
+	</span>
+	<div class="about-chat-bubble__content">
+		<span class="about-chat-bubble__name">喵墩</span>
+		<div class="about-chat-bubble__text"><slot /></div>
+	</div>
+</div>
