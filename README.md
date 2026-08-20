@@ -1,10 +1,10 @@
 # Firefly-Mod
 
-> 基于 [Firefly](https://github.com/CuteLeaf/Firefly) 的个人博客魔改版 `V2.7.2`
+> 基于 [Firefly](https://github.com/CuteLeaf/Firefly) 的个人博客魔改版 `V2.7.3`
 
 ![Node.js >= 22](https://img.shields.io/badge/node.js-%3E%3D22-brightgreen)
 ![pnpm >= 9](https://img.shields.io/badge/pnpm-%3E%3D9-blue)
-![Astro](https://img.shields.io/badge/Astro-6.x-orange)
+![Astro](https://img.shields.io/badge/Astro-7.x-orange)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
 ![Svelte](https://img.shields.io/badge/Svelte-5.x-%23FF3E00)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.x-%2306B6D4)
