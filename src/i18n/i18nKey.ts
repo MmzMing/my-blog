@@ -30,6 +30,7 @@ enum I18nKey {
 	minutesCount = "minutesCount",
 	postCount = "postCount",
 	postsCount = "postsCount",
+	articles = "articles",
 
 	// Music Widget
 	musicNoPlaying = "musicNoPlaying",
@@ -79,6 +80,7 @@ enum I18nKey {
 	paginationNext = "paginationNext",
 	paginationPage = "paginationPage",
 	paginationOf = "paginationOf",
+	paginationStatus = "paginationStatus",
 
 	// 404页面
 	notFound = "notFound",
@@ -338,11 +340,7 @@ enum I18nKey {
 	policeBeianAlt = "policeBeianAlt",
 
 	// ===== 文章列表页 =====
-	viewCategoryArchivePrefix = "viewCategoryArchivePrefix",
 	publishDatePrefix = "publishDatePrefix",
-	viewTagArchivePrefix = "viewTagArchivePrefix",
-	moreTagsPrefix = "moreTagsPrefix",
-	moreTagsSuffix = "moreTagsSuffix",
 	viewPostPrefix = "viewPostPrefix",
 	encryptedPost = "encryptedPost",
 	totalPostsPrefix = "totalPostsPrefix",

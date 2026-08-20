@@ -13,7 +13,7 @@ interface Props {
 const { id, trigger, name, role, description, avatar } = Astro.props;
 const triggerText = trigger || name;
 const avatarSrc = typeof avatar === "string" ? avatar : avatar?.src;
-const cardId = "about-profile-card-" + id;
+const cardId = `about-profile-card-${id}`;
 ---
 
 <span class="about-profile-card" tabindex="0" aria-describedby={cardId}>

@@ -6,8 +6,8 @@ import type { CoverImageConfig } from "../types/config";
  * enableInPost - 是否在文章详情页显示封面图
  *
  * 随机封面图使用说明：
- * 1. 在文章的 Frontmatter 中添加 image: "api" 即可使用随机图功能
- * 2. 系统会依次尝试所有配置的 API，全部失败后使用备用图片
+ * 1. 文章 image 字段留空或设为 "api" 即可使用随机图功能
+ * 2. 系统会依次尝试所有配置的 API，全部失败后使用兜底默认图片
  *
  * // 文章 Frontmatter 示例：
  * ---
@@ -21,10 +21,10 @@ export const coverImageConfig: CoverImageConfig = {
 
 	randomCoverImage: {
 		// 随机封面图功能开关
-		enable: false,
+		enable: true,
 		// 封面图API列表
 		apis: [
-			"https://www.loliapi.com/acg/pc/",
+			"https://t.alcy.cc/pc",
 			"https://www.dmoe.cc/random.php",
 			"https://uapis.cn/api/v1/random/image?category=acg&type=pc",
 		],

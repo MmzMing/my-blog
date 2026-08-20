@@ -12,6 +12,7 @@
 /* === 组件层 === */
 @import './components/page-loader.css';
 @import './components/page-title.css';
+@import './components/image-pixel-reveal.css';
 @import './components/floating-dock.css';
 @import './components/mobile-dock.css';
 @import './components/music-player.css';
@@ -696,4 +697,3 @@ html {
   background: #fff !important;
   color: #000 !important;
 }
-

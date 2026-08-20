@@ -77,6 +77,7 @@ export const ru: Translation = {
 	[Key.minutesCount]: "минуты",
 	[Key.postCount]: "пост",
 	[Key.postsCount]: "постов",
+	[Key.articles]: "Статьи",
 
 	[Key.more]: "Ещё",
 	[Key.collapse]: "Свернуть",
@@ -98,6 +99,7 @@ export const ru: Translation = {
 	[Key.paginationNext]: "Следующая",
 	[Key.paginationPage]: "Страница",
 	[Key.paginationOf]: "из",
+	[Key.paginationStatus]: "Страница {current} из {total}",
 
 	// 404 Страница
 	[Key.notFound]: "404",
@@ -350,11 +352,7 @@ export const ru: Translation = {
 	[Key.policeBeianAlt]: "Регистрация в полиции КНР",
 
 	// ===== 文章列表页 =====
-	[Key.viewCategoryArchivePrefix]: "Архив категории: ",
 	[Key.publishDatePrefix]: "Опубликовано: ",
-	[Key.viewTagArchivePrefix]: "Архив тега: ",
-	[Key.moreTagsPrefix]: "Ещё",
-	[Key.moreTagsSuffix]: " тегов",
 	[Key.viewPostPrefix]: "Открыть статью: ",
 	[Key.encryptedPost]: "Зашифрованная статья",
 	[Key.totalPostsPrefix]: "Всего",

@@ -179,6 +179,7 @@
 .post-cover {
   width: 100%;
   overflow: hidden;
+  border-radius: var(--radius-large);
 }
 
 .post-cover img {

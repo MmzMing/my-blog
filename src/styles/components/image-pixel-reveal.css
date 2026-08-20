@@ -1,0 +1,60 @@
+.image-pixel-reveal-host {
+	position: relative;
+}
+
+.image-pixel-reveal {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	overflow: hidden;
+	pointer-events: none;
+	visibility: hidden;
+}
+
+.image-pixel-reveal-host.is-revealing .image-pixel-reveal {
+	visibility: visible;
+}
+
+.image-pixel-reveal__tile {
+	position: absolute;
+	overflow: hidden;
+	background-repeat: no-repeat;
+	opacity: 0;
+	transform: scale(0.35);
+	transform-origin: center;
+	will-change: opacity, transform;
+	animation: image-pixel-reveal-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: var(--image-pixel-reveal-delay, 0ms);
+}
+
+.image-pixel-reveal-host.is-revealing .image-pixel-reveal-source {
+	opacity: 0;
+	transition: none;
+}
+
+.image-pixel-reveal-host.is-revealed .image-pixel-reveal-source {
+	opacity: 1;
+	transition: none;
+}
+
+@keyframes image-pixel-reveal-in {
+	0% {
+		opacity: 0;
+		transform: scale(0.35);
+	}
+
+	38% {
+		opacity: 1;
+	}
+
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.image-pixel-reveal {
+		display: none;
+	}
+}

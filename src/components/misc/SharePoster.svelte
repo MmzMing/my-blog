@@ -10,9 +10,11 @@ export let author: string;
 export let description = "";
 export let pubDate: string;
 export let coverImage: string | null = null;
+export let coverImageSelector: string | null = null;
 export let url: string;
 export let siteTitle: string;
 export let avatar: string | null = null;
+export let avatarSelector: string | null = null;
 export let fallbackCoverImage: string | null = null;
 
 let showModal = false;
@@ -52,18 +54,40 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 		const img = new Image();
 		img.crossOrigin = "anonymous";
 		img.onload = () => resolve(img);
-		img.onerror = () => resolve(null);
+		img.onerror = () => {
+			if (src.includes("images.weserv.nl")) {
+				resolve(null);
+				return;
+			}
+
+			const proxyImg = new Image();
+			proxyImg.crossOrigin = "anonymous";
+			proxyImg.onload = () => resolve(proxyImg);
+			proxyImg.onerror = () => resolve(null);
+			proxyImg.src = `https://images.weserv.nl/?url=${encodeURIComponent(src)}&output=png`;
+		};
 		img.src = src;
 	});
 }
 
-async function loadCoverImage(): Promise<HTMLImageElement | null> {
-	if (coverImage) {
-		const primaryCover = await loadImage(coverImage);
+function resolveImageSource(
+	src: string | null,
+	selector: string | null,
+): string | null {
+	if (!selector) return src;
+	const image = document.querySelector<HTMLImageElement>(selector);
+	return image?.currentSrc || image?.src || src;
+}
+
+async function loadCoverImage(
+	src: string | null,
+): Promise<HTMLImageElement | null> {
+	if (src) {
+		const primaryCover = await loadImage(src);
 		if (primaryCover) return primaryCover;
 	}
 
-	if (fallbackCoverImage && fallbackCoverImage !== coverImage) {
+	if (fallbackCoverImage && fallbackCoverImage !== src) {
 		return loadImage(fallbackCoverImage);
 	}
 
@@ -132,10 +156,15 @@ async function generatePoster() {
 			width: 100 * scale,
 			color: { dark: "#000000", light: "#ffffff" },
 		});
+		const resolvedCoverImage = resolveImageSource(
+			coverImage,
+			coverImageSelector,
+		);
+		const resolvedAvatar = resolveImageSource(avatar, avatarSelector);
 		const [qrImg, coverImg, avatarImg] = await Promise.all([
 			loadImage(qrCodeUrl),
-			loadCoverImage(),
-			avatar ? loadImage(avatar) : Promise.resolve(null),
+			loadCoverImage(resolvedCoverImage),
+			resolvedAvatar ? loadImage(resolvedAvatar) : Promise.resolve(null),
 		]);
 
 		// 2. Setup Canvas for measuring
@@ -399,7 +428,8 @@ async function generatePoster() {
 			ctx.stroke();
 		}
 
-		const authorTextX = padding + (avatar ? 64 * scale + 16 * scale : 0);
+		const authorTextX =
+			padding + (resolvedAvatar ? 64 * scale + 16 * scale : 0);
 		const textCenterY = footerY + 32 * scale;
 
 		ctx.fillStyle = "#9ca3af";

@@ -28,7 +28,7 @@ import { coverImageConfig } from "@/config/coverImageConfig";
 import { homeConfig } from "@/config/homeConfig";
 import { siteConfig } from "@/config/siteConfig";
 import { formatDateI18n, formatDateToYYYYMMDD } from "@/utils/date-utils";
-import { processCoverImageSync } from "@/utils/image-utils";
+import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
 import { url } from "@/utils/url-utils";
 
 export async function getStaticPaths() {
@@ -56,6 +56,7 @@ const bannerPostMeta = {
 
 // 处理随机图：如果image为"api"，则从配置的API获取随机图
 const processedImage = processCoverImageSync(entry.data.image, entry.id);
+const coverApiUrls = getApiUrlList(entry.data.image, entry.id);
 const posterFallbackCoverUrl = coverImageConfig.randomCoverImage.fallback
 	? url(coverImageConfig.randomCoverImage.fallback)
 	: null;
@@ -86,6 +87,25 @@ if (processedImage) {
 		}
 	}
 }
+
+function getDirectImageUrl(src: string | undefined): string | null {
+	if (!src) return null;
+	if (
+		src.startsWith("http://") ||
+		src.startsWith("https://") ||
+		src.startsWith("//") ||
+		src.startsWith("data:")
+	) {
+		return src;
+	}
+	return src.startsWith("/") ? url(src) : null;
+}
+
+const showPostCover = Boolean(coverImageConfig.enableInPost && posterCoverUrl);
+const sharePosterCoverUrl = showPostCover
+	? null
+	: getDirectImageUrl(processedImage);
+const sharePosterCoverSelector = showPostCover ? "#post-cover img" : null;
 
 // 处理头像URL
 let posterAvatarUrl: string | null = homeConfig.avatar || null;
@@ -275,7 +295,8 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
             author={homeConfig.name}
             description={entry.data.description || entry.data.title}
             pubDate={formatDateToYYYYMMDD(entry.data.published)}
-            coverImage={posterCoverUrl}
+            coverImage={sharePosterCoverUrl}
+            coverImageSelector={sharePosterCoverSelector}
             fallbackCoverImage={posterFallbackCoverUrl}
             url={Astro.url.href}
             siteTitle={siteConfig.title}
@@ -330,13 +351,19 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
   }
 
   {/* Layer 3: Cover image */}
-  {coverImageConfig.enableInPost && posterCoverUrl && (
-    <div class="post-cover mb-2">
+  {showPostCover && (
+    <div
+      id="post-cover"
+      class="post-cover mb-2"
+      data-api-urls={coverApiUrls.length > 0 ? JSON.stringify(coverApiUrls) : undefined}
+      data-fallback-image={posterFallbackCoverUrl || undefined}
+    >
       <img
         src={posterCoverUrl}
         alt={`${entry.data.title} - ${i18n(I18nKey.coverImageAltSuffix)}`}
         loading="eager"
         fetchpriority="high"
+        data-post-cover-image
       />
     </div>
   )}
@@ -392,6 +419,48 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
   <script>
     import dayjs from "dayjs";
 
+    function initPostCoverImage() {
+      const cover = document.getElementById("post-cover");
+      if (!cover || cover.dataset.initialized === "true") return;
+      cover.dataset.initialized = "true";
+
+      const image = cover.querySelector<HTMLImageElement>("img[data-post-cover-image]");
+      if (!image) return;
+
+      let apiUrls: string[] = [];
+      if (cover.dataset.apiUrls) {
+        try {
+          apiUrls = JSON.parse(cover.dataset.apiUrls);
+        } catch {
+          apiUrls = [];
+        }
+      }
+
+      let currentApiIndex = 1;
+      let triedFallback = false;
+      const retryImage = () => {
+        if (currentApiIndex < apiUrls.length) {
+          image.addEventListener("error", retryImage, { once: true });
+          image.src = apiUrls[currentApiIndex];
+          currentApiIndex += 1;
+          return;
+        }
+
+        const fallbackImage = cover.dataset.fallbackImage;
+        if (fallbackImage && !triedFallback && image.currentSrc !== fallbackImage) {
+          triedFallback = true;
+          image.addEventListener("error", retryImage, { once: true });
+          image.src = fallbackImage;
+        }
+      };
+
+      if (image.complete) {
+        if (image.naturalWidth === 0) retryImage();
+      } else {
+        image.addEventListener("error", retryImage, { once: true });
+      }
+    }
+
     function checkOutdated() {
       const info = document.getElementById('outdated-info');
       if (!info) return;
@@ -412,6 +481,8 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
       }
     }
 
+    initPostCoverImage();
+    document.addEventListener("astro:page-load", initPostCoverImage);
     document.addEventListener("astro:page-load", checkOutdated);
   </script>
 

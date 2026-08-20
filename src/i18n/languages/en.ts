@@ -77,6 +77,7 @@ export const en: Translation = {
 	[Key.minutesCount]: "minutes",
 	[Key.postCount]: "post",
 	[Key.postsCount]: "posts",
+	[Key.articles]: "Articles",
 
 	[Key.more]: "More",
 	[Key.collapse]: "Collapse",
@@ -98,6 +99,7 @@ export const en: Translation = {
 	[Key.paginationNext]: "Next",
 	[Key.paginationPage]: "Page",
 	[Key.paginationOf]: "of",
+	[Key.paginationStatus]: "Page {current} of {total}",
 
 	// 404 Page
 	[Key.notFound]: "404",
@@ -350,11 +352,7 @@ export const en: Translation = {
 	[Key.policeBeianAlt]: "Police registration",
 
 	// ===== 文章列表页 =====
-	[Key.viewCategoryArchivePrefix]: "View category archive: ",
 	[Key.publishDatePrefix]: "Published: ",
-	[Key.viewTagArchivePrefix]: "View tag archive: ",
-	[Key.moreTagsPrefix]: "",
-	[Key.moreTagsSuffix]: " more tags",
 	[Key.viewPostPrefix]: "View post: ",
 	[Key.encryptedPost]: "Encrypted post",
 	[Key.totalPostsPrefix]: "",

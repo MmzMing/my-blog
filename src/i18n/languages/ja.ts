@@ -77,6 +77,7 @@ export const ja: Translation = {
 	[Key.minutesCount]: "分",
 	[Key.postCount]: "投稿",
 	[Key.postsCount]: "投稿",
+	[Key.articles]: "記事",
 
 	[Key.more]: "もっと",
 	[Key.collapse]: "折りたたむ",
@@ -98,6 +99,7 @@ export const ja: Translation = {
 	[Key.paginationNext]: "次へ",
 	[Key.paginationPage]: "",
 	[Key.paginationOf]: "ページ、全",
+	[Key.paginationStatus]: "{current} / {total} ページ",
 
 	// 404ページ
 	[Key.notFound]: "404",
@@ -349,11 +351,7 @@ export const ja: Translation = {
 	[Key.policeBeianAlt]: "公安備案",
 
 	// ===== 文章列表页 =====
-	[Key.viewCategoryArchivePrefix]: "カテゴリアーカイブを見る：",
 	[Key.publishDatePrefix]: "公開日：",
-	[Key.viewTagArchivePrefix]: "タグアーカイブを見る：",
-	[Key.moreTagsPrefix]: "他",
-	[Key.moreTagsSuffix]: "個のタグ",
 	[Key.viewPostPrefix]: "記事を見る：",
 	[Key.encryptedPost]: "暗号化された記事",
 	[Key.totalPostsPrefix]: "計",

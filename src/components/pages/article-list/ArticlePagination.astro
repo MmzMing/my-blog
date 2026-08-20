@@ -1,0 +1,62 @@
+---
+import Icon from "@/components/common/Icon.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { PaginationItem } from "@/types/article-list";
+
+interface Props {
+	currentPage: number;
+	totalPages: number;
+	items: PaginationItem[];
+}
+
+const { currentPage, totalPages, items } = Astro.props;
+
+function pageAriaLabel(page: number): string {
+	return `${i18n(I18nKey.paginationPage)} ${page} ${i18n(I18nKey.bangumiPage)}`;
+}
+---
+
+{totalPages > 1 && (
+	<nav class="article-list-pagination" data-article-list-pagination aria-label={i18n(I18nKey.paginationNav)}>
+		<div class="article-list-pagination__inner">
+			<button
+				type="button"
+				class="article-list-pagination__btn"
+				data-article-list-page-action="previous"
+				disabled={currentPage === 1}
+				aria-label={i18n(I18nKey.paginationPrev)}
+			>
+				<Icon name="material-symbols:chevron-left-rounded" width="1.5em" height="1.5em" />
+			</button>
+
+			<div class="article-list-pagination__pages" data-article-list-pagination-pages>
+				{items.map((item) =>
+					item.kind === "page" ? (
+						<button
+							type="button"
+							class:list={["article-list-pagination__page", { "is-active": item.page === currentPage }]}
+							data-article-list-page={item.page}
+							aria-label={pageAriaLabel(item.page)}
+							aria-current={item.page === currentPage ? "page" : undefined}
+						>
+							{item.page}
+						</button>
+					) : (
+						<span class="article-list-pagination__ellipsis" aria-hidden="true">...</span>
+					)
+				)}
+			</div>
+
+			<button
+				type="button"
+				class="article-list-pagination__btn"
+				data-article-list-page-action="next"
+				disabled={currentPage === totalPages}
+				aria-label={i18n(I18nKey.paginationNext)}
+			>
+				<Icon name="material-symbols:chevron-right-rounded" width="1.5em" height="1.5em" />
+			</button>
+		</div>
+	</nav>
+)}

@@ -1,0 +1,110 @@
+---
+import Icon from "@/components/common/Icon.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { ArticleListPost } from "@/types/article-list";
+
+interface Props {
+	post: ArticleListPost;
+	fallbackImageUrl: string;
+	showCoverLoading?: boolean;
+	initialHidden?: boolean;
+}
+
+const {
+	post,
+	fallbackImageUrl,
+	showCoverLoading = false,
+	initialHidden = false,
+} = Astro.props;
+const wordLabel = i18n(
+	post.wordCount === 1 ? I18nKey.wordCount : I18nKey.wordsCount,
+);
+---
+
+<article
+	class="article-list-card"
+	data-article-list-card
+	data-article-list-published={post.publishedTimestamp}
+	data-article-list-url={post.url}
+	style={`--article-category-hue: ${post.categoryHue}`}
+	hidden={initialHidden}
+>
+	<div
+		class="article-list-card__cover-wrap image-pixel-reveal-host"
+		data-article-list-cover-wrap
+	>
+		{showCoverLoading && (
+			<span
+				class="article-list-card__cover-loader"
+				aria-hidden="true"
+			></span>
+		)}
+		<span
+			class="image-pixel-reveal"
+			data-image-pixel-reveal
+			aria-hidden="true"
+		></span>
+		<img
+			class="article-list-card__cover image-pixel-reveal-source"
+			src={post.imageUrl}
+			alt={`${post.title}${i18n(I18nKey.coverImageAltSuffix)}`}
+			data-article-list-cover
+			data-fallback-src={fallbackImageUrl}
+			data-api-urls={post.apiUrls.length > 0 ? JSON.stringify(post.apiUrls) : undefined}
+			loading="lazy"
+			decoding="async"
+		/>
+	</div>
+
+	<div class="article-list-card__content">
+		<div class="article-list-card__title-row">
+			<h3 class="article-list-card__title">
+				<span class="article-list-card__title-text" title={post.title}>
+					{post.title}
+					{post.password && (
+						<Fragment>
+							<span class="article-list-card__lock" aria-hidden="true">
+								<Icon name="material-symbols:lock-outline" width="1em" height="1em" />
+							</span>
+							<span class="sr-only">{i18n(I18nKey.encryptedPost)}</span>
+						</Fragment>
+					)}
+				</span>
+			</h3>
+			<span
+				class="article-list-card__views"
+				title={i18n(I18nKey.viewsLabel)}
+			>
+				<Icon name="material-symbols:visibility-outline-rounded" width="1em" height="1em" />
+				<span class="sr-only">{i18n(I18nKey.viewsLabel)}</span>
+				<span data-article-list-pageview data-article-list-pageview-path={post.url}>-</span>
+			</span>
+		</div>
+
+		<div class="article-list-card__meta">
+			<span class="article-list-card__taxonomy">
+				{post.category}
+			</span>
+			<span class="article-list-card__meta-item">
+				<Icon name="material-symbols:calendar-month-rounded" width="1em" height="1em" />
+				<span class="sr-only">{i18n(I18nKey.publishDatePrefix)}</span>
+				<time datetime={post.publishedIso}>{post.publishedText}</time>
+			</span>
+			<span class="article-list-card__meta-item">
+				<Icon name="material-symbols:article-outline-rounded" width="1em" height="1em" />
+				<span>{post.wordCount.toLocaleString()} {wordLabel}</span>
+			</span>
+		</div>
+
+		<div class="article-list-card__rule" aria-hidden="true"></div>
+		<p class="article-list-card__description">{post.description}</p>
+	</div>
+
+	<a
+		href={post.url}
+		class="article-list-card__surface-link"
+		aria-label={`${i18n(I18nKey.viewPostPrefix)}${post.title}`}
+		title={post.title}
+	></a>
+</article>

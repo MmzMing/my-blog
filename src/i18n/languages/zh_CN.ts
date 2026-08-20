@@ -75,6 +75,7 @@ export const zh_CN: Translation = {
 	[Key.minutesCount]: "分钟",
 	[Key.postCount]: "篇文章",
 	[Key.postsCount]: "篇文章",
+	[Key.articles]: "文章",
 
 	[Key.more]: "更多",
 	[Key.collapse]: "收起",
@@ -96,6 +97,7 @@ export const zh_CN: Translation = {
 	[Key.paginationNext]: "下一页",
 	[Key.paginationPage]: "第",
 	[Key.paginationOf]: "页，共",
+	[Key.paginationStatus]: "第 {current} 页，共 {total} 页",
 
 	// 404页面
 	[Key.notFound]: "404",
@@ -342,11 +344,7 @@ export const zh_CN: Translation = {
 	[Key.policeBeianAlt]: "公安网备",
 
 	// ===== 文章列表页 =====
-	[Key.viewCategoryArchivePrefix]: "查看分类归档：",
 	[Key.publishDatePrefix]: "发布日期：",
-	[Key.viewTagArchivePrefix]: "查看标签归档：",
-	[Key.moreTagsPrefix]: "另有",
-	[Key.moreTagsSuffix]: "个标签",
 	[Key.viewPostPrefix]: "查看文章：",
 	[Key.encryptedPost]: "加密文章",
 	[Key.totalPostsPrefix]: "共",

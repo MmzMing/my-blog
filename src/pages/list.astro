@@ -1,17 +1,29 @@
 ---
 import { render } from "astro:content";
+import path from "node:path";
 import PageTitle from "@/components/common/PageTitle.astro";
-import ArticleList from "@/components/pages/ArticleList.svelte";
+import ArticleList from "@/components/pages/article-list/ArticleList.astro";
 import { siteConfig } from "@/config";
+import { coverImageConfig } from "@/config/coverImageConfig";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import { getSortedPosts } from "@/utils/content-utils";
-import { getCategoryUrl, getPostUrlBySlug, getTagUrl } from "@/utils/url-utils";
+import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
+import { getFileDirFromPath, getPostUrlBySlug, url } from "@/utils/url-utils";
 
 const title = i18n(I18nKey.postList);
 const description = i18n(I18nKey.listDescription);
 const posts = await getSortedPosts();
+const articleListPostsPerPage = 6;
+const fallbackImageUrl = url(
+	coverImageConfig.randomCoverImage.fallback || "/assets/images/aut.webp",
+);
+const showCoverLoading = coverImageConfig.randomCoverImage.showLoading ?? true;
+const postImageFiles = import.meta.glob<ImageMetadata>(
+	"../content/posts/**/*.{png,jpg,jpeg,webp,avif,gif}",
+	{ import: "default" },
+);
 
 const dateFormatter = new Intl.DateTimeFormat(
 	siteConfig.lang.replace("_", "-"),
@@ -22,18 +34,48 @@ const dateFormatter = new Intl.DateTimeFormat(
 	},
 );
 
+function getCategoryHue(category: string): number {
+	let hash = 2166136261;
+	for (let index = 0; index < category.length; index++) {
+		hash ^= category.charCodeAt(index);
+		hash = Math.imul(hash, 16777619);
+	}
+	return (hash >>> 0) % 360;
+}
+
+async function resolvePostImage(
+	entry: (typeof posts)[number],
+): Promise<string> {
+	const processedImage = processCoverImageSync(entry.data.image, entry.id);
+	if (!processedImage) return fallbackImageUrl;
+
+	if (processedImage.startsWith("/")) return url(processedImage);
+	if (processedImage.startsWith("http") || processedImage.startsWith("data:")) {
+		return processedImage;
+	}
+
+	const basePath = getFileDirFromPath(entry.filePath || "");
+	const normalizedPath = path
+		.normalize(path.join("../", basePath, processedImage))
+		.replace(/\\/g, "/");
+	const localImage = postImageFiles[normalizedPath];
+	if (!localImage) return fallbackImageUrl;
+
+	const metadata = await localImage();
+	return metadata.src;
+}
+
 const articleListPosts = await Promise.all(
 	posts.map(async (entry) => {
-		const { remarkPluginFrontmatter } = await render(entry);
+		const [{ remarkPluginFrontmatter }, imageUrl] = await Promise.all([
+			render(entry),
+			resolvePostImage(entry),
+		]);
 		const rawCategory = entry.data.category?.trim();
 		const category = rawCategory || i18n(I18nKey.uncategorized);
 		const tags = (entry.data.tags || [])
 			.map((tag) => tag.trim())
-			.filter(Boolean)
-			.map((tag) => ({
-				name: tag,
-				url: getTagUrl(tag),
-			}));
+			.filter(Boolean);
 
 		return {
 			id: entry.id,
@@ -43,7 +85,7 @@ const articleListPosts = await Promise.all(
 			publishedTimestamp: entry.data.published.getTime(),
 			publishedText: dateFormatter.format(entry.data.published),
 			category,
-			categoryUrl: getCategoryUrl(entry.data.category || null),
+			categoryHue: getCategoryHue(category),
 			tags,
 			description:
 				entry.data.description ||
@@ -51,6 +93,9 @@ const articleListPosts = await Promise.all(
 				i18n(I18nKey.noDescriptionFallback),
 			pinned: !!entry.data.pinned,
 			password: !!entry.data.password,
+			wordCount: Number(remarkPluginFrontmatter.words) || 0,
+			imageUrl,
+			apiUrls: getApiUrlList(entry.data.image, entry.id),
 		};
 	}),
 );
@@ -67,16 +112,17 @@ const umamiPageviews = {
 ---
 
 <MainGridLayout title={title} description={description} hasOwnH1={true}>
-	<section class="article-list-page card-base z-10 px-4 py-6 md:px-9 relative w-full">
+	<section class="article-list-page z-10 px-4 py-6 md:px-9 relative w-full">
 		<header class="article-list-page__header">
 			<PageTitle title={title} variant="stacked" />
 		</header>
 
 		<ArticleList
-			client:load
 			posts={articleListPosts}
-			postsPerPage={siteConfig.pagination.postsPerPage}
+			postsPerPage={articleListPostsPerPage}
 			umamiPageviews={umamiPageviews}
+			fallbackImageUrl={fallbackImageUrl}
+			showCoverLoading={showCoverLoading}
 		/>
 	</section>
 </MainGridLayout>

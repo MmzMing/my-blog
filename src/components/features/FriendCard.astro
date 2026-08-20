@@ -30,11 +30,16 @@ try {
 	data-friend-image={hasImage ? friend.image : undefined}
 >
 	{hasImage && (
-		<span class="friend-card__cover" data-friend-cover>
+		<span class="friend-card__cover image-pixel-reveal-host" data-friend-cover>
 			{/* 加载动效：图片加载完成后由脚本隐藏 */}
 			<span class="friend-card__cover-loader" aria-hidden="true"></span>
+			<span
+				class="image-pixel-reveal"
+				data-image-pixel-reveal
+				aria-hidden="true"
+			></span>
 			<img
-				class="friend-card__cover-img"
+				class="friend-card__cover-img image-pixel-reveal-source"
 				src={friend.image}
 				alt=""
 				loading="lazy"

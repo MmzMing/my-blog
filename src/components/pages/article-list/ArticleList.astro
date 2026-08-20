@@ -1,0 +1,615 @@
+---
+import ArticleCard from "@/components/pages/article-list/ArticleCard.astro";
+import ArticlePagination from "@/components/pages/article-list/ArticlePagination.astro";
+import PinnedArticleList from "@/components/pages/article-list/PinnedArticleList.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type {
+	ArticleListPost,
+	UmamiPageviewConfig,
+} from "@/types/article-list";
+import { getArticleListPaginationItems } from "@/utils/article-list-pagination";
+
+interface Props {
+	posts: ArticleListPost[];
+	postsPerPage?: number;
+	umamiPageviews?: UmamiPageviewConfig;
+	fallbackImageUrl: string;
+	showCoverLoading?: boolean;
+}
+
+const {
+	posts,
+	postsPerPage = 6,
+	umamiPageviews,
+	fallbackImageUrl,
+	showCoverLoading = false,
+} = Astro.props;
+
+const pinnedPosts = posts
+	.filter((post) => post.pinned)
+	.sort((a, b) => b.publishedTimestamp - a.publishedTimestamp);
+const regularPosts = posts
+	.filter((post) => !post.pinned)
+	.sort((a, b) => b.publishedTimestamp - a.publishedTimestamp);
+const totalPages = Math.max(1, Math.ceil(regularPosts.length / postsPerPage));
+const initialPaginationItems = getArticleListPaginationItems(1, totalPages, 5);
+const totalPostLabel = i18n(
+	posts.length === 1 ? I18nKey.postCount : I18nKey.postsCount,
+);
+---
+
+<div
+	class="article-list"
+	data-article-list
+	data-article-list-posts-per-page={postsPerPage}
+	data-article-list-page-label={i18n(I18nKey.paginationPage)}
+	data-article-list-page-suffix={i18n(I18nKey.bangumiPage)}
+	data-article-list-pagination-status={i18n(I18nKey.paginationStatus)}
+	data-article-list-sort-prefix={i18n(I18nKey.sortByPrefix)}
+	data-article-list-sort-suffix={i18n(I18nKey.sortBySuffix)}
+	data-article-list-sort-latest={i18n(I18nKey.sortLatest)}
+	data-article-list-sort-earliest={i18n(I18nKey.sortOldest)}
+	data-article-list-sort-popular={i18n(I18nKey.sortPopular)}
+	data-article-list-umami-enabled={umamiPageviews?.enabled ? "true" : "false"}
+	data-article-list-umami-api-base={umamiPageviews?.apiBase || ""}
+	data-article-list-umami-share-id={umamiPageviews?.shareId || ""}
+>
+	<PinnedArticleList posts={pinnedPosts} />
+
+	<header class="article-list-toolbar">
+		<div class="article-list-toolbar__summary">
+			<h2 id="article-list-regular-title" class="article-list-section-title">
+				{i18n(I18nKey.articles)}
+			</h2>
+			<div
+				class="article-list-toolbar__total"
+				aria-label={`${i18n(I18nKey.totalPostsPrefix)} ${posts.length} ${totalPostLabel}`}
+			>
+				<span>{i18n(I18nKey.totalPostsPrefix)}</span>
+				<strong>{posts.length}</strong>
+				<span>{totalPostLabel}</span>
+			</div>
+		</div>
+		<div class="article-list-toolbar__sort" aria-label={i18n(I18nKey.sortPosts)}>
+			<button
+				type="button"
+				class="is-active"
+				data-article-list-sort="latest"
+				aria-pressed="true"
+			>
+				{i18n(I18nKey.sortLatest)}
+			</button>
+			<button
+				type="button"
+				data-article-list-sort="earliest"
+				aria-pressed="false"
+			>
+				{i18n(I18nKey.sortOldest)}
+			</button>
+			<button
+				type="button"
+				data-article-list-sort="popular"
+				aria-pressed="false"
+			>
+				{i18n(I18nKey.sortPopular)}
+			</button>
+		</div>
+	</header>
+
+	<p class="sr-only" data-article-list-status aria-live="polite">
+		{i18n(I18nKey.paginationStatus)
+			.replace("{current}", "1")
+			.replace("{total}", String(totalPages))}
+	</p>
+
+	<section class="article-list-regular" aria-labelledby="article-list-regular-title">
+		{regularPosts.length > 0 ? (
+			<div class="article-list-card-grid" data-article-list-card-grid>
+				{regularPosts.map((post, index) => (
+				<ArticleCard
+					post={post}
+					fallbackImageUrl={fallbackImageUrl}
+					showCoverLoading={showCoverLoading}
+					initialHidden={index >= postsPerPage}
+				/>
+			))}
+			</div>
+		) : (
+			<div class="article-list-empty">
+				<span class="article-list-empty__title">{i18n(I18nKey.noRegularPosts)}</span>
+				<span class="article-list-empty__meta">{i18n(I18nKey.noPostsHint)}</span>
+			</div>
+		)}
+	</section>
+
+	<ArticlePagination
+		currentPage={1}
+		totalPages={totalPages}
+		items={initialPaginationItems}
+	/>
+</div>
+
+<script>
+	import {
+		clampArticleListPage,
+		getArticleListPaginationItems,
+	} from "@/utils/article-list-pagination";
+	import {
+		createEmptyUmamiPageviewLookup,
+		getUmamiPageviewLookup,
+		normalizeUmamiPageviewPath,
+	} from "@/utils/umami-pageviews";
+	import { revealImageWithPixels } from "@/utils/image-pixel-reveal";
+
+	type SortMode = "latest" | "earliest" | "popular";
+
+	let cleanupActiveArticleList: (() => void) | undefined;
+
+	function elementFromTarget<T extends Element>(
+		target: EventTarget | null,
+		selector: string,
+	): T | null {
+		return target instanceof Element ? target.closest<T>(selector) : null;
+	}
+
+	function initArticleList() {
+		cleanupActiveArticleList?.();
+		cleanupActiveArticleList = undefined;
+
+		const articleListRoot = document.querySelector<HTMLElement>(
+			"[data-article-list]",
+		)!;
+		if (!articleListRoot) return;
+
+		const cardGrid = articleListRoot.querySelector<HTMLElement>(
+			"[data-article-list-card-grid]",
+		);
+		const pagination = articleListRoot.querySelector<HTMLElement>(
+			"[data-article-list-pagination]",
+		);
+		const pages = articleListRoot.querySelector<HTMLElement>(
+			"[data-article-list-pagination-pages]",
+		);
+		const pinnedList = articleListRoot.querySelector<HTMLElement>(
+			"[data-article-list-pinned]",
+		);
+		const status = articleListRoot.querySelector<HTMLElement>(
+			"[data-article-list-status]",
+		);
+		const cards = Array.from(
+			articleListRoot.querySelectorAll<HTMLElement>("[data-article-list-card]"),
+		);
+		const sortButtons = Array.from(
+			articleListRoot.querySelectorAll<HTMLButtonElement>(
+				"[data-article-list-sort]",
+			),
+		);
+		const previousButton = articleListRoot.querySelector<HTMLButtonElement>(
+			'[data-article-list-page-action="previous"]',
+		);
+		const nextButton = articleListRoot.querySelector<HTMLButtonElement>(
+			'[data-article-list-page-action="next"]',
+		);
+
+		const articleCardGrid = cardGrid;
+
+		const postsPerPage = Number(articleListRoot.dataset.articleListPostsPerPage) || 6;
+		const totalPages = Math.max(1, Math.ceil(cards.length / postsPerPage));
+		const mobileQuery = window.matchMedia("(max-width: 768px)");
+		const controller = new AbortController();
+		const { signal } = controller;
+		let disposed = false;
+		let currentPage = 1;
+		let sortMode: SortMode = "latest";
+		let pageviewLookup: Map<string, number> | null = null;
+
+		function getSortLabel(): string {
+			return articleListRoot.dataset[
+				`articleListSort${sortMode[0].toUpperCase()}${sortMode.slice(1)}`
+			] || "";
+		}
+
+		function getOrderedCards(): HTMLElement[] {
+			return [...cards].sort((first, second) => {
+				const firstDate = Number(first.dataset.articleListPublished) || 0;
+				const secondDate = Number(second.dataset.articleListPublished) || 0;
+
+				if (sortMode === "popular") {
+					const firstPath = normalizeUmamiPageviewPath(
+						first.dataset.articleListUrl || "",
+					);
+					const secondPath = normalizeUmamiPageviewPath(
+						second.dataset.articleListUrl || "",
+					);
+					const firstViews = pageviewLookup?.get(firstPath) ?? -1;
+					const secondViews = pageviewLookup?.get(secondPath) ?? -1;
+					return secondViews - firstViews || secondDate - firstDate;
+				}
+
+				return sortMode === "latest"
+					? secondDate - firstDate
+					: firstDate - secondDate;
+			});
+		}
+
+		function renderPageviews() {
+			articleListRoot
+				.querySelectorAll<HTMLElement>("[data-article-list-pageview]")
+				.forEach((node) => {
+					if (pageviewLookup === null) {
+						node.textContent = "-";
+						return;
+					}
+					const path = normalizeUmamiPageviewPath(
+						node.dataset.articleListPageviewPath || "",
+					);
+					node.textContent = (pageviewLookup.get(path) || 0).toLocaleString();
+				});
+		}
+
+		function updateStatus() {
+			if (!status) return;
+			const pageStatus = (articleListRoot.dataset.articleListPaginationStatus || "")
+				.replace("{current}", String(currentPage))
+				.replace("{total}", String(totalPages));
+			status.textContent = `${articleListRoot.dataset.articleListSortPrefix || ""}${getSortLabel()}${articleListRoot.dataset.articleListSortSuffix || ""} ${pageStatus}`.trim();
+		}
+
+		function createPageButton(page: number): HTMLButtonElement {
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "article-list-pagination__page";
+			button.dataset.articleListPage = String(page);
+			button.textContent = String(page);
+			button.setAttribute(
+				"aria-label",
+				`${articleListRoot.dataset.articleListPageLabel || ""} ${page} ${articleListRoot.dataset.articleListPageSuffix || ""}`.trim(),
+			);
+			if (page === currentPage) {
+				button.classList.add("is-active");
+				button.setAttribute("aria-current", "page");
+			}
+			return button;
+		}
+
+		function createEllipsis(): HTMLSpanElement {
+			const ellipsis = document.createElement("span");
+			ellipsis.className = "article-list-pagination__ellipsis";
+			ellipsis.textContent = "...";
+			ellipsis.setAttribute("aria-hidden", "true");
+			return ellipsis;
+		}
+
+		function renderPagination() {
+			if (!pagination || !pages) return;
+			const maxVisiblePages = mobileQuery.matches ? 3 : 5;
+			const items = getArticleListPaginationItems(
+				currentPage,
+				totalPages,
+				maxVisiblePages,
+			);
+			const fragment = document.createDocumentFragment();
+			for (const item of items) {
+				fragment.appendChild(
+					item.kind === "page"
+						? createPageButton(item.page)
+						: createEllipsis(),
+				);
+			}
+			pages.replaceChildren(fragment);
+			if (previousButton) previousButton.disabled = currentPage === 1;
+			if (nextButton) nextButton.disabled = currentPage === totalPages;
+		}
+
+		function renderList(animateCards = false) {
+			if (articleCardGrid) {
+				const orderedCards = getOrderedCards();
+				const startIndex = (currentPage - 1) * postsPerPage;
+				const endIndex = startIndex + postsPerPage;
+				const visibleCards: HTMLElement[] = [];
+				for (const [index, card] of orderedCards.entries()) {
+					articleCardGrid.appendChild(card);
+					card.hidden = index < startIndex || index >= endIndex;
+					card.classList.remove("is-page-entering");
+					if (!card.hidden) visibleCards.push(card);
+				}
+				if (animateCards) {
+					visibleCards.forEach((card, index) => {
+						card.style.setProperty(
+							"--article-list-card-delay",
+							`${index * 40}ms`,
+						);
+					});
+					void articleCardGrid.offsetWidth;
+					visibleCards.forEach((card) =>
+						card.classList.add("is-page-entering"),
+					);
+				}
+			}
+			sortButtons.forEach((button) => {
+				const isActive = button.dataset.articleListSort === sortMode;
+				button.classList.toggle("is-active", isActive);
+				button.setAttribute("aria-pressed", String(isActive));
+			});
+			renderPagination();
+			updateStatus();
+		}
+
+		function goToPage(page: number) {
+			const nextPage = clampArticleListPage(page, totalPages);
+			if (nextPage === currentPage) return;
+			currentPage = nextPage;
+			renderList(true);
+		}
+
+		function initializePinnedCarousel(): () => void {
+			if (!pinnedList) return () => {};
+
+			const pinnedItems = Array.from(
+				pinnedList.querySelectorAll<HTMLElement>(
+					"[data-article-list-pinned-item]",
+				),
+			);
+			const pinnedDots = Array.from(
+				pinnedList.querySelectorAll<HTMLButtonElement>(
+					"[data-article-list-pinned-dot]",
+				),
+			);
+			if (pinnedItems.length <= 1) return () => {};
+
+			const reducedMotionQuery = window.matchMedia(
+				"(prefers-reduced-motion: reduce)",
+			);
+			if (reducedMotionQuery.matches) {
+				pinnedItems.forEach((item) => {
+					item.hidden = false;
+				});
+				pinnedDots.forEach((dot) => {
+					dot.hidden = true;
+				});
+				return () => {};
+			}
+
+			let activeIndex = Math.max(
+				0,
+				pinnedItems.findIndex((item) => !item.hidden),
+			);
+			let rotationTimer: number | undefined;
+			let fadeTimer: number | undefined;
+
+			function updatePinnedDots() {
+				pinnedDots.forEach((dot, index) => {
+					dot.setAttribute("aria-current", String(index === activeIndex));
+				});
+			}
+
+			function stopRotation() {
+				if (rotationTimer === undefined) return;
+				window.clearInterval(rotationTimer);
+				rotationTimer = undefined;
+			}
+
+			function showPinnedItem(nextIndex: number) {
+				if (fadeTimer !== undefined) return;
+				const currentItem = pinnedItems[activeIndex];
+				const resolvedIndex = (nextIndex + pinnedItems.length) % pinnedItems.length;
+				if (resolvedIndex === activeIndex) return;
+				const nextItem = pinnedItems[resolvedIndex];
+
+				currentItem.classList.remove("is-carousel-entering");
+				currentItem.classList.add("is-carousel-leaving");
+				fadeTimer = window.setTimeout(() => {
+					currentItem.hidden = true;
+					currentItem.classList.remove("is-carousel-leaving");
+					nextItem.hidden = false;
+					nextItem.classList.remove("is-carousel-leaving");
+					void nextItem.offsetWidth;
+					nextItem.classList.add("is-carousel-entering");
+					activeIndex = resolvedIndex;
+					updatePinnedDots();
+					fadeTimer = undefined;
+				}, 180);
+			}
+
+			function showNextPinnedItem() {
+				showPinnedItem(activeIndex + 1);
+			}
+
+			function startRotation() {
+				if (rotationTimer !== undefined) return;
+				rotationTimer = window.setInterval(showNextPinnedItem, 6000);
+			}
+
+			pinnedList.addEventListener("pointerenter", stopRotation, { signal });
+			pinnedList.addEventListener("pointerleave", startRotation, { signal });
+			pinnedList.addEventListener("focusin", stopRotation, { signal });
+			pinnedList.addEventListener(
+				"focusout",
+				(event) => {
+					const relatedTarget = event.relatedTarget;
+					if (!(relatedTarget instanceof Node) || !pinnedList.contains(relatedTarget)) {
+						startRotation();
+					}
+				},
+				{ signal },
+			);
+			pinnedDots.forEach((dot, index) => {
+				dot.addEventListener("click", () => showPinnedItem(index), { signal });
+			});
+
+			startRotation();
+			return () => {
+				stopRotation();
+				if (fadeTimer !== undefined) window.clearTimeout(fadeTimer);
+			};
+		}
+
+		function handleClick(event: MouseEvent) {
+			const sortButton = elementFromTarget<HTMLButtonElement>(
+				event.target,
+				"[data-article-list-sort]",
+			);
+			if (sortButton) {
+				const nextSort = sortButton.dataset.articleListSort as SortMode | undefined;
+				if (!nextSort || nextSort === sortMode) return;
+				sortMode = nextSort;
+				currentPage = 1;
+				renderList(true);
+				return;
+			}
+
+			const pageButton = elementFromTarget<HTMLButtonElement>(
+				event.target,
+				"[data-article-list-page]",
+			);
+			if (pageButton) {
+				goToPage(Number(pageButton.dataset.articleListPage));
+				return;
+			}
+
+			const actionButton = elementFromTarget<HTMLButtonElement>(
+				event.target,
+				"[data-article-list-page-action]",
+			);
+			if (actionButton) {
+				goToPage(
+					currentPage +
+						(actionButton.dataset.articleListPageAction === "previous" ? -1 : 1),
+				);
+				return;
+			}
+
+		}
+
+		function parseCoverApiUrls(image: HTMLImageElement): string[] {
+			try {
+				const parsed = JSON.parse(image.dataset.apiUrls || "[]");
+				return Array.isArray(parsed)
+					? parsed.filter((item): item is string => typeof item === "string")
+					: [];
+			} catch {
+				return [];
+			}
+		}
+
+		function isFallbackSource(image: HTMLImageElement): boolean {
+			const fallback = image.dataset.fallbackSrc;
+			return !!fallback && image.src === new URL(fallback, window.location.href).href;
+		}
+
+		function tryNextCoverSource(image: HTMLImageElement): void {
+			// 1. 按顺序尝试下一个随机图 API（首个已由服务端设为 img.src）
+			const apiUrls = parseCoverApiUrls(image);
+			const nextIndex = Number(image.dataset.apiNext || "1");
+			if (nextIndex < apiUrls.length) {
+				image.dataset.apiNext = String(nextIndex + 1);
+				image.src = apiUrls[nextIndex];
+				return;
+			}
+			// 2. 全部失败：切换兜底默认图片
+			if (!isFallbackSource(image) && image.dataset.fallbackSrc) {
+				image.src = image.dataset.fallbackSrc;
+			}
+		}
+
+		function handleImageError(event: Event) {
+			const image = event.target;
+			if (!(image instanceof HTMLImageElement) || !image.matches("[data-article-list-cover]")) return;
+			tryNextCoverSource(image);
+		}
+
+		// 封面加载动效（与友链封面同款四球滚动）：加载中显示，成功/彻底失败后隐藏
+		function initCoverLoading(): void {
+			articleListRoot
+				.querySelectorAll<HTMLElement>("[data-article-list-cover-wrap]")
+				.forEach((wrap) => {
+					const img = wrap.querySelector<HTMLImageElement>(
+						"[data-article-list-cover]",
+					);
+					if (!img || img.dataset.coverBound === "true") return;
+					img.dataset.coverBound = "true";
+
+					const hideLoading = () => wrap.classList.remove("is-loading");
+					// 持续监听：换源重试过程中的每次成功都应触发像素揭示。
+					img.addEventListener("load", () => {
+						void revealImageWithPixels(wrap, img);
+					});
+					img.addEventListener("error", () => {
+						// 兜底图片也失败时停止动画，避免永久转圈
+						if (isFallbackSource(img)) hideLoading();
+					});
+
+					if (img.complete) {
+						// 初始化前已失败（缓存了错误响应）：手动触发换源重试
+						if (img.naturalWidth === 0 && !isFallbackSource(img)) {
+							tryNextCoverSource(img);
+							if (!img.complete || img.naturalWidth === 0) {
+								wrap.classList.add("is-loading");
+							}
+						}
+						return;
+					}
+
+					// 加载中：显示滚动球动画
+					wrap.classList.add("is-loading");
+				});
+		}
+
+		function handleMediaChange() {
+			renderPagination();
+		}
+
+		articleListRoot.addEventListener("click", handleClick, { signal });
+		articleListRoot.addEventListener("error", handleImageError, {
+			capture: true,
+			signal,
+		});
+		mobileQuery.addEventListener("change", handleMediaChange, { signal });
+
+		const cleanupPinnedCarousel = initializePinnedCarousel();
+		initCoverLoading();
+		renderList();
+		renderPageviews();
+
+		const canLoadPageviews =
+			articleListRoot.dataset.articleListUmamiEnabled === "true" &&
+			!!articleListRoot.dataset.articleListUmamiApiBase &&
+			!!articleListRoot.dataset.articleListUmamiShareId;
+		if (canLoadPageviews) {
+			void getUmamiPageviewLookup({
+				apiBase: articleListRoot.dataset.articleListUmamiApiBase || "",
+				shareId: articleListRoot.dataset.articleListUmamiShareId || "",
+			})
+				.then((lookup) => {
+					if (disposed) return;
+					pageviewLookup = lookup;
+					renderPageviews();
+					if (sortMode === "popular") renderList();
+				})
+				.catch(() => {
+					if (disposed) return;
+					pageviewLookup = createEmptyUmamiPageviewLookup();
+					renderPageviews();
+					if (sortMode === "popular") renderList();
+				});
+		}
+
+		cleanupActiveArticleList = () => {
+			disposed = true;
+			cleanupPinnedCarousel();
+			controller.abort();
+		};
+	}
+
+	const globalWindow = window as Window & {
+		__articleListPageLoadBound?: boolean;
+	};
+
+	if (!globalWindow.__articleListPageLoadBound) {
+		globalWindow.__articleListPageLoadBound = true;
+		document.addEventListener("astro:page-load", initArticleList);
+	}
+
+	initArticleList();
+</script>
