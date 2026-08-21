@@ -57,6 +57,8 @@ const managerConfigStr = JSON.stringify({
 			displayMonth: initialToday.getMonth(),
 			selectedDate: formatYmd(initialToday),
 		};
+		var counterAnimations = new WeakMap();
+		var counterAnimationDuration = 520;
 
 		function getWidgets() {
 			return Array.prototype.slice.call(
@@ -110,6 +112,90 @@ const managerConfigStr = JSON.stringify({
 			var element = parent.querySelector(selector);
 			if (element) element.textContent = value;
 			return element;
+		}
+
+		function prefersReducedMotion() {
+			return typeof window.matchMedia === "function" &&
+				window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		}
+
+		function setCounterText(element, value, suffix) {
+			element.textContent = String(value) + suffix;
+		}
+
+		function renderCounter(widget, selector, value, suffix, shouldAnimate) {
+			var element = widget.querySelector(selector);
+			if (!element) return;
+
+			var roundedValue = Math.round(Number(value));
+			var target = Number.isFinite(roundedValue) ? Math.max(0, roundedValue) : 0;
+			var currentAnimation = counterAnimations.get(element);
+			if (
+				currentAnimation &&
+				currentAnimation.target === target &&
+				currentAnimation.suffix === suffix &&
+				!shouldAnimate
+			) {
+				return;
+			}
+			if (currentAnimation) {
+				cancelAnimationFrame(currentAnimation.frameId);
+				counterAnimations.delete(element);
+			}
+
+			if (!shouldAnimate || prefersReducedMotion()) {
+				setCounterText(element, target, suffix);
+				return;
+			}
+
+			var animation = { target: target, suffix: suffix, frameId: 0 };
+			counterAnimations.set(element, animation);
+			setCounterText(element, 0, suffix);
+
+			var startedAt = 0;
+			function frame(now) {
+				if (counterAnimations.get(element) !== animation) return;
+				if (!startedAt) startedAt = now;
+				var progress = Math.min(1, (now - startedAt) / counterAnimationDuration);
+				var eased = 1 - (1 - progress) ** 3;
+				setCounterText(element, Math.round(target * eased), suffix);
+
+				if (progress < 1) {
+					animation.frameId = requestAnimationFrame(frame);
+				} else {
+					counterAnimations.delete(element);
+				}
+			}
+
+			animation.frameId = requestAnimationFrame(frame);
+		}
+
+		function replayProgressFill(progressFill, value, shouldAnimate) {
+			if (!progressFill) return;
+			var roundedValue = Math.round(Number(value));
+			var target = Number.isFinite(roundedValue)
+				? Math.min(100, Math.max(0, roundedValue))
+				: 0;
+			var width = target + "%";
+
+			if (!shouldAnimate || prefersReducedMotion()) {
+				progressFill.style.width = width;
+				return;
+			}
+
+			progressFill.style.transition = "none";
+			progressFill.style.width = "0%";
+			void progressFill.offsetWidth;
+			progressFill.style.removeProperty("transition");
+			progressFill.style.width = width;
+		}
+
+		function replayEntryAnimation(widget, shouldAnimate) {
+			if (!shouldAnimate) return;
+			widget.classList.remove("is-entering");
+			if (prefersReducedMotion()) return;
+			void widget.offsetWidth;
+			widget.classList.add("is-entering");
 		}
 
 		function createElement(tagName, className, text) {
@@ -249,7 +335,7 @@ const managerConfigStr = JSON.stringify({
 			}
 		}
 
-		function renderEventCard(widget, type, milestone, unavailable) {
+		function renderEventCard(widget, type, milestone, unavailable, shouldAnimate) {
 			var card = widget.querySelector('[data-calendar-event="' + type + '"]');
 			if (!card) return;
 			var title = card.querySelector("[data-calendar-event-title]");
@@ -289,10 +375,10 @@ const managerConfigStr = JSON.stringify({
 				progress.setAttribute("aria-valuenow", String(milestone.progress));
 				progress.setAttribute("aria-valuetext", milestone.progress + "%");
 			}
-			if (progressFill) progressFill.style.width = milestone.progress + "%";
+			replayProgressFill(progressFill, milestone.progress, shouldAnimate);
 		}
 
-		function renderOverview(widget, data) {
+		function renderOverview(widget, data, shouldAnimate) {
 			var today = new Date();
 			var todayKey = formatYmd(today);
 			setText(widget, "[data-calendar-today-label]", formatDate(todayKey, {
@@ -301,25 +387,39 @@ const managerConfigStr = JSON.stringify({
 				day: "numeric",
 			}));
 			setText(widget, "[data-calendar-weekday]", formatDate(todayKey, { weekday: "long" }));
-			setText(widget, "[data-calendar-day]", String(today.getDate()));
+			renderCounter(widget, "[data-calendar-day]", today.getDate(), "", shouldAnimate);
 			renderWeek(widget, today);
 
 			var endOfMonth = formatYmd(new Date(today.getFullYear(), today.getMonth() + 1, 0));
 			var endOfYear = formatYmd(new Date(today.getFullYear(), 11, 31));
-			setText(widget, "[data-calendar-month-remaining]", daysBetween(todayKey, endOfMonth) + config.labels.days);
-			setText(widget, "[data-calendar-year-remaining]", daysBetween(todayKey, endOfYear) + config.labels.days);
+			renderCounter(
+				widget,
+				"[data-calendar-month-remaining]",
+				daysBetween(todayKey, endOfMonth),
+				config.labels.days,
+				shouldAnimate,
+			);
+			renderCounter(
+				widget,
+				"[data-calendar-year-remaining]",
+				daysBetween(todayKey, endOfYear),
+				config.labels.days,
+				shouldAnimate,
+			);
 
 			renderEventCard(
 				widget,
 				"holiday",
 				milestoneFromOccurrences(getHolidayOccurrences(data.holidays), todayKey),
 				data.holidaysFailed,
+				shouldAnimate,
 			);
 			renderEventCard(
 				widget,
 				"birthday",
 				milestoneFromOccurrences(config.birthdayOccurrences, todayKey),
 				false,
+				shouldAnimate,
 			);
 		}
 
@@ -414,18 +514,19 @@ const managerConfigStr = JSON.stringify({
 			toggle.title = config.labels.switch;
 		}
 
-		function renderWidget(widget, data) {
+		function renderWidget(widget, data, shouldAnimate) {
 			var state = getState();
 			updateView(widget, state);
-			renderOverview(widget, data);
+			renderOverview(widget, data, shouldAnimate === true);
 			renderMonth(widget, data, state);
+			replayEntryAnimation(widget, shouldAnimate === true);
 			widget.dataset.calendarState = "ready";
 			widget.setAttribute("aria-busy", "false");
 		}
 
-		function renderWidgets(data) {
+		function renderWidgets(data, shouldAnimate) {
 			getWidgets().forEach(function (widget) {
-				renderWidget(widget, data);
+				renderWidget(widget, data, shouldAnimate);
 			});
 		}
 
@@ -507,7 +608,10 @@ const managerConfigStr = JSON.stringify({
 					widget.setAttribute("aria-busy", "true");
 				});
 			}
-			return ensureData().then(renderWidgets);
+			return ensureData().then(function (data) {
+				renderWidgets(data, true);
+				return data;
+			});
 		}
 
 		window.__fireflyCalendar = { open: activate };

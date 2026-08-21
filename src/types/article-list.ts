@@ -1,5 +1,3 @@
-export type ArticleSort = "latest" | "earliest" | "popular";
-
 export type ArticleListPost = {
 	id: string;
 	title: string;

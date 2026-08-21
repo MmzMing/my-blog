@@ -437,7 +437,7 @@ export const en: Translation = {
 	[Key.categoryExplorerViewPosts]: "Browse posts",
 	[Key.categoryExplorerAria]: "Category and tag browser",
 	[Key.listDescription]:
-		"Browse all posts in a card-based list, with sorting and filters for publication date, topics, categories, tags, and popularity to find what you want to read.",
+		"Browse all posts in a card-based list ordered by publication date, with paginated pages for direct access to older posts.",
 	[Key.noDescriptionFallback]: "No description. Click to read the full post.",
 	[Key.searchDescription]:
 		"Search published posts and related content across the site. Enter keywords to quickly find relevant topics, titles, and information from article text.",

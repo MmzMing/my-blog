@@ -8,49 +8,36 @@ import type {
 	ArticleListPost,
 	UmamiPageviewConfig,
 } from "@/types/article-list";
-import { getArticleListPaginationItems } from "@/utils/article-list-pagination";
 
 interface Props {
-	posts: ArticleListPost[];
-	postsPerPage?: number;
+	pinnedPosts: ArticleListPost[];
+	regularPosts: ArticleListPost[];
+	totalPosts: number;
+	currentPage: number;
+	totalPages: number;
 	umamiPageviews?: UmamiPageviewConfig;
 	fallbackImageUrl: string;
 	showCoverLoading?: boolean;
 }
 
 const {
-	posts,
-	postsPerPage = 6,
+	pinnedPosts,
+	regularPosts,
+	totalPosts,
+	currentPage,
+	totalPages,
 	umamiPageviews,
 	fallbackImageUrl,
 	showCoverLoading = false,
 } = Astro.props;
-
-const pinnedPosts = posts
-	.filter((post) => post.pinned)
-	.sort((a, b) => b.publishedTimestamp - a.publishedTimestamp);
-const regularPosts = posts
-	.filter((post) => !post.pinned)
-	.sort((a, b) => b.publishedTimestamp - a.publishedTimestamp);
-const totalPages = Math.max(1, Math.ceil(regularPosts.length / postsPerPage));
-const initialPaginationItems = getArticleListPaginationItems(1, totalPages, 5);
 const totalPostLabel = i18n(
-	posts.length === 1 ? I18nKey.postCount : I18nKey.postsCount,
+	totalPosts === 1 ? I18nKey.postCount : I18nKey.postsCount,
 );
 ---
 
 <div
 	class="article-list"
 	data-article-list
-	data-article-list-posts-per-page={postsPerPage}
-	data-article-list-page-label={i18n(I18nKey.paginationPage)}
-	data-article-list-page-suffix={i18n(I18nKey.bangumiPage)}
-	data-article-list-pagination-status={i18n(I18nKey.paginationStatus)}
-	data-article-list-sort-prefix={i18n(I18nKey.sortByPrefix)}
-	data-article-list-sort-suffix={i18n(I18nKey.sortBySuffix)}
-	data-article-list-sort-latest={i18n(I18nKey.sortLatest)}
-	data-article-list-sort-earliest={i18n(I18nKey.sortOldest)}
-	data-article-list-sort-popular={i18n(I18nKey.sortPopular)}
 	data-article-list-umami-enabled={umamiPageviews?.enabled ? "true" : "false"}
 	data-article-list-umami-api-base={umamiPageviews?.apiBase || ""}
 	data-article-list-umami-share-id={umamiPageviews?.shareId || ""}
@@ -64,56 +51,25 @@ const totalPostLabel = i18n(
 			</h2>
 			<div
 				class="article-list-toolbar__total"
-				aria-label={`${i18n(I18nKey.totalPostsPrefix)} ${posts.length} ${totalPostLabel}`}
+				aria-label={`${i18n(I18nKey.totalPostsPrefix)} ${totalPosts} ${totalPostLabel}`}
 			>
 				<span>{i18n(I18nKey.totalPostsPrefix)}</span>
-				<strong>{posts.length}</strong>
+				<strong>{totalPosts}</strong>
 				<span>{totalPostLabel}</span>
 			</div>
 		</div>
-		<div class="article-list-toolbar__sort" aria-label={i18n(I18nKey.sortPosts)}>
-			<button
-				type="button"
-				class="is-active"
-				data-article-list-sort="latest"
-				aria-pressed="true"
-			>
-				{i18n(I18nKey.sortLatest)}
-			</button>
-			<button
-				type="button"
-				data-article-list-sort="earliest"
-				aria-pressed="false"
-			>
-				{i18n(I18nKey.sortOldest)}
-			</button>
-			<button
-				type="button"
-				data-article-list-sort="popular"
-				aria-pressed="false"
-			>
-				{i18n(I18nKey.sortPopular)}
-			</button>
-		</div>
 	</header>
-
-	<p class="sr-only" data-article-list-status aria-live="polite">
-		{i18n(I18nKey.paginationStatus)
-			.replace("{current}", "1")
-			.replace("{total}", String(totalPages))}
-	</p>
 
 	<section class="article-list-regular" aria-labelledby="article-list-regular-title">
 		{regularPosts.length > 0 ? (
-			<div class="article-list-card-grid" data-article-list-card-grid>
-				{regularPosts.map((post, index) => (
-				<ArticleCard
-					post={post}
-					fallbackImageUrl={fallbackImageUrl}
-					showCoverLoading={showCoverLoading}
-					initialHidden={index >= postsPerPage}
-				/>
-			))}
+			<div class="article-list-card-grid">
+				{regularPosts.map((post) => (
+					<ArticleCard
+						post={post}
+						fallbackImageUrl={fallbackImageUrl}
+						showCoverLoading={showCoverLoading}
+					/>
+				))}
 			</div>
 		) : (
 			<div class="article-list-empty">
@@ -123,39 +79,22 @@ const totalPostLabel = i18n(
 		)}
 	</section>
 
-	<ArticlePagination
-		currentPage={1}
-		totalPages={totalPages}
-		items={initialPaginationItems}
-	/>
+	<ArticlePagination currentPage={currentPage} totalPages={totalPages} />
 </div>
 
 <script>
-	import {
-		clampArticleListPage,
-		getArticleListPaginationItems,
-	} from "@/utils/article-list-pagination";
-	import {
-		createEmptyUmamiPageviewLookup,
-		getUmamiPageviewLookup,
-		normalizeUmamiPageviewPath,
-	} from "@/utils/umami-pageviews";
 	import {
 		createArticleCoverLifecycle,
 		parseArticleCoverApiUrls,
 		type ArticleCoverLifecycle,
 	} from "@/utils/article-cover-lifecycle";
-
-	type SortMode = "latest" | "earliest" | "popular";
+	import {
+		createEmptyUmamiPageviewLookup,
+		getUmamiPageviewLookup,
+		normalizeUmamiPageviewPath,
+	} from "@/utils/umami-pageviews";
 
 	let cleanupActiveArticleList: (() => void) | undefined;
-
-	function elementFromTarget<T extends Element>(
-		target: EventTarget | null,
-		selector: string,
-	): T | null {
-		return target instanceof Element ? target.closest<T>(selector) : null;
-	}
 
 	function initArticleList() {
 		cleanupActiveArticleList?.();
@@ -163,83 +102,24 @@ const totalPostLabel = i18n(
 
 		const articleListRoot = document.querySelector<HTMLElement>(
 			"[data-article-list]",
-		)!;
+		);
 		if (!articleListRoot) return;
+		const articleList = articleListRoot;
 
-		const cardGrid = articleListRoot.querySelector<HTMLElement>(
-			"[data-article-list-card-grid]",
+		const cards = Array.from(
+			articleList.querySelectorAll<HTMLElement>("[data-article-list-card]"),
 		);
-		const pagination = articleListRoot.querySelector<HTMLElement>(
-			"[data-article-list-pagination]",
-		);
-		const pages = articleListRoot.querySelector<HTMLElement>(
-			"[data-article-list-pagination-pages]",
-		);
-		const pinnedList = articleListRoot.querySelector<HTMLElement>(
+		const pinnedList = articleList.querySelector<HTMLElement>(
 			"[data-article-list-pinned]",
 		);
-		const status = articleListRoot.querySelector<HTMLElement>(
-			"[data-article-list-status]",
-		);
-		const cards = Array.from(
-			articleListRoot.querySelectorAll<HTMLElement>("[data-article-list-card]"),
-		);
-		const sortButtons = Array.from(
-			articleListRoot.querySelectorAll<HTMLButtonElement>(
-				"[data-article-list-sort]",
-			),
-		);
-		const previousButton = articleListRoot.querySelector<HTMLButtonElement>(
-			'[data-article-list-page-action="previous"]',
-		);
-		const nextButton = articleListRoot.querySelector<HTMLButtonElement>(
-			'[data-article-list-page-action="next"]',
-		);
-
-		const articleCardGrid = cardGrid;
-
-		const postsPerPage = Number(articleListRoot.dataset.articleListPostsPerPage) || 6;
-		const totalPages = Math.max(1, Math.ceil(cards.length / postsPerPage));
-		const mobileQuery = window.matchMedia("(max-width: 768px)");
 		const controller = new AbortController();
 		const { signal } = controller;
 		let disposed = false;
-		let currentPage = 1;
-		let sortMode: SortMode = "latest";
 		let pageviewLookup: Map<string, number> | null = null;
 		const coverLifecycles = new Map<HTMLElement, ArticleCoverLifecycle>();
 
-		function getSortLabel(): string {
-			return articleListRoot.dataset[
-				`articleListSort${sortMode[0].toUpperCase()}${sortMode.slice(1)}`
-			] || "";
-		}
-
-		function getOrderedCards(): HTMLElement[] {
-			return [...cards].sort((first, second) => {
-				const firstDate = Number(first.dataset.articleListPublished) || 0;
-				const secondDate = Number(second.dataset.articleListPublished) || 0;
-
-				if (sortMode === "popular") {
-					const firstPath = normalizeUmamiPageviewPath(
-						first.dataset.articleListUrl || "",
-					);
-					const secondPath = normalizeUmamiPageviewPath(
-						second.dataset.articleListUrl || "",
-					);
-					const firstViews = pageviewLookup?.get(firstPath) ?? -1;
-					const secondViews = pageviewLookup?.get(secondPath) ?? -1;
-					return secondViews - firstViews || secondDate - firstDate;
-				}
-
-				return sortMode === "latest"
-					? secondDate - firstDate
-					: firstDate - secondDate;
-			});
-		}
-
 		function renderPageviews() {
-			articleListRoot
+			articleList
 				.querySelectorAll<HTMLElement>("[data-article-list-pageview]")
 				.forEach((node) => {
 					if (pageviewLookup === null) {
@@ -253,101 +133,28 @@ const totalPostLabel = i18n(
 				});
 		}
 
-		function updateStatus() {
-			if (!status) return;
-			const pageStatus = (articleListRoot.dataset.articleListPaginationStatus || "")
-				.replace("{current}", String(currentPage))
-				.replace("{total}", String(totalPages));
-			status.textContent = `${articleListRoot.dataset.articleListSortPrefix || ""}${getSortLabel()}${articleListRoot.dataset.articleListSortSuffix || ""} ${pageStatus}`.trim();
-		}
-
-		function createPageButton(page: number): HTMLButtonElement {
-			const button = document.createElement("button");
-			button.type = "button";
-			button.className = "article-list-pagination__page";
-			button.dataset.articleListPage = String(page);
-			button.textContent = String(page);
-			button.setAttribute(
-				"aria-label",
-				`${articleListRoot.dataset.articleListPageLabel || ""} ${page} ${articleListRoot.dataset.articleListPageSuffix || ""}`.trim(),
-			);
-			if (page === currentPage) {
-				button.classList.add("is-active");
-				button.setAttribute("aria-current", "page");
-			}
-			return button;
-		}
-
-		function createEllipsis(): HTMLSpanElement {
-			const ellipsis = document.createElement("span");
-			ellipsis.className = "article-list-pagination__ellipsis";
-			ellipsis.textContent = "...";
-			ellipsis.setAttribute("aria-hidden", "true");
-			return ellipsis;
-		}
-
-		function renderPagination() {
-			if (!pagination || !pages) return;
-			const maxVisiblePages = mobileQuery.matches ? 3 : 5;
-			const items = getArticleListPaginationItems(
-				currentPage,
-				totalPages,
-				maxVisiblePages,
-			);
-			const fragment = document.createDocumentFragment();
-			for (const item of items) {
-				fragment.appendChild(
-					item.kind === "page"
-						? createPageButton(item.page)
-						: createEllipsis(),
+		function initCoverLoading() {
+			cards.forEach((card) => {
+				const wrap = card.querySelector<HTMLElement>(
+					"[data-article-list-cover-wrap]",
 				);
-			}
-			pages.replaceChildren(fragment);
-			if (previousButton) previousButton.disabled = currentPage === 1;
-			if (nextButton) nextButton.disabled = currentPage === totalPages;
-		}
+				if (!wrap) return;
+				const image = card.querySelector<HTMLImageElement>(
+					"[data-article-list-cover]",
+				);
+				if (!image) return;
 
-		function renderList(animateCards = false) {
-			if (articleCardGrid) {
-				const orderedCards = getOrderedCards();
-				const startIndex = (currentPage - 1) * postsPerPage;
-				const endIndex = startIndex + postsPerPage;
-				const visibleCards: HTMLElement[] = [];
-				for (const [index, card] of orderedCards.entries()) {
-					articleCardGrid.appendChild(card);
-					const isVisible = index >= startIndex && index < endIndex;
-					card.hidden = !isVisible;
-					card.classList.remove("is-page-entering");
-					coverLifecycles.get(card)?.setVisible(isVisible);
-					if (isVisible) visibleCards.push(card);
-				}
-				if (animateCards) {
-					visibleCards.forEach((card, index) => {
-						card.style.setProperty(
-							"--article-list-card-delay",
-							`${index * 40}ms`,
-						);
-					});
-					void articleCardGrid.offsetWidth;
-					visibleCards.forEach((card) =>
-						card.classList.add("is-page-entering"),
-					);
-				}
-			}
-			sortButtons.forEach((button) => {
-				const isActive = button.dataset.articleListSort === sortMode;
-				button.classList.toggle("is-active", isActive);
-				button.setAttribute("aria-pressed", String(isActive));
+				const lifecycle = createArticleCoverLifecycle({
+					host: wrap,
+					image,
+					apiUrls: parseArticleCoverApiUrls(image.dataset.apiUrls),
+					fallbackSrc: image.dataset.fallbackSrc,
+					baseUrl: window.location.href,
+					signal,
+				});
+				coverLifecycles.set(card, lifecycle);
+				lifecycle.setVisible(true);
 			});
-			renderPagination();
-			updateStatus();
-		}
-
-		function goToPage(page: number) {
-			const nextPage = clampArticleListPage(page, totalPages);
-			if (nextPage === currentPage) return;
-			currentPage = nextPage;
-			renderList(true);
 		}
 
 		function initializePinnedCarousel(): () => void {
@@ -452,101 +259,28 @@ const totalPostLabel = i18n(
 			};
 		}
 
-		function handleClick(event: MouseEvent) {
-			const sortButton = elementFromTarget<HTMLButtonElement>(
-				event.target,
-				"[data-article-list-sort]",
-			);
-			if (sortButton) {
-				const nextSort = sortButton.dataset.articleListSort as SortMode | undefined;
-				if (!nextSort || nextSort === sortMode) return;
-				sortMode = nextSort;
-				currentPage = 1;
-				renderList(true);
-				return;
-			}
-
-			const pageButton = elementFromTarget<HTMLButtonElement>(
-				event.target,
-				"[data-article-list-page]",
-			);
-			if (pageButton) {
-				goToPage(Number(pageButton.dataset.articleListPage));
-				return;
-			}
-
-			const actionButton = elementFromTarget<HTMLButtonElement>(
-				event.target,
-				"[data-article-list-page-action]",
-			);
-			if (actionButton) {
-				goToPage(
-					currentPage +
-						(actionButton.dataset.articleListPageAction === "previous" ? -1 : 1),
-				);
-				return;
-			}
-
-		}
-
-		// 封面控制器统一处理缓存、换源、超时、揭示和页面销毁。
-		function initCoverLoading(): void {
-			cards.forEach((card) => {
-				const wrap = card.querySelector<HTMLElement>(
-					"[data-article-list-cover-wrap]",
-				);
-				if (!wrap) return;
-				const img = wrap.querySelector<HTMLImageElement>(
-					"[data-article-list-cover]",
-				);
-				if (!img) return;
-
-				coverLifecycles.set(
-					card,
-					createArticleCoverLifecycle({
-						host: wrap,
-						image: img,
-						apiUrls: parseArticleCoverApiUrls(img.dataset.apiUrls),
-						fallbackSrc: img.dataset.fallbackSrc,
-						baseUrl: window.location.href,
-						signal,
-					}),
-				);
-			});
-		}
-
-		function handleMediaChange() {
-			renderPagination();
-		}
-
-		articleListRoot.addEventListener("click", handleClick, { signal });
-		mobileQuery.addEventListener("change", handleMediaChange, { signal });
-
 		const cleanupPinnedCarousel = initializePinnedCarousel();
 		initCoverLoading();
-		renderList();
 		renderPageviews();
 
 		const canLoadPageviews =
-			articleListRoot.dataset.articleListUmamiEnabled === "true" &&
-			!!articleListRoot.dataset.articleListUmamiApiBase &&
-			!!articleListRoot.dataset.articleListUmamiShareId;
+			articleList.dataset.articleListUmamiEnabled === "true" &&
+			!!articleList.dataset.articleListUmamiApiBase &&
+			!!articleList.dataset.articleListUmamiShareId;
 		if (canLoadPageviews) {
 			void getUmamiPageviewLookup({
-				apiBase: articleListRoot.dataset.articleListUmamiApiBase || "",
-				shareId: articleListRoot.dataset.articleListUmamiShareId || "",
+				apiBase: articleList.dataset.articleListUmamiApiBase || "",
+				shareId: articleList.dataset.articleListUmamiShareId || "",
 			})
 				.then((lookup) => {
 					if (disposed) return;
 					pageviewLookup = lookup;
 					renderPageviews();
-					if (sortMode === "popular") renderList();
 				})
 				.catch(() => {
 					if (disposed) return;
 					pageviewLookup = createEmptyUmamiPageviewLookup();
 					renderPageviews();
-					if (sortMode === "popular") renderList();
 				});
 		}
 

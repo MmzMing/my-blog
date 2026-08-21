@@ -430,7 +430,7 @@ export const zh_TW: Translation = {
 	[Key.categoryExplorerViewPosts]: "查看分類文章",
 	[Key.categoryExplorerAria]: "分類與標籤瀏覽",
 	[Key.listDescription]:
-		"以卡片列表瀏覽本站全部文章，可按發布時間、主題、分類、標籤和訪問熱度篩選排序，快速找到想讀的內容。",
+		"以卡片列表依發布時間瀏覽本站文章，支援分頁存取，快速找到想讀的內容。",
 	[Key.noDescriptionFallback]: "暫無文章簡介，點擊查看完整內容。",
 	[Key.searchDescription]:
 		"使用站內搜尋查找已發布文章和相關內容，輸入關鍵字即可快速定位主題、標題與正文中的資訊。",

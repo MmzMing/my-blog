@@ -436,7 +436,7 @@ export const ja: Translation = {
 	[Key.categoryExplorerViewPosts]: "記事を見る",
 	[Key.categoryExplorerAria]: "カテゴリとタグのブラウザ",
 	[Key.listDescription]:
-		"カード形式で全記事を閲覧できます。公開日、テーマ、カテゴリ、タグ、閲覧数による並べ替えや絞り込みで読みたい内容を探せます。",
+		"公開日の新しい順にカード形式で記事を閲覧できます。ページ送りで過去の記事にも直接アクセスできます。",
 	[Key.noDescriptionFallback]: "概要がありません。クリックして全文を読む。",
 	[Key.searchDescription]:
 		"サイト内検索で公開済みの記事と関連内容を探せます。キーワードからテーマ、タイトル、本文中の情報をすばやく見つけられます。",

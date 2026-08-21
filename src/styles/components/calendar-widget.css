@@ -21,6 +21,43 @@
 	color: var(--deep-text);
 }
 
+@keyframes calendar-widget-entry {
+	from {
+		opacity: 0;
+		transform: translateY(0.35rem);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.calendar-widget.is-entering .calendar-widget__today,
+.calendar-widget.is-entering .calendar-widget__month-nav {
+	animation: calendar-widget-entry 220ms ease-out both;
+}
+
+.calendar-widget.is-entering .calendar-widget__week,
+.calendar-widget.is-entering .calendar-widget__month-weekdays {
+	animation: calendar-widget-entry 220ms ease-out 45ms both;
+}
+
+.calendar-widget.is-entering .calendar-widget__month-grid,
+.calendar-widget.is-entering .calendar-widget__posts,
+.calendar-widget.is-entering .calendar-widget__event:nth-child(1) {
+	animation: calendar-widget-entry 220ms ease-out 90ms both;
+}
+
+.calendar-widget.is-entering .calendar-widget__event:nth-child(2),
+.calendar-widget.is-entering .calendar-widget__countdown:nth-child(1) {
+	animation: calendar-widget-entry 220ms ease-out 135ms both;
+}
+
+.calendar-widget.is-entering .calendar-widget__countdown:nth-child(2) {
+	animation: calendar-widget-entry 220ms ease-out 180ms both;
+}
+
 .calendar-widget__header {
 	display: flex;
 	min-width: 0;
@@ -134,7 +171,8 @@
 }
 
 .calendar-widget__day {
-	min-width: 3.8rem;
+	width: 2ch;
+	min-width: 2ch;
 	color: var(--primary);
 	font-size: 3.8rem;
 	font-weight: 800;
@@ -515,5 +553,16 @@
 	.calendar-widget *,
 	.calendar-widget {
 		transition-duration: 0.01ms !important;
+	}
+
+	.calendar-widget.is-entering .calendar-widget__today,
+	.calendar-widget.is-entering .calendar-widget__month-nav,
+	.calendar-widget.is-entering .calendar-widget__week,
+	.calendar-widget.is-entering .calendar-widget__month-weekdays,
+	.calendar-widget.is-entering .calendar-widget__month-grid,
+	.calendar-widget.is-entering .calendar-widget__posts,
+	.calendar-widget.is-entering .calendar-widget__event,
+	.calendar-widget.is-entering .calendar-widget__countdown {
+		animation: none !important;
 	}
 }

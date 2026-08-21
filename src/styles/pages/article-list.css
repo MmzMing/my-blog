@@ -75,62 +75,6 @@
 	font-variant-numeric: tabular-nums;
 }
 
-.article-list-toolbar__sort {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.25rem;
-}
-
-.article-list-toolbar__sort button {
-	position: relative;
-	display: inline-flex;
-	min-width: 3.25rem;
-	min-height: var(--control-size);
-	align-items: center;
-	justify-content: center;
-	padding: 0 var(--space-2);
-	border: 0;
-	border-radius: var(--radius-small);
-	background: transparent;
-	color: var(--content-meta);
-	font-size: 0.875rem;
-	font-weight: 700;
-	cursor: pointer;
-	transition: color 180ms ease, background-color 180ms ease;
-}
-
-.article-list-toolbar__sort button::after {
-	position: absolute;
-	right: var(--space-2);
-	bottom: 0.35rem;
-	left: var(--space-2);
-	height: 1px;
-	background: currentColor;
-	content: "";
-	opacity: 0;
-	transform: scaleX(0.5);
-	transition: opacity 180ms ease, transform 180ms ease;
-}
-
-.article-list-toolbar__sort button:hover,
-.article-list-toolbar__sort button.is-active {
-	color: var(--deep-text);
-}
-
-.article-list-toolbar__sort button:hover {
-	background: var(--btn-plain-bg-hover);
-}
-
-.article-list-toolbar__sort button.is-active::after {
-	opacity: 1;
-	transform: scaleX(1);
-}
-
-.article-list-toolbar__sort button:focus-visible {
-	outline: 2px solid var(--primary);
-	outline-offset: 2px;
-}
-
 /* ===========================================================================
    Pinned text list
    ========================================================================== */
@@ -456,30 +400,6 @@
 	border: 0;
 }
 
-.article-list-card[hidden] {
-	display: none;
-}
-
-.article-list-card.is-page-entering {
-	animation: article-list-page-enter 240ms ease both;
-}
-
-.article-list-card.is-page-entering {
-	animation-delay: var(--article-list-card-delay, 0ms);
-}
-
-@keyframes article-list-page-enter {
-	from {
-		opacity: 0;
-		transform: translateY(0.5rem);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
 .article-list-card__cover-wrap {
 	position: relative;
 	display: block;
@@ -694,8 +614,8 @@
 	font-weight: 750;
 }
 
-.article-list-pagination__btn:hover:not(:disabled),
-.article-list-pagination__page:hover:not(.is-active) {
+.article-list-pagination__btn:not(.is-disabled):hover,
+.article-list-pagination__page:not(.is-active):hover {
 	border-color: var(--deep-text);
 	background: var(--btn-plain-bg-hover);
 }
@@ -704,6 +624,7 @@
 	border-color: var(--deep-text);
 	background: var(--deep-text);
 	color: var(--page-bg);
+	cursor: default;
 }
 
 .article-list-pagination__btn:focus-visible,
@@ -712,7 +633,7 @@
 	outline-offset: 2px;
 }
 
-.article-list-pagination__btn:disabled {
+.article-list-pagination__btn.is-disabled {
 	opacity: 0.3;
 	cursor: not-allowed;
 }

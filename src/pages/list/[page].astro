@@ -1,0 +1,21 @@
+---
+import type { GetStaticPaths } from "astro";
+import ArticleListPage from "@/components/pages/article-list/ArticleListPage.astro";
+import { siteConfig } from "@/config";
+import { getSortedPosts } from "@/utils/content-utils";
+
+export const getStaticPaths = (async () => {
+	const posts = await getSortedPosts();
+	const regularPostCount = posts.filter((entry) => !entry.data.pinned).length;
+	const postsPerPage = Math.max(1, Math.floor(siteConfig.pagination.postsPerPage));
+	const totalPages = Math.max(1, Math.ceil(regularPostCount / postsPerPage));
+
+	return Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => ({
+		params: { page: String(index + 2) },
+	}));
+}) satisfies GetStaticPaths;
+
+const currentPage = Number.parseInt(Astro.params.page || "", 10);
+---
+
+<ArticleListPage currentPage={currentPage} />

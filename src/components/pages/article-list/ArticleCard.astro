@@ -8,15 +8,9 @@ interface Props {
 	post: ArticleListPost;
 	fallbackImageUrl: string;
 	showCoverLoading?: boolean;
-	initialHidden?: boolean;
 }
 
-const {
-	post,
-	fallbackImageUrl,
-	showCoverLoading = false,
-	initialHidden = false,
-} = Astro.props;
+const { post, fallbackImageUrl, showCoverLoading = false } = Astro.props;
 const wordLabel = i18n(
 	post.wordCount === 1 ? I18nKey.wordCount : I18nKey.wordsCount,
 );
@@ -25,31 +19,21 @@ const wordLabel = i18n(
 <article
 	class="article-list-card"
 	data-article-list-card
-	data-article-list-published={post.publishedTimestamp}
-	data-article-list-url={post.url}
 	style={`--article-category-hue: ${post.categoryHue}`}
-	hidden={initialHidden}
 >
 	<div
 		class="article-list-card__cover-wrap image-pixel-reveal-host"
 		data-article-list-cover-wrap
 	>
 		{showCoverLoading && (
-			<span
-				class="article-list-card__cover-loader"
-				aria-hidden="true"
-			>
+			<span class="article-list-card__cover-loader" aria-hidden="true">
 				<span class="article-list-card__cover-loader-dot"></span>
 				<span class="article-list-card__cover-loader-dot"></span>
 				<span class="article-list-card__cover-loader-dot"></span>
 				<span class="article-list-card__cover-loader-dot"></span>
 			</span>
 		)}
-		<span
-			class="image-pixel-reveal"
-			data-image-pixel-reveal
-			aria-hidden="true"
-		></span>
+		<span class="image-pixel-reveal" data-image-pixel-reveal aria-hidden="true"></span>
 		<img
 			class="article-list-card__cover image-pixel-reveal-source"
 			src={post.imageUrl}
