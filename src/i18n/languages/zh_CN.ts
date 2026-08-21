@@ -203,18 +203,10 @@ export const zh_CN: Translation = {
 	// 相册页面
 	[Key.gallery]: "相册",
 	[Key.galleryDescription]:
-		"浏览本站收录的本地与网络相册，按主题探索图片和作品，记录值得保存的生活片段与创作内容。",
+		"浏览本站收录的相册，按主题探索图片和作品，记录值得保存的生活片段与创作内容。",
 	[Key.galleryPhotos]: "张照片",
 	[Key.galleryNoAlbums]: "暂无相册",
 	[Key.galleryBackToAlbums]: "返回相册列表",
-	[Key.galleryLocalAlbum]: "本地相册",
-	[Key.galleryNetworkAlbum]: "网络相册",
-	[Key.galleryCategory]: "分类",
-	[Key.galleryQuantity]: "数量",
-	[Key.galleryRandomFetch]: "随机获取",
-	[Key.galleryFetching]: "获取中...",
-	[Key.galleryFetchError]: "获取失败，请重试",
-	[Key.galleryNoImages]: "暂无图片，点击上方按钮随机获取",
 
 	// 收藏API页面
 	[Key.collections]: "工具导航",

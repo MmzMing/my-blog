@@ -586,36 +586,39 @@ export function mountHomeHero() {
 		}
 	};
 
-	// 左上角标题与右下角 contact：Scatter random 入场；contact 下滑时字符风散退场
+	// 右下角 contact：Scatter random 入场；下滑时字符风散退场
 	const prepareFlyText = () => {
 		const titleHost = hero.querySelector<HTMLElement>(
 			".home-hero__title > span:first-child",
 		);
-		const contactHosts = contact
-			? [
-					hero.querySelector<HTMLElement>(".home-hero__contact-platform"),
-					hero.querySelector<HTMLElement>(".home-hero__contact-handle"),
-				]
-			: [];
-		const hosts = [titleHost, ...contactHosts].filter(
-			(host): host is HTMLElement => host !== null,
-		);
+		const contactHosts = (
+			contact
+				? [
+						hero.querySelector<HTMLElement>(".home-hero__contact-platform"),
+						hero.querySelector<HTMLElement>(".home-hero__contact-handle"),
+					]
+				: []
+		).filter((host): host is HTMLElement => host !== null);
 		const occupation = hero.querySelector<HTMLElement>(
 			".home-hero__occupation",
 		);
-		if (!hosts.length) return;
+		const identityText = [titleHost, occupation].filter(
+			(element): element is HTMLElement => element !== null,
+		);
 
-		// 字体就绪前先隐藏，避免拆字前闪现原始整段文字
-		hosts.forEach((host) => {
+		// 字体就绪前先隐藏 contact，避免拆字前闪现原始整段文字。
+		contactHosts.forEach((host) => {
 			gsap.set(host, { autoAlpha: 0 });
 		});
-		if (occupation) gsap.set(occupation, { autoAlpha: 0, y: 14 });
+		identityText.forEach((element) => {
+			gsap.set(element, { autoAlpha: 0, y: 14 });
+		});
 
 		const mountContactScatter = () => {
-			if (!timeline || flyHandles.length < 2) return;
+			if (!timeline || !flyHandles.length) return;
 			if (contactScatterTimeline) timeline.remove(contactScatterTimeline);
 			const scatter = gsap.timeline();
-			for (const handle of flyHandles.slice(1)) {
+			for (const handle of flyHandles) {
 				const tl = handle.buildScatter(0.12);
 				if (tl) scatter.add(tl, 0);
 			}
@@ -628,19 +631,18 @@ export function mountHomeHero() {
 			flyLayoutTimer = window.setTimeout(() => {
 				if (hero.dataset.heroMounted !== "true") return;
 				for (const handle of flyHandles) handle.rebuild();
-				flyHandles[0]?.setNatural();
 				mountContactScatter();
 			}, 200);
 		};
 
 		document.fonts.ready.then(() => {
 			if (hero.dataset.heroMounted !== "true") return;
-			flyHandles = hosts.map((host) => createFlyText(host));
+			flyHandles = contactHosts.map((host) => createFlyText(host));
 			for (const handle of flyHandles) {
 				handle.prepare();
 				handle.onLayoutChange(handleFlyLayoutChange);
 			}
-			hosts.forEach((host) => {
+			contactHosts.forEach((host) => {
 				gsap.set(host, { autoAlpha: 1 });
 			});
 
@@ -649,10 +651,7 @@ export function mountHomeHero() {
 			const progress = timeline?.scrollTrigger?.progress ?? 0;
 			if (progress <= 0.01) {
 				const intro = gsap.timeline();
-				const titleEntrance = flyHandles[0]?.buildEntrance(0.8);
-				if (titleEntrance) intro.add(titleEntrance, 0.05);
 				const contactEntrances = flyHandles
-					.slice(1)
 					.map((handle) => handle.buildEntrance(0.8))
 					.filter((tl): tl is ReturnType<typeof gsap.timeline> => tl !== null);
 				contactEntrances.forEach((tl, index) => {
@@ -663,8 +662,8 @@ export function mountHomeHero() {
 				for (const handle of flyHandles) handle.setNatural();
 			}
 
-			if (occupation) {
-				gsap.to(occupation, {
+			if (identityText.length) {
+				gsap.to(identityText, {
 					autoAlpha: 1,
 					y: 0,
 					duration: 0.7,

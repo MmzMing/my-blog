@@ -207,19 +207,10 @@ export const ja: Translation = {
 	// ギャラリーページ
 	[Key.gallery]: "ギャラリー",
 	[Key.galleryDescription]:
-		"サイトに収録したローカル・オンラインアルバムを閲覧し、テーマごとに写真や作品を探せます。残しておきたい瞬間や創作の記録をお楽しみください。",
+		"サイトに収録したアルバムを閲覧し、テーマごとに写真や作品を探せます。残しておきたい瞬間や創作の記録をお楽しみください。",
 	[Key.galleryPhotos]: "枚の写真",
 	[Key.galleryNoAlbums]: "アルバムがありません",
 	[Key.galleryBackToAlbums]: "アルバム一覧に戻る",
-	[Key.galleryLocalAlbum]: "ローカルアルバム",
-	[Key.galleryNetworkAlbum]: "ネットワークアルバム",
-	[Key.galleryCategory]: "カテゴリ",
-	[Key.galleryQuantity]: "数量",
-	[Key.galleryRandomFetch]: "ランダム取得",
-	[Key.galleryFetching]: "取得中...",
-	[Key.galleryFetchError]: "取得に失敗しました、もう一度お試しください",
-	[Key.galleryNoImages]:
-		"画像がありません、上のボタンをクリックして取得してください",
 
 	// 收藏APIページ
 	[Key.collections]: "コレクション",

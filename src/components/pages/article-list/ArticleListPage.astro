@@ -21,7 +21,10 @@ const { currentPage = 1 } = Astro.props;
 const allPosts = await getSortedPosts();
 const pinnedEntries = allPosts.filter((entry) => entry.data.pinned);
 const regularEntries = allPosts.filter((entry) => !entry.data.pinned);
-const postsPerPage = Math.max(1, Math.floor(siteConfig.pagination.postsPerPage));
+const postsPerPage = Math.max(
+	1,
+	Math.floor(siteConfig.pagination.postsPerPage),
+);
 const totalPages = Math.max(1, Math.ceil(regularEntries.length / postsPerPage));
 const resolvedPage = Math.max(
 	1,
@@ -86,9 +89,7 @@ async function createArticleListPost(
 	]);
 	const rawCategory = entry.data.category?.trim();
 	const category = rawCategory || i18n(I18nKey.uncategorized);
-	const tags = (entry.data.tags || [])
-		.map((tag) => tag.trim())
-		.filter(Boolean);
+	const tags = (entry.data.tags || []).map((tag) => tag.trim()).filter(Boolean);
 
 	return {
 		id: entry.id,

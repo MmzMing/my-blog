@@ -1,7 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 import type { GalleryAlbum } from "@/types/config";
 import { url } from "@/utils/url-utils";
+
+export interface GalleryPhoto {
+	src: string;
+	width: number;
+	height: number;
+}
 
 function withBase(assetPath: string): string {
 	if (!assetPath) return "";
@@ -21,7 +28,9 @@ function withBase(assetPath: string): string {
 /**
  * 扫描相册目录中的所有图片文件
  */
-export function scanAlbumPhotos(albumId: string): string[] {
+export async function scanAlbumPhotos(
+	albumId: string,
+): Promise<GalleryPhoto[]> {
 	const dir = path.join(process.cwd(), "public", "gallery", albumId);
 	if (!fs.existsSync(dir)) return [];
 	const files = fs
@@ -34,15 +43,32 @@ export function scanAlbumPhotos(albumId: string): string[] {
 		const [coverFile] = files.splice(coverIdx, 1);
 		files.unshift(coverFile);
 	}
-	return files.map((f) => withBase(`/gallery/${albumId}/${f}`));
+	return Promise.all(
+		files.map(async (file) => {
+			const filePath = path.join(dir, file);
+			const { width, height } = await sharp(filePath).metadata();
+			if (!width || !height) {
+				throw new Error(`Unable to read image dimensions: ${filePath}`);
+			}
+
+			return {
+				src: withBase(`/gallery/${albumId}/${file}`),
+				width,
+				height,
+			};
+		}),
+	);
 }
 
 /**
  * 获取相册封面图
  * 优先级：手动指定 > cover.* 文件 > 第一张图片
  */
-export function getAlbumCover(album: GalleryAlbum, photos: string[]): string {
+export function getAlbumCover(
+	album: GalleryAlbum,
+	photos: GalleryPhoto[],
+): string {
 	if (album.cover) return withBase(album.cover);
-	const coverFile = photos.find((p) => /\/cover\./i.test(p));
-	return coverFile || photos[0] || "";
+	const coverFile = photos.find((photo) => /\/cover\./i.test(photo.src));
+	return coverFile?.src || photos[0]?.src || "";
 }

@@ -1,6 +1,6 @@
 ---
 import Icon from "@components/common/Icon.astro";
-import PhotoCard from "@/components/pages/gallery/PhotoCard.svelte";
+import PhotoCard from "@/components/pages/gallery/PhotoCard.astro";
 import { galleryConfig, siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -27,7 +27,7 @@ if (!albumMeta) {
 	return Astro.redirect("/404/");
 }
 
-const photos = scanAlbumPhotos(albumMeta.id);
+const photos = await scanAlbumPhotos(albumMeta.id);
 const cover = getAlbumCover(albumMeta, photos);
 const columnWidth = galleryConfig.columnWidth || 240;
 ---
@@ -131,7 +131,7 @@ const columnWidth = galleryConfig.columnWidth || 240;
           style={`column-count: 2; column-gap: 0.75rem; --col-width: ${columnWidth}px;`}
         >
           {photos.map((photo) => (
-            <PhotoCard src={photo} albumId={albumMeta.id} client:visible />
+            <PhotoCard photo={photo} albumId={albumMeta.id} />
           ))}
         </div>
       ) : (

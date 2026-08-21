@@ -7,7 +7,10 @@ import { getSortedPosts } from "@/utils/content-utils";
 export const getStaticPaths = (async () => {
 	const posts = await getSortedPosts();
 	const regularPostCount = posts.filter((entry) => !entry.data.pinned).length;
-	const postsPerPage = Math.max(1, Math.floor(siteConfig.pagination.postsPerPage));
+	const postsPerPage = Math.max(
+		1,
+		Math.floor(siteConfig.pagination.postsPerPage),
+	);
 	const totalPages = Math.max(1, Math.ceil(regularPostCount / postsPerPage));
 
 	return Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => ({

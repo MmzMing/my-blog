@@ -73,5 +73,4 @@ export const calendarConfig: CalendarConfig = {
 			note: "MmzMing的博客上线纪念日",
 		},
 	],
-
 };

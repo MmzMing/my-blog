@@ -29,7 +29,6 @@ const buildNavBarConfig = (): NavBarConfig => {
 	if (siteConfig.pages.guestbook) {
 		contactChildren.push(LinkPreset.Guestbook);
 	}
-	contactChildren.push(LinkPreset.QQGroup);
 
 	const contactNav: NavBarLink | null =
 		contactChildren.length > 0

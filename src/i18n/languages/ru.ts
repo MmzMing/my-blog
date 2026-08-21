@@ -208,18 +208,10 @@ export const ru: Translation = {
 	// Страница галереи
 	[Key.gallery]: "Галерея",
 	[Key.galleryDescription]:
-		"Просматривайте локальные и онлайн-альбомы сайта, находите изображения и работы по темам, сохраняйте интересные моменты и творческие заметки.",
+		"Просматривайте альбомы сайта, находите изображения и работы по темам, сохраняйте интересные моменты и творческие заметки.",
 	[Key.galleryPhotos]: "фото",
 	[Key.galleryNoAlbums]: "Пока нет альбомов",
 	[Key.galleryBackToAlbums]: "Вернуться к альбомам",
-	[Key.galleryLocalAlbum]: "Локальный альбом",
-	[Key.galleryNetworkAlbum]: "Сетевой альбом",
-	[Key.galleryCategory]: "Категория",
-	[Key.galleryQuantity]: "Количество",
-	[Key.galleryRandomFetch]: "Случайный запрос",
-	[Key.galleryFetching]: "Загрузка...",
-	[Key.galleryFetchError]: "Ошибка загрузки, попробуйте снова",
-	[Key.galleryNoImages]: "Нет изображений, нажмите кнопку выше для загрузки",
 
 	// Страница коллекций API
 	[Key.collections]: "Коллекции",

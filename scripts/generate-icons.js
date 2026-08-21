@@ -72,6 +72,8 @@ function extractIconNames(content) {
 		/<Icon\b[^>]*\sname=["']([a-z0-9-]+:[a-z0-9-]+)["']/gi,
 		// icon: "xxx:yyy" 或 icon: 'xxx:yyy' (JS/TS 对象属性)
 		/icon:\s*["']([a-z0-9-]+:[a-z0-9-]+)["']/gi,
+		// 条件表达式中的图标字符串，例如 condition ? "xxx:yyy" : "xxx:yyy"
+		/[?:]\s*["']((?:material-symbols|fa7-solid|fa7-brands|fa7-regular|mdi|mingcute|ri|simple-icons|svg-spinners):[a-z0-9-]+)["']/gi,
 		// icon={`xxx:yyy`}
 		/icon=\{[`"']([a-z0-9-]+:[a-z0-9-]+)[`"']\}/gi,
 		// getIconSvg("xxx:yyy") 或 getIconSvg('xxx:yyy')
@@ -106,7 +108,12 @@ async function loadIconSet(prefix) {
 
 	try {
 		// 动态导入图标集 JSON
-		const iconSetPath = join(ROOT_DIR, "node_modules", packageName, "icons.json");
+		const iconSetPath = join(
+			ROOT_DIR,
+			"node_modules",
+			packageName,
+			"icons.json",
+		);
 		const data = JSON.parse(readFileSync(iconSetPath, "utf-8"));
 		iconSetCache.set(prefix, data);
 		return data;
@@ -268,7 +275,9 @@ async function main() {
 	writeFileSync(OUTPUT_FILE, output, "utf-8");
 
 	console.log(`\n📝 已生成: ${OUTPUT_FILE}`);
-	console.log(`📦 文件大小: ${(Buffer.byteLength(output, "utf-8") / 1024).toFixed(2)} KB\n`);
+	console.log(
+		`📦 文件大小: ${(Buffer.byteLength(output, "utf-8") / 1024).toFixed(2)} KB\n`,
+	);
 }
 
 main().catch((error) => {

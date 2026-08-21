@@ -207,18 +207,10 @@ export const en: Translation = {
 	// Gallery Page
 	[Key.gallery]: "Gallery",
 	[Key.galleryDescription]:
-		"Browse the site's local and online albums, explore images and works by theme, and revisit saved moments, visual ideas, and creative projects.",
+		"Browse the site's albums, explore images and works by theme, and revisit saved moments, visual ideas, and creative projects.",
 	[Key.galleryPhotos]: "photos",
 	[Key.galleryNoAlbums]: "No albums yet",
 	[Key.galleryBackToAlbums]: "Back to albums",
-	[Key.galleryLocalAlbum]: "Local Album",
-	[Key.galleryNetworkAlbum]: "Network Album",
-	[Key.galleryCategory]: "Category",
-	[Key.galleryQuantity]: "Quantity",
-	[Key.galleryRandomFetch]: "Random Fetch",
-	[Key.galleryFetching]: "Fetching...",
-	[Key.galleryFetchError]: "Fetch failed, please try again",
-	[Key.galleryNoImages]: "No images yet, click the button above to fetch",
 
 	// Collections API page
 	[Key.collections]: "Tools",

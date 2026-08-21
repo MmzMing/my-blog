@@ -2,7 +2,6 @@
 import Icon from "@components/common/Icon.astro";
 import PageTitle from "@/components/common/PageTitle.astro";
 import AlbumCard from "@/components/pages/gallery/AlbumCard.astro";
-import NetworkAlbum from "@/components/pages/gallery/NetworkAlbum.svelte";
 import { galleryConfig, siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -17,182 +16,43 @@ if (!siteConfig.pages.gallery) {
 const title = i18n(I18nKey.gallery);
 const description = i18n(I18nKey.galleryDescription);
 
-const albums = galleryConfig.albums.map((album) => {
-	const photos = scanAlbumPhotos(album.id);
-	const cover = getAlbumCover(album, photos);
-	return { ...album, cover, photoCount: photos.length };
-});
-
-const tabs = [
-	{
-		id: "local",
-		name: i18n(I18nKey.galleryLocalAlbum),
-		icon: "material-symbols:folder-rounded",
-	},
-	{
-		id: "network",
-		name: i18n(I18nKey.galleryNetworkAlbum),
-		icon: "material-symbols:wallpaper",
-	},
-];
+const albums = await Promise.all(
+	galleryConfig.albums.map(async (album) => {
+		const photos = await scanAlbumPhotos(album.id);
+		const cover = getAlbumCover(album, photos);
+		return { ...album, cover, photoCount: photos.length };
+	}),
+);
 ---
 
 <MainGridLayout title={title} description={description} hasOwnH1={true}>
   <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32">
     <div class="card-base z-10 px-9 py-6 relative w-full">
-      <div class="mb-4">
+      <div class="mb-8">
         <PageTitle title={title} variant="stacked" />
-
       </div>
 
-      <div class="border-b border-(--line-divider) mb-3 relative">
-        <div class="overflow-x-auto" data-tab-scroll-container>
-          <nav class="flex min-w-max space-x-8" aria-label="Gallery Tabs" data-gallery-tab-nav>
-            <div class="gallery-tab-indicator" data-gallery-tab-indicator></div>
-            {tabs.map((tab) => (
-              <button
-                class:list={[
-                  "gallery-tab-btn whitespace-nowrap py-4 px-1 font-medium text-sm transition-colors duration-200 flex items-center gap-2",
-                  {
-                    "gallery-tab-btn-active": tab.id === "local",
-                    "gallery-tab-btn-inactive": tab.id !== "local"
-                  }
-                ]}
-                data-gallery-tab={tab.id}
-                type="button"
-              >
-                <Icon name={tab.icon} class="text-[1.1rem]" />
-                {tab.name}
-              </button>
-            ))}
-          </nav>
+      {albums.length > 0 ? (
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+          {albums.map((album) => (
+            <AlbumCard
+              id={album.id}
+              name={album.name}
+              cover={album.cover}
+              description={album.description}
+              date={album.date}
+              location={album.location}
+              tags={album.tags}
+              photoCount={album.photoCount}
+            />
+          ))}
         </div>
-      </div>
-
-      <div data-gallery-section="local">
-        {albums.length > 0 ? (
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 my-6">
-            {albums.map((album) => (
-              <AlbumCard
-                id={album.id}
-                name={album.name}
-                cover={album.cover}
-                description={album.description}
-                date={album.date}
-                location={album.location}
-                tags={album.tags}
-                photoCount={album.photoCount}
-              />
-            ))}
-          </div>
-        ) : (
-          <div class="flex flex-col items-center justify-center py-16 text-neutral-400 dark:text-neutral-500">
-            <Icon name="material-symbols:photo-library" class="text-6xl mb-4 opacity-50" />
-            <p class="text-lg">{i18n(I18nKey.galleryNoAlbums)}</p>
-          </div>
-        )}
-      </div>
-
-      <div data-gallery-section="network" class="hidden">
-        <NetworkAlbum client:visible />
-      </div>
+      ) : (
+        <div class="flex flex-col items-center justify-center py-16 text-neutral-400 dark:text-neutral-500">
+          <Icon name="material-symbols:photo-library" class="text-6xl mb-4 opacity-50" />
+          <p class="text-lg">{i18n(I18nKey.galleryNoAlbums)}</p>
+        </div>
+      )}
     </div>
   </div>
-
-  <!-- 样式已迁移至 src/styles/pages/gallery.css -->
-
-  <!-- 事件委托：document 级别，只注册一次，swup 导航后自动生效 -->
-  <script is:inline>
-    (function() {
-      if (window.__galleryReady) return;
-      window.__galleryReady = true;
-
-      /* ---- Gallery Tab 切换 ---- */
-      function updateGalleryIndicator(targetBtn) {
-        if (!targetBtn) return;
-        var nav = targetBtn.closest("[data-gallery-tab-nav]");
-        if (!nav) return;
-        var indicator = nav.querySelector("[data-gallery-tab-indicator]");
-        if (!indicator) return;
-        var navRect = nav.getBoundingClientRect();
-        var btnRect = targetBtn.getBoundingClientRect();
-        indicator.style.left = (btnRect.left - navRect.left) + "px";
-        indicator.style.width = btnRect.width + "px";
-        indicator.style.opacity = "1";
-      }
-
-      function activateGalleryTab(targetTab) {
-        if (!targetTab) return;
-        var tabButtons = document.querySelectorAll("[data-gallery-tab]");
-        var sections = document.querySelectorAll("[data-gallery-section]");
-        var targetButton = null;
-        tabButtons.forEach(function(btn) {
-          if (btn.dataset.galleryTab === targetTab) targetButton = btn;
-        });
-        if (!targetButton) return;
-
-        tabButtons.forEach(function(btn) {
-          btn.classList.remove("gallery-tab-btn-active");
-          btn.classList.add("gallery-tab-btn-inactive");
-        });
-        targetButton.classList.remove("gallery-tab-btn-inactive");
-        targetButton.classList.add("gallery-tab-btn-active");
-        updateGalleryIndicator(targetButton);
-
-        sections.forEach(function(section) {
-          if (section.dataset.gallerySection === targetTab) section.classList.remove("hidden");
-          else section.classList.add("hidden");
-        });
-
-        var nextHash = "#gallery-" + encodeURIComponent(targetTab);
-        if (window.location.hash !== nextHash) {
-          window.history.replaceState(null, "", nextHash);
-        }
-      }
-
-      // 事件委托：gallery tab 点击
-      document.addEventListener("click", function(e) {
-        var btn = e.target.closest("[data-gallery-tab]");
-        if (btn) activateGalleryTab(btn.dataset.galleryTab);
-      });
-
-      // hashchange
-      window.addEventListener("hashchange", function() {
-        var hash = window.location.hash.replace(/^#gallery-/, "");
-        if (hash) {
-          try { hash = decodeURIComponent(hash); } catch(e) { return; }
-          activateGalleryTab(hash);
-        }
-      });
-
-      // resize：更新指示器
-      window.addEventListener("resize", function() {
-        var activeBtn = document.querySelector(".gallery-tab-btn-active");
-        if (activeBtn) updateGalleryIndicator(activeBtn);
-      });
-
-      // 初始化 gallery tab 指示器
-      function initGalleryIndicator() {
-        var activeBtn = document.querySelector(".gallery-tab-btn-active");
-        if (activeBtn) {
-          requestAnimationFrame(function() { updateGalleryIndicator(activeBtn); });
-        }
-      }
-
-      // 从 hash 恢复 tab
-      function initGalleryFromHash() {
-        var hash = window.location.hash.replace(/^#gallery-/, "");
-        if (hash) {
-          try { hash = decodeURIComponent(hash); } catch(e) { hash = ""; }
-          if (hash) activateGalleryTab(hash);
-          else initGalleryIndicator();
-        } else {
-          initGalleryIndicator();
-        }
-      }
-
-      initGalleryFromHash();
-      document.addEventListener("astro:page-load", initGalleryFromHash);
-    })();
-  </script>
 </MainGridLayout>

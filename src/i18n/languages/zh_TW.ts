@@ -205,18 +205,10 @@ export const zh_TW: Translation = {
 	// 相簿頁面
 	[Key.gallery]: "相簿",
 	[Key.galleryDescription]:
-		"瀏覽本站收錄的本地與網路相簿，按主題探索圖片和作品，記錄值得保存的生活片段與創作內容。",
+		"瀏覽本站收錄的相簿，按主題探索圖片和作品，記錄值得保存的生活片段與創作內容。",
 	[Key.galleryPhotos]: "張照片",
 	[Key.galleryNoAlbums]: "暫無相簿",
 	[Key.galleryBackToAlbums]: "返回相簿列表",
-	[Key.galleryLocalAlbum]: "本地相簿",
-	[Key.galleryNetworkAlbum]: "網路相簿",
-	[Key.galleryCategory]: "分類",
-	[Key.galleryQuantity]: "數量",
-	[Key.galleryRandomFetch]: "隨機獲取",
-	[Key.galleryFetching]: "獲取中...",
-	[Key.galleryFetchError]: "獲取失敗，請重試",
-	[Key.galleryNoImages]: "暫無圖片，點擊上方按鈕隨機獲取",
 
 	// 收藏API頁面
 	[Key.collections]: "工具導航",
