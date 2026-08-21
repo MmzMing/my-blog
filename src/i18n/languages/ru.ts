@@ -344,8 +344,6 @@ export const ru: Translation = {
 	[Key.browseAllTags]: "Все теги",
 	[Key.subscribeContact]: "Подписка и контакты",
 	[Key.contactMethods]: "Контакты",
-	[Key.expandContacts]: "Показать все контакты",
-	[Key.allContacts]: "Все контакты",
 	[Key.viewsLabel]: "Просмотры",
 	[Key.viewsBrowseLabel]: "Просмотры",
 

@@ -329,8 +329,6 @@ enum I18nKey {
 	browseAllTags = "browseAllTags",
 	subscribeContact = "subscribeContact",
 	contactMethods = "contactMethods",
-	expandContacts = "expandContacts",
-	allContacts = "allContacts",
 	viewsLabel = "viewsLabel",
 	viewsBrowseLabel = "viewsBrowseLabel",
 

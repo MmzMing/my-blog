@@ -57,15 +57,22 @@ const visitPills = [
 		tone: "outline" as const,
 	},
 ];
-const primaryContactNames = new Set(["qq", "github", "rss"]);
 const contactItems = homeConfig.links.map((link) => ({
 	name: link.name,
 	icon: link.icon,
 	href: link.url,
 }));
-const primaryContactItems = contactItems.filter((link) =>
-	primaryContactNames.has(link.name.toLowerCase()),
-);
+const contactRegionClasses = [
+	"top-left",
+	"top-right",
+	"bottom-left",
+	"bottom-right",
+	"center",
+];
+const contactRegions = contactItems.map((link, index) => ({
+	...link,
+	region: contactRegionClasses[index] ?? "unassigned",
+}));
 const umamiConfig = siteConfig.analytics?.umamiAnalytics;
 const statsBaseUrl = umamiConfig?.scriptUrl
 	? new URL(umamiConfig.scriptUrl).origin
@@ -162,13 +169,26 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				</div>
 				<p class="guide-card__eyebrow">SUBSCRIBE</p>
 				<h3 id="guide-contact-title">{i18n(I18nKey.subscribeContact)}</h3>
-				<div class="guide-contact__primary" aria-label={i18n(I18nKey.contactMethods)}>
-					{primaryContactItems.map((link) => <a href={link.href} aria-label={link.name} title={link.name}><Icon name={link.icon} is:inline /></a>)}
-					<button class="guide-contact__toggle" type="button" aria-expanded="false" aria-label={i18n(I18nKey.expandContacts)}><Icon name="material-symbols:add-rounded" is:inline /></button>
+				<div class="guide-contact__static-icons" aria-hidden="true">
+					<Icon name="fa7-brands:github" is:inline />
+					<Icon name="fa7-brands:qq" is:inline />
+					<Icon name="fa7-brands:bilibili" is:inline />
 				</div>
-				<div class="guide-contact__all" aria-label={i18n(I18nKey.allContacts)}>
-					{contactItems.map((link) => <a href={link.href} aria-label={link.name} title={link.name}><Icon name={link.icon} is:inline /><span>{link.name}</span></a>)}
-				</div>
+				<template data-guide-contact-template>
+					<div class="guide-contact__overlay" role="group" aria-label={i18n(I18nKey.contactMethods)}>
+						<svg class="guide-contact__overlay-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+							<line class="guide-contact__overlay-line" x1="50" y1="0" x2="50" y2="26" vector-effect="non-scaling-stroke" />
+							<line class="guide-contact__overlay-line" x1="50" y1="100" x2="50" y2="74" vector-effect="non-scaling-stroke" />
+							<line class="guide-contact__overlay-line" x1="0" y1="50" x2="32" y2="50" vector-effect="non-scaling-stroke" />
+							<line class="guide-contact__overlay-line" x1="100" y1="50" x2="68" y2="50" vector-effect="non-scaling-stroke" />
+						</svg>
+						{contactRegions.map((link) => (
+							<a class={`guide-contact__region guide-contact__region--${link.region}`} href={link.href} aria-label={link.name} title={link.name}>
+								<Icon name={link.icon} is:inline />
+							</a>
+						))}
+					</div>
+				</template>
 			</section>
 		</div>
 	</div>
@@ -608,92 +628,27 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		});
 	}
 
-	function initGuideContact(layer: HTMLElement) {
-		const contact = layer.querySelector<HTMLElement>("[data-guide-contact]");
-		const toggle = contact?.querySelector<HTMLButtonElement>(".guide-contact__toggle");
-		if (!contact || !toggle) return;
-		const close = () => {
-			contact.classList.remove("is-open");
-			toggle.setAttribute("aria-expanded", "false");
-		};
-		const toggleContact = () => {
-			const isOpen = contact.classList.toggle("is-open");
-			toggle.setAttribute("aria-expanded", String(isOpen));
-		};
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") close();
-			if ((event.key === "Enter" || event.key === " ") && event.target === contact) {
-				event.preventDefault();
-				toggleContact();
-			}
-		};
-		const onCardClick = (event: MouseEvent) => {
-			if (!window.matchMedia("(hover: none)").matches) return;
-			if ((event.target as Element).closest("a, button")) return;
-			toggleContact();
-		};
-
-		toggle.addEventListener("click", toggleContact);
-		contact.addEventListener("keydown", onKeyDown);
-		contact.addEventListener("click", onCardClick);
-		cleanups.push(() => {
-			toggle.removeEventListener("click", toggleContact);
-			contact.removeEventListener("keydown", onKeyDown);
-			contact.removeEventListener("click", onCardClick);
-		});
-	}
-
 	function initContactOverlay(layer: HTMLElement) {
-		if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 		const contact = layer.querySelector<HTMLElement>("[data-guide-contact]");
-		const allRow = contact?.querySelector<HTMLElement>(".guide-contact__all");
-		if (!contact || !allRow) return;
-		const sourceLinks = Array.from(allRow.querySelectorAll<HTMLAnchorElement>("a"));
-		// 联系入口限 5 个：四角各一个 + 中央方块一个，数量不符则不启用覆盖层
-		if (sourceLinks.length !== 5) return;
-
-		const SVG_NS = "http://www.w3.org/2000/svg";
-		const overlay = document.createElement("div");
-		overlay.className = "guide-contact__overlay";
-		overlay.setAttribute("aria-hidden", "true");
-		const svg = document.createElementNS(SVG_NS, "svg");
-		svg.setAttribute("class", "guide-contact__overlay-svg");
-		svg.setAttribute("viewBox", "0 0 100 100");
-		svg.setAttribute("preserveAspectRatio", "none");
-		// 十字切割实线：从中央方块四边中点向卡片四边生长
-		const lineCoords = [
-			[50, 0, 50, 26],
-			[50, 100, 50, 74],
-			[0, 50, 32, 50],
-			[100, 50, 68, 50],
-		];
-		const lines = lineCoords.map(([x1, y1, x2, y2]) => {
-			const line = document.createElementNS(SVG_NS, "line");
-			// 初始为零长度，进场时生长到终点，全程实线不用虚线描边
-			line.setAttribute("x1", String(x1));
-			line.setAttribute("y1", String(y1));
-			line.setAttribute("x2", String(x1));
-			line.setAttribute("y2", String(y1));
-			line.setAttribute("class", "guide-contact__overlay-line");
-			line.setAttribute("vector-effect", "non-scaling-stroke");
-			svg.appendChild(line);
-			return { element: line, x2, y2 };
-		});
-		overlay.appendChild(svg);
-
-		const zones = ["top-left", "top-right", "bottom-left", "bottom-right", "center"];
-		const regions = sourceLinks.map((source, index) => {
-			const region = source.cloneNode(false) as HTMLAnchorElement;
-			region.className = `guide-contact__region guide-contact__region--${zones[index]}`;
-			const icon = source.querySelector("svg");
-			if (icon) region.appendChild(icon.cloneNode(true));
-			overlay.appendChild(region);
-			return region;
-		});
+		const template = contact?.querySelector<HTMLTemplateElement>("[data-guide-contact-template]");
+		if (!contact || !template) return;
+		const overlay = template.content.firstElementChild?.cloneNode(true);
+		if (!(overlay instanceof HTMLElement)) return;
+		const lines = Array.from(overlay.querySelectorAll<SVGLineElement>(".guide-contact__overlay-line")).map((element) => ({
+			element,
+			x2: element.getAttribute("x2") ?? "",
+			y2: element.getAttribute("y2") ?? "",
+		}));
+		const regions = Array.from(overlay.querySelectorAll<HTMLAnchorElement>(".guide-contact__region"));
+		// 新布局固定为四个角区和中央区；链接数量不匹配时不挂载。
+		if (lines.length !== 4 || regions.length !== 5) return;
+		const fineHover = window.matchMedia("(hover: hover) and (pointer: fine)");
+		const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 		let active = false;
 		let mounted = false;
 		let pointerInside = false;
+		let touchOpen = false;
 		let intentTimer: number | undefined;
 		let removeTimer: number | undefined;
 
@@ -727,12 +682,19 @@ const statsShareId = umamiConfig?.shareId ?? "";
 
 		const setActive = (next: boolean) => {
 			if (next) {
-				// 先挂载（内部会取消待执行的移除），再判断是否需要播进场，
-				// 避免快速进出时标记与视觉状态不同步导致卡在空白态
 				mount();
 				if (active) return;
 				active = true;
-				// 先播线条生长，线条到位后再弹出区域背景与图标
+				if (reduceMotion.matches) {
+					gsap.killTweensOf([overlay, ...lines.map(({ element }) => element), ...regions]);
+					lines.forEach(({ element, x2, y2 }) => {
+						element.setAttribute("x2", x2);
+						element.setAttribute("y2", y2);
+					});
+					gsap.set(overlay, { autoAlpha: 1 });
+					gsap.set(regions, { autoAlpha: 1, scale: 1 });
+					return;
+				}
 				gsap.to(overlay, { autoAlpha: 1, duration: 0.1, ease: "power1.out", overwrite: "auto" });
 				lines.forEach(({ element, x2, y2 }, index) => {
 					gsap.to(element, { attr: { x2, y2 }, duration: 0.2, ease: "power3.out", delay: index * 0.03, overwrite: "auto" });
@@ -744,6 +706,10 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			}
 			if (!active) return;
 			active = false;
+			if (reduceMotion.matches) {
+				unmount();
+				return;
+			}
 			gsap.to(regions, { autoAlpha: 0, scale: 0.82, duration: 0.16, ease: "power2.in", overwrite: "auto" });
 			lines.forEach(({ element }, index) => {
 				// 起点坐标在创建时必然存在，兜底仅为类型收窄
@@ -756,28 +722,59 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			removeTimer = window.setTimeout(() => { removeTimer = undefined; unmount(); }, 500);
 		};
 
-		// 综合指针位置与焦点状态决定展开，进出都加意图防抖避免抖动
-		const sync = () => setActive(pointerInside || contact.matches(":focus-within") || contact.classList.contains("is-open"));
+		const sync = () => setActive(pointerInside || contact.matches(":focus-within") || touchOpen);
 		const schedule = (delay: number) => {
 			if (intentTimer !== undefined) window.clearTimeout(intentTimer);
 			intentTimer = window.setTimeout(() => { intentTimer = undefined; sync(); }, delay);
 		};
-		const enter = () => { pointerInside = true; schedule(70); };
-		const leave = () => { pointerInside = false; schedule(140); };
-		// 自愈：若 pointerenter 因 DOM 变更被吞掉，指针移动时补上进入状态
+		const enter = () => {
+			if (!fineHover.matches) return;
+			pointerInside = true;
+			schedule(70);
+		};
+		const leave = () => {
+			if (!fineHover.matches) return;
+			pointerInside = false;
+			schedule(140);
+		};
 		const drift = () => {
-			if (pointerInside) return;
+			if (!fineHover.matches || pointerInside) return;
 			pointerInside = true;
 			schedule(0);
 		};
 		const focusIn = () => schedule(0);
 		const focusOut = () => schedule(90);
+		const openTouchOverlay = (event: MouseEvent) => {
+			if (fineHover.matches || (event.target as Element).closest("a")) return;
+			touchOpen = true;
+			sync();
+		};
+		const closeOutside = (event: PointerEvent) => {
+			if (fineHover.matches || contact.contains(event.target as Node)) return;
+			touchOpen = false;
+			if (document.activeElement instanceof HTMLElement && contact.contains(document.activeElement)) {
+				document.activeElement.blur();
+			}
+			sync();
+		};
+		const closeOnEscape = (event: KeyboardEvent) => {
+			if (event.key !== "Escape") return;
+			touchOpen = false;
+			pointerInside = false;
+			if (document.activeElement instanceof HTMLElement && contact.contains(document.activeElement)) {
+				document.activeElement.blur();
+			}
+			setActive(false);
+		};
 
 		contact.addEventListener("pointerenter", enter);
 		contact.addEventListener("pointerleave", leave);
 		contact.addEventListener("pointermove", drift);
 		contact.addEventListener("focusin", focusIn);
 		contact.addEventListener("focusout", focusOut);
+		contact.addEventListener("click", openTouchOverlay);
+		contact.addEventListener("keydown", closeOnEscape);
+		document.addEventListener("pointerdown", closeOutside);
 		cleanups.push(() => {
 			if (intentTimer !== undefined) window.clearTimeout(intentTimer);
 			if (removeTimer !== undefined) window.clearTimeout(removeTimer);
@@ -786,6 +783,9 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			contact.removeEventListener("pointermove", drift);
 			contact.removeEventListener("focusin", focusIn);
 			contact.removeEventListener("focusout", focusOut);
+			contact.removeEventListener("click", openTouchOverlay);
+			contact.removeEventListener("keydown", closeOnEscape);
+			document.removeEventListener("pointerdown", closeOutside);
 			gsap.killTweensOf([overlay, ...lines.map(({ element }) => element), ...regions]);
 			overlay.remove();
 			contact.classList.remove("has-overlay");
@@ -808,7 +808,6 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		initMetricCards(layer);
 		initTagFan(layer);
 		initGuideRotators(layer);
-		initGuideContact(layer);
 		initContactOverlay(layer);
 		void initGuideOpening(layer, token);
 	}

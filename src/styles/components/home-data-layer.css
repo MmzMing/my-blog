@@ -622,7 +622,8 @@
 
 /* 标题等文字浮于覆盖层之上，且不拦截区域点击 */
 .guide-card--contact > .guide-card__eyebrow,
-.guide-card--contact > h3 {
+.guide-card--contact > h3,
+.guide-contact__static-icons {
 	position: relative;
 	z-index: 4;
 	pointer-events: none;
@@ -630,16 +631,37 @@
 
 /* 覆盖层激活时标题与眉标让位给左上区域图标 */
 .guide-card--contact > h3,
-.guide-card--contact > .guide-card__eyebrow {
+.guide-card--contact > .guide-card__eyebrow,
+.guide-contact__static-icons {
 	transition: opacity 200ms ease;
 }
 
 .guide-card--contact.has-overlay > h3,
-.guide-card--contact.has-overlay > .guide-card__eyebrow {
+.guide-card--contact.has-overlay > .guide-card__eyebrow,
+.guide-card--contact.has-overlay .guide-contact__static-icons {
 	opacity: 0;
 }
 
-/* 悬停展开的四角飞线 + 五区分割覆盖层（JS 生成，仅精确指针设备启用） */
+/* 仅用于品牌展示，和标题同层，不承载链接或交互。 */
+.guide-contact__static-icons {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin-top: auto;
+	margin-left: auto;
+	padding-top: 0.9rem;
+	font-size: clamp(1.15rem, 1.8vw, 1.45rem);
+	line-height: 1;
+	color: var(--guide-fg);
+}
+
+.guide-contact__static-icons svg {
+	display: block;
+	width: 1em;
+	height: 1em;
+}
+
+/* 十字实线划分的四角与中央五区覆盖层 */
 .guide-contact__overlay {
 	position: absolute;
 	inset: 0;
@@ -705,164 +727,6 @@
 	color: var(--guide-bg);
 }
 
-/* 覆盖层激活后隐藏原有底部图标行 */
-.guide-card--contact.has-overlay .guide-contact__primary,
-.guide-card--contact.has-overlay:hover .guide-contact__all,
-.guide-card--contact.has-overlay:focus-within .guide-contact__all,
-.guide-card--contact.has-overlay.is-open .guide-contact__all {
-	opacity: 0;
-	pointer-events: none;
-}
-
-.guide-contact__primary,
-.guide-contact__all {
-	display: flex;
-	align-items: center;
-	gap: 0.45rem;
-	margin-top: auto;
-}
-
-.guide-contact__primary {
-	align-self: flex-end;
-	margin-left: auto;
-	padding-top: 0.8rem;
-	transition: opacity 180ms ease, transform 180ms ease;
-}
-
-.guide-contact__primary a,
-.guide-contact__toggle {
-	display: grid;
-	place-items: center;
-	width: 2.2rem;
-	height: 2.2rem;
-	padding: 0;
-	border: 2px solid var(--guide-border);
-	border-radius: 50%;
-	background: var(--guide-bg);
-	color: var(--guide-fg);
-	font-size: 1.05rem;
-	text-decoration: none;
-	cursor: pointer;
-	transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
-}
-
-.guide-contact__primary a:hover,
-.guide-contact__toggle:hover {
-	transform: translateY(-2px);
-	background: var(--guide-fg);
-	color: var(--guide-bg);
-}
-
-.guide-contact__primary a {
-	width: 1.9rem;
-	height: 1.9rem;
-	border: 0;
-	border-radius: 0;
-	background: transparent;
-	font-size: 1.3rem;
-}
-
-.guide-contact__primary a:hover {
-	background: transparent;
-	color: color-mix(in srgb, var(--guide-fg) 58%, var(--guide-accent));
-}
-
-.guide-contact__toggle {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	padding: 0;
-	margin: -1px;
-	overflow: hidden;
-	clip: rect(0 0 0 0);
-	white-space: nowrap;
-}
-
-.guide-contact__all {
-	position: absolute;
-	inset: auto clamp(1rem, 1.7vw, 1.45rem) clamp(1rem, 1.7vw, 1.45rem);
-	display: grid;
-	grid-template-columns: repeat(5, minmax(0, 1fr));
-	margin: 0;
-	opacity: 0;
-	transform: translateY(0.8rem);
-	pointer-events: none;
-	transition: opacity 180ms ease, transform 180ms ease;
-}
-
-.guide-contact__all a {
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 0.3rem;
-	min-height: 5.6rem;
-	color: inherit;
-	font-size: 2.2rem;
-	text-decoration: none;
-}
-
-/* 条目间以居中圆点分隔（替代竖线） */
-.guide-contact__all a:not(:last-child)::after {
-	content: "·";
-	position: absolute;
-	top: 50%;
-	left: calc(100% + 0.225rem);
-	transform: translate(-50%, -50%);
-	font-size: 1.1rem;
-	font-weight: 700;
-	line-height: 1;
-	opacity: 0.45;
-	pointer-events: none;
-}
-
-/* 名称默认隐藏（脱离文档流，保证图标处于条目垂直中心），悬停单个条目时才显示 */
-.guide-contact__all span {
-	position: absolute;
-	left: 0;
-	right: 0;
-	bottom: 0.45rem;
-	text-align: center;
-	font-size: 0.7rem;
-	font-weight: 850;
-	opacity: 0;
-	transform: translateY(0.2rem);
-	transition: opacity 160ms ease, transform 160ms ease;
-}
-
-.guide-contact__all a:hover span,
-.guide-contact__all a:focus-visible span {
-	opacity: 1;
-	transform: translateY(0);
-}
-
-/* 悬停不再变绿，图标轻微向右倾斜 */
-.guide-contact__all a svg {
-	transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.guide-contact__all a:hover svg,
-.guide-contact__all a:focus-visible svg {
-	transform: rotate(8deg);
-}
-
-.guide-card--contact:hover .guide-contact__primary,
-.guide-card--contact:focus-within .guide-contact__primary,
-.guide-card--contact.is-open .guide-contact__primary {
-	opacity: 0;
-	transform: translateY(-0.6rem);
-	pointer-events: none;
-}
-
-.guide-card--contact:hover .guide-contact__all,
-.guide-card--contact:focus-within .guide-contact__all,
-.guide-card--contact.is-open .guide-contact__all {
-	opacity: 1;
-	transform: translateY(0);
-	pointer-events: auto;
-}
-
 @keyframes guide-slide-in {
 	from { opacity: 0; transform: translateY(0.6rem); }
 	to { opacity: 1; transform: translateY(0); }
@@ -924,11 +788,6 @@
 	.guide-card--contact {
 		min-height: 12rem;
 	}
-
-	.guide-contact__all {
-		inset-inline: 1rem;
-		bottom: 1rem;
-	}
 }
 
 @media (hover: none) {
@@ -938,11 +797,6 @@
 		pointer-events: auto;
 	}
 
-	/* 触屏无悬停：展开状态下直接显示联系方式名称 */
-	.guide-card--contact.is-open .guide-contact__all span {
-		opacity: 1;
-		transform: translateY(0);
-	}
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -951,11 +805,7 @@
 	.guide-card__visual img,
 	.guide-rotator__slide,
 	.guide-rotator__dots button,
-	.guide-contact__primary,
-	.guide-contact__all,
-	.guide-contact__primary a,
-	.guide-contact__toggle,
-	.guide-contact__all a {
+	.guide-contact__region {
 		animation: none !important;
 		transition: none !important;
 	}

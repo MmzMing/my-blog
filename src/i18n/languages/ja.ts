@@ -344,8 +344,6 @@ export const ja: Translation = {
 	[Key.browseAllTags]: "すべてのタグ",
 	[Key.subscribeContact]: "購読と連絡",
 	[Key.contactMethods]: "主な連絡先",
-	[Key.expandContacts]: "すべての連絡先を展開",
-	[Key.allContacts]: "すべての連絡先",
 	[Key.viewsLabel]: "閲覧数",
 	[Key.viewsBrowseLabel]: "閲覧",
 

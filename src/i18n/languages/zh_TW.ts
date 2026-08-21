@@ -339,8 +339,6 @@ export const zh_TW: Translation = {
 	[Key.browseAllTags]: "全部標籤",
 	[Key.subscribeContact]: "訂閱與聯絡",
 	[Key.contactMethods]: "常用聯絡方式",
-	[Key.expandContacts]: "展開全部聯絡方式",
-	[Key.allContacts]: "全部聯絡方式",
 	[Key.viewsLabel]: "訪問量",
 	[Key.viewsBrowseLabel]: "瀏覽",
 

@@ -344,8 +344,6 @@ export const en: Translation = {
 	[Key.browseAllTags]: "All Tags",
 	[Key.subscribeContact]: "Subscribe & Contact",
 	[Key.contactMethods]: "Contact",
-	[Key.expandContacts]: "Expand all contacts",
-	[Key.allContacts]: "All contacts",
 	[Key.viewsLabel]: "Views",
 	[Key.viewsBrowseLabel]: "Views",
 
