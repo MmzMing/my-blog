@@ -500,104 +500,83 @@
 		opacity 400ms ease;
 }
 
-/* 封面加载动效：四球滚动淡出（与友链卡片同款），主题适配球色 */
+/* 用独立圆点复刻四球滚动，避免动画化 box-shadow。 */
 .article-list-card__cover-loader {
-	--ballcolor: oklch(0.6 0 0);
-	--shadow: 0 0 #ffffff00;
-	--shadowcolor: #ffffff00;
-	/* 动画球列相对元素偏移 100~200px，整体居中于封面 */
+	--article-cover-loader-dot-color: oklch(0.6 0 0);
 	position: absolute;
-	top: calc(50% - 5px);
-	left: calc(50% - 155px);
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
+	top: 50%;
+	left: 50%;
+	z-index: 2;
 	display: none;
+	width: 6.875rem;
+	height: 0.625rem;
+	transform: translate(-0.9375rem, -50%);
 	pointer-events: none;
 }
+
 :root.dark .article-list-card__cover-loader {
-	--ballcolor: oklch(0.75 0 0);
+	--article-cover-loader-dot-color: oklch(0.75 0 0);
 }
+
 /* 仅在脚本确认图片加载中时显示（无 JS 时图片照常显示） */
 .article-list-card__cover-wrap.is-loading .article-list-card__cover-loader {
 	display: block;
-	animation: articleCoverShadowRolling 2s linear infinite;
 }
+
 .article-list-card__cover-wrap.is-loading .article-list-card__cover {
 	opacity: 0;
 }
 
-@keyframes articleCoverShadowRolling {
-	0% {
-		box-shadow:
-			var(--shadow),
-			var(--shadow),
-			var(--shadow),
-			var(--shadow);
+.article-list-card__cover-loader-dot {
+	position: absolute;
+	top: 50%;
+	left: 0;
+	width: 0.625rem;
+	height: 0.625rem;
+	border-radius: 50%;
+	background: var(--article-cover-loader-dot-color);
+	opacity: 0;
+	transform: translate3d(0, -50%, 0) scale(0.8);
+	animation: article-cover-loader-roll 2s linear infinite both;
+}
+
+.article-list-card__cover-loader-dot:nth-child(2) {
+	animation-delay: 250ms;
+}
+
+.article-list-card__cover-loader-dot:nth-child(3) {
+	animation-delay: 500ms;
+}
+
+.article-list-card__cover-loader-dot:nth-child(4) {
+	animation-delay: 750ms;
+}
+
+.article-list-card__cover-wrap.is-error .article-list-card__cover {
+	opacity: 0;
+}
+
+@keyframes article-cover-loader-roll {
+	0%,
+	11% {
+		opacity: 0;
+		transform: translate3d(0, -50%, 0) scale(0.8);
 	}
 
 	12% {
-		box-shadow:
-			100px 0 var(--ballcolor),
-			var(--shadow),
-			var(--shadow),
-			var(--shadow);
-	}
-
-	25% {
-		box-shadow:
-			110px 0 var(--ballcolor),
-			100px 0 var(--ballcolor),
-			var(--shadow),
-			var(--shadow);
-	}
-
-	36% {
-		box-shadow:
-			120px 0 var(--ballcolor),
-			110px 0 var(--ballcolor),
-			100px 0 var(--ballcolor),
-			var(--shadow);
+		opacity: 1;
+		transform: translate3d(0, -50%, 0) scale(1);
 	}
 
 	50% {
-		box-shadow:
-			130px 0 var(--ballcolor),
-			120px 0 var(--ballcolor),
-			110px 0 var(--ballcolor),
-			100px 0 var(--ballcolor);
+		opacity: 1;
+		transform: translate3d(1.875rem, -50%, 0) scale(1);
 	}
 
-	62% {
-		box-shadow:
-			200px 0 var(--shadowcolor),
-			130px 0 var(--ballcolor),
-			120px 0 var(--ballcolor),
-			110px 0 var(--ballcolor);
-	}
-
-	75% {
-		box-shadow:
-			200px 0 var(--shadowcolor),
-			200px 0 var(--shadowcolor),
-			130px 0 var(--ballcolor),
-			120px 0 var(--ballcolor);
-	}
-
-	87% {
-		box-shadow:
-			200px 0 var(--shadowcolor),
-			200px 0 var(--shadowcolor),
-			200px 0 var(--shadowcolor),
-			130px 0 var(--ballcolor);
-	}
-
+	62%,
 	100% {
-		box-shadow:
-			200px 0 var(--shadowcolor),
-			200px 0 var(--shadowcolor),
-			200px 0 var(--shadowcolor),
-			200px 0 var(--shadowcolor);
+		opacity: 0;
+		transform: translate3d(6.25rem, -50%, 0) scale(0.8);
 	}
 }
 
@@ -836,9 +815,33 @@
 	.article-list-card__title-text,
 	.article-list-pinned__dots button,
 	.article-list-card__cover,
+	.article-list-card__cover-loader-dot,
 	.article-list-pagination__btn,
 	.article-list-pagination__page {
 		transition: none;
+	}
+
+	.article-list-card__cover-loader-dot {
+		animation: none;
+		opacity: 0.65;
+		transform: translate3d(0, -50%, 0);
+	}
+
+	.article-list-card__cover-loader {
+		width: 2.875rem;
+		transform: translate(-1.4375rem, -50%);
+	}
+
+	.article-list-card__cover-loader-dot:nth-child(2) {
+		transform: translate3d(0.75rem, -50%, 0);
+	}
+
+	.article-list-card__cover-loader-dot:nth-child(3) {
+		transform: translate3d(1.5rem, -50%, 0);
+	}
+
+	.article-list-card__cover-loader-dot:nth-child(4) {
+		transform: translate3d(2.25rem, -50%, 0);
 	}
 
 	.article-list-pinned-item.is-carousel-leaving,

@@ -241,29 +241,26 @@ export const ru: Translation = {
 	[Key.passwordProtectedRss]:
 		"Эта статья зашифрована. Пожалуйста, посетите сайт для просмотра.",
 
-	// Календарь
+	// Виджет календаря
 	[Key.calendar]: "Календарь",
+	[Key.calendarToday]: "Сегодня",
+	[Key.calendarPost]: "Пост",
+	[Key.calendarPublished]: "Публикации",
+	[Key.calendarSwitch]: "Переключить",
+	[Key.calendarLoading]: "Загрузка календаря...",
+	[Key.calendarNextHoliday]: "Ближайший праздник",
+	[Key.calendarNextBirthday]: "Ближайший день рождения / годовщина",
+	[Key.calendarMonthRemaining]: "До конца месяца",
+	[Key.calendarYearRemaining]: "До конца года",
+	[Key.calendarDataUnavailable]: "Данные календаря недоступны",
+	[Key.calendarNoHoliday]: "Ближайший праздник не найден",
+	[Key.calendarNoBirthday]: "Дни рождения и годовщины не настроены",
+	[Key.calendarNoPosts]: "В этот день публикаций не было",
 	[Key.feibichi]: "Фэйби Цзюби",
 	[Key.contactMe]: "Связаться",
 	[Key.qqGroup]: "QQ Группа",
 	[Key.navPosts]: "Статьи",
 	[Key.navMy]: "Другое",
-	[Key.calendarDescription]:
-		"Смотрите праздники, дни рождения, расписание и публикации в одном календаре. Отслеживайте ближайшие планы и обновления сайта по датам.",
-	[Key.calendarToday]: "Сегодня",
-	[Key.calendarBirthday]: "День рождения",
-	[Key.calendarHoliday]: "Праздник",
-	[Key.calendarSchedule]: "События",
-	[Key.calendarPost]: "Пост",
-	[Key.calendarLunar]: "Лунный",
-	[Key.calendarUpcoming]: "Скоро",
-	[Key.calendarTodayEvents]: "Сегодня",
-	[Key.calendarNoEvents]: "На этот день нет событий",
-	[Key.calendarMore]: "ещё {n}",
-	[Key.calendarBackToToday]: "К сегодня",
-	[Key.calendarNearestHoliday]: "Ближайшие праздники",
-	[Key.calendarNearestBirthday]: "Ближайшие дни рождения",
-	[Key.calendarNearestSchedule]: "Ближайшие события",
 	// ===== 通用操作 =====
 	[Key.close]: "Закрыть",
 	[Key.expand]: "Развернуть",
@@ -417,13 +414,8 @@ export const ru: Translation = {
 	[Key.musicVisualizerDescription]:
 		"Откройте иммерсивную музыкальную визуализацию, где воспроизведение превращается в динамичный трёхмерный ландшафт с атмосферными эффектами.",
 
-	// ===== 日历事件 =====
-	[Key.countdownTo]: "До ",
-	[Key.countdownEndIn]: "до конца: ",
-	[Key.countdownIn]: "осталось: ",
+	// ===== Виджет календаря =====
 	[Key.dayShort]: " дн",
-	[Key.officialHolidayBadge]: "гос. праздник",
-	[Key.makeupWorkdayBadge]: "рабочий день",
 	[Key.prevMonth]: "Предыдущий месяц",
 	[Key.nextMonth]: "Следующий месяц",
 

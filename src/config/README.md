@@ -23,7 +23,7 @@ src/config/
 ├── galleryConfig.ts           # 相册配置
 ├── sponsorConfig.ts           # 赞助配置
 ├── coverImageConfig.ts        # 封面图配置
-├── calendarConfig.ts          # 日历配置
+├── calendarConfig.ts          # 日历小组件配置
 ├── aiSearchConfig.ts          # AI 搜索配置
 ├── llmsConfig.ts              # LLM 机器入口与 GEO 文案配置
 ├── collectionsApiConfig.ts    # 收藏 API 配置
@@ -62,7 +62,7 @@ import { homeConfig } from '../config/homeConfig';
 - `galleryConfig.ts` - 相册配置
 - `sponsorConfig.ts` - 赞助配置（赞助方式、二维码等）
 - `coverImageConfig.ts` - 封面图配置（随机封面图列表等）
-- `calendarConfig.ts` - 日历页面配置
+- `calendarConfig.ts` - 日历小组件配置
 - `aiSearchConfig.ts` - AI 搜索配置
 - `llmsConfig.ts` - LLM 机器入口、主题说明与 GEO 文案配置
 - `collectionsApiConfig.ts` - 收藏 API 配置

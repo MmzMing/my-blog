@@ -175,8 +175,6 @@ export const siteConfig: SiteConfig = {
 		gallery: true,
 		// 收藏API页面开关
 		collections: true,
-		// 日历页面开关
-		calendar: true,
 	},
 
 	// 分类导航栏开关，在首页和归档页顶部显示分类快捷导航

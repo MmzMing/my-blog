@@ -15,6 +15,7 @@
 @import './components/image-pixel-reveal.css';
 @import './components/floating-dock.css';
 @import './components/mobile-dock.css';
+@import './components/calendar-widget.css';
 @import './components/music-player.css';
 @import './components/floating-lyrics.css';
 @import './components/privacy-modal.css';

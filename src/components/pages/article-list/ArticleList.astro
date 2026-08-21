@@ -140,7 +140,11 @@ const totalPostLabel = i18n(
 		getUmamiPageviewLookup,
 		normalizeUmamiPageviewPath,
 	} from "@/utils/umami-pageviews";
-	import { revealImageWithPixels } from "@/utils/image-pixel-reveal";
+	import {
+		createArticleCoverLifecycle,
+		parseArticleCoverApiUrls,
+		type ArticleCoverLifecycle,
+	} from "@/utils/article-cover-lifecycle";
 
 	type SortMode = "latest" | "earliest" | "popular";
 
@@ -203,6 +207,7 @@ const totalPostLabel = i18n(
 		let currentPage = 1;
 		let sortMode: SortMode = "latest";
 		let pageviewLookup: Map<string, number> | null = null;
+		const coverLifecycles = new Map<HTMLElement, ArticleCoverLifecycle>();
 
 		function getSortLabel(): string {
 			return articleListRoot.dataset[
@@ -310,9 +315,11 @@ const totalPostLabel = i18n(
 				const visibleCards: HTMLElement[] = [];
 				for (const [index, card] of orderedCards.entries()) {
 					articleCardGrid.appendChild(card);
-					card.hidden = index < startIndex || index >= endIndex;
+					const isVisible = index >= startIndex && index < endIndex;
+					card.hidden = !isVisible;
 					card.classList.remove("is-page-entering");
-					if (!card.hidden) visibleCards.push(card);
+					coverLifecycles.get(card)?.setVisible(isVisible);
+					if (isVisible) visibleCards.push(card);
 				}
 				if (animateCards) {
 					visibleCards.forEach((card, index) => {
@@ -482,78 +489,30 @@ const totalPostLabel = i18n(
 
 		}
 
-		function parseCoverApiUrls(image: HTMLImageElement): string[] {
-			try {
-				const parsed = JSON.parse(image.dataset.apiUrls || "[]");
-				return Array.isArray(parsed)
-					? parsed.filter((item): item is string => typeof item === "string")
-					: [];
-			} catch {
-				return [];
-			}
-		}
-
-		function isFallbackSource(image: HTMLImageElement): boolean {
-			const fallback = image.dataset.fallbackSrc;
-			return !!fallback && image.src === new URL(fallback, window.location.href).href;
-		}
-
-		function tryNextCoverSource(image: HTMLImageElement): void {
-			// 1. 按顺序尝试下一个随机图 API（首个已由服务端设为 img.src）
-			const apiUrls = parseCoverApiUrls(image);
-			const nextIndex = Number(image.dataset.apiNext || "1");
-			if (nextIndex < apiUrls.length) {
-				image.dataset.apiNext = String(nextIndex + 1);
-				image.src = apiUrls[nextIndex];
-				return;
-			}
-			// 2. 全部失败：切换兜底默认图片
-			if (!isFallbackSource(image) && image.dataset.fallbackSrc) {
-				image.src = image.dataset.fallbackSrc;
-			}
-		}
-
-		function handleImageError(event: Event) {
-			const image = event.target;
-			if (!(image instanceof HTMLImageElement) || !image.matches("[data-article-list-cover]")) return;
-			tryNextCoverSource(image);
-		}
-
-		// 封面加载动效（与友链封面同款四球滚动）：加载中显示，成功/彻底失败后隐藏
+		// 封面控制器统一处理缓存、换源、超时、揭示和页面销毁。
 		function initCoverLoading(): void {
-			articleListRoot
-				.querySelectorAll<HTMLElement>("[data-article-list-cover-wrap]")
-				.forEach((wrap) => {
-					const img = wrap.querySelector<HTMLImageElement>(
-						"[data-article-list-cover]",
-					);
-					if (!img || img.dataset.coverBound === "true") return;
-					img.dataset.coverBound = "true";
+			cards.forEach((card) => {
+				const wrap = card.querySelector<HTMLElement>(
+					"[data-article-list-cover-wrap]",
+				);
+				if (!wrap) return;
+				const img = wrap.querySelector<HTMLImageElement>(
+					"[data-article-list-cover]",
+				);
+				if (!img) return;
 
-					const hideLoading = () => wrap.classList.remove("is-loading");
-					// 持续监听：换源重试过程中的每次成功都应触发像素揭示。
-					img.addEventListener("load", () => {
-						void revealImageWithPixels(wrap, img);
-					});
-					img.addEventListener("error", () => {
-						// 兜底图片也失败时停止动画，避免永久转圈
-						if (isFallbackSource(img)) hideLoading();
-					});
-
-					if (img.complete) {
-						// 初始化前已失败（缓存了错误响应）：手动触发换源重试
-						if (img.naturalWidth === 0 && !isFallbackSource(img)) {
-							tryNextCoverSource(img);
-							if (!img.complete || img.naturalWidth === 0) {
-								wrap.classList.add("is-loading");
-							}
-						}
-						return;
-					}
-
-					// 加载中：显示滚动球动画
-					wrap.classList.add("is-loading");
-				});
+				coverLifecycles.set(
+					card,
+					createArticleCoverLifecycle({
+						host: wrap,
+						image: img,
+						apiUrls: parseArticleCoverApiUrls(img.dataset.apiUrls),
+						fallbackSrc: img.dataset.fallbackSrc,
+						baseUrl: window.location.href,
+						signal,
+					}),
+				);
+			});
 		}
 
 		function handleMediaChange() {
@@ -561,10 +520,6 @@ const totalPostLabel = i18n(
 		}
 
 		articleListRoot.addEventListener("click", handleClick, { signal });
-		articleListRoot.addEventListener("error", handleImageError, {
-			capture: true,
-			signal,
-		});
 		mobileQuery.addEventListener("change", handleMediaChange, { signal });
 
 		const cleanupPinnedCarousel = initializePinnedCarousel();

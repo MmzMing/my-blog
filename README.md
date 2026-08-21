@@ -91,7 +91,7 @@ pnpm build-index -- --force
 | `galleryConfig.ts` | 相册配置 |
 | `friendsConfig.ts` | 友链配置 |
 | `sponsorConfig.ts` | 赞助页配置 |
-| `calendarConfig.ts` | 日历页面配置 |
+| `calendarConfig.ts` | 日历小组件配置 |
 | `announcementConfig.ts` | 公告栏配置 |
 | `licenseConfig.ts` | 文章许可证配置 |
 | `footerConfig.ts` | 页脚配置 |

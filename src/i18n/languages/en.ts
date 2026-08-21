@@ -240,29 +240,26 @@ export const en: Translation = {
 	[Key.passwordProtectedRss]:
 		"This article is encrypted. Please visit the website to view it.",
 
-	// Calendar page
+	// Calendar utility widget
 	[Key.calendar]: "Calendar",
+	[Key.calendarToday]: "Today",
+	[Key.calendarPost]: "Post",
+	[Key.calendarPublished]: "Published",
+	[Key.calendarSwitch]: "Switch",
+	[Key.calendarLoading]: "Loading calendar...",
+	[Key.calendarNextHoliday]: "Next holiday",
+	[Key.calendarNextBirthday]: "Next birthday / anniversary",
+	[Key.calendarMonthRemaining]: "Until month end",
+	[Key.calendarYearRemaining]: "Until year end",
+	[Key.calendarDataUnavailable]: "Calendar data is unavailable",
+	[Key.calendarNoHoliday]: "No upcoming holiday found",
+	[Key.calendarNoBirthday]: "No birthday or anniversary set",
+	[Key.calendarNoPosts]: "No posts were published this day",
 	[Key.feibichi]: "Feibichi",
 	[Key.contactMe]: "Contact",
 	[Key.qqGroup]: "QQ Group",
 	[Key.navPosts]: "Posts",
 	[Key.navMy]: "Others",
-	[Key.calendarDescription]:
-		"View holidays, birthdays, schedules, and post publications in one calendar. Check upcoming plans and follow recent updates by date.",
-	[Key.calendarToday]: "Today",
-	[Key.calendarBirthday]: "Birthday",
-	[Key.calendarHoliday]: "Holiday",
-	[Key.calendarSchedule]: "Schedule",
-	[Key.calendarPost]: "Post",
-	[Key.calendarLunar]: "Lunar",
-	[Key.calendarUpcoming]: "Upcoming",
-	[Key.calendarTodayEvents]: "Today",
-	[Key.calendarNoEvents]: "Nothing scheduled for this day",
-	[Key.calendarMore]: "{n} more",
-	[Key.calendarBackToToday]: "Today",
-	[Key.calendarNearestHoliday]: "Upcoming Holidays",
-	[Key.calendarNearestBirthday]: "Upcoming Birthdays",
-	[Key.calendarNearestSchedule]: "Upcoming Schedules",
 	// ===== 通用操作 =====
 	[Key.close]: "Close",
 	[Key.expand]: "Expand",
@@ -417,13 +414,8 @@ export const en: Translation = {
 	[Key.musicVisualizerDescription]:
 		"Enter an immersive music visualization that turns playback into a dynamic 3D landscape, adding motion and atmosphere to every listening session.",
 
-	// ===== 日历事件 =====
-	[Key.countdownTo]: "Until ",
-	[Key.countdownEndIn]: " ends in: ",
-	[Key.countdownIn]: " in: ",
+	// ===== Calendar utility widget =====
 	[Key.dayShort]: "d",
-	[Key.officialHolidayBadge]: "Holiday",
-	[Key.makeupWorkdayBadge]: "Makeup workday",
 	[Key.prevMonth]: "Previous month",
 	[Key.nextMonth]: "Next month",
 

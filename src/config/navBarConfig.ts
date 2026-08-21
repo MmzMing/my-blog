@@ -41,9 +41,6 @@ const buildNavBarConfig = (): NavBarConfig => {
 
 	// 3. 构建我的下拉菜单
 	const myChildren: (NavBarLink | LinkPreset)[] = [];
-	if (siteConfig.pages.calendar) {
-		myChildren.push(LinkPreset.Calendar);
-	}
 	if (siteConfig.pages.gallery) {
 		myChildren.push(LinkPreset.Gallery);
 	}

@@ -4,6 +4,7 @@ import La51Analytics from "@components/analytics/La51Analytics.astro";
 import MicrosoftClarity from "@components/analytics/MicrosoftClarity.astro";
 import UmamiAnalytics from "@components/analytics/UmamiAnalytics.astro";
 import FancyboxManager from "@components/features/FancyboxManager.astro";
+import CalendarManager from "@components/features/CalendarManager.astro";
 import FloatingLyrics from "@components/features/FloatingLyrics.astro";
 import FontManager from "@components/features/FontManager.astro";
 import MusicManager from "@components/features/MusicManager.astro";
@@ -254,6 +255,7 @@ const siteLang = lang.replace("_", "-");
     <PageLoader />
     <ConfigCarrier />
     <MusicManager />
+	<CalendarManager />
     <FloatingLyrics />
     <slot />
     {/* 全局持久化组件 — Swup 容器外，所有页面共享（CLAUDE.md 4.2） */}

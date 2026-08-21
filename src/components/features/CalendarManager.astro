@@ -1,0 +1,522 @@
+---
+import { calendarConfig, siteConfig } from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import { buildBirthdayEvents } from "@/utils/calendar-events";
+import { url } from "@/utils/url-utils";
+
+const currentYear = new Date().getFullYear();
+const birthdayOccurrences = buildBirthdayEvents(calendarConfig.birthdays, [
+	currentYear - 1,
+	currentYear,
+	currentYear + 1,
+]).map(({ date, title }) => ({ date, title }));
+
+const managerConfigStr = JSON.stringify({
+	api: {
+		holidays: url("/api/holidays.json"),
+		posts: url("/api/allPostMeta.json"),
+	},
+	postBaseUrl: url("/posts/"),
+	locale: siteConfig.lang.replace("_", "-"),
+	birthdayOccurrences,
+	labels: {
+		weekdays: [
+			i18n(I18nKey.calendarSunday),
+			i18n(I18nKey.calendarMonday),
+			i18n(I18nKey.calendarTuesday),
+			i18n(I18nKey.calendarWednesday),
+			i18n(I18nKey.calendarThursday),
+			i18n(I18nKey.calendarFriday),
+			i18n(I18nKey.calendarSaturday),
+		],
+		days: i18n(I18nKey.dayShort),
+		loading: i18n(I18nKey.calendarLoading),
+		unavailable: i18n(I18nKey.calendarDataUnavailable),
+		noHoliday: i18n(I18nKey.calendarNoHoliday),
+		noBirthday: i18n(I18nKey.calendarNoBirthday),
+		noPosts: i18n(I18nKey.calendarNoPosts),
+		today: i18n(I18nKey.calendarToday),
+		published: i18n(I18nKey.calendarPublished),
+		switch: i18n(I18nKey.calendarSwitch),
+	},
+});
+---
+
+<script is:inline data-swup-ignore-script define:vars={{ managerConfigStr }}>
+	(function () {
+		if (window.__fireflyCalendar) return;
+
+		var config = JSON.parse(managerConfigStr);
+		var calendarData = null;
+		var dataPromise = null;
+		var initialToday = new Date();
+		var calendarViewState = {
+			view: "overview",
+			displayYear: initialToday.getFullYear(),
+			displayMonth: initialToday.getMonth(),
+			selectedDate: formatYmd(initialToday),
+		};
+
+		function getWidgets() {
+			return Array.prototype.slice.call(
+				document.querySelectorAll("[data-calendar-widget]"),
+			);
+		}
+
+		function getState() {
+			return calendarViewState;
+		}
+
+		function formatYmd(date) {
+			return [
+				date.getFullYear(),
+				String(date.getMonth() + 1).padStart(2, "0"),
+				String(date.getDate()).padStart(2, "0"),
+			].join("-");
+		}
+
+		function parseDateKey(dateKey) {
+			var parts = dateKey.split("-").map(Number);
+			return new Date(parts[0], parts[1] - 1, parts[2]);
+		}
+
+		function dateStamp(dateKey) {
+			var parts = dateKey.split("-").map(Number);
+			return Date.UTC(parts[0], parts[1] - 1, parts[2]);
+		}
+
+		function daysBetween(fromKey, toKey) {
+			return Math.round((dateStamp(toKey) - dateStamp(fromKey)) / 86400000);
+		}
+
+		function shiftYear(dateKey, offset) {
+			var parts = dateKey.split("-").map(Number);
+			var year = parts[0] + offset;
+			var month = parts[1];
+			var day = Math.min(parts[2], new Date(year, month, 0).getDate());
+			return [year, String(month).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
+		}
+
+		function formatDate(dateKey, options) {
+			try {
+				return new Intl.DateTimeFormat(config.locale, options).format(parseDateKey(dateKey));
+			} catch {
+				return dateKey;
+			}
+		}
+
+		function setText(parent, selector, value) {
+			var element = parent.querySelector(selector);
+			if (element) element.textContent = value;
+			return element;
+		}
+
+		function createElement(tagName, className, text) {
+			var element = document.createElement(tagName);
+			if (className) element.className = className;
+			if (text !== undefined) element.textContent = text;
+			return element;
+		}
+
+		function fetchCollection(path) {
+			return fetch(path, { headers: { Accept: "application/json" } })
+				.then(function (response) {
+					if (!response.ok) throw new Error("Calendar request failed");
+					return response.json();
+				})
+				.then(function (payload) {
+					if (!Array.isArray(payload)) throw new Error("Calendar payload is invalid");
+					return payload;
+				});
+		}
+
+		function buildPostsByDate(posts) {
+			var bucket = {};
+			posts.forEach(function (post) {
+				if (!post || !post.id || !post.title || !Number.isFinite(Number(post.published))) return;
+				var dateKey = formatYmd(new Date(Number(post.published)));
+				if (!bucket[dateKey]) bucket[dateKey] = [];
+				bucket[dateKey].push(post);
+			});
+			Object.keys(bucket).forEach(function (dateKey) {
+				bucket[dateKey].sort(function (a, b) {
+					return Number(b.published) - Number(a.published);
+				});
+			});
+			return bucket;
+		}
+
+		function ensureData() {
+			if (calendarData) return Promise.resolve(calendarData);
+			if (dataPromise) return dataPromise;
+
+			dataPromise = Promise.allSettled([
+				fetchCollection(config.api.holidays),
+				fetchCollection(config.api.posts),
+			]).then(function (results) {
+				var holidayResult = results[0];
+				var postResult = results[1];
+				var holidays = holidayResult.status === "fulfilled" ? holidayResult.value : [];
+				var posts = postResult.status === "fulfilled" ? postResult.value : [];
+
+				calendarData = {
+					holidays: holidays,
+					holidaysFailed: holidayResult.status !== "fulfilled",
+					posts: posts,
+					postsByDate: buildPostsByDate(posts),
+					postsFailed: postResult.status !== "fulfilled",
+				};
+				return calendarData;
+			}).catch(function () {
+				calendarData = {
+					holidays: [],
+					holidaysFailed: true,
+					posts: [],
+					postsByDate: {},
+					postsFailed: true,
+				};
+				return calendarData;
+			});
+
+			return dataPromise;
+		}
+
+		function milestoneFromOccurrences(occurrences, todayKey) {
+			var sorted = occurrences.slice().sort(function (a, b) {
+				return a.date.localeCompare(b.date);
+			});
+			var next = sorted.find(function (item) {
+				return item.date >= todayKey;
+			});
+			if (!next) return null;
+
+			var previous = sorted.filter(function (item) {
+				return item.title === next.title && item.date < next.date;
+			}).pop();
+			var previousDate = previous ? previous.date : shiftYear(next.date, -1);
+			var totalDays = Math.max(1, daysBetween(previousDate, next.date));
+			var elapsedDays = Math.min(totalDays, Math.max(0, daysBetween(previousDate, todayKey)));
+
+			return {
+				title: next.title,
+				date: next.date,
+				progress: Math.round((elapsedDays / totalDays) * 100),
+				remainingDays: Math.max(0, daysBetween(todayKey, next.date)),
+			};
+		}
+
+		function getHolidayOccurrences(holidays) {
+			var sorted = holidays
+				.filter(function (item) {
+					return item && item.date && item.name && !item.isWorkday;
+				})
+				.slice()
+				.sort(function (a, b) {
+					return a.date.localeCompare(b.date);
+				});
+			var occurrences = [];
+
+			sorted.forEach(function (item) {
+				var previous = occurrences[occurrences.length - 1];
+				if (
+					previous &&
+					previous.title === item.name &&
+					daysBetween(previous.endDate, item.date) <= 1
+				) {
+					if (item.date > previous.endDate) previous.endDate = item.date;
+					return;
+				}
+				occurrences.push({ title: item.name, date: item.date, endDate: item.date });
+			});
+
+			return occurrences;
+		}
+
+		function renderWeek(widget, today) {
+			var week = widget.querySelector("[data-calendar-week]");
+			if (!week) return;
+			week.replaceChildren();
+
+			var start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+			for (var index = 0; index < 7; index += 1) {
+				var date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
+				var item = createElement("div", "calendar-widget__week-day");
+				if (formatYmd(date) === formatYmd(today)) item.classList.add("is-today");
+				item.appendChild(createElement("span", "calendar-widget__week-name", config.labels.weekdays[index]));
+				item.appendChild(createElement("strong", "calendar-widget__week-number", String(date.getDate())));
+				week.appendChild(item);
+			}
+		}
+
+		function renderEventCard(widget, type, milestone, unavailable) {
+			var card = widget.querySelector('[data-calendar-event="' + type + '"]');
+			if (!card) return;
+			var title = card.querySelector("[data-calendar-event-title]");
+			var date = card.querySelector("[data-calendar-event-date]");
+			var percent = card.querySelector("[data-calendar-event-percent]");
+			var progress = card.querySelector("[data-calendar-event-progress]");
+			var progressFill = card.querySelector("[data-calendar-event-progress-fill]");
+			var remaining = card.querySelector("[data-calendar-event-remaining]");
+
+			card.classList.toggle("is-empty", !milestone);
+			if (!milestone) {
+				if (title) title.textContent = unavailable
+					? config.labels.unavailable
+					: type === "holiday" ? config.labels.noHoliday : config.labels.noBirthday;
+				if (date) {
+					date.textContent = "";
+					date.removeAttribute("datetime");
+				}
+				if (percent) percent.textContent = "--";
+				if (remaining) remaining.textContent = "--";
+				if (progress) {
+					progress.setAttribute("aria-valuenow", "0");
+					progress.setAttribute("aria-valuetext", "0%");
+				}
+				if (progressFill) progressFill.style.width = "0%";
+				return;
+			}
+
+			if (title) title.textContent = milestone.title;
+			if (date) {
+				date.dateTime = milestone.date;
+				date.textContent = formatDate(milestone.date, { month: "long", day: "numeric" });
+			}
+			if (percent) percent.textContent = milestone.progress + "%";
+			if (remaining) remaining.textContent = milestone.remainingDays + config.labels.days;
+			if (progress) {
+				progress.setAttribute("aria-valuenow", String(milestone.progress));
+				progress.setAttribute("aria-valuetext", milestone.progress + "%");
+			}
+			if (progressFill) progressFill.style.width = milestone.progress + "%";
+		}
+
+		function renderOverview(widget, data) {
+			var today = new Date();
+			var todayKey = formatYmd(today);
+			setText(widget, "[data-calendar-today-label]", formatDate(todayKey, {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			}));
+			setText(widget, "[data-calendar-weekday]", formatDate(todayKey, { weekday: "long" }));
+			setText(widget, "[data-calendar-day]", String(today.getDate()));
+			renderWeek(widget, today);
+
+			var endOfMonth = formatYmd(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+			var endOfYear = formatYmd(new Date(today.getFullYear(), 11, 31));
+			setText(widget, "[data-calendar-month-remaining]", daysBetween(todayKey, endOfMonth) + config.labels.days);
+			setText(widget, "[data-calendar-year-remaining]", daysBetween(todayKey, endOfYear) + config.labels.days);
+
+			renderEventCard(
+				widget,
+				"holiday",
+				milestoneFromOccurrences(getHolidayOccurrences(data.holidays), todayKey),
+				data.holidaysFailed,
+			);
+			renderEventCard(
+				widget,
+				"birthday",
+				milestoneFromOccurrences(config.birthdayOccurrences, todayKey),
+				false,
+			);
+		}
+
+		function renderMonthWeekdays(widget) {
+			var weekdays = widget.querySelector("[data-calendar-month-weekdays]");
+			if (!weekdays) return;
+			weekdays.replaceChildren();
+			config.labels.weekdays.forEach(function (weekday) {
+				weekdays.appendChild(createElement("span", "calendar-widget__month-weekday", weekday));
+			});
+		}
+
+		function renderPosts(widget, data, state) {
+			var title = widget.querySelector("[data-calendar-posts-title]");
+			var list = widget.querySelector("[data-calendar-post-list]");
+			if (!title || !list) return;
+
+			var posts = data.postsByDate[state.selectedDate] || [];
+			title.textContent = formatDate(state.selectedDate, { month: "long", day: "numeric" });
+			list.replaceChildren();
+			if (data.postsFailed) {
+				list.appendChild(createElement("p", "calendar-widget__empty", config.labels.unavailable));
+				return;
+			}
+			if (posts.length === 0) {
+				list.appendChild(createElement("p", "calendar-widget__empty", config.labels.noPosts));
+				return;
+			}
+
+			posts.forEach(function (post) {
+				var item = document.createElement("a");
+				var slug = String(post.id).replace(/^\/+|\/+$/g, "");
+				item.className = "calendar-widget__post-link";
+				item.href = config.postBaseUrl + slug + "/";
+				item.setAttribute("data-calendar-post-link", "");
+				item.textContent = post.title;
+				list.appendChild(item);
+			});
+		}
+
+		function renderMonth(widget, data, state) {
+			var grid = widget.querySelector("[data-calendar-month-grid]");
+			if (!grid) return;
+			var todayKey = formatYmd(new Date());
+			var firstOfMonth = new Date(state.displayYear, state.displayMonth, 1);
+			var startDate = new Date(state.displayYear, state.displayMonth, 1 - firstOfMonth.getDay());
+
+			setText(widget, "[data-calendar-month-label]", formatDate(
+				formatYmd(firstOfMonth),
+				{ year: "numeric", month: "long" },
+			));
+			renderMonthWeekdays(widget);
+			grid.replaceChildren();
+
+			for (var index = 0; index < 42; index += 1) {
+				var date = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + index);
+				var dateKey = formatYmd(date);
+				var posts = data.postsByDate[dateKey] || [];
+				var button = document.createElement("button");
+				button.type = "button";
+				button.className = "calendar-widget__date-cell";
+				button.dataset.calendarDate = dateKey;
+				button.setAttribute("role", "gridcell");
+				button.setAttribute("aria-pressed", String(dateKey === state.selectedDate));
+				button.setAttribute("aria-label", formatDate(dateKey, { year: "numeric", month: "long", day: "numeric" }));
+				if (date.getMonth() !== state.displayMonth) button.classList.add("is-outside");
+				if (dateKey === todayKey) button.classList.add("is-today");
+				if (dateKey === state.selectedDate) button.classList.add("is-selected");
+				button.appendChild(createElement("span", "calendar-widget__date-number", String(date.getDate())));
+				if (!data.postsFailed && posts.length > 0) {
+					var dot = createElement("span", "calendar-widget__post-dot");
+					dot.setAttribute("aria-hidden", "true");
+					button.appendChild(dot);
+				}
+				grid.appendChild(button);
+			}
+
+			renderPosts(widget, data, state);
+		}
+
+		function updateView(widget, state) {
+			var isPublished = state.view === "published";
+			widget.dataset.calendarView = state.view;
+			Array.prototype.forEach.call(widget.querySelectorAll("[data-calendar-view-panel]"), function (panel) {
+				panel.hidden = panel.dataset.calendarViewPanel !== state.view;
+			});
+
+			var toggle = widget.querySelector("[data-calendar-view-toggle]");
+			if (!toggle) return;
+			toggle.setAttribute("aria-pressed", String(isPublished));
+			toggle.setAttribute("aria-label", config.labels.switch);
+			toggle.title = config.labels.switch;
+		}
+
+		function renderWidget(widget, data) {
+			var state = getState();
+			updateView(widget, state);
+			renderOverview(widget, data);
+			renderMonth(widget, data, state);
+			widget.dataset.calendarState = "ready";
+			widget.setAttribute("aria-busy", "false");
+		}
+
+		function renderWidgets(data) {
+			getWidgets().forEach(function (widget) {
+				renderWidget(widget, data);
+			});
+		}
+
+		function changeMonth(state, delta) {
+			state.displayMonth += delta;
+			if (state.displayMonth < 0) {
+				state.displayMonth = 11;
+				state.displayYear -= 1;
+			}
+			if (state.displayMonth > 11) {
+				state.displayMonth = 0;
+				state.displayYear += 1;
+			}
+		}
+
+		function bindWidget(widget) {
+			if (widget.dataset.calendarBound === "true") return;
+			widget.dataset.calendarBound = "true";
+
+			var viewToggle = widget.querySelector("[data-calendar-view-toggle]");
+			if (viewToggle) {
+				viewToggle.addEventListener("click", function (event) {
+					event.stopPropagation();
+					var state = getState();
+					state.view = state.view === "overview" ? "published" : "overview";
+					if (calendarData) renderWidgets(calendarData);
+					else activate();
+				});
+			}
+
+			Array.prototype.forEach.call(widget.querySelectorAll("[data-calendar-month]"), function (button) {
+				button.addEventListener("click", function (event) {
+					event.stopPropagation();
+					var state = getState();
+					changeMonth(state, button.dataset.calendarMonth === "previous" ? -1 : 1);
+					if (calendarData) renderWidgets(calendarData);
+				});
+			});
+
+			var todayButton = widget.querySelector("[data-calendar-today-button]");
+			if (todayButton) {
+				todayButton.addEventListener("click", function (event) {
+					event.stopPropagation();
+					var state = getState();
+					var today = new Date();
+					state.displayYear = today.getFullYear();
+					state.displayMonth = today.getMonth();
+					state.selectedDate = formatYmd(today);
+					if (calendarData) renderWidgets(calendarData);
+				});
+			}
+
+			var grid = widget.querySelector("[data-calendar-month-grid]");
+			if (grid) {
+				grid.addEventListener("click", function (event) {
+					if (!(event.target instanceof Element)) return;
+					var dateButton = event.target.closest("[data-calendar-date]");
+					if (!dateButton || !widget.contains(dateButton)) return;
+					event.stopPropagation();
+					var state = getState();
+					var selected = parseDateKey(dateButton.dataset.calendarDate);
+					state.selectedDate = dateButton.dataset.calendarDate;
+					state.displayYear = selected.getFullYear();
+					state.displayMonth = selected.getMonth();
+					if (calendarData) renderWidgets(calendarData);
+				});
+			}
+		}
+
+		function bindWidgets() {
+			getWidgets().forEach(bindWidget);
+		}
+
+		function activate() {
+			bindWidgets();
+			if (!calendarData) {
+				getWidgets().forEach(function (widget) {
+					widget.dataset.calendarState = "loading";
+					widget.setAttribute("aria-busy", "true");
+				});
+			}
+			return ensureData().then(renderWidgets);
+		}
+
+		window.__fireflyCalendar = { open: activate };
+		window.addEventListener("calendar:open", activate);
+		document.addEventListener("astro:page-load", bindWidgets);
+		if (document.readyState === "loading") {
+			document.addEventListener("DOMContentLoaded", bindWidgets, { once: true });
+		} else {
+			bindWidgets();
+		}
+	})();
+</script>

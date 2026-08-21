@@ -1,18 +1,34 @@
 const TARGET_PIXEL_SIZE = 48;
-const MAX_PIXEL_COUNT = 84;
+const DESKTOP_MAX_PIXEL_COUNT = 84;
+const MOBILE_MAX_PIXEL_COUNT = 36;
 const REVEAL_DURATION = 680;
 const PIXEL_DURATION = 300;
-const REVEAL_FINISH_BUFFER = 34;
+const REVEAL_FINISH_BUFFER = 750;
+const MOBILE_QUERY = "(max-width: 768px)";
 
-function getGridSize(width: number, height: number) {
+export interface ImagePixelRevealOptions {
+	signal?: AbortSignal;
+}
+
+export function getImagePixelGridSize(
+	width: number,
+	height: number,
+	maxPixelCount: number,
+) {
 	let pixelSize = TARGET_PIXEL_SIZE;
 	let columns = Math.max(1, Math.ceil(width / pixelSize));
 	let rows = Math.max(1, Math.ceil(height / pixelSize));
 
-	if (columns * rows > MAX_PIXEL_COUNT) {
-		pixelSize *= Math.sqrt((columns * rows) / MAX_PIXEL_COUNT);
+	if (columns * rows > maxPixelCount) {
+		pixelSize *= Math.sqrt((columns * rows) / maxPixelCount);
 		columns = Math.max(1, Math.ceil(width / pixelSize));
 		rows = Math.max(1, Math.ceil(height / pixelSize));
+	}
+
+	while (columns * rows > maxPixelCount) {
+		if (columns >= rows && columns > 1) columns -= 1;
+		else if (rows > 1) rows -= 1;
+		else break;
 	}
 
 	return { columns, rows };
@@ -23,69 +39,135 @@ function getRandomOrder(index: number, total: number): number {
 	return value - Math.floor(value);
 }
 
-function setImageVisible(host: HTMLElement, overlay: HTMLElement | null) {
+function nextRevealToken(host: HTMLElement): string {
+	const token = String((Number(host.dataset.imagePixelRevealToken) || 0) + 1);
+	host.dataset.imagePixelRevealToken = token;
+	return token;
+}
+
+function isCurrentReveal(host: HTMLElement, token: string): boolean {
+	return host.isConnected && host.dataset.imagePixelRevealToken === token;
+}
+
+function setImageVisible(host: HTMLElement, overlay: HTMLElement | null): void {
 	overlay?.replaceChildren();
 	host.classList.remove("is-loading", "is-revealing");
 	host.classList.add("is-revealed");
 	window.requestAnimationFrame(() => host.classList.remove("is-revealed"));
 }
 
-function finishPixelReveal(
-	host: HTMLElement,
-	overlay: HTMLElement,
-	token: string,
-) {
-	if (!host.isConnected || host.dataset.imagePixelRevealToken !== token) return;
+export function cancelImagePixelReveal(host: HTMLElement): void {
+	nextRevealToken(host);
+	const overlay = host.querySelector<HTMLElement>("[data-image-pixel-reveal]");
+	overlay?.replaceChildren();
+	host.classList.remove("is-loading", "is-revealing", "is-revealed");
+}
 
-	// Keep the completed pixel layer in place while the decoded source image
-	// becomes visible beneath it. This prevents a final-frame brightness flash.
-	host.classList.remove("is-loading");
-	host.classList.add("is-revealed");
-	window.requestAnimationFrame(() => {
-		if (!host.isConnected || host.dataset.imagePixelRevealToken !== token)
+function waitForAnimationFrame(signal?: AbortSignal): Promise<boolean> {
+	return new Promise((resolve) => {
+		if (signal?.aborted) {
+			resolve(false);
 			return;
-		window.requestAnimationFrame(() => {
-			if (!host.isConnected || host.dataset.imagePixelRevealToken !== token)
-				return;
-			overlay.replaceChildren();
-			host.classList.remove("is-revealing");
-			window.requestAnimationFrame(() => {
-				if (host.dataset.imagePixelRevealToken === token) {
-					host.classList.remove("is-revealed");
-				}
-			});
-		});
+		}
+
+		let frameId = 0;
+		const finish = (completed: boolean) => {
+			if (frameId) window.cancelAnimationFrame(frameId);
+			signal?.removeEventListener("abort", handleAbort);
+			resolve(completed);
+		};
+		const handleAbort = () => finish(false);
+
+		signal?.addEventListener("abort", handleAbort, { once: true });
+		frameId = window.requestAnimationFrame(() => finish(true));
 	});
 }
 
-/**
- * Reveals an already-loaded image through a bounded grid of image-backed tiles.
- * The source image remains hidden until the tile animation completes.
- */
-export async function revealImageWithPixels(
-	host: HTMLElement,
-	image: HTMLImageElement,
-) {
-	if (!host.classList.contains("is-loading")) return;
-
-	const overlay = host.querySelector<HTMLElement>("[data-image-pixel-reveal]");
-	const token = String((Number(host.dataset.imagePixelRevealToken) || 0) + 1);
-	host.dataset.imagePixelRevealToken = token;
-	const source = image.currentSrc || image.src;
-
-	try {
-		if (typeof image.decode === "function") {
-			await image.decode().catch(() => undefined);
-		}
-
-		if (
-			!host.isConnected ||
-			host.dataset.imagePixelRevealToken !== token ||
-			(image.currentSrc || image.src) !== source
-		) {
+function waitForRevealAnimations(
+	overlay: HTMLElement,
+	total: number,
+	signal?: AbortSignal,
+): Promise<boolean> {
+	return new Promise((resolve) => {
+		if (signal?.aborted) {
+			resolve(false);
 			return;
 		}
 
+		const completedTiles = new Set<EventTarget>();
+		let settled = false;
+		let safetyTimer: ReturnType<typeof setTimeout> | undefined;
+
+		const finish = (completed: boolean) => {
+			if (settled) return;
+			settled = true;
+			if (safetyTimer !== undefined) clearTimeout(safetyTimer);
+			overlay.removeEventListener("animationend", handleAnimationEnd);
+			signal?.removeEventListener("abort", handleAbort);
+			resolve(completed);
+		};
+		const handleAbort = () => finish(false);
+		const handleAnimationEnd = (event: AnimationEvent) => {
+			const target = event.target;
+			if (
+				event.animationName !== "image-pixel-reveal-in" ||
+				!(target instanceof HTMLElement) ||
+				!target.classList.contains("image-pixel-reveal__tile") ||
+				completedTiles.has(target)
+			) {
+				return;
+			}
+
+			completedTiles.add(target);
+			if (completedTiles.size >= total) finish(true);
+		};
+
+		overlay.addEventListener("animationend", handleAnimationEnd);
+		signal?.addEventListener("abort", handleAbort, { once: true });
+		safetyTimer = setTimeout(
+			() => finish(true),
+			REVEAL_DURATION + REVEAL_FINISH_BUFFER,
+		);
+	});
+}
+
+async function finishPixelReveal(
+	host: HTMLElement,
+	overlay: HTMLElement,
+	token: string,
+	signal?: AbortSignal,
+): Promise<void> {
+	if (!isCurrentReveal(host, token) || signal?.aborted) return;
+
+	host.classList.remove("is-loading");
+	host.classList.add("is-revealed");
+	if (!(await waitForAnimationFrame(signal)) || !isCurrentReveal(host, token))
+		return;
+	if (!(await waitForAnimationFrame(signal)) || !isCurrentReveal(host, token))
+		return;
+
+	overlay.replaceChildren();
+	host.classList.remove("is-revealing");
+	if (!(await waitForAnimationFrame(signal)) || !isCurrentReveal(host, token))
+		return;
+	host.classList.remove("is-revealed");
+}
+
+/** Reveals a loaded image through a bounded grid of image-backed tiles. */
+export async function revealImageWithPixels(
+	host: HTMLElement,
+	image: HTMLImageElement,
+	options: ImagePixelRevealOptions = {},
+): Promise<void> {
+	if (!host.classList.contains("is-loading")) return;
+
+	const { signal } = options;
+	const overlay = host.querySelector<HTMLElement>("[data-image-pixel-reveal]");
+	const token = nextRevealToken(host);
+	const source = image.currentSrc || image.src;
+
+	try {
+		if (signal?.aborted || !isCurrentReveal(host, token)) return;
 		if (
 			!overlay ||
 			window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -100,7 +182,14 @@ export async function revealImageWithPixels(
 			return;
 		}
 
-		const { columns, rows } = getGridSize(width, height);
+		const maxPixelCount = window.matchMedia(MOBILE_QUERY).matches
+			? MOBILE_MAX_PIXEL_COUNT
+			: DESKTOP_MAX_PIXEL_COUNT;
+		const { columns, rows } = getImagePixelGridSize(
+			width,
+			height,
+			maxPixelCount,
+		);
 		const tileWidth = width / columns;
 		const tileHeight = height / rows;
 		const naturalWidth = image.naturalWidth || width;
@@ -140,9 +229,9 @@ export async function revealImageWithPixels(
 		host.classList.remove("is-loading", "is-revealed");
 		host.classList.add("is-revealing");
 
-		window.setTimeout(() => {
-			finishPixelReveal(host, overlay, token);
-		}, REVEAL_DURATION + REVEAL_FINISH_BUFFER);
+		const completed = await waitForRevealAnimations(overlay, total, signal);
+		if (!completed || signal?.aborted || !isCurrentReveal(host, token)) return;
+		await finishPixelReveal(host, overlay, token, signal);
 	} catch {
 		if (host.dataset.imagePixelRevealToken === token) {
 			setImageVisible(host, overlay);

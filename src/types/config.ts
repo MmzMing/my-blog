@@ -81,7 +81,6 @@ export type SiteConfig = {
 		guestbook: boolean; // 留言板页面开关
 		gallery: boolean; // 相册页面开关
 		collections: boolean; // 收藏API页面开关
-		calendar: boolean; // 日历页面开关
 	};
 
 	// 分类导航栏开关
@@ -199,16 +198,15 @@ export enum LinkPreset {
 	Gallery = 7,
 	Collections = 8,
 	Stats = 9,
-	Calendar = 10,
-	Categories = 11,
-	Tags = 12,
-	PostList = 13,
-	Feibichi = 14,
-	ContactMe = 15,
-	QQGroup = 16,
-	NavPosts = 17,
-	NavMy = 18,
-	Music = 19,
+	Categories = 10,
+	Tags = 11,
+	PostList = 12,
+	Feibichi = 13,
+	ContactMe = 14,
+	QQGroup = 15,
+	NavPosts = 16,
+	NavMy = 17,
+	Music = 18,
 }
 
 export type NavBarLink = {
@@ -982,26 +980,8 @@ export type BirthdayItem = {
 	note?: string;
 };
 
-// 自定义安排项（一次性或简单重复）
-export type ScheduleItem = {
-	title: string; // 安排标题
-	note?: string; // 备注
-	icon?: string;
-	date?: string; // 一次性，"YYYY-MM-DD" 格式（与 recurring 互斥）
-	recurring?: {
-		freq: "yearly" | "monthly" | "weekly";
-		month?: number; // freq=yearly 时使用
-		day?: number; // freq=yearly | monthly 时使用
-		weekday?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // freq=weekly 时使用，0=周日
-		lunar?: boolean; // 仅 yearly 支持，默认 false
-	};
-};
-
-// 日历页面配置
+// 日历小组件配置
 export type CalendarConfig = {
-	title?: string; // 页面标题，留空使用 i18n
-	description?: string; // 页面描述，留空使用 i18n
-
 	// 节日 API（构建时拉取，失败回退仅用 builtinHolidays）
 	holidayApi: {
 		enable: boolean; // 是否启用 API
@@ -1016,18 +996,4 @@ export type CalendarConfig = {
 	// 生日 / 纪念日
 	birthdays: BirthdayItem[];
 
-	// 自定义安排
-	schedules: ScheduleItem[];
-
-	// 显示开关
-	show: {
-		posts: boolean; // 是否把文章发布日上日历
-		lunarDate: boolean; // 单元格是否显示农历
-	};
-
-	// 顶部"未来概览"配置
-	overview: {
-		futureDays: number; // 概览跨度（天）
-		maxItems: number; // 最多卡片数
-	};
 };

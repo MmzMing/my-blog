@@ -225,23 +225,21 @@ enum I18nKey {
 	archiveStatsUnavailable = "archiveStatsUnavailable",
 	archiveStatsGoal = "archiveStatsGoal",
 
-	// 日历页面
+	// 日历工具卡片
 	calendar = "calendar",
-	calendarDescription = "calendarDescription",
 	calendarToday = "calendarToday",
-	calendarBirthday = "calendarBirthday",
-	calendarHoliday = "calendarHoliday",
-	calendarSchedule = "calendarSchedule",
 	calendarPost = "calendarPost",
-	calendarLunar = "calendarLunar",
-	calendarUpcoming = "calendarUpcoming",
-	calendarTodayEvents = "calendarTodayEvents",
-	calendarNoEvents = "calendarNoEvents",
-	calendarMore = "calendarMore",
-	calendarBackToToday = "calendarBackToToday",
-	calendarNearestHoliday = "calendarNearestHoliday",
-	calendarNearestBirthday = "calendarNearestBirthday",
-	calendarNearestSchedule = "calendarNearestSchedule",
+	calendarPublished = "calendarPublished",
+	calendarSwitch = "calendarSwitch",
+	calendarLoading = "calendarLoading",
+	calendarNextHoliday = "calendarNextHoliday",
+	calendarNextBirthday = "calendarNextBirthday",
+	calendarMonthRemaining = "calendarMonthRemaining",
+	calendarYearRemaining = "calendarYearRemaining",
+	calendarDataUnavailable = "calendarDataUnavailable",
+	calendarNoHoliday = "calendarNoHoliday",
+	calendarNoBirthday = "calendarNoBirthday",
+	calendarNoPosts = "calendarNoPosts",
 
 	feibichi = "feibichi",
 	contactMe = "contactMe",
@@ -397,13 +395,8 @@ enum I18nKey {
 	musicVisualizer3D = "musicVisualizer3D",
 	musicVisualizerDescription = "musicVisualizerDescription",
 
-	// ===== 日历事件 =====
-	countdownTo = "countdownTo",
-	countdownEndIn = "countdownEndIn",
-	countdownIn = "countdownIn",
+	// ===== 日历工具卡片 =====
 	dayShort = "dayShort",
-	officialHolidayBadge = "officialHolidayBadge",
-	makeupWorkdayBadge = "makeupWorkdayBadge",
 	prevMonth = "prevMonth",
 	nextMonth = "nextMonth",
 

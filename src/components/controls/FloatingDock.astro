@@ -1,5 +1,6 @@
 ---
 import Icon from "@components/common/Icon.astro";
+import CalendarWidget from "@/components/controls/CalendarWidget.astro";
 /**
  * 极简悬浮坞 — 替代原 FloatingControls。
  * 所有重组件（Theme / DisplaySettings / Music / Live2D / Spine / Calendar / TOC / BackToTop / BackToHome / BackToComment / Tags）
@@ -58,6 +59,11 @@ const tags = await getTagList();
 			<button class="dock-btn" id="dock-tags-btn" aria-label={i18n(I18nKey.tags)} type="button" data-tooltip={i18n(I18nKey.tags)}>
 				<span class="dock-btn-icon"><Icon name="material-symbols:label-outline" class="text-3xl" /></span>
 				<span class="dock-btn-label">{i18n(I18nKey.tags)}</span>
+			</button>
+
+			<button class="dock-btn" id="dock-calendar-btn" aria-label={i18n(I18nKey.calendar)} type="button" data-tooltip={i18n(I18nKey.calendar)}>
+				<span class="dock-btn-icon"><Icon name="material-symbols:calendar-month-rounded" class="text-3xl" /></span>
+				<span class="dock-btn-label">{i18n(I18nKey.calendar)}</span>
 			</button>
 
 			{spineModelConfig?.enable && (
@@ -137,6 +143,10 @@ const tags = await getTagList();
 	</div>
 )}
 
+<div class="dock-drawer dock-drawer-calendar dock-drawer-closed" id="dock-drawer-calendar">
+	<CalendarWidget id="desktop-calendar-widget" />
+</div>
+
 <div class="dock-drawer dock-drawer-closed" id="dock-drawer-tags">
 	<div class="dock-drawer-title">
 		<Icon name="material-symbols:label-outline" class="dock-drawer-title-icon" />
@@ -192,10 +202,12 @@ const tags = await getTagList();
 
 		const drawers: Record<string, string> = {
 			"dock-music-btn": "dock-drawer-music",
+			"dock-calendar-btn": "dock-drawer-calendar",
 			"dock-toc-btn": "dock-drawer-toc",
 			"dock-announcement-btn": "dock-drawer-announcement",
 			"dock-tags-btn": "dock-drawer-tags",
 		};
+		let preserveCalendarDrawerOnNavigation = false;
 
 		function closeAllDrawers() {
 			document.querySelectorAll(".dock-drawer").forEach((d) => d.classList.add("dock-drawer-closed"));
@@ -209,7 +221,12 @@ const tags = await getTagList();
 				e.stopPropagation();
 				const isOpen = !drawer.classList.contains("dock-drawer-closed");
 				closeAllDrawers();
-				if (!isOpen) drawer.classList.remove("dock-drawer-closed");
+				if (!isOpen) {
+					drawer.classList.remove("dock-drawer-closed");
+					if (drawerId === "dock-drawer-calendar") {
+						window.dispatchEvent(new Event("calendar:open"));
+					}
+				}
 			});
 		});
 
@@ -220,8 +237,11 @@ const tags = await getTagList();
 		}
 
 		document.addEventListener("click", (e) => {
-			const target = e.target as Node;
-			if (!target) return;
+			const target = e.target;
+			if (!(target instanceof Node)) return;
+			if (target instanceof Element && target.closest("[data-calendar-post-link]")) {
+				preserveCalendarDrawerOnNavigation = true;
+			}
 			const isInDrawer = document.querySelector(".dock-drawer:not(.dock-drawer-closed)")?.contains(target);
 			const isInDock = document.getElementById("floating-dock")?.contains(target);
 			if (!isInDrawer && !isInDock) {
@@ -359,7 +379,14 @@ const tags = await getTagList();
 		document.addEventListener("astro:page-load", () => {
 			window.__floatingDockTOC?.cleanup();
 			window.__floatingDockTOC = null;
-			closeAllDrawers();
+			if (preserveCalendarDrawerOnNavigation) {
+				preserveCalendarDrawerOnNavigation = false;
+				closeAllDrawers();
+				document.getElementById("dock-drawer-calendar")?.classList.remove("dock-drawer-closed");
+				window.dispatchEvent(new Event("calendar:open"));
+			} else {
+				closeAllDrawers();
+			}
 			collapseDock();
 			updatePathDependent();
 			updateScrollDependent();

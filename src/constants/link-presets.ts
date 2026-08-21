@@ -16,7 +16,7 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
 	[LinkPreset.Archive]: {
 		name: i18n(I18nKey.archive),
 		url: "/archive/",
-		icon: "material-symbols:schedule-outline-rounded",
+		icon: "material-symbols:inventory-2",
 	},
 	[LinkPreset.PostList]: {
 		name: i18n(I18nKey.postList),
@@ -57,11 +57,6 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
 		name: i18n(I18nKey.stats),
 		url: "/stats/",
 		icon: "material-symbols:bar-chart",
-	},
-	[LinkPreset.Calendar]: {
-		name: i18n(I18nKey.calendar),
-		url: "/calendar/",
-		icon: "material-symbols:calendar-today",
 	},
 	[LinkPreset.Categories]: {
 		name: "标签图谱",

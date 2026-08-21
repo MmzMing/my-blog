@@ -234,29 +234,26 @@ export const zh_CN: Translation = {
 	[Key.passwordError]: "密码错误，请重试。",
 	[Key.passwordProtectedRss]: "本文已加密保护，请访问网站查看。",
 
-	// 日历页面
+	// 日历工具卡片
 	[Key.calendar]: "日历",
+	[Key.calendarToday]: "今天",
+	[Key.calendarPost]: "文章",
+	[Key.calendarPublished]: "文章发布",
+	[Key.calendarSwitch]: "切换",
+	[Key.calendarLoading]: "正在加载日历...",
+	[Key.calendarNextHoliday]: "最近节日",
+	[Key.calendarNextBirthday]: "最近生日/纪念日",
+	[Key.calendarMonthRemaining]: "距月底",
+	[Key.calendarYearRemaining]: "距年底",
+	[Key.calendarDataUnavailable]: "日历数据暂时不可用",
+	[Key.calendarNoHoliday]: "暂未找到后续节日",
+	[Key.calendarNoBirthday]: "暂未设置生日/纪念日",
+	[Key.calendarNoPosts]: "这一天还没有发布文章",
 	[Key.feibichi]: "个人主站",
 	[Key.contactMe]: "联系",
 	[Key.qqGroup]: "QQ群",
 	[Key.navPosts]: "文章",
 	[Key.navMy]: "其他",
-	[Key.calendarDescription]:
-		"在综合日历中查看节日、生日、日程和文章发布记录，按日期了解近期安排与网站更新动态。",
-	[Key.calendarToday]: "今日",
-	[Key.calendarBirthday]: "生日",
-	[Key.calendarHoliday]: "节日",
-	[Key.calendarSchedule]: "安排",
-	[Key.calendarPost]: "文章",
-	[Key.calendarLunar]: "农历",
-	[Key.calendarUpcoming]: "近期事件",
-	[Key.calendarTodayEvents]: "今日事件",
-	[Key.calendarNoEvents]: "这一天没有日程",
-	[Key.calendarMore]: "还有 {n} 项",
-	[Key.calendarBackToToday]: "回到今日",
-	[Key.calendarNearestHoliday]: "最近的节日",
-	[Key.calendarNearestBirthday]: "最近的生日/纪念日",
-	[Key.calendarNearestSchedule]: "最近的安排",
 
 	// ===== 通用操作 =====
 	[Key.close]: "关闭",
@@ -409,13 +406,8 @@ export const zh_CN: Translation = {
 	[Key.musicVisualizerDescription]:
 		"进入沉浸式音乐可视化页面，跟随播放节奏观察三维地形与动态效果，获得更具氛围感的聆听体验。",
 
-	// ===== 日历事件 =====
-	[Key.countdownTo]: "距离",
-	[Key.countdownEndIn]: "结束还有：",
-	[Key.countdownIn]: "还有：",
+	// ===== 日历工具卡片 =====
 	[Key.dayShort]: "天",
-	[Key.officialHolidayBadge]: "法定",
-	[Key.makeupWorkdayBadge]: "补班",
 	[Key.prevMonth]: "上个月",
 	[Key.nextMonth]: "下个月",
 

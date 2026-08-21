@@ -241,29 +241,26 @@ export const ja: Translation = {
 	[Key.passwordProtectedRss]:
 		"この記事は暗号化されています。ウェブサイトにアクセスしてご覧ください。",
 
-	// カレンダーページ
+	// カレンダーツールウィジェット
 	[Key.calendar]: "カレンダー",
+	[Key.calendarToday]: "今日",
+	[Key.calendarPost]: "記事",
+	[Key.calendarPublished]: "記事公開",
+	[Key.calendarSwitch]: "切替",
+	[Key.calendarLoading]: "カレンダーを読み込んでいます...",
+	[Key.calendarNextHoliday]: "次の祝日",
+	[Key.calendarNextBirthday]: "次の誕生日・記念日",
+	[Key.calendarMonthRemaining]: "月末まで",
+	[Key.calendarYearRemaining]: "年末まで",
+	[Key.calendarDataUnavailable]: "カレンダーデータを読み込めません",
+	[Key.calendarNoHoliday]: "次の祝日がありません",
+	[Key.calendarNoBirthday]: "誕生日・記念日が設定されていません",
+	[Key.calendarNoPosts]: "この日に公開された記事はありません",
 	[Key.feibichi]: "个人主站",
 	[Key.contactMe]: "連絡",
 	[Key.qqGroup]: "QQグループ",
 	[Key.navPosts]: "記事",
 	[Key.navMy]: "その他",
-	[Key.calendarDescription]:
-		"祝日、誕生日、予定、記事公開の記録を一つのカレンダーで確認できます。日付ごとに今後の予定やサイト更新を把握できます。",
-	[Key.calendarToday]: "今日",
-	[Key.calendarBirthday]: "誕生日",
-	[Key.calendarHoliday]: "祝日",
-	[Key.calendarSchedule]: "予定",
-	[Key.calendarPost]: "記事",
-	[Key.calendarLunar]: "旧暦",
-	[Key.calendarUpcoming]: "近日の予定",
-	[Key.calendarTodayEvents]: "本日のイベント",
-	[Key.calendarNoEvents]: "この日には予定がありません",
-	[Key.calendarMore]: "他 {n} 件",
-	[Key.calendarBackToToday]: "今日に戻る",
-	[Key.calendarNearestHoliday]: "直近の祝日",
-	[Key.calendarNearestBirthday]: "直近の誕生日",
-	[Key.calendarNearestSchedule]: "直近のスケジュール",
 	// ===== 通用操作 =====
 	[Key.close]: "閉じる",
 	[Key.expand]: "展開",
@@ -416,13 +413,8 @@ export const ja: Translation = {
 	[Key.musicVisualizerDescription]:
 		"再生中の音楽を立体的な地形と動きで表現する没入型ビジュアライザーです。音に合わせた視覚効果とともに音楽を楽しめます。",
 
-	// ===== 日历事件 =====
-	[Key.countdownTo]: "まで",
-	[Key.countdownEndIn]: "終了まで：",
-	[Key.countdownIn]: "あと：",
+	// ===== カレンダーツールウィジェット =====
 	[Key.dayShort]: "日",
-	[Key.officialHolidayBadge]: "法定",
-	[Key.makeupWorkdayBadge]: "振替出勤",
 	[Key.prevMonth]: "前の月",
 	[Key.nextMonth]: "次の月",
 
