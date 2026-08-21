@@ -16,7 +16,8 @@ export const galleryConfig: GalleryConfig = {
 		{
 			id: "gpt-img2-2026",
 			name: "GPT生图",
-			description: "Image 2 生成的图片",
+			description:
+				"浏览本相册收录的 Image 2 生成图片，按作品、主题与时间探索创作内容和视觉灵感记录。",
 			location: "gpt",
 			date: "2026-05-24",
 			tags: ["AI", "GPT生图"],

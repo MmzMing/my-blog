@@ -59,9 +59,11 @@ export const zh_TW: Translation = {
 
 	[Key.comments]: "評論",
 	[Key.friends]: "友鏈",
-	[Key.friendsDescription]: "這裡是我的朋友們，歡迎互相訪問交流",
+	[Key.friendsDescription]:
+		"瀏覽本站收錄的友鏈，發現其他獨立部落格和網站；也可了解友鏈申請方式，與站長互相訪問交流。",
 	[Key.guestbook]: "留言",
-	[Key.guestbookDescription]: "歡迎在這裡留下你的足跡，分享你的想法和建議",
+	[Key.guestbookDescription]:
+		"在留言板留下想法、建議和交流內容，與其他訪客互動；請遵守社群規則，共同維護友善的討論環境。",
 	[Key.commentSection]: "評論區",
 	[Key.commentSubtitle]: "歡迎在評論區留言交流",
 	[Key.commentNotConfigured]: "評論功能未配置，請在後台設置評論系統。",
@@ -108,7 +110,8 @@ export const zh_TW: Translation = {
 
 	// RSS頁面
 	[Key.rss]: "RSS 訂閱",
-	[Key.rssDescription]: "訂閱獲取最新更新",
+	[Key.rssDescription]:
+		"透過 RSS 訂閱本站最新文章更新，將內容推送到常用閱讀器，方便集中閱讀並持續關注網站動態。",
 	[Key.rssLink]: "RSS 鏈接",
 	[Key.rssCopyToReader]: "複製鏈接到你的 RSS 閱讀器",
 	[Key.rssCopyLink]: "複製鏈接",
@@ -153,7 +156,7 @@ export const zh_TW: Translation = {
 	[Key.sponsor]: "贊助",
 	[Key.sponsorTitle]: "贊助支持",
 	[Key.sponsorDescription]:
-		"如果我的內容對你有幫助，歡迎通過以下方式贊助我，你的支持是我持續創作的動力！",
+		"本頁提供贊助方式和贊助者名單，用於支持本站內容創作、維護與持續更新；感謝每一份支持。",
 	[Key.sponsorList]: "贊助列表",
 	[Key.sponsorEmpty]: "暫無贊助記錄",
 	[Key.scanToSponsor]: "掃碼贊助",
@@ -201,7 +204,8 @@ export const zh_TW: Translation = {
 
 	// 相簿頁面
 	[Key.gallery]: "相簿",
-	[Key.galleryDescription]: "記錄生活中的美好瞬間",
+	[Key.galleryDescription]:
+		"瀏覽本站收錄的本地與網路相簿，按主題探索圖片和作品，記錄值得保存的生活片段與創作內容。",
 	[Key.galleryPhotos]: "張照片",
 	[Key.galleryNoAlbums]: "暫無相簿",
 	[Key.galleryBackToAlbums]: "返回相簿列表",
@@ -216,7 +220,8 @@ export const zh_TW: Translation = {
 
 	// 收藏API頁面
 	[Key.collections]: "工具導航",
-	[Key.collectionsDescription]: "收集和管理常用的 API 與工具",
+	[Key.collectionsDescription]:
+		"集中瀏覽本站整理的常用工具、公開 API 與資源連結，按分類快速查找並存取適合目前任務的服務。",
 	[Key.collectionsEmpty]: "暫無收藏的 API",
 
 	// 統計頁面
@@ -238,7 +243,8 @@ export const zh_TW: Translation = {
 	[Key.qqGroup]: "QQ群",
 	[Key.navPosts]: "文章",
 	[Key.navMy]: "其他",
-	[Key.calendarDescription]: "節日、生日、安排與文章發布的綜合日曆",
+	[Key.calendarDescription]:
+		"在綜合日曆中查看節日、生日、行程和文章發布記錄，按日期了解近期安排與網站更新動態。",
 	[Key.calendarToday]: "今日",
 	[Key.calendarBirthday]: "生日",
 	[Key.calendarHoliday]: "節日",
@@ -403,7 +409,8 @@ export const zh_TW: Translation = {
 	[Key.playlistLoading]: "歌單載入中",
 	[Key.musicVisualizer]: "音樂視覺化",
 	[Key.musicVisualizer3D]: "3D視覺化",
-	[Key.musicVisualizerDescription]: "音樂地形視覺化，沉浸式音樂體驗",
+	[Key.musicVisualizerDescription]:
+		"進入沉浸式音樂視覺化頁面，跟隨播放節奏觀察三維地形與動態效果，獲得更具氛圍感的聆聽體驗。",
 
 	// ===== 日历事件 =====
 	[Key.countdownTo]: "距離",
@@ -424,17 +431,21 @@ export const zh_TW: Translation = {
 	[Key.aboutSitePrefix]: "關於",
 
 	// ===== 页面级描述 =====
-	[Key.archiveDescription]: "按時間、分類和標籤瀏覽部落格的全部技術文章。",
+	[Key.archiveDescription]:
+		"按發布時間瀏覽本站全部文章，結合分類、標籤和篩選條件快速定位主題內容，並回顧持續累積的寫作記錄。",
 	[Key.tagGraphPageTitle]: "標籤圖譜",
-	[Key.tagGraphPageDescription]: "透過分類和標籤關係圖譜瀏覽部落格中文章關係。",
+	[Key.tagGraphPageDescription]:
+		"透過分類、標籤與關係圖譜瀏覽本站文章，快速查找感興趣的主題，並發現相關的內容與閱讀路徑。",
 	[Key.categoryExplorerTitle]: "分類與標籤",
 	[Key.categoryExplorerViewPosts]: "查看分類文章",
 	[Key.categoryExplorerAria]: "分類與標籤瀏覽",
 	[Key.listDescription]:
-		"按主題、分類、標籤、發佈時間和訪問熱度瀏覽部落格的全部文章。",
+		"以卡片列表瀏覽本站全部文章，可按發布時間、主題、分類、標籤和訪問熱度篩選排序，快速找到想讀的內容。",
 	[Key.noDescriptionFallback]: "暫無文章簡介，點擊查看完整內容。",
-	[Key.searchDescription]: "站內搜尋部落格的文章內容。",
-	[Key.aboutDescription]: "{name} 的個人介紹、技術方向、部落格主題與聯絡方式。",
+	[Key.searchDescription]:
+		"使用站內搜尋查找已發布文章和相關內容，輸入關鍵字即可快速定位主題、標題與正文中的資訊。",
+	[Key.aboutDescription]:
+		"了解本站作者、內容方向、技術堆疊與聯絡方式，並查看網站的更新記錄、維護資訊和持續演進的內容規劃。",
 	[Key.aboutChangelogTitle]: "更新日誌",
 	[Key.aboutChangelogPagesLabel]: "涉及頁面",
 	[Key.aboutChangelogRelatedLabel]: "相關更新",

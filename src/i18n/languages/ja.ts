@@ -60,10 +60,10 @@ export const ja: Translation = {
 	[Key.comments]: "コメント",
 	[Key.friends]: "友達",
 	[Key.friendsDescription]:
-		"ここは私の友達です、お互いに訪問して交流することを歓迎します",
+		"このサイトに登録された友人サイトや個人ブログを紹介します。気になるサイトを見つけ、相互リンクの申請方法や交流のきっかけを確認できます。",
 	[Key.guestbook]: "ゲストブック",
 	[Key.guestbookDescription]:
-		"ここに足跡を残して、あなたの考えや提案を共有してください",
+		"留言板で感想、提案、交流のメッセージを残し、ほかの訪問者と交流できます。コミュニティのルールを守り、安心して話せる場づくりにご協力ください。",
 	[Key.commentSection]: "コメント",
 	[Key.commentSubtitle]: "お気軽にコメントして議論に参加してください",
 	[Key.commentNotConfigured]:
@@ -110,7 +110,8 @@ export const ja: Translation = {
 
 	// RSSページ
 	[Key.rss]: "RSSフィード",
-	[Key.rssDescription]: "最新の更新を購読する",
+	[Key.rssDescription]:
+		"このサイトのRSSフィードを購読すると、最新記事を普段使うリーダーで受け取れます。サイトを毎回訪れずに更新をまとめて確認できます。",
 	[Key.rssLink]: "RSSリンク",
 	[Key.rssCopyToReader]: "RSSリンクをリーダーにコピー",
 	[Key.rssCopyLink]: "リンクをコピー",
@@ -157,7 +158,7 @@ export const ja: Translation = {
 	[Key.sponsor]: "スポンサー",
 	[Key.sponsorTitle]: "サポート",
 	[Key.sponsorDescription]:
-		"私のコンテンツがあなたの役に立ったなら、以下の方法で私をスポンサーしてください。あなたのサポートは私の継続的な創作の原動力です！",
+		"支援方法と支援者一覧を掲載しています。いただいたご支援は、サイトの運営、コンテンツ制作、継続的な更新に活用されます。",
 	[Key.sponsorList]: "スポンサーリスト",
 	[Key.sponsorEmpty]: "スポンサー記録なし",
 	[Key.scanToSponsor]: "スキャンしてスポンサー",
@@ -205,7 +206,8 @@ export const ja: Translation = {
 
 	// ギャラリーページ
 	[Key.gallery]: "ギャラリー",
-	[Key.galleryDescription]: "人生の美しい瞬間を記録する",
+	[Key.galleryDescription]:
+		"サイトに収録したローカル・オンラインアルバムを閲覧し、テーマごとに写真や作品を探せます。残しておきたい瞬間や創作の記録をお楽しみください。",
 	[Key.galleryPhotos]: "枚の写真",
 	[Key.galleryNoAlbums]: "アルバムがありません",
 	[Key.galleryBackToAlbums]: "アルバム一覧に戻る",
@@ -221,7 +223,8 @@ export const ja: Translation = {
 
 	// 收藏APIページ
 	[Key.collections]: "コレクション",
-	[Key.collectionsDescription]: "よく使うAPIの収集と管理",
+	[Key.collectionsDescription]:
+		"サイトで整理した便利なツール、公開API、リソースリンクをまとめて閲覧できます。カテゴリから目的に合うサービスをすばやく探せます。",
 	[Key.collectionsEmpty]: "収集したAPIはまだありません",
 
 	// 統計ページ
@@ -245,7 +248,8 @@ export const ja: Translation = {
 	[Key.qqGroup]: "QQグループ",
 	[Key.navPosts]: "記事",
 	[Key.navMy]: "その他",
-	[Key.calendarDescription]: "祝日・誕生日・予定・記事更新の総合カレンダー",
+	[Key.calendarDescription]:
+		"祝日、誕生日、予定、記事公開の記録を一つのカレンダーで確認できます。日付ごとに今後の予定やサイト更新を把握できます。",
 	[Key.calendarToday]: "今日",
 	[Key.calendarBirthday]: "誕生日",
 	[Key.calendarHoliday]: "祝日",
@@ -411,7 +415,8 @@ export const ja: Translation = {
 	[Key.playlistLoading]: "プレイリスト読み込み中",
 	[Key.musicVisualizer]: "音楽ビジュアライザー",
 	[Key.musicVisualizer3D]: "3Dビジュアライザー",
-	[Key.musicVisualizerDescription]: "没入型の3Dミュージックテライン体験",
+	[Key.musicVisualizerDescription]:
+		"再生中の音楽を立体的な地形と動きで表現する没入型ビジュアライザーです。音に合わせた視覚効果とともに音楽を楽しめます。",
 
 	// ===== 日历事件 =====
 	[Key.countdownTo]: "まで",
@@ -433,18 +438,20 @@ export const ja: Translation = {
 
 	// ===== 页面级描述 =====
 	[Key.archiveDescription]:
-		"時間・カテゴリ・タグごとにすべての記事を閲覧できます。",
+		"公開日時順にすべての記事を閲覧し、カテゴリ、タグ、絞り込みで必要なテーマを探せます。これまでの執筆記録も振り返れます。",
 	[Key.tagGraphPageTitle]: "タググラフ",
 	[Key.tagGraphPageDescription]:
-		"カテゴリとタグの関係グラフで記事のつながりを閲覧できます。",
+		"カテゴリ、タグ、関係グラフからこのサイトの記事をたどり、関心のあるテーマと関連する記事をすばやく見つけられます。",
 	[Key.categoryExplorerTitle]: "カテゴリとタグ",
 	[Key.categoryExplorerViewPosts]: "記事を見る",
 	[Key.categoryExplorerAria]: "カテゴリとタグのブラウザ",
 	[Key.listDescription]:
-		"トピック、カテゴリ、タグ、公開日時、閲覧数でブログの全記事を閲覧。",
+		"カード形式で全記事を閲覧できます。公開日、テーマ、カテゴリ、タグ、閲覧数による並べ替えや絞り込みで読みたい内容を探せます。",
 	[Key.noDescriptionFallback]: "概要がありません。クリックして全文を読む。",
-	[Key.searchDescription]: "ブログの記事をサイト内検索。",
-	[Key.aboutDescription]: "{name} の自己紹介・技術方向・ブログテーマ・連絡先。",
+	[Key.searchDescription]:
+		"サイト内検索で公開済みの記事と関連内容を探せます。キーワードからテーマ、タイトル、本文中の情報をすばやく見つけられます。",
+	[Key.aboutDescription]:
+		"サイトの作者、発信内容、技術スタック、連絡先を紹介します。更新履歴や運営情報、今後の方向性も確認できます。",
 	[Key.aboutChangelogTitle]: "更新履歴",
 	[Key.aboutChangelogPagesLabel]: "関連ページ",
 	[Key.aboutChangelogRelatedLabel]: "関連する更新",

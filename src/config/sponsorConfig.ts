@@ -5,7 +5,7 @@ export const sponsorConfig: SponsorConfig = {
 	title: "赞助",
 
 	// 页面描述文本，如果留空则使用 i18n 中的翻译
-	description: "感谢您的支持，您的赞助将帮助我持续创作优质内容",
+	description: "",
 
 	// 赞助用途说明
 	usage: "",

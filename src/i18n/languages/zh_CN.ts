@@ -59,10 +59,11 @@ export const zh_CN: Translation = {
 
 	[Key.comments]: "评论",
 	[Key.friends]: "友链",
-	[Key.friendsDescription]: "这里是我的朋友们，欢迎互相访问交流",
+	[Key.friendsDescription]:
+		"浏览本站收录的友链，发现其他独立博客和网站；也可了解友链申请方式，与站长互相访问交流。",
 	[Key.guestbook]: "留言",
 	[Key.guestbookDescription]:
-		"欢迎在这里留下你的足迹，分享你的想法和建议，但是请不要发布任何违规内容",
+		"在留言板留下想法、建议和交流内容，与其他访客互动；请遵守社区规则，共同维护友善的讨论环境。",
 	[Key.commentSection]: "评论区",
 	[Key.commentSubtitle]: "欢迎在评论区留言交流",
 	[Key.commentNotConfigured]: "评论功能未配置，请在后台设置评论系统。",
@@ -107,7 +108,8 @@ export const zh_CN: Translation = {
 
 	// RSS页面
 	[Key.rss]: "RSS 订阅",
-	[Key.rssDescription]: "订阅获取最新更新",
+	[Key.rssDescription]:
+		"通过 RSS 订阅本站最新文章更新，将内容推送到常用阅读器，方便集中阅读并持续关注网站动态。",
 	[Key.rssLink]: "RSS 链接",
 	[Key.rssCopyToReader]: "复制链接到你的 RSS 阅读器",
 	[Key.rssCopyLink]: "复制链接",
@@ -152,7 +154,7 @@ export const zh_CN: Translation = {
 	[Key.sponsor]: "赞助",
 	[Key.sponsorTitle]: "赞助支持",
 	[Key.sponsorDescription]:
-		"如果我的内容对你有帮助，欢迎通过以下方式赞助我，你的支持是我持续创作的动力！",
+		"本页提供赞助方式和赞助者名单，用于支持本站内容创作、维护与持续更新；感谢每一份支持。",
 	[Key.sponsorList]: "赞助列表",
 	[Key.sponsorEmpty]: "暂无赞助记录",
 	[Key.scanToSponsor]: "扫码赞助",
@@ -200,7 +202,8 @@ export const zh_CN: Translation = {
 
 	// 相册页面
 	[Key.gallery]: "相册",
-	[Key.galleryDescription]: "记录生活中的美好瞬间",
+	[Key.galleryDescription]:
+		"浏览本站收录的本地与网络相册，按主题探索图片和作品，记录值得保存的生活片段与创作内容。",
 	[Key.galleryPhotos]: "张照片",
 	[Key.galleryNoAlbums]: "暂无相册",
 	[Key.galleryBackToAlbums]: "返回相册列表",
@@ -215,7 +218,8 @@ export const zh_CN: Translation = {
 
 	// 收藏API页面
 	[Key.collections]: "工具导航",
-	[Key.collectionsDescription]: "收集和管理常用的 API 与工具",
+	[Key.collectionsDescription]:
+		"集中浏览本站整理的常用工具、公开 API 与资源链接，按分类快速查找并访问适合当前任务的服务。",
 	[Key.collectionsEmpty]: "暂无收藏的 API",
 
 	// 统计页面
@@ -237,7 +241,8 @@ export const zh_CN: Translation = {
 	[Key.qqGroup]: "QQ群",
 	[Key.navPosts]: "文章",
 	[Key.navMy]: "其他",
-	[Key.calendarDescription]: "节日、生日、安排与文章发布的综合日历",
+	[Key.calendarDescription]:
+		"在综合日历中查看节日、生日、日程和文章发布记录，按日期了解近期安排与网站更新动态。",
 	[Key.calendarToday]: "今日",
 	[Key.calendarBirthday]: "生日",
 	[Key.calendarHoliday]: "节日",
@@ -403,7 +408,8 @@ export const zh_CN: Translation = {
 	[Key.playlistLoading]: "歌单加载中",
 	[Key.musicVisualizer]: "音乐可视化",
 	[Key.musicVisualizer3D]: "3D可视化",
-	[Key.musicVisualizerDescription]: "音乐地形可视化，沉浸式音乐体验",
+	[Key.musicVisualizerDescription]:
+		"进入沉浸式音乐可视化页面，跟随播放节奏观察三维地形与动态效果，获得更具氛围感的聆听体验。",
 
 	// ===== 日历事件 =====
 	[Key.countdownTo]: "距离",
@@ -424,17 +430,21 @@ export const zh_CN: Translation = {
 	[Key.aboutSitePrefix]: "关于",
 
 	// ===== 页面级描述 =====
-	[Key.archiveDescription]: "按时间、分类和标签浏览博客的全部技术文章。",
+	[Key.archiveDescription]:
+		"按发布时间浏览本站全部文章，结合分类、标签和筛选条件快速定位主题内容，并回顾持续积累的写作记录。",
 	[Key.tagGraphPageTitle]: "标签图谱",
-	[Key.tagGraphPageDescription]: "通过分类和标签关系图谱浏览博客中文章关系。",
+	[Key.tagGraphPageDescription]:
+		"通过分类、标签与关系图谱浏览本站文章，快速查找感兴趣的主题，并发现相关的内容与阅读路径。",
 	[Key.categoryExplorerTitle]: "分类与标签",
 	[Key.categoryExplorerViewPosts]: "查看分类文章",
 	[Key.categoryExplorerAria]: "分类与标签浏览",
 	[Key.listDescription]:
-		"按主题、分类、标签、发布时间和访问热度浏览博客的全部文章。",
+		"以卡片列表浏览本站全部文章，可按发布时间、主题、分类、标签和访问热度筛选排序，快速找到想读的内容。",
 	[Key.noDescriptionFallback]: "暂无文章简介，点击查看完整内容。",
-	[Key.searchDescription]: "站内搜索博客的文章内容。",
-	[Key.aboutDescription]: "{name} 的个人介绍、技术方向、博客主题与联系方式。",
+	[Key.searchDescription]:
+		"使用站内搜索查找已发布文章和相关内容，输入关键词即可快速定位主题、标题与正文中的信息。",
+	[Key.aboutDescription]:
+		"了解本站作者、内容方向、技术栈与联系方式，并查看网站的更新记录、维护信息和持续演进的内容规划。",
 	[Key.aboutChangelogTitle]: "更新日志",
 	[Key.aboutChangelogPagesLabel]: "涉及页面",
 	[Key.aboutChangelogRelatedLabel]: "相关更新",

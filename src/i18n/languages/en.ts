@@ -60,10 +60,10 @@ export const en: Translation = {
 	[Key.comments]: "Comments",
 	[Key.friends]: "Friends",
 	[Key.friendsDescription]:
-		"Here are my friends, welcome to visit and communicate with each other",
+		"Browse this site's collection of friendly links and independent blogs, discover other websites, and learn how to exchange links and stay connected.",
 	[Key.guestbook]: "Guestbook",
 	[Key.guestbookDescription]:
-		"Welcome to leave your mark here, share your thoughts and suggestions",
+		"Use the guestbook to leave ideas, suggestions, and messages for other visitors. Please follow the community rules to help keep the conversation respectful and welcoming.",
 	[Key.commentSection]: "Comments",
 	[Key.commentSubtitle]: "Feel free to leave a comment and join the discussion",
 	[Key.commentNotConfigured]:
@@ -110,7 +110,8 @@ export const en: Translation = {
 
 	// RSS Page
 	[Key.rss]: "RSS Feed",
-	[Key.rssDescription]: "Subscribe to get latest updates",
+	[Key.rssDescription]:
+		"Subscribe to this site's RSS feed to receive new posts in your preferred reader and follow the latest updates without checking the website manually.",
 	[Key.rssLink]: "RSS Link",
 	[Key.rssCopyToReader]: "Copy link to your RSS reader",
 	[Key.rssCopyLink]: "Copy Link",
@@ -157,7 +158,7 @@ export const en: Translation = {
 	[Key.sponsor]: "Sponsor",
 	[Key.sponsorTitle]: "Support Me",
 	[Key.sponsorDescription]:
-		"If my content has been helpful to you, welcome to sponsor me through the following methods. Your support is the driving force for my continued creation!",
+		"Find available sponsorship methods and a list of supporters. Contributions help maintain the site, fund new content, and support ongoing updates.",
 	[Key.sponsorList]: "Sponsors",
 	[Key.sponsorEmpty]: "No sponsors yet",
 	[Key.scanToSponsor]: "Scan to Sponsor",
@@ -205,7 +206,8 @@ export const en: Translation = {
 
 	// Gallery Page
 	[Key.gallery]: "Gallery",
-	[Key.galleryDescription]: "Capturing beautiful moments in life",
+	[Key.galleryDescription]:
+		"Browse the site's local and online albums, explore images and works by theme, and revisit saved moments, visual ideas, and creative projects.",
 	[Key.galleryPhotos]: "photos",
 	[Key.galleryNoAlbums]: "No albums yet",
 	[Key.galleryBackToAlbums]: "Back to albums",
@@ -220,7 +222,8 @@ export const en: Translation = {
 
 	// Collections API page
 	[Key.collections]: "Tools",
-	[Key.collectionsDescription]: "Collect and manage useful APIs and tools",
+	[Key.collectionsDescription]:
+		"Browse a curated directory of useful tools, public APIs, and resource links. Explore categories to quickly find services that suit your current task.",
 	[Key.collectionsEmpty]: "No collected APIs yet",
 
 	// Stats page
@@ -245,7 +248,7 @@ export const en: Translation = {
 	[Key.navPosts]: "Posts",
 	[Key.navMy]: "Others",
 	[Key.calendarDescription]:
-		"Holidays, birthdays, schedules and post updates at a glance",
+		"View holidays, birthdays, schedules, and post publications in one calendar. Check upcoming plans and follow recent updates by date.",
 	[Key.calendarToday]: "Today",
 	[Key.calendarBirthday]: "Birthday",
 	[Key.calendarHoliday]: "Holiday",
@@ -413,7 +416,8 @@ export const en: Translation = {
 	[Key.playlistLoading]: "Loading playlist",
 	[Key.musicVisualizer]: "Music visualizer",
 	[Key.musicVisualizer3D]: "3D visualizer",
-	[Key.musicVisualizerDescription]: "Immersive 3D music terrain experience",
+	[Key.musicVisualizerDescription]:
+		"Enter an immersive music visualization that turns playback into a dynamic 3D landscape, adding motion and atmosphere to every listening session.",
 
 	// ===== 日历事件 =====
 	[Key.countdownTo]: "Until ",
@@ -434,19 +438,21 @@ export const en: Translation = {
 	[Key.aboutSitePrefix]: "About ",
 
 	// ===== 页面级描述 =====
-	[Key.archiveDescription]: "Browse all posts by time, category and tag.",
+	[Key.archiveDescription]:
+		"Browse every post by publication date, then use categories, tags, and filters to locate topics quickly and revisit the site's writing history.",
 	[Key.tagGraphPageTitle]: "Tag Graph",
 	[Key.tagGraphPageDescription]:
-		"Browse post relations via the category and tag graph.",
+		"Browse this site's posts through categories, tags, and their relationship graph to discover topics of interest and find related articles quickly.",
 	[Key.categoryExplorerTitle]: "Categories & Tags",
 	[Key.categoryExplorerViewPosts]: "Browse posts",
 	[Key.categoryExplorerAria]: "Category and tag browser",
 	[Key.listDescription]:
-		"Browse all blog posts by topic, category, tags, publish date, and popularity.",
+		"Browse all posts in a card-based list, with sorting and filters for publication date, topics, categories, tags, and popularity to find what you want to read.",
 	[Key.noDescriptionFallback]: "No description. Click to read the full post.",
-	[Key.searchDescription]: "Search the blog's posts.",
+	[Key.searchDescription]:
+		"Search published posts and related content across the site. Enter keywords to quickly find relevant topics, titles, and information from article text.",
 	[Key.aboutDescription]:
-		"{name}'s profile, tech focus, blog topics and contact info.",
+		"Learn about the site's author, content focus, technical stack, and contact details, then explore its changelog, maintenance notes, and ongoing direction.",
 	[Key.aboutChangelogTitle]: "Changelog",
 	[Key.aboutChangelogPagesLabel]: "Pages involved",
 	[Key.aboutChangelogRelatedLabel]: "Related updates",
