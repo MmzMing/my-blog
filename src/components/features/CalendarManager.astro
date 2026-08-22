@@ -463,7 +463,7 @@ const managerConfigStr = JSON.stringify({
 			var start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
 			for (var index = 0; index < 7; index += 1) {
 				var date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
-				var item = createElement("div", "calendar-widget__week-day");
+				var item = createElement("li", "calendar-widget__week-day");
 				if (formatYmd(date) === formatYmd(today)) item.classList.add("is-today");
 				item.appendChild(createElement("span", "calendar-widget__week-name", config.labels.weekdays[index]));
 				item.appendChild(createElement("strong", "calendar-widget__week-number", String(date.getDate())));

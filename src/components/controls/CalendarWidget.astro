@@ -10,6 +10,8 @@ interface Props {
 
 const { id, class: className } = Astro.props;
 const titleId = `${id}-title`;
+const holidayLabelId = `${id}-holiday-label`;
+const birthdayLabelId = `${id}-birthday-label`;
 ---
 
 <section
@@ -45,10 +47,10 @@ const titleId = `${id}-title`;
 				<strong class="calendar-widget__day" data-calendar-day>--</strong>
 			</header>
 
-			<div class="calendar-widget__week" aria-label={i18n(I18nKey.calendarToday)} data-calendar-week></div>
+			<ul class="calendar-widget__week" aria-label={i18n(I18nKey.calendarToday)} data-calendar-week></ul>
 		</div>
 
-		<div class="calendar-widget__view-panel" data-calendar-view-panel="published" aria-label={i18n(I18nKey.calendarPublished)} hidden>
+		<section class="calendar-widget__view-panel" data-calendar-view-panel="published" aria-label={i18n(I18nKey.calendarPublished)} hidden>
 			<div class="calendar-widget__month-nav">
 				<button
 					class="calendar-widget__icon-button"
@@ -89,7 +91,7 @@ const titleId = `${id}-title`;
 				<p class="calendar-widget__posts-title" data-calendar-posts-title>{i18n(I18nKey.calendarLoading)}</p>
 				<div class="calendar-widget__post-list" data-calendar-post-list></div>
 			</section>
-		</div>
+		</section>
 	</section>
 
 	<section class="calendar-widget__event-area" aria-live="polite">
@@ -97,7 +99,7 @@ const titleId = `${id}-title`;
 			<article class="calendar-widget__event" data-calendar-event="holiday">
 				<div class="calendar-widget__event-main">
 					<div class="calendar-widget__event-copy">
-						<p>{i18n(I18nKey.calendarNextHoliday)}</p>
+						<p id={holidayLabelId}>{i18n(I18nKey.calendarNextHoliday)}</p>
 						<strong data-calendar-event-title>{i18n(I18nKey.calendarLoading)}</strong>
 					</div>
 					<time class="calendar-widget__event-date" data-calendar-event-date></time>
@@ -107,6 +109,7 @@ const titleId = `${id}-title`;
 					<span
 						class="calendar-widget__progress"
 						role="progressbar"
+						aria-labelledby={holidayLabelId}
 						aria-valuemin="0"
 						aria-valuemax="100"
 						aria-valuenow="0"
@@ -121,7 +124,7 @@ const titleId = `${id}-title`;
 			<article class="calendar-widget__event" data-calendar-event="birthday">
 				<div class="calendar-widget__event-main">
 					<div class="calendar-widget__event-copy">
-						<p>{i18n(I18nKey.calendarNextBirthday)}</p>
+						<p id={birthdayLabelId}>{i18n(I18nKey.calendarNextBirthday)}</p>
 						<strong data-calendar-event-title>{i18n(I18nKey.calendarLoading)}</strong>
 					</div>
 					<time class="calendar-widget__event-date" data-calendar-event-date></time>
@@ -131,6 +134,7 @@ const titleId = `${id}-title`;
 					<span
 						class="calendar-widget__progress"
 						role="progressbar"
+						aria-labelledby={birthdayLabelId}
 						aria-valuemin="0"
 						aria-valuemax="100"
 						aria-valuenow="0"
