@@ -429,6 +429,7 @@ enum I18nKey {
 	searchDescription = "searchDescription",
 	aboutDescription = "aboutDescription",
 	aboutChangelogTitle = "aboutChangelogTitle",
+	aboutChangelogRecentLimit = "aboutChangelogRecentLimit",
 	aboutChangelogPagesLabel = "aboutChangelogPagesLabel",
 	aboutChangelogRelatedLabel = "aboutChangelogRelatedLabel",
 	changelogTypeFeat = "changelogTypeFeat",

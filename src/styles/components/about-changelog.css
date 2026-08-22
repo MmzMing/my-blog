@@ -9,7 +9,16 @@
 
 .changelog {
 	position: relative;
-	margin-top: 0.875rem;
+}
+
+.changelog__heading {
+	position: relative;
+	z-index: 3;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.625rem;
+	margin-bottom: 1.25rem;
 }
 
 /* 区块标题（与分类页 category-section-title 同款） */
@@ -17,7 +26,7 @@
 	display: flex;
 	align-items: center;
 	gap: 0.625rem;
-	margin: 0 0 1.25rem;
+	margin: 0;
 	color: var(--deep-text);
 	font-size: 1.25rem;
 	font-weight: 700;
@@ -31,6 +40,23 @@
 	flex: 0 0 5px;
 	border-radius: 999px;
 	background: #00a29b;
+}
+
+.changelog__recent-limit {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.625rem;
+	min-width: 0;
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	font-weight: 500;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+.changelog__recent-limit::before {
+	content: "/";
+	color: var(--line-divider);
 }
 
 /* ── SVG 连线层（行箭头 + 悬停虚线） ── */

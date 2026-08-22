@@ -12,8 +12,15 @@ import "@/styles/components/about-changelog.css";
 
 const logDoc = await getEntry("spec", "log");
 const entries = parseChangelogMarkdown(logDoc?.body ?? "");
+const CHANGELOG_DISPLAY_LIMIT = 30;
 const total = entries.length;
-const links = buildChangelogLinks(entries);
+const visibleEntries = entries.slice(0, CHANGELOG_DISPLAY_LIMIT);
+const hiddenEntryCount = total - visibleEntries.length;
+const links = buildChangelogLinks(visibleEntries);
+const recentLimitMessage = i18n(I18nKey.aboutChangelogRecentLimit).replace(
+	"{count}",
+	String(CHANGELOG_DISPLAY_LIMIT),
+);
 
 const typeLabels: Record<ChangelogType, string> = {
 	feat: i18n(I18nKey.changelogTypeFeat),
@@ -34,6 +41,17 @@ const pageLabels = Object.fromEntries(
 	data-page-labels={JSON.stringify(pageLabels)}
 	data-shared-prefix={i18n(I18nKey.aboutChangelogPagesLabel)}
 >
+	<div class="changelog__heading">
+		<h2 class="changelog__section-title">
+			{i18n(I18nKey.aboutChangelogTitle)}
+		</h2>
+		{
+			hiddenEntryCount > 0 && (
+				<span class="changelog__recent-limit">{recentLimitMessage}</span>
+			)
+		}
+	</div>
+
 	<svg class="changelog__wires" data-changelog-wires aria-hidden="true">
 		<defs>
 			<marker
@@ -58,7 +76,7 @@ const pageLabels = Object.fromEntries(
 
 	<ol class="changelog__grid" data-changelog-grid>
 		{
-			entries.map((entry, i) => {
+			visibleEntries.map((entry, i) => {
 				const num = total - i;
 				const entryLinks = links.get(i) ?? [];
 				return (

@@ -444,6 +444,7 @@ export const ja: Translation = {
 	[Key.aboutDescription]:
 		"サイトの作者、発信内容、技術スタック、連絡先を紹介します。更新履歴や運営情報、今後の方向性も確認できます。",
 	[Key.aboutChangelogTitle]: "更新履歴",
+	[Key.aboutChangelogRecentLimit]: "最新 {count} 件の更新のみを表示しています",
 	[Key.aboutChangelogPagesLabel]: "関連ページ",
 	[Key.aboutChangelogRelatedLabel]: "関連する更新",
 	[Key.changelogTypeFeat]: "新機能",

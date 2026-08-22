@@ -439,6 +439,7 @@ export const zh_TW: Translation = {
 	[Key.aboutDescription]:
 		"了解本站作者、內容方向、技術堆疊與聯絡方式，並查看網站的更新記錄、維護資訊和持續演進的內容規劃。",
 	[Key.aboutChangelogTitle]: "更新日誌",
+	[Key.aboutChangelogRecentLimit]: "僅顯示最近 {count} 則更新",
 	[Key.aboutChangelogPagesLabel]: "涉及頁面",
 	[Key.aboutChangelogRelatedLabel]: "相關更新",
 	[Key.changelogTypeFeat]: "新功能",

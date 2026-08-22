@@ -445,6 +445,7 @@ export const en: Translation = {
 	[Key.aboutDescription]:
 		"Learn about the site's author, content focus, technical stack, and contact details, then explore its changelog, maintenance notes, and ongoing direction.",
 	[Key.aboutChangelogTitle]: "Changelog",
+	[Key.aboutChangelogRecentLimit]: "Showing the {count} most recent updates",
 	[Key.aboutChangelogPagesLabel]: "Pages involved",
 	[Key.aboutChangelogRelatedLabel]: "Related updates",
 	[Key.changelogTypeFeat]: "Feature",

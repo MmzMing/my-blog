@@ -446,6 +446,8 @@ export const ru: Translation = {
 	[Key.aboutDescription]:
 		"Узнайте об авторе сайта, направлениях контента, техническом стеке и контактах, а также ознакомьтесь с журналом изменений и планами развития.",
 	[Key.aboutChangelogTitle]: "Журнал изменений",
+	[Key.aboutChangelogRecentLimit]:
+		"Показаны только последние {count} обновлений",
 	[Key.aboutChangelogPagesLabel]: "Затронутые страницы",
 	[Key.aboutChangelogRelatedLabel]: "Связанные обновления",
 	[Key.changelogTypeFeat]: "Новое",
