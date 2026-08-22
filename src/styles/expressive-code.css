@@ -1,6 +1,10 @@
 .expressive-code {
   --code-block-bg: var(--codeblock-bg);
+  --code-block-topbar-bg: var(--codeblock-topbar-bg);
   --code-block-border: var(--codeblock-border);
+  --code-window-control-close: #ff5f57;
+  --code-window-control-minimize: #ffbd2e;
+  --code-window-control-zoom: #28c840;
 
   .frame {
     @apply shadow-none!;
@@ -18,6 +22,28 @@
 
   .frame pre {
     border-color: var(--code-block-border) !important;
+  }
+
+  .frame.is-terminal .header {
+    background: var(--code-block-topbar-bg) !important;
+    border-color: var(--code-block-border) !important;
+  }
+
+  /* 使用与 iOS/macOS 窗口控制一致的红、黄、绿圆点。 */
+  .frame.is-terminal .header::before {
+    width: 2.1rem;
+    height: 0.56rem;
+    background:
+      radial-gradient(circle at 0.28rem 50%, var(--code-window-control-close) 0 0.28rem, transparent 0.3rem),
+      radial-gradient(circle at 1.05rem 50%, var(--code-window-control-minimize) 0 0.28rem, transparent 0.3rem),
+      radial-gradient(circle at 1.82rem 50%, var(--code-window-control-zoom) 0 0.28rem, transparent 0.3rem) !important;
+    opacity: 1 !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  .frame.is-terminal .header::after {
+    border-bottom-color: var(--code-block-border) !important;
   }
 
   .title {

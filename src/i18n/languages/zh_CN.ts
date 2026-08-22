@@ -193,11 +193,19 @@ export const zh_CN: Translation = {
 	[Key.calendarDecember]: "12月",
 
 	[Key.shareArticle]: "分享",
-	[Key.generatingPoster]: "海报生成中...",
+	[Key.scanToShare]: "扫码分享",
+	[Key.shareQQ]: "QQ",
+	[Key.shareEmail]: "邮箱",
+	[Key.shareFeishu]: "飞书",
+	[Key.shareX]: "X",
+	[Key.shareWhatsApp]: "WhatsApp",
 	[Key.copied]: "已复制",
 	[Key.copyLink]: "复制链接",
-	[Key.savePoster]: "保存海报",
-	[Key.scanToRead]: "扫码阅读文章",
+	[Key.shareToQQ]: "分享到 QQ",
+	[Key.shareByEmail]: "通过邮件分享",
+	[Key.shareToFeishu]: "分享到飞书",
+	[Key.shareToX]: "分享到 X",
+	[Key.shareToWhatsApp]: "通过 WhatsApp 分享",
 
 	// 代码块折叠配置
 
@@ -407,7 +415,6 @@ export const zh_CN: Translation = {
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "页面加载中",
 	[Key.pageLoadingAnimation]: "加载动画播放中",
-	[Key.generateSharePoster]: "生成分享海报",
 	[Key.categoryFolderMeta]: "{posts} 篇文章 · {tags} 个标签",
 	[Key.iconNotFound]: "图标未找到：{icon}",
 	[Key.aboutSitePrefix]: "关于",
@@ -439,7 +446,7 @@ export const zh_CN: Translation = {
 	[Key.albumPrefix]: "相册：",
 	[Key.sponsorChooseMethod]: "选择你喜欢的支付方式",
 	[Key.sponsorNotAvailable]: "暂不开通",
-	[Key.postIntroLabel]: "简介",
+	[Key.postAiSummaryLabel]: "AI 摘要",
 	[Key.coverImageAltSuffix]: "封面图",
 	// ===== AI 搜索 / 留言板（Phase B）=====
 	[Key.sending]: "发送中",

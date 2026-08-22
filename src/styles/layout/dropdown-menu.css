@@ -101,13 +101,28 @@
 	rotate: 180deg;
 }
 
-.dropdown-content-wrapper {
+.navbar-nav .dropdown-content-wrapper {
+	position: relative;
 	min-width: 12rem;
 	border-radius: 0.75rem;
 	padding: 0.5rem;
-	background: color-mix(in oklch, var(--float-panel-bg) 92%, transparent);
-	/* 细灰色边框：基于 --deep-text 28% 混色，随主题自动适配 */
-	border: 1px solid color-mix(in oklch, var(--deep-text) 28%, transparent);
+	border: 1.5px solid var(--deep-text);
+	background: var(--float-panel-bg);
+	box-shadow: none;
+	color: var(--deep-text);
+}
+
+.navbar-nav .dropdown-content-wrapper::before {
+	position: absolute;
+	top: -0.45rem;
+	left: 1.75rem;
+	width: 0.75rem;
+	height: 0.75rem;
+	border-top: 1.5px solid var(--deep-text);
+	border-left: 1.5px solid var(--deep-text);
+	background: var(--float-panel-bg);
+	content: "";
+	transform: rotate(45deg);
 }
 
 /* 禁用 dropdown item 的 expand-animation 背景，悬停高亮由灰色背景接管 */

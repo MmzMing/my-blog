@@ -197,11 +197,19 @@ export const ja: Translation = {
 	[Key.calendarDecember]: "12月",
 
 	[Key.shareArticle]: "共有",
-	[Key.generatingPoster]: "ポスター生成中...",
+	[Key.scanToShare]: "QRコードで共有",
+	[Key.shareQQ]: "QQ",
+	[Key.shareEmail]: "メール",
+	[Key.shareFeishu]: "Feishu",
+	[Key.shareX]: "X",
+	[Key.shareWhatsApp]: "WhatsApp",
 	[Key.copied]: "コピーしました",
 	[Key.copyLink]: "リンクをコピー",
-	[Key.savePoster]: "ポスターを保存",
-	[Key.scanToRead]: "QRコードで読む",
+	[Key.shareToQQ]: "QQ で共有",
+	[Key.shareByEmail]: "メールで共有",
+	[Key.shareToFeishu]: "Feishu で共有",
+	[Key.shareToX]: "X で共有",
+	[Key.shareToWhatsApp]: "WhatsApp で共有",
 
 	// コードブロック折りたたみ設定
 
@@ -413,7 +421,6 @@ export const ja: Translation = {
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "ページ読み込み中",
 	[Key.pageLoadingAnimation]: "読み込みアニメーション",
-	[Key.generateSharePoster]: "シェアポスターを生成",
 	[Key.categoryFolderMeta]: "{posts} 記事 · {tags} タグ",
 	[Key.iconNotFound]: "アイコンが見つかりません：{icon}",
 	[Key.aboutSitePrefix]: "このサイトについて：",
@@ -445,7 +452,7 @@ export const ja: Translation = {
 	[Key.albumPrefix]: "アルバム：",
 	[Key.sponsorChooseMethod]: "お好みの支払い方法を選択してください",
 	[Key.sponsorNotAvailable]: "現在未対応",
-	[Key.postIntroLabel]: "概要",
+	[Key.postAiSummaryLabel]: "AI 要約",
 	[Key.coverImageAltSuffix]: "のカバー画像",
 
 	// ===== AI 搜索 / 留言板（Phase B）=====

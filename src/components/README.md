@@ -126,7 +126,6 @@ Firefly 项目中所有可复用组件的集中管理。组件按照功能和职
 其他辅助和工具类组件。
 
 - `License.astro` - 许可证信息显示
-- `SharePoster.svelte` - 分享海报生成
 
 ---
 

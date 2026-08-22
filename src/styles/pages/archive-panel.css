@@ -92,15 +92,22 @@
 	align-items: center;
 	gap: 0.9rem;
 	padding: 0.2rem 0.5rem 0.2rem 0.4rem;
-	border: 2px solid transparent;
+	border: none;
 	border-radius: var(--radius-medium);
+	background-color: transparent;
 	text-decoration: none;
-	transition: border-color 150ms ease;
+	transition: color 150ms ease, background-color 150ms ease;
 }
 
-/* 悬停只出加粗边框，不铺背景：与文章列表置顶卡片的 2px 粗边框一致 */
-.archive-panel__post-link:hover {
-	border-color: var(--deep-text);
+/* 与导航下拉项一致：无边框，仅以低对比背景反馈交互状态。 */
+.archive-panel__post-link:hover,
+.archive-panel__post-link:focus-visible {
+	background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	outline: none;
+}
+
+.archive-panel__post-link:active {
+	background-color: color-mix(in oklch, var(--deep-text) 12%, transparent);
 }
 
 .archive-panel__date {

@@ -7,10 +7,10 @@ import Markdown from "@components/common/Markdown.astro";
 import VisitorCount from "@components/common/VisitorCount.astro";
 import EncryptedPost from "@components/features/EncryptedPost.astro";
 import KatexManager from "@components/features/KatexManager.astro";
-import SharePoster from "@components/misc/SharePoster.svelte";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
+import QRCode from "qrcode";
 import "@/styles/components/post-hero.css";
 import { getSortedPosts } from "@utils/content-utils";
 import {
@@ -27,7 +27,7 @@ import RelatedPosts from "@/components/misc/RelatedPosts.astro";
 import { coverImageConfig } from "@/config/coverImageConfig";
 import { homeConfig } from "@/config/homeConfig";
 import { siteConfig } from "@/config/siteConfig";
-import { formatDateI18n, formatDateToYYYYMMDD } from "@/utils/date-utils";
+import { formatDateI18nParts, formatDateToYYYYMMDD } from "@/utils/date-utils";
 import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
 import { url } from "@/utils/url-utils";
 
@@ -45,6 +45,8 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content, remarkPluginFrontmatter } = await render(entry);
+const publishedDateParts = formatDateI18nParts(entry.data.published);
+const postAiSummaryModel = "DeepSeek";
 
 const bannerPostMeta = {
 	title: entry.data.title,
@@ -60,7 +62,6 @@ const coverApiUrls = getApiUrlList(entry.data.image, entry.id);
 const posterFallbackCoverUrl = coverImageConfig.randomCoverImage.fallback
 	? url(coverImageConfig.randomCoverImage.fallback)
 	: null;
-
 let posterCoverUrl = processedImage;
 if (processedImage) {
 	const isLocal = !(
@@ -88,55 +89,40 @@ if (processedImage) {
 	}
 }
 
-function getDirectImageUrl(src: string | undefined): string | null {
-	if (!src) return null;
-	if (
-		src.startsWith("http://") ||
-		src.startsWith("https://") ||
-		src.startsWith("//") ||
-		src.startsWith("data:")
-	) {
-		return src;
-	}
-	return src.startsWith("/") ? url(src) : null;
-}
-
 const showPostCover = Boolean(coverImageConfig.enableInPost && posterCoverUrl);
-const sharePosterCoverUrl = showPostCover
-	? null
-	: getDirectImageUrl(processedImage);
-const sharePosterCoverSelector = showPostCover ? "#post-cover img" : null;
-
-// 处理头像URL
-let posterAvatarUrl: string | null = homeConfig.avatar || null;
-if (posterAvatarUrl) {
-	const isLocalAvatar = !(
-		posterAvatarUrl.startsWith("/") ||
-		posterAvatarUrl.startsWith("http") ||
-		posterAvatarUrl.startsWith("https") ||
-		posterAvatarUrl.startsWith("data:")
-	);
-	if (isLocalAvatar) {
-		const files = import.meta.glob<ImageMetadata>(
-			"../../**/*.{png,jpg,jpeg,webp,avif,gif}",
-			{
-				import: "default",
-			},
-		);
-		const normalizedPath = path
-			.normalize(path.join("../../", posterAvatarUrl))
-			.replace(/\\/g, "/");
-		const file = files[normalizedPath];
-		if (file) {
-			const img = await file();
-			posterAvatarUrl = img.src;
-		}
-	}
-}
 
 dayjs.extend(utc);
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
+const shareTitle = entry.data.title;
+const shareDescription = entry.data.description || entry.data.title;
+const shareText = [shareTitle, canonicalUrl].join(" ");
+const qqShareUrl = new URL("https://connect.qq.com/widget/shareqq/index.html");
+qqShareUrl.searchParams.set("url", canonicalUrl);
+qqShareUrl.searchParams.set("title", shareTitle);
+qqShareUrl.searchParams.set("summary", shareDescription);
+const emailShareUrl =
+	"mailto:?subject=" +
+	encodeURIComponent(shareTitle) +
+	"&body=" +
+	encodeURIComponent(shareText);
+const feishuShareUrl =
+	"https://applink.feishu.cn/client/web_url/open?url=" +
+	encodeURIComponent(canonicalUrl);
+const xShareUrl =
+	"https://x.com/intent/post?url=" +
+	encodeURIComponent(canonicalUrl) +
+	"&text=" +
+	encodeURIComponent(shareTitle);
+const whatsAppShareUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+const shareQrCode = siteConfig.postShare
+	? await QRCode.toDataURL(canonicalUrl, {
+			margin: 1,
+			width: 192,
+			errorCorrectionLevel: "M",
+			color: { dark: "#000000", light: "#ffffff" },
+		})
+	: "";
 const defaultStructuredImageUrl = new URL(siteConfig.defaultOgImage, Astro.site)
 	.href;
 const structuredImageUrl = posterCoverUrl
@@ -258,63 +244,171 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
         {entry.data.title}
       </h1>
 
-      <div class="post-hero__meta-row">
-        <span class="post-hero__meta-item">
-          {formatDateI18n(entry.data.published, false, true)}
-        </span>
+      <div class="post-hero__info">
+        <div class="post-hero__meta-row">
+          {publishedDateParts.map((part, index) => (
+            <>
+              <span class="post-hero__meta-item">{part}</span>
+              {index < publishedDateParts.length - 1 && (
+                <span class="post-hero__meta-dot" aria-hidden="true">·</span>
+              )}
+            </>
+          ))}
 
-        <span class="post-hero__meta-dot">·</span>
+          <span class="post-hero__meta-dot">·</span>
 
-        <a href={getCategoryUrl(entry.data.category || null)} class="post-hero__meta-link">
-          #{entry.data.category || i18n(I18nKey.uncategorized)}
-        </a>
-
-        {entry.data.tags && entry.data.tags.length > 0 && entry.data.tags.map((tag, i) => (
-          <span class="post-hero__meta-tag">
-            {i > 0 && <span class="post-hero__meta-sep">/</span>}
-            <a href={getTagUrl(tag)} class="post-hero__meta-link">{tag.trim()}</a>
+          <span class="post-hero__meta-item">
+            {remarkPluginFrontmatter.words} {i18n(I18nKey.wordsCount)}
           </span>
-        ))}
 
-        <span class="post-hero__meta-dot">·</span>
+          <span class="post-hero__meta-dot">·</span>
 
-        <span class="post-hero__meta-item">
-          {remarkPluginFrontmatter.words} {i18n(I18nKey.wordsCount)} {remarkPluginFrontmatter.minutes} {i18n(remarkPluginFrontmatter.minutes === 1 ? I18nKey.minuteCount : I18nKey.minutesCount)}
-        </span>
+          <span class="post-hero__meta-item">
+            {remarkPluginFrontmatter.minutes} {i18n(remarkPluginFrontmatter.minutes === 1 ? I18nKey.minuteCount : I18nKey.minutesCount)}
+          </span>
 
-        <span class="post-hero__meta-dot">·</span>
+          <span class="post-hero__meta-dot">·</span>
 
-        <span class="post-hero__views"><VisitorCount id={entry.id} compact /></span>
+          <span class="post-hero__views"><VisitorCount id={entry.id} compact /></span>
 
-        <span class="post-hero__meta-dot">·</span>
+          {siteConfig.postShare && (
+            <>
+              <span class="post-hero__meta-dot" aria-hidden="true">·</span>
 
-        {siteConfig.sharePoster && (
-          <span class="post-hero__share"><SharePoster
-            client:only="svelte"
-            title={entry.data.title}
-            author={homeConfig.name}
-            description={entry.data.description || entry.data.title}
-            pubDate={formatDateToYYYYMMDD(entry.data.published)}
-            coverImage={sharePosterCoverUrl}
-            coverImageSelector={sharePosterCoverSelector}
-            fallbackCoverImage={posterFallbackCoverUrl}
-            url={Astro.url.href}
-            siteTitle={siteConfig.title}
-            avatar={posterAvatarUrl}
-          /></span>
-        )}
+              <div
+                class="post-hero__share-menu"
+                tabindex="0"
+                role="group"
+                aria-label={i18n(I18nKey.shareArticle)}
+                data-pagefind-ignore
+              >
+                <span class="post-hero__share-trigger">
+                  <Icon name="material-symbols:share" aria-hidden="true" />
+                  <span>{i18n(I18nKey.shareArticle)}</span>
+                </span>
+
+                <div class="post-hero__share-popover" aria-label={i18n(I18nKey.shareArticle)}>
+                  <div class="post-hero__share-qr">
+                    <img
+                      class="post-hero__share-qr-image"
+                      src={shareQrCode}
+                      alt={i18n(I18nKey.scanToShare)}
+                      width="96"
+                      height="96"
+                    />
+                    <span class="post-hero__share-qr-label">{i18n(I18nKey.scanToShare)}</span>
+                  </div>
+
+                  <div class="post-hero__share-content">
+                    <span class="post-hero__share-title">{i18n(I18nKey.shareArticle)}</span>
+
+                    <div class="post-hero__share-actions">
+                      <a
+                        class="post-hero__share-action post-hero__share-action--qq"
+                        href={qqShareUrl.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={i18n(I18nKey.shareToQQ)}
+                        title={i18n(I18nKey.shareToQQ)}
+                      >
+                        <span class="post-hero__share-action-icon"><Icon name="fa7-brands:qq" aria-hidden="true" /></span>
+                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareQQ)}</span>
+                      </a>
+                      <a
+                        class="post-hero__share-action post-hero__share-action--email"
+                        href={emailShareUrl}
+                        aria-label={i18n(I18nKey.shareByEmail)}
+                        title={i18n(I18nKey.shareByEmail)}
+                      >
+                        <span class="post-hero__share-action-icon"><Icon name="material-symbols:mail-outline-rounded" aria-hidden="true" /></span>
+                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareEmail)}</span>
+                      </a>
+                      <a
+                        class="post-hero__share-action post-hero__share-action--feishu"
+                        href={feishuShareUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={i18n(I18nKey.shareToFeishu)}
+                        title={i18n(I18nKey.shareToFeishu)}
+                      >
+                        <span class="post-hero__share-action-icon"><Icon name="material-symbols:send-outline-rounded" aria-hidden="true" /></span>
+                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareFeishu)}</span>
+                      </a>
+                      <a
+                        class="post-hero__share-action post-hero__share-action--x"
+                        href={xShareUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={i18n(I18nKey.shareToX)}
+                        title={i18n(I18nKey.shareToX)}
+                      >
+                        <span class="post-hero__share-action-icon"><Icon name="fa7-brands:x-twitter" aria-hidden="true" /></span>
+                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareX)}</span>
+                      </a>
+                      <a
+                        class="post-hero__share-action post-hero__share-action--whatsapp"
+                        href={whatsAppShareUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={i18n(I18nKey.shareToWhatsApp)}
+                        title={i18n(I18nKey.shareToWhatsApp)}
+                      >
+                        <span class="post-hero__share-action-icon"><Icon name="fa7-brands:whatsapp" aria-hidden="true" /></span>
+                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareWhatsApp)}</span>
+                      </a>
+                      <button
+                        class="post-hero__share-action post-hero__share-action--copy"
+                        type="button"
+                        data-post-share-copy
+                        data-copy-link={canonicalUrl}
+                        data-copy-label={i18n(I18nKey.copyLink)}
+                        data-copied-label={i18n(I18nKey.copied)}
+                        aria-label={i18n(I18nKey.copyLink)}
+                        title={i18n(I18nKey.copyLink)}
+                      >
+                        <span class="post-hero__share-action-icon"><Icon name="material-symbols:content-copy-outline-rounded" aria-hidden="true" /></span>
+                        <span class="post-hero__share-action-label" data-post-share-copy-label>{i18n(I18nKey.copyLink)}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <span class="sr-only" role="status" aria-live="polite" data-post-share-status></span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div class="post-hero__taxonomy-row">
+          <a
+            href={getCategoryUrl(entry.data.category || null)}
+            class="post-hero__taxonomy-link post-hero__taxonomy-link--category"
+          >
+            {entry.data.category || i18n(I18nKey.uncategorized)}
+          </a>
+
+          {entry.data.tags && entry.data.tags.length > 0 && entry.data.tags.map((tag) => (
+            <span class="post-hero__taxonomy-item">
+              <span class="post-hero__taxonomy-separator" aria-hidden="true">/</span>
+              <a href={getTagUrl(tag)} class="post-hero__taxonomy-link post-hero__taxonomy-link--tag">
+                {tag.trim()}
+              </a>
+            </span>
+          ))}
+        </div>
+
       </div>
     </div>
   </div>
 
-  <!-- Layer 2: Introduction card (notebook-style) -->
+  <!-- Layer 2: AI 摘要 -->
   {
     (entry.data.description || siteConfig.showLastModified) && (() => {
       const lastModified = dayjs(entry.data.updated || entry.data.published);
       const dateStr = lastModified.format("YYYY-MM-DD");
       const outdatedThreshold = siteConfig.outdatedThreshold ?? 1;
       return (
-        <div class="post-intro-card mb-2">
+        <div class="post-intro-card mb-8">
           {
             siteConfig.showLastModified && (
               <div
@@ -339,10 +433,27 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
           {entry.data.description && (
             <>
               {siteConfig.showLastModified && <div class="post-intro-card__divider" />}
-              <div class="post-intro-card__section">
-                <div class="post-intro-card__label">{i18n(I18nKey.postIntroLabel)}</div>
-                <p class="post-intro-card__desc">{entry.data.description}</p>
-              </div>
+              <details class="post-intro-card__details" open>
+                <summary class="post-intro-card__summary">
+                  <span class="post-intro-card__summary-title">
+                    <Icon
+                      name="material-symbols:auto-awesome"
+                      class="post-intro-card__summary-icon"
+                      aria-hidden="true"
+                    />
+                    <span>{i18n(I18nKey.postAiSummaryLabel)}</span>
+                    <span class="post-intro-card__summary-model">- {postAiSummaryModel}</span>
+                  </span>
+                  <Icon
+                    name="material-symbols:keyboard-arrow-down-rounded"
+                    class="post-intro-card__summary-arrow"
+                    aria-hidden="true"
+                  />
+                </summary>
+                <div class="post-intro-card__section post-intro-card__section--summary">
+                  <p class="post-intro-card__desc">{entry.data.description}</p>
+                </div>
+              </details>
             </>
           )}
         </div>
@@ -368,7 +479,7 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
     </div>
   )}
 
-  <div class="flex w-full rounded-(--radius-large) overflow-hidden relative mb-4">
+  <div class="flex w-full rounded-(--radius-large) overflow-hidden relative mb-2">
     <div id="post-container" class="card-base z-10 px-3 pb-4 pt-0 relative w-full">
       {entry.data.password ? (
         <EncryptedPost password={entry.data.password} slug={entry.id} hint={entry.data.passwordHint}>
@@ -481,9 +592,67 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
       }
     }
 
+    function fallbackCopy(text: string): boolean {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      textarea.style.pointerEvents = "none";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      textarea.remove();
+      return copied;
+    }
+
+    async function copyPostShareLink(button: HTMLButtonElement) {
+      const link = button.dataset.copyLink;
+      if (!link) return;
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(link);
+        } else if (!fallbackCopy(link)) {
+          throw new Error("Copy command was unavailable");
+        }
+
+        const menu = button.closest(".post-hero__share-menu");
+        const status = menu?.querySelector<HTMLElement>("[data-post-share-status]");
+        const label = button.querySelector<HTMLElement>("[data-post-share-copy-label]");
+        const originalLabel = button.dataset.copyLabel || "";
+        const copiedLabel = button.dataset.copiedLabel || originalLabel;
+
+        status?.replaceChildren(copiedLabel);
+        label?.replaceChildren(copiedLabel);
+        button.classList.add("is-copied");
+        button.setAttribute("aria-label", copiedLabel);
+        button.title = copiedLabel;
+
+        window.setTimeout(() => {
+          button.classList.remove("is-copied");
+          label?.replaceChildren(originalLabel);
+          button.setAttribute("aria-label", originalLabel);
+          button.title = originalLabel;
+        }, 1600);
+      } catch {
+        button.focus();
+      }
+    }
+
+    function initPostShare() {
+      document.querySelectorAll<HTMLButtonElement>("[data-post-share-copy]").forEach((button) => {
+        if (button.dataset.initialized === "true") return;
+        button.dataset.initialized = "true";
+        button.addEventListener("click", () => void copyPostShareLink(button));
+      });
+    }
+
     initPostCoverImage();
+    initPostShare();
     document.addEventListener("astro:page-load", initPostCoverImage);
     document.addEventListener("astro:page-load", checkOutdated);
+    document.addEventListener("astro:page-load", initPostShare);
   </script>
 
   <div

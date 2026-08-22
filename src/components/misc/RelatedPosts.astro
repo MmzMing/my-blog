@@ -46,7 +46,7 @@ const related = scored.slice(0, limit).map((item) => item.post);
 ---
 
 {related.length > 0 && (
-	<section class="related-posts mb-6 onload-animation" aria-label={i18n(I18nKey.relatedPosts)}>
+	<section class="related-posts mb-0 onload-animation" aria-label={i18n(I18nKey.relatedPosts)}>
 		<h2 class="related-posts__title">{i18n(I18nKey.relatedPosts)}</h2>
 		<ul class="related-posts__list">
 			{related.map((post) => (

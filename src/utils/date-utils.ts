@@ -59,6 +59,25 @@ export function formatDateI18n(
 		: date.toLocaleDateString(locale, options);
 }
 
+export function formatDateI18nParts(dateInput: Date | string): string[] {
+	const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+	const lang = siteConfig.lang || "en";
+	const locale = localeMap[lang] || "en-US";
+
+	const formatPart = (options: Intl.DateTimeFormatOptions): string => {
+		if (siteConfig.timezone) {
+			options.timeZone = siteConfig.timezone;
+		}
+		return date.toLocaleDateString(locale, options);
+	};
+
+	return [
+		formatPart({ year: "numeric" }),
+		formatPart({ month: "long", day: "numeric" }),
+		formatPart({ weekday: "long" }),
+	];
+}
+
 // 国际化日期时间格式化函数（带时分秒）
 export function formatDateI18nWithTime(dateInput: Date | string): string {
 	return formatDateI18n(dateInput, true);

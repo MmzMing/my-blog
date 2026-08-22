@@ -699,6 +699,16 @@ a.card-github.fetch-error
 .dark .mermaid-svg-dark
   display: flex
 
+// Mermaid 内联 SVG 自带主题样式，使用 !important 保证节点与站点表面色一致。
+.mermaid-svg-light svg .node > rect,
+.dark .mermaid-svg-dark svg .node > rect
+  fill: var(--article-surface-bg) !important
+  stroke: var(--deep-text) !important
+  stroke-width: 1.5px !important
+  stroke-linejoin: round
+  rx: 0.75rem
+  ry: 0.75rem
+
 .mermaid-fallback-code
   text-align: left
   font-family: monospace

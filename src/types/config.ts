@@ -72,7 +72,7 @@ export type SiteConfig = {
 
 	showLastModified: boolean; // 控制"上次编辑"卡片显示的开关
 	outdatedThreshold?: number; // 文章过期阈值（天数），超过此天数才显示"上次编辑"卡片
-	sharePoster?: boolean; // 是否显示分享海报按钮
+	postShare?: boolean; // 是否显示文章顶部的分享按钮行
 
 	// 页面开关配置
 	pages: {

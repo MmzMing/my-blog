@@ -197,11 +197,19 @@ export const en: Translation = {
 	[Key.calendarDecember]: "Dec",
 
 	[Key.shareArticle]: "Share",
-	[Key.generatingPoster]: "Generating Poster...",
+	[Key.scanToShare]: "Scan to share",
+	[Key.shareQQ]: "QQ",
+	[Key.shareEmail]: "Email",
+	[Key.shareFeishu]: "Feishu",
+	[Key.shareX]: "X",
+	[Key.shareWhatsApp]: "WhatsApp",
 	[Key.copied]: "Copied",
 	[Key.copyLink]: "Copy Link",
-	[Key.savePoster]: "Save Poster",
-	[Key.scanToRead]: "Scan to Read",
+	[Key.shareToQQ]: "Share on QQ",
+	[Key.shareByEmail]: "Share via email",
+	[Key.shareToFeishu]: "Share on Feishu",
+	[Key.shareToX]: "Share on X",
+	[Key.shareToWhatsApp]: "Share via WhatsApp",
 
 	// Code Block Collapsible Configuration
 
@@ -415,7 +423,6 @@ export const en: Translation = {
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "Page loading",
 	[Key.pageLoadingAnimation]: "Loading animation",
-	[Key.generateSharePoster]: "Generate share poster",
 	[Key.categoryFolderMeta]: "{posts} posts · {tags} tags",
 	[Key.iconNotFound]: "Icon not found: {icon}",
 	[Key.aboutSitePrefix]: "About ",
@@ -447,7 +454,7 @@ export const en: Translation = {
 	[Key.albumPrefix]: "Album: ",
 	[Key.sponsorChooseMethod]: "Choose your preferred payment method",
 	[Key.sponsorNotAvailable]: "Not available yet",
-	[Key.postIntroLabel]: "Intro",
+	[Key.postAiSummaryLabel]: "AI Summary",
 	[Key.coverImageAltSuffix]: " cover image",
 
 	// ===== AI 搜索 / 留言板（Phase B）=====

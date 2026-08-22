@@ -2,8 +2,8 @@
 .related-posts {
 	padding: 1rem 1.25rem;
 	border-radius: var(--radius-large);
-	background: var(--card-bg);
-	border: 1px solid var(--line-divider);
+	background: var(--article-surface-bg);
+	border: 0;
 }
 
 .related-posts__title {

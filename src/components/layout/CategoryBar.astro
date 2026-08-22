@@ -251,20 +251,22 @@ if (!isHome) {
 							role="menu"
 							data-breadcrumb-dropdown-menu
 						>
-							{dropdownOptions.map((option) => (
-								<a
-									href={option.href}
-									class:list={[
-										"cb__dropdown-item",
-										option.value === currentDropdownValue && "is-active",
-									]}
-									role="menuitem"
-									data-breadcrumb-dropdown-item
-									data-value={option.value}
-								>
-									<span>{option.label}</span>
-								</a>
-							))}
+							<span class="cb__dropdown-menu-scroll">
+								{dropdownOptions.map((option) => (
+									<a
+										href={option.href}
+										class:list={[
+											"cb__dropdown-item",
+											option.value === currentDropdownValue && "is-active",
+										]}
+										role="menuitem"
+										data-breadcrumb-dropdown-item
+										data-value={option.value}
+									>
+										<span>{option.label}</span>
+									</a>
+								))}
+							</span>
 						</span>
 					</span>
 				) : item.isCurrent ? (

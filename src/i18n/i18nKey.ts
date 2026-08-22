@@ -172,11 +172,19 @@ enum I18nKey {
 	calendarDecember = "calendarDecember",
 
 	shareArticle = "shareArticle",
-	generatingPoster = "generatingPoster",
+	scanToShare = "scanToShare",
+	shareQQ = "shareQQ",
+	shareEmail = "shareEmail",
+	shareFeishu = "shareFeishu",
+	shareX = "shareX",
+	shareWhatsApp = "shareWhatsApp",
 	copied = "copied",
 	copyLink = "copyLink",
-	savePoster = "savePoster",
-	scanToRead = "scanToRead",
+	shareToQQ = "shareToQQ",
+	shareByEmail = "shareByEmail",
+	shareToFeishu = "shareToFeishu",
+	shareToX = "shareToX",
+	shareToWhatsApp = "shareToWhatsApp",
 
 	// 代码块折叠配置
 
@@ -396,7 +404,6 @@ enum I18nKey {
 	// ===== 弹窗 / 杂项 =====
 	pageLoading = "pageLoading",
 	pageLoadingAnimation = "pageLoadingAnimation",
-	generateSharePoster = "generateSharePoster",
 	categoryFolderMeta = "categoryFolderMeta",
 	iconNotFound = "iconNotFound",
 	aboutSitePrefix = "aboutSitePrefix",
@@ -431,7 +438,7 @@ enum I18nKey {
 	albumPrefix = "albumPrefix",
 	sponsorChooseMethod = "sponsorChooseMethod",
 	sponsorNotAvailable = "sponsorNotAvailable",
-	postIntroLabel = "postIntroLabel",
+	postAiSummaryLabel = "postAiSummaryLabel",
 	coverImageAltSuffix = "coverImageAltSuffix",
 
 	// ===== 通用操作（进行态等）=====

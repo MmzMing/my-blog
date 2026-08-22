@@ -198,11 +198,19 @@ export const ru: Translation = {
 	[Key.calendarDecember]: "Дек",
 
 	[Key.shareArticle]: "Поделиться",
-	[Key.generatingPoster]: "Создание постера...",
+	[Key.scanToShare]: "Сканируйте, чтобы поделиться",
+	[Key.shareQQ]: "QQ",
+	[Key.shareEmail]: "Почта",
+	[Key.shareFeishu]: "Feishu",
+	[Key.shareX]: "X",
+	[Key.shareWhatsApp]: "WhatsApp",
 	[Key.copied]: "Скопировано",
 	[Key.copyLink]: "Копировать ссылку",
-	[Key.savePoster]: "Сохранить постер",
-	[Key.scanToRead]: "Сканируйте, чтобы прочитать",
+	[Key.shareToQQ]: "Поделиться в QQ",
+	[Key.shareByEmail]: "Поделиться по почте",
+	[Key.shareToFeishu]: "Поделиться в Feishu",
+	[Key.shareToX]: "Поделиться в X",
+	[Key.shareToWhatsApp]: "Поделиться через WhatsApp",
 
 	// Конфигурация блоков коллапсируемого кода
 
@@ -415,7 +423,6 @@ export const ru: Translation = {
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "Загрузка страницы",
 	[Key.pageLoadingAnimation]: "Анимация загрузки",
-	[Key.generateSharePoster]: "Создать постер для шаринга",
 	[Key.categoryFolderMeta]: "{posts} статей · {tags} тегов",
 	[Key.iconNotFound]: "Иконка не найдена: {icon}",
 	[Key.aboutSitePrefix]: "Об авторе: ",
@@ -447,7 +454,7 @@ export const ru: Translation = {
 	[Key.albumPrefix]: "Альбом: ",
 	[Key.sponsorChooseMethod]: "Выберите способ оплаты",
 	[Key.sponsorNotAvailable]: "Пока недоступно",
-	[Key.postIntroLabel]: "Вступление",
+	[Key.postAiSummaryLabel]: "AI-сводка",
 	[Key.coverImageAltSuffix]: " — обложка",
 
 	// ===== AI 搜索 / 留言板（Phase B）=====

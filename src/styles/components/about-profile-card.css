@@ -44,6 +44,19 @@
 	visibility: hidden;
 }
 
+.about-profile-card__card::before {
+	position: absolute;
+	top: -0.45rem;
+	left: 1rem;
+	width: 0.75rem;
+	height: 0.75rem;
+	border-top: 2px solid var(--deep-text);
+	border-left: 2px solid var(--deep-text);
+	background: var(--page-bg);
+	content: "";
+	transform: rotate(45deg);
+}
+
 .about-profile-card:hover .about-profile-card__card,
 .about-profile-card:focus-within .about-profile-card__card {
 	transform: none;
