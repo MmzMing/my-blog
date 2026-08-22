@@ -266,7 +266,7 @@ html {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        gap: 0.5rem;
+        gap: 0.75rem;
         pointer-events: none;
     }
     .floating-dock > * { pointer-events: auto; }
@@ -306,15 +306,14 @@ html {
         align-items: center;
         justify-content: center;
         font-size: 0.8125rem;
-        font-weight: 700;
-        font-family: ui-monospace, SFMono-Regular, monospace;
-        letter-spacing: 0.02em;
-        line-height: 1.1;
+        font-weight: 600;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+        letter-spacing: 0;
+        line-height: 1.2;
         text-align: center;
         padding: 0.125rem;
         opacity: 0;
-        transform: translateY(8px);
-        transition: transform 200ms ease-out 30ms, opacity 200ms ease-out 30ms;
+        transition: opacity 160ms ease-out;
         pointer-events: none;
         word-break: break-word;
     }
@@ -325,7 +324,6 @@ html {
     }
     .dock-btn:hover .dock-btn-label,
     .dock-btn:focus-visible .dock-btn-label {
-        transform: translateY(0);
         opacity: 1;
     }
     .dock-drawer {

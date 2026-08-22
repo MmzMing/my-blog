@@ -1,5 +1,4 @@
 import type { ArticleOutlineRailRuntime } from "@/utils/article-outline-controller";
-import type { TOCManager } from "@/utils/toc-utils";
 
 declare global {
 	interface Document {
@@ -30,7 +29,6 @@ declare global {
 		) => void;
 		floatingTOCListenersInitialized?: boolean;
 		__articleOutlineRailRuntime?: ArticleOutlineRailRuntime;
-		__floatingDockTOC?: TOCManager | null;
 		__aiSearchOpen?: boolean;
 		__searchLoadersReady?: boolean;
 		__aiSearchMounted?: boolean;

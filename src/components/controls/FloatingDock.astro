@@ -3,8 +3,7 @@ import Icon from "@components/common/Icon.astro";
 import CalendarWidget from "@/components/controls/CalendarWidget.astro";
 /**
  * 极简悬浮坞 — 替代原 FloatingControls。
- * 所有重组件（Theme / DisplaySettings / Music / Live2D / Spine / Calendar / TOC / BackToTop / BackToHome / BackToComment）
- * 全部以图标按钮 + 抽屉/浮层形式集中在右下角。
+ * 桌面端工具默认常驻显示，重组件通过图标按钮打开抽屉。
  */
 import MusicPlayer from "@/components/features/MusicPlayer.astro";
 import { announcementConfig, spineModelConfig } from "@/config";
@@ -12,87 +11,75 @@ import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import { musicPlayerConfig } from "@/config/musicConfig";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+
+const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 ---
 
 <div class="floating-dock" id="floating-dock">
-	{aiSearchPublicConfig.enabled && (
-		<button class="dock-btn dock-btn-ai-search" id="dock-ai-search-btn" aria-label={i18n(I18nKey.aiSearch)} type="button" data-tooltip={i18n(I18nKey.aiSearch)}>
-			<span class="dock-btn-icon"><Icon name="ri:ai" class="text-3xl" /></span>
-			<span class="dock-btn-label">{i18n(I18nKey.aiSearch)}</span>
-		</button>
-	)}
-
-	{musicPlayerConfig.showInNavbar !== false && (
-		<button class="dock-btn dock-btn-music" id="dock-music-btn" aria-label={i18n(I18nKey.music)} type="button" data-tooltip={i18n(I18nKey.music)}>
-			<span class="dock-btn-icon"><Icon name="material-symbols:music-note-rounded" class="text-3xl" /></span>
-			<span class="dock-btn-label">{i18n(I18nKey.music)}</span>
-		</button>
-	)}
-
-	<button class="dock-btn dock-btn-comment hide" id="dock-comment-btn" aria-label={i18n(I18nKey.comments)} type="button" data-tooltip={i18n(I18nKey.comments)}>
-		<span class="dock-btn-icon"><Icon name="mingcute:comment-line" class="text-3xl" /></span>
-		<span class="dock-btn-label">{i18n(I18nKey.comments)}</span>
-	</button>
-
-	<div class="dock-stack" id="dock-stack" data-expanded="false">
-		<div class="dock-buttons">
-			{announcementConfig.items.length > 0 && (
-				<button class="dock-btn" id="dock-announcement-btn" aria-label={i18n(I18nKey.announcement)} type="button" data-tooltip={i18n(I18nKey.announcement)}>
-					<span class="dock-btn-icon"><Icon name="material-symbols:notifications-outline-rounded" class="text-3xl" /></span>
-					<span class="dock-btn-label">{i18n(I18nKey.announcement)}</span>
-				</button>
-			)}
-
-			<button class="dock-btn" id="dock-theme-btn" aria-label={i18n(I18nKey.switchToDark)} type="button" data-tooltip={i18n(I18nKey.switchToDark)} data-theme-state="light">
-				<span class="dock-btn-icon">
-					<Icon name="material-symbols:wb-sunny-outline-rounded" class="text-3xl dock-theme-icon-light" />
-					<Icon name="material-symbols:dark-mode-outline-rounded" class="text-3xl dock-theme-icon-dark hidden" />
-				</span>
-				<span class="dock-btn-label dock-theme-label-light">{i18n(I18nKey.switchToDark)}</span>
-				<span class="dock-btn-label dock-theme-label-dark hidden">{i18n(I18nKey.switchToLight)}</span>
+	<div class="dock-buttons">
+		{aiSearchPublicConfig.enabled && (
+			<button class="dock-btn dock-btn-ai-search" id="dock-ai-search-btn" aria-label={i18n(I18nKey.aiSearch)} type="button" data-tooltip={i18n(I18nKey.aiSearch)}>
+				<span class="dock-btn-icon"><Icon name="ri:ai" class="text-3xl" /></span>
+				<span class="dock-btn-label">{i18n(I18nKey.aiSearch)}</span>
 			</button>
+		)}
 
-			<button class="dock-btn" id="dock-calendar-btn" aria-label={i18n(I18nKey.calendar)} type="button" data-tooltip={i18n(I18nKey.calendar)}>
-				<span class="dock-btn-icon"><Icon name="material-symbols:calendar-month-rounded" class="text-3xl" /></span>
-				<span class="dock-btn-label">{i18n(I18nKey.calendar)}</span>
+		{musicPlayerConfig.showInNavbar !== false && (
+			<button class="dock-btn dock-btn-music" id="dock-music-btn" aria-label={i18n(I18nKey.music)} type="button" data-tooltip={i18n(I18nKey.music)}>
+				<span class="dock-btn-icon"><Icon name="material-symbols:music-note-rounded" class="text-3xl" /></span>
+				<span class="dock-btn-label">{i18n(I18nKey.music)}</span>
 			</button>
+		)}
 
-			{spineModelConfig?.enable && (
-				<button class="dock-btn" id="dock-spine-btn" aria-label={i18n(I18nKey.spineModel)} type="button" data-active="true" data-tooltip={i18n(I18nKey.spineModel)}>
-					<span class="dock-btn-icon"><Icon name="material-symbols:image-outline" class="text-3xl" /></span>
-					<span class="dock-btn-label">{i18n(I18nKey.spineModel)}</span>
-				</button>
-			)}
-
-			<button class="dock-btn dock-btn-toc hide" id="dock-toc-btn" aria-label={i18n(I18nKey.tableOfContents)} type="button" data-tooltip={i18n(I18nKey.tableOfContents)}>
-				<span class="dock-btn-icon"><Icon name="material-symbols:format-list-bulleted" class="text-3xl" /></span>
-				<span class="dock-btn-label">{i18n(I18nKey.tableOfContents)}</span>
+		{announcementConfig.items.length > 0 && (
+			<button
+				class={`dock-btn dock-btn-announcement${isHomePath ? "" : " hide"}`}
+				id="dock-announcement-btn"
+				aria-label={i18n(I18nKey.announcement)}
+				aria-hidden={isHomePath ? "false" : "true"}
+				tabindex={isHomePath ? 0 : -1}
+				type="button"
+				data-tooltip={i18n(I18nKey.announcement)}
+			>
+				<span class="dock-btn-icon"><Icon name="material-symbols:notifications-outline-rounded" class="text-3xl" /></span>
+				<span class="dock-btn-label">{i18n(I18nKey.announcement)}</span>
 			</button>
+		)}
 
-			<button class="dock-btn dock-btn-home hide" id="dock-home-btn" aria-label={i18n(I18nKey.home)} type="button" data-tooltip={i18n(I18nKey.home)}>
-				<span class="dock-btn-icon"><Icon name="material-symbols:home-outline-rounded" class="text-3xl" /></span>
-				<span class="dock-btn-label">{i18n(I18nKey.home)}</span>
-			</button>
-
-		</div>
-
-		<button class="dock-btn dock-toggle" id="dock-toggle-btn" aria-label={i18n(I18nKey.toggleDock)} type="button" data-tooltip={i18n(I18nKey.toggleDock)}>
+		<button class="dock-btn" id="dock-theme-btn" aria-label={i18n(I18nKey.switchToDark)} type="button" data-tooltip={i18n(I18nKey.switchToDark)} data-theme-state="light">
 			<span class="dock-btn-icon">
-				<Icon name="material-symbols:more-horiz" class="text-3xl dock-icon-collapsed" />
-				<Icon name="material-symbols:close" class="text-3xl dock-icon-expanded hidden" />
+				<Icon name="material-symbols:wb-sunny-outline-rounded" class="text-3xl dock-theme-icon-light" />
+				<Icon name="material-symbols:dark-mode-outline-rounded" class="text-3xl dock-theme-icon-dark hidden" />
 			</span>
-			<span class="dock-btn-label dock-toggle-label-collapsed">{i18n(I18nKey.expand)}</span>
-			<span class="dock-btn-label dock-toggle-label-expanded hidden">{i18n(I18nKey.collapse)}</span>
+			<span class="dock-btn-label dock-theme-label-light">{i18n(I18nKey.switchToDark)}</span>
+			<span class="dock-btn-label dock-theme-label-dark hidden">{i18n(I18nKey.switchToLight)}</span>
+		</button>
+
+		<button class="dock-btn" id="dock-calendar-btn" aria-label={i18n(I18nKey.calendar)} type="button" data-tooltip={i18n(I18nKey.calendar)}>
+			<span class="dock-btn-icon"><Icon name="material-symbols:calendar-month-rounded" class="text-3xl" /></span>
+			<span class="dock-btn-label">{i18n(I18nKey.calendar)}</span>
+		</button>
+
+		{spineModelConfig?.enable && (
+			<button class="dock-btn" id="dock-spine-btn" aria-label={i18n(I18nKey.spineModel)} type="button" data-active="true" data-tooltip={i18n(I18nKey.spineModel)}>
+				<span class="dock-btn-icon"><Icon name="material-symbols:image-outline" class="text-3xl" /></span>
+				<span class="dock-btn-label">{i18n(I18nKey.spineModel)}</span>
+			</button>
+		)}
+
+		<button class="dock-btn dock-btn-comment hide" id="dock-comment-btn" aria-label={i18n(I18nKey.comments)} aria-hidden="true" tabindex="-1" type="button" data-tooltip={i18n(I18nKey.comments)}>
+			<span class="dock-btn-icon"><Icon name="mingcute:comment-line" class="text-3xl" /></span>
+			<span class="dock-btn-label">{i18n(I18nKey.comments)}</span>
 		</button>
 	</div>
 
-	<button class="dock-btn dock-btn-top hide" id="dock-top-btn" aria-label={i18n(I18nKey.backToTop)} type="button" data-tooltip={i18n(I18nKey.backToTop)}>
+	<button class="dock-btn dock-btn-top hide" id="dock-top-btn" aria-label={i18n(I18nKey.backToTop)} aria-hidden="true" tabindex="-1" type="button" data-tooltip={i18n(I18nKey.backToTop)}>
 		<span class="dock-btn-icon"><Icon name="material-symbols:keyboard-arrow-up-rounded" class="text-3xl" /></span>
 		<span class="dock-btn-label">{i18n(I18nKey.top)}</span>
 	</button>
 </div>
 
-{/* 抽屉容器（独立于 dock-stack） */}
+{/* 抽屉容器 */}
 
 {announcementConfig.items.length > 0 && (
 	<div class="dock-drawer dock-drawer-closed" id="dock-drawer-announcement">
@@ -138,14 +125,6 @@ import { i18n } from "@/i18n/translation";
 	<CalendarWidget id="desktop-calendar-widget" />
 </div>
 
-<div class="dock-drawer dock-drawer-closed" id="dock-drawer-toc">
-	<div class="dock-drawer-title">
-		<Icon name="material-symbols:format-list-bulleted" class="dock-drawer-title-icon" />
-		<span>{i18n(I18nKey.tableOfContents)}</span>
-	</div>
-	<div id="dock-toc-content" class="toc-content text-sm leading-relaxed"></div>
-</div>
-
 <!-- 样式已迁移至 src/styles/components/floating-dock.css -->
 
 <script>
@@ -156,134 +135,105 @@ import { i18n } from "@/i18n/translation";
 	(function initFloatingDock() {
 		const dockAbortController = new AbortController();
 		const dockSignal = dockAbortController.signal;
-
-		const stack = document.getElementById("dock-stack");
-		const toggleBtn = document.getElementById("dock-toggle-btn");
-		const collapsedIcon = toggleBtn?.querySelector(".dock-icon-collapsed");
-		const expandedIcon = toggleBtn?.querySelector(".dock-icon-expanded");
-		const collapsedLabel = toggleBtn?.querySelector(".dock-toggle-label-collapsed");
-		const expandedLabel = toggleBtn?.querySelector(".dock-toggle-label-expanded");
-
-		if (!stack || !toggleBtn) return;
-
-		toggleBtn.addEventListener("click", (e) => {
-			e.stopPropagation();
-			const expanded = stack.getAttribute("data-expanded") === "true";
-			stack.setAttribute("data-expanded", expanded ? "false" : "true");
-			collapsedIcon?.classList.toggle("hidden", !expanded);
-			expandedIcon?.classList.toggle("hidden", expanded);
-			collapsedLabel?.classList.toggle("hidden", !expanded);
-			expandedLabel?.classList.toggle("hidden", expanded);
-		});
+		const dock = document.getElementById("floating-dock");
+		if (!dock) return;
 
 		const drawers: Record<string, string> = {
 			"dock-music-btn": "dock-drawer-music",
 			"dock-calendar-btn": "dock-drawer-calendar",
-			"dock-toc-btn": "dock-drawer-toc",
 			"dock-announcement-btn": "dock-drawer-announcement",
 		};
 		let preserveCalendarDrawerOnNavigation = false;
 
 		function closeAllDrawers() {
-			document.querySelectorAll(".dock-drawer").forEach((d) => d.classList.add("dock-drawer-closed"));
+			document.querySelectorAll(".dock-drawer").forEach((drawer) => drawer.classList.add("dock-drawer-closed"));
 		}
 
-		Object.entries(drawers).forEach(([btnId, drawerId]) => {
-			const btn = document.getElementById(btnId);
+		function setButtonVisibility(id: string, visible: boolean) {
+			const button = document.getElementById(id);
+			if (!button) return;
+			button.classList.toggle("hide", !visible);
+			button.setAttribute("aria-hidden", String(!visible));
+			button.setAttribute("tabindex", visible ? "0" : "-1");
+		}
+
+		Object.entries(drawers).forEach(([buttonId, drawerId]) => {
+			const button = document.getElementById(buttonId);
 			const drawer = document.getElementById(drawerId);
-			if (!btn || !drawer) return;
-			btn.addEventListener("click", (e) => {
-				e.stopPropagation();
+			if (!button || !drawer) return;
+			button.addEventListener("click", (event) => {
+				event.stopPropagation();
 				const isOpen = !drawer.classList.contains("dock-drawer-closed");
 				closeAllDrawers();
 				if (!isOpen) {
 					drawer.classList.remove("dock-drawer-closed");
-					if (drawerId === "dock-drawer-calendar") {
-						window.dispatchEvent(new Event("calendar:open"));
-					}
+					if (drawerId === "dock-drawer-calendar") window.dispatchEvent(new Event("calendar:open"));
 				}
-			});
+			}, { signal: dockSignal });
 		});
 
-		function collapseDock() {
-			stack?.setAttribute("data-expanded", "false");
-			collapsedIcon?.classList.remove("hidden");
-			expandedIcon?.classList.add("hidden");
-		}
-
-		document.addEventListener("click", (e) => {
-			const target = e.target;
+		document.addEventListener("click", (event) => {
+			const target = event.target;
 			if (!(target instanceof Node)) return;
 			if (target instanceof Element && target.closest("[data-calendar-post-link]")) {
 				preserveCalendarDrawerOnNavigation = true;
 			}
 			const isInDrawer = document.querySelector(".dock-drawer:not(.dock-drawer-closed)")?.contains(target);
-			const isInDock = document.getElementById("floating-dock")?.contains(target);
-			if (!isInDrawer && !isInDock) {
-				closeAllDrawers();
-				collapseDock();
-			}
+			if (!isInDrawer && !dock.contains(target)) closeAllDrawers();
 		}, { signal: dockSignal });
 
 		// 音乐按钮播放旋转
 		const musicBtn = document.getElementById("dock-music-btn");
 		function updateMusicIconSpin() {
 			if (!musicBtn) return;
-			const mgr = window.__fireflyMusic;
-			const isPlaying = mgr?.getState().isPlaying ?? false;
+			const isPlaying = window.__fireflyMusic?.getState().isPlaying ?? false;
 			musicBtn.classList.toggle("is-playing", isPlaying);
 		}
 		updateMusicIconSpin();
 		window.addEventListener("fm:play-state", updateMusicIconSpin, { signal: dockSignal });
 
 		// 音乐抽屉懒加载：首次打开时触发 MusicManager 初始化
-		const musicDrawerBtn = musicBtn;
 		const musicDrawerEl = document.getElementById("dock-drawer-music");
-		if (musicDrawerBtn && musicDrawerEl) {
-			musicDrawerBtn.addEventListener("click", () => {
-				const mgr = window.__fireflyMusic;
-				if (mgr && !mgr.getState().initialized) {
-					const widget = musicDrawerEl.querySelector(".music-player-widget");
-					const loadingEl = widget?.querySelector(".music-loading");
-					if (loadingEl) {
-						loadingEl.classList.remove("opacity-0", "pointer-events-none");
-					}
-					mgr.init();
+		if (musicBtn && musicDrawerEl) {
+			musicBtn.addEventListener("click", () => {
+				const manager = window.__fireflyMusic;
+				if (manager && !manager.getState().initialized) {
+					const loadingEl = musicDrawerEl.querySelector(".music-player-widget .music-loading");
+					loadingEl?.classList.remove("opacity-0", "pointer-events-none");
+					void manager.init();
 				}
-			});
+			}, { signal: dockSignal });
 		}
 
-		// Spine 显隐切换（简单切换，保持原有行为）
+		// Spine 显隐切换
 		function bindSpineToggle(btnId: string, targetId: string, storageKey: string) {
-			const btn = document.getElementById(btnId);
+			const button = document.getElementById(btnId);
 			const target = document.getElementById(targetId);
-			if (!btn || !target) return;
+			if (!button || !target) return;
 
 			const savedHidden = localStorage.getItem(storageKey) === "true";
 			if (savedHidden) {
 				(target as HTMLElement).style.display = "none";
-				btn.setAttribute("data-active", "false");
+				button.setAttribute("data-active", "false");
 			}
 
-			btn.addEventListener("click", (e) => {
-				e.stopPropagation();
+			button.addEventListener("click", (event) => {
+				event.stopPropagation();
 				const isHidden = (target as HTMLElement).style.display === "none";
 				(target as HTMLElement).style.display = isHidden ? "" : "none";
-				btn.setAttribute("data-active", String(isHidden));
+				button.setAttribute("data-active", String(isHidden));
 				localStorage.setItem(storageKey, String(!isHidden));
-			});
+			}, { signal: dockSignal });
 		}
 		bindSpineToggle("dock-spine-btn", "spine-model-container", "spine-hidden");
 
 		// 主题切换：点击直接切换亮/暗
-		const themeBtnEl = document.getElementById("dock-theme-btn");
-		if (themeBtnEl) {
-			const themeBtn = themeBtnEl;
-			const lightIcon = themeBtn.querySelector(".dock-theme-icon-light");
-			const darkIcon = themeBtn.querySelector(".dock-theme-icon-dark");
-
-			const lightLabel = themeBtn.querySelector(".dock-theme-label-light");
-			const darkLabel = themeBtn.querySelector(".dock-theme-label-dark");
+		const themeButton = document.getElementById("dock-theme-btn");
+		if (themeButton) {
+			const lightIcon = themeButton.querySelector(".dock-theme-icon-light");
+			const darkIcon = themeButton.querySelector(".dock-theme-icon-dark");
+			const lightLabel = themeButton.querySelector(".dock-theme-label-light");
+			const darkLabel = themeButton.querySelector(".dock-theme-label-dark");
 
 			function updateThemeIcon() {
 				const isDark = document.documentElement.classList.contains("dark");
@@ -291,69 +241,66 @@ import { i18n } from "@/i18n/translation";
 				darkIcon?.classList.toggle("hidden", !isDark);
 				lightLabel?.classList.toggle("hidden", isDark);
 				darkLabel?.classList.toggle("hidden", !isDark);
-				themeBtn.setAttribute("data-tooltip", isDark ? i18n(I18nKey.switchToLight) : i18n(I18nKey.switchToDark));
+				themeButton?.setAttribute("data-tooltip", isDark ? i18n(I18nKey.switchToLight) : i18n(I18nKey.switchToDark));
 			}
 
-			themeBtn.addEventListener("click", (e) => {
-				e.stopPropagation();
+			themeButton.addEventListener("click", (event) => {
+				event.stopPropagation();
 				const current = getStoredTheme();
 				const resolved = current === "system"
 					? (document.documentElement.classList.contains("dark") ? "dark" : "light")
 					: current;
-				const next = resolved === "light" ? "dark" : "light";
-				setTheme(next);
+				setTheme(resolved === "light" ? "dark" : "light");
 				updateThemeIcon();
-			});
+			}, { signal: dockSignal });
 
 			updateThemeIcon();
 			window.addEventListener("theme-change", updateThemeIcon, { signal: dockSignal });
 		}
 
-		// Back to Top / Home / Comment
-		document.getElementById("dock-top-btn")?.addEventListener("click", (e) => {
-			e.stopPropagation();
+		document.getElementById("dock-top-btn")?.addEventListener("click", (event) => {
+			event.stopPropagation();
 			window.scroll({ top: 0, behavior: "smooth" });
-		});
-		document.getElementById("dock-home-btn")?.addEventListener("click", (e) => {
-			e.stopPropagation();
-			window.navigateToPage("/");
-		});
-		// 悬停预载首页：home 按钮是 button，Swup 悬停预载覆盖不到
-		document.getElementById("dock-home-btn")?.addEventListener("pointerenter", () => {
-			void window.swup?.preload?.("/")?.catch(() => {});
-		});
-		document.getElementById("dock-comment-btn")?.addEventListener("click", (e) => {
-			e.stopPropagation();
+		}, { signal: dockSignal });
+		document.getElementById("dock-comment-btn")?.addEventListener("click", (event) => {
+			event.stopPropagation();
 			document.getElementById("post-comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
-		});
+		}, { signal: dockSignal });
 
 		// AI 搜索
-		document.getElementById("dock-ai-search-btn")?.addEventListener("click", (e) => {
-			e.stopPropagation();
+		document.getElementById("dock-ai-search-btn")?.addEventListener("click", (event) => {
+			event.stopPropagation();
 			window.dispatchEvent(new CustomEvent("toggle-ai-search"));
 			closeAllDrawers();
-			collapseDock();
-		});
+		}, { signal: dockSignal });
 
 		function updateScrollDependent() {
-			const scrolled = window.scrollY > 200;
-			document.getElementById("dock-top-btn")?.classList.toggle("hide", !scrolled);
+			const topButton = document.getElementById("dock-top-btn");
+			if (!topButton) return;
+			const visible = window.scrollY > 200;
+			topButton.classList.toggle("hide", !visible);
+			topButton.setAttribute("aria-hidden", String(!visible));
+			topButton.setAttribute("tabindex", visible ? "0" : "-1");
 		}
+
 		function updatePathDependent() {
-			const isHome = window.location.pathname === "/" || window.location.pathname === "";
-			document.getElementById("dock-home-btn")?.classList.toggle("hide", isHome);
-			const isPost = /\/posts?\//.test(window.location.pathname);
-			const isFriends = /^\/friends\/?$/.test(window.location.pathname);
-			document.getElementById("dock-toc-btn")?.classList.toggle("hide", !isPost);
+			const pathname = window.location.pathname;
+			const isHome = pathname === "/" || pathname === "";
+			const isPost = /\/posts?\//.test(pathname);
+			const isFriends = /^\/friends\/?$/.test(pathname);
 			const hasComment = !!document.getElementById("post-comments");
-			document.getElementById("dock-comment-btn")?.classList.toggle("hide", !(isPost || isFriends) || !hasComment);
+
+			setButtonVisibility("dock-announcement-btn", isHome);
+			setButtonVisibility("dock-comment-btn", (isPost || isFriends) && hasComment);
+			if (!isHome && document.getElementById("dock-drawer-announcement") && !document.getElementById("dock-drawer-announcement")?.classList.contains("dock-drawer-closed")) {
+				closeAllDrawers();
+			}
 		}
+
 		updateScrollDependent();
 		updatePathDependent();
 		window.addEventListener("scroll", updateScrollDependent, { passive: true, signal: dockSignal });
 		document.addEventListener("astro:page-load", () => {
-			window.__floatingDockTOC?.cleanup();
-			window.__floatingDockTOC = null;
 			if (preserveCalendarDrawerOnNavigation) {
 				preserveCalendarDrawerOnNavigation = false;
 				closeAllDrawers();
@@ -362,29 +309,8 @@ import { i18n } from "@/i18n/translation";
 			} else {
 				closeAllDrawers();
 			}
-			collapseDock();
 			updatePathDependent();
 			updateScrollDependent();
 		}, { signal: dockSignal });
-
-		// TOC
-		const tocBtn = document.getElementById("dock-toc-btn");
-		tocBtn?.addEventListener("click", () => {
-			import("@/utils/toc-utils").then(({ TOCManager }) => {
-				try {
-					window.__floatingDockTOC?.cleanup();
-					const mgr = new TOCManager({
-						contentId: "dock-toc-content",
-						indicatorId: "dock-active-indicator",
-						maxLevel: 3,
-						scrollOffset: 80,
-					});
-					mgr.init();
-					window.__floatingDockTOC = mgr;
-				} catch (err) {
-					console.error("TOC init failed:", err);
-				}
-			});
-		});
 	})();
 </script>

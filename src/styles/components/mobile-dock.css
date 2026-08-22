@@ -35,7 +35,6 @@
 			transform 300ms var(--mobile-dock-motion),
 			opacity 180ms ease,
 			box-shadow 240ms ease;
-		will-change: width;
 	}
 
 	:root.dark .mobile-dock {
@@ -330,6 +329,15 @@
 		grid-template-rows: 1fr;
 		opacity: 1;
 		pointer-events: auto;
+	}
+
+	.mobile-dock.is-closing .mobile-dock__card {
+		grid-template-rows: 0fr;
+		opacity: 0;
+		pointer-events: none;
+		transition:
+			grid-template-rows 220ms ease-in,
+			opacity 160ms ease-in;
 	}
 
 	.mobile-dock__card-inner {
@@ -851,10 +859,102 @@
 		overscroll-behavior-x: contain;
 		scrollbar-width: none;
 		flex: 0 0 auto;
+		transform-origin: center center;
+		backface-visibility: hidden;
 	}
 
 	.mobile-dock__toolbar::-webkit-scrollbar {
 		display: none;
+	}
+
+	.mobile-dock__toolbar.is-rolling {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.mobile-dock.is-toolbar-pending > .mobile-dock__card > .mobile-dock__card-inner > .mobile-dock__toolbar {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.mobile-dock__toolbar-roller {
+		--mobile-dock-roll-surface: #f4f4f4;
+		position: absolute;
+		inset-inline: 0;
+		bottom: 0;
+		z-index: 2;
+		height: var(--mobile-dock-toolbar-roll-height);
+		color: var(--deep-text);
+		overflow: hidden;
+		pointer-events: none;
+		contain: paint;
+	}
+
+	:root.dark .mobile-dock__toolbar-roller {
+		--mobile-dock-roll-surface: #181818;
+	}
+
+	.mobile-dock__toolbar-roll-track {
+		height: 200%;
+		transform: translate3d(0, 0, 0);
+		backface-visibility: hidden;
+	}
+
+	.mobile-dock__toolbar-roll-face {
+		height: 50%;
+		overflow: hidden;
+	}
+
+	.mobile-dock__toolbar-roll-face > .mobile-dock__toolbar {
+		height: 100%;
+		min-height: 0;
+		box-sizing: border-box;
+		flex: none;
+	}
+
+	.mobile-dock__toolbar-roll-face--dock {
+		display: flex;
+		align-items: flex-end;
+	}
+
+	.mobile-dock__toolbar-roll-face--dock > .mobile-dock__bar {
+		width: 100%;
+		min-height: 3.65rem;
+		border-radius: 1.825rem;
+		background: var(--mobile-dock-roll-surface);
+		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 14%);
+	}
+
+	:root.dark .mobile-dock__toolbar-roll-face--dock > .mobile-dock__bar {
+		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 34%);
+	}
+
+	.mobile-dock__toolbar-roll-face--toolbar > .mobile-dock__toolbar {
+		border-radius: 0 0 1.825rem 1.825rem;
+		background: var(--mobile-dock-roll-surface);
+	}
+
+	.mobile-dock[data-shape="card"] .mobile-dock__toolbar-roll-face--dock .mobile-dock__status-dot,
+	.mobile-dock[data-shape="card"] .mobile-dock__toolbar-roll-face--dock .mobile-dock__view-title,
+	.mobile-dock[data-shape="card"] .mobile-dock__toolbar-roll-face--dock .mobile-dock__close-icon {
+		display: none;
+	}
+
+	.mobile-dock[data-shape="card"] .mobile-dock__toolbar-roll-face--dock .mobile-dock__site-mark,
+	.mobile-dock[data-shape="card"] .mobile-dock__toolbar-roll-face--dock .mobile-dock__menu-icon {
+		display: grid;
+	}
+
+	.mobile-dock[data-shape="card"] .mobile-dock__toolbar-roll-face--dock .mobile-dock__site-title {
+		display: block;
+	}
+
+	.mobile-dock.has-playing-context[data-shape="card"] .mobile-dock__toolbar-roller .mobile-dock__toolbar-roll-face--dock .mobile-dock__site-title {
+		display: none;
+	}
+
+	.mobile-dock.has-playing-context[data-shape="card"] .mobile-dock__toolbar-roller .mobile-dock__toolbar-roll-face--dock .mobile-dock__lyric-viewport {
+		display: block;
 	}
 
 	.mobile-dock__toolbar button {
@@ -913,6 +1013,12 @@
 	.mobile-dock__overlay.is-open {
 		opacity: 1;
 		pointer-events: auto;
+	}
+
+	.mobile-dock__overlay.is-closing {
+		opacity: 0;
+		pointer-events: auto;
+		transition: opacity 220ms ease-in;
 	}
 
 	#navbar,

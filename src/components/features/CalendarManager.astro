@@ -108,6 +108,130 @@ const managerConfigStr = JSON.stringify({
 			}
 		}
 
+		function formatDateParts(dateKey, options) {
+			try {
+				var formatter = new Intl.DateTimeFormat(config.locale, options);
+				return typeof formatter.formatToParts === "function"
+					? formatter.formatToParts(parseDateKey(dateKey))
+					: [{ type: "literal", value: formatter.format(parseDateKey(dateKey)) }];
+			} catch {
+				return [{ type: "literal", value: dateKey }];
+			}
+		}
+
+		function createRollingTrack(previousValue, nextValue) {
+			var track = createElement("span", "calendar-widget__rolling-track");
+			track.setAttribute("aria-hidden", "true");
+			track.appendChild(createElement("span", "calendar-widget__rolling-digit-value", previousValue));
+			track.appendChild(createElement("span", "calendar-widget__rolling-digit-value", nextValue));
+			return track;
+		}
+
+		function createRollingValue(partType, nextValue, previousValue, forceAnimation) {
+			var value = createElement("span", "calendar-widget__rolling-value");
+			value.dataset.calendarMonthPart = partType;
+			var shouldAnimate = Boolean(previousValue) && (forceAnimation || previousValue !== nextValue);
+			var canRollDigits = shouldAnimate &&
+				/^\d+$/.test(previousValue) &&
+				/^\d+$/.test(nextValue) &&
+				previousValue.length === nextValue.length;
+
+			if (!shouldAnimate) {
+				value.textContent = nextValue;
+				return value;
+			}
+
+			if (!canRollDigits) {
+				var textSlot = createElement("span", "calendar-widget__rolling-digit");
+				textSlot.appendChild(createRollingTrack(previousValue, nextValue));
+				value.appendChild(textSlot);
+				return value;
+			}
+
+			for (var index = 0; index < nextValue.length; index += 1) {
+				var digitSlot = createElement("span", "calendar-widget__rolling-digit");
+				var previousDigit = previousValue[index];
+				var nextDigit = nextValue[index];
+				if (previousDigit === nextDigit && !forceAnimation) {
+					digitSlot.textContent = nextDigit;
+				} else {
+					digitSlot.appendChild(createRollingTrack(previousDigit, nextDigit));
+				}
+				value.appendChild(digitSlot);
+			}
+
+			return value;
+		}
+
+		function renderMonthLabel(widget, dateKey, forceMonthAnimation) {
+			var label = widget.querySelector("[data-calendar-month-label]");
+			if (!label) return;
+
+			var previousYear = label.dataset.calendarYearValue || "";
+			var previousMonth = label.dataset.calendarMonthValue || "";
+			var parts = formatDateParts(dateKey, { year: "numeric", month: "long" });
+			label.replaceChildren();
+			parts.forEach(function (part) {
+				if (part.type === "year" || part.type === "month") {
+					var previousValue = part.type === "year" ? previousYear : previousMonth;
+					label.appendChild(createRollingValue(
+						part.type,
+						part.value,
+						previousValue,
+						part.type === "month" && forceMonthAnimation,
+					));
+					label.dataset[part.type === "year" ? "calendarYearValue" : "calendarMonthValue"] = part.value;
+				} else {
+					label.appendChild(createElement("span", "calendar-widget__month-literal", part.value));
+				}
+			});
+			label.setAttribute("aria-label", formatDate(dateKey, { year: "numeric", month: "long" }));
+		}
+
+		function settleRollingTrack(track) {
+			if (!track || !track.isConnected) return;
+			var finalValue = track.lastElementChild ? track.lastElementChild.textContent : "";
+			var slot = track.parentElement;
+			if (slot) slot.textContent = finalValue || "";
+		}
+
+		function startMonthLabelAnimation(widget) {
+			var label = widget.querySelector("[data-calendar-month-label]");
+			if (!label) return;
+			var rollingTracks = label.querySelectorAll(".calendar-widget__rolling-track");
+			if (rollingTracks.length === 0) return;
+			Array.prototype.forEach.call(rollingTracks, function (track) {
+				if (prefersReducedMotion()) {
+					settleRollingTrack(track);
+					return;
+				}
+
+				if (typeof track.animate === "function") {
+					var animation = track.animate(
+						[
+							{ transform: "translate3d(0, 0, 0)" },
+							{ transform: "translate3d(0, -1.2em, 0)" },
+						],
+						{ duration: 300, easing: "linear", fill: "forwards" },
+					);
+					track.style.willChange = "transform";
+					animation.finished.then(function () {
+						animation.cancel();
+						settleRollingTrack(track);
+						track.style.willChange = "auto";
+					}).catch(function () {});
+					return;
+				}
+
+				track.addEventListener("animationend", function () {
+					settleRollingTrack(track);
+				}, { once: true });
+				requestAnimationFrame(function () {
+					track.classList.add("is-rolling");
+				});
+			});
+		}
+
 		function setText(parent, selector, value) {
 			var element = parent.querySelector(selector);
 			if (element) element.textContent = value;
@@ -188,6 +312,19 @@ const managerConfigStr = JSON.stringify({
 			void progressFill.offsetWidth;
 			progressFill.style.removeProperty("transition");
 			progressFill.style.width = width;
+		}
+
+		function setProgressTone(progress, value) {
+			if (!progress) return;
+			var numericValue = Number(value);
+			if (!Number.isFinite(numericValue)) {
+				progress.removeAttribute("data-progress-tone");
+				return;
+			}
+
+			progress.dataset.progressTone = numericValue >= 90
+				? "danger"
+				: numericValue >= 50 ? "warning" : "success";
 		}
 
 		function replayEntryAnimation(widget, shouldAnimate) {
@@ -358,6 +495,7 @@ const managerConfigStr = JSON.stringify({
 				if (progress) {
 					progress.setAttribute("aria-valuenow", "0");
 					progress.setAttribute("aria-valuetext", "0%");
+					progress.removeAttribute("data-progress-tone");
 				}
 				if (progressFill) progressFill.style.width = "0%";
 				return;
@@ -373,6 +511,7 @@ const managerConfigStr = JSON.stringify({
 			if (progress) {
 				progress.setAttribute("aria-valuenow", String(milestone.progress));
 				progress.setAttribute("aria-valuetext", milestone.progress + "%");
+				setProgressTone(progress, milestone.progress);
 			}
 			replayProgressFill(progressFill, milestone.progress, shouldAnimate);
 		}
@@ -459,17 +598,14 @@ const managerConfigStr = JSON.stringify({
 			});
 		}
 
-		function renderMonth(widget, data, state) {
+		function renderMonth(widget, data, state, animateMonthLabel) {
 			var grid = widget.querySelector("[data-calendar-month-grid]");
 			if (!grid) return;
 			var todayKey = formatYmd(new Date());
 			var firstOfMonth = new Date(state.displayYear, state.displayMonth, 1);
 			var startDate = new Date(state.displayYear, state.displayMonth, 1 - firstOfMonth.getDay());
 
-			setText(widget, "[data-calendar-month-label]", formatDate(
-				formatYmd(firstOfMonth),
-				{ year: "numeric", month: "long" },
-			));
+			renderMonthLabel(widget, formatYmd(firstOfMonth), animateMonthLabel === true);
 			renderMonthWeekdays(widget);
 			grid.replaceChildren();
 
@@ -497,6 +633,7 @@ const managerConfigStr = JSON.stringify({
 			}
 
 			renderPosts(widget, data, state);
+			startMonthLabelAnimation(widget);
 		}
 
 		function updateView(widget, state) {
@@ -513,19 +650,19 @@ const managerConfigStr = JSON.stringify({
 			toggle.title = config.labels.switch;
 		}
 
-		function renderWidget(widget, data, shouldAnimate) {
+		function renderWidget(widget, data, shouldAnimate, animateMonthLabel) {
 			var state = getState();
 			updateView(widget, state);
 			renderOverview(widget, data, shouldAnimate === true);
-			renderMonth(widget, data, state);
+			renderMonth(widget, data, state, animateMonthLabel);
 			replayEntryAnimation(widget, shouldAnimate === true);
 			widget.dataset.calendarState = "ready";
 			widget.setAttribute("aria-busy", "false");
 		}
 
-		function renderWidgets(data, shouldAnimate) {
+		function renderWidgets(data, shouldAnimate, animateMonthLabel) {
 			getWidgets().forEach(function (widget) {
-				renderWidget(widget, data, shouldAnimate);
+				renderWidget(widget, data, shouldAnimate, animateMonthLabel);
 			});
 		}
 
@@ -551,7 +688,7 @@ const managerConfigStr = JSON.stringify({
 					event.stopPropagation();
 					var state = getState();
 					state.view = state.view === "overview" ? "published" : "overview";
-					if (calendarData) renderWidgets(calendarData);
+					if (calendarData) renderWidgets(calendarData, false, state.view === "published");
 					else activate();
 				});
 			}
@@ -561,7 +698,7 @@ const managerConfigStr = JSON.stringify({
 					event.stopPropagation();
 					var state = getState();
 					changeMonth(state, button.dataset.calendarMonth === "previous" ? -1 : 1);
-					if (calendarData) renderWidgets(calendarData);
+					if (calendarData) renderWidgets(calendarData, false, true);
 				});
 			});
 
@@ -574,7 +711,7 @@ const managerConfigStr = JSON.stringify({
 					state.displayYear = today.getFullYear();
 					state.displayMonth = today.getMonth();
 					state.selectedDate = formatYmd(today);
-					if (calendarData) renderWidgets(calendarData);
+					if (calendarData) renderWidgets(calendarData, false, true);
 				});
 			}
 
@@ -590,7 +727,7 @@ const managerConfigStr = JSON.stringify({
 					state.selectedDate = dateButton.dataset.calendarDate;
 					state.displayYear = selected.getFullYear();
 					state.displayMonth = selected.getMonth();
-					if (calendarData) renderWidgets(calendarData);
+					if (calendarData) renderWidgets(calendarData, false, true);
 				});
 			}
 		}

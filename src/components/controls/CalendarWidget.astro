@@ -59,7 +59,18 @@ const titleId = `${id}-title`;
 				>
 					<Icon name="material-symbols:chevron-left" is:inline />
 				</button>
-				<p class="calendar-widget__month-label" data-calendar-month-label></p>
+				<div class="calendar-widget__month-current">
+					<p class="calendar-widget__month-label" data-calendar-month-label aria-live="polite"></p>
+					<button
+						class="calendar-widget__today-button"
+						type="button"
+						data-calendar-today-button
+						aria-label={i18n(I18nKey.calendarToday)}
+						title={i18n(I18nKey.calendarToday)}
+					>
+						<Icon name="material-symbols:today" is:inline />
+					</button>
+				</div>
 				<button
 					class="calendar-widget__icon-button"
 					type="button"
@@ -68,15 +79,6 @@ const titleId = `${id}-title`;
 					title={i18n(I18nKey.nextMonth)}
 				>
 					<Icon name="material-symbols:chevron-right" is:inline />
-				</button>
-				<button
-					class="calendar-widget__today-button"
-					type="button"
-					data-calendar-today-button
-					aria-label={i18n(I18nKey.calendarToday)}
-					title={i18n(I18nKey.calendarToday)}
-				>
-					<Icon name="material-symbols:today" is:inline />
 				</button>
 			</div>
 
@@ -94,9 +96,6 @@ const titleId = `${id}-title`;
 		<div class="calendar-widget__events">
 			<article class="calendar-widget__event" data-calendar-event="holiday">
 				<div class="calendar-widget__event-main">
-					<span class="calendar-widget__event-icon" aria-hidden="true">
-						<Icon name="material-symbols:celebration" is:inline />
-					</span>
 					<div class="calendar-widget__event-copy">
 						<p>{i18n(I18nKey.calendarNextHoliday)}</p>
 						<strong data-calendar-event-title>{i18n(I18nKey.calendarLoading)}</strong>
@@ -121,9 +120,6 @@ const titleId = `${id}-title`;
 
 			<article class="calendar-widget__event" data-calendar-event="birthday">
 				<div class="calendar-widget__event-main">
-					<span class="calendar-widget__event-icon" aria-hidden="true">
-						<Icon name="material-symbols:cake" is:inline />
-					</span>
 					<div class="calendar-widget__event-copy">
 						<p>{i18n(I18nKey.calendarNextBirthday)}</p>
 						<strong data-calendar-event-title>{i18n(I18nKey.calendarLoading)}</strong>

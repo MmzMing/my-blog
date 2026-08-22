@@ -135,6 +135,7 @@ enum I18nKey {
 	sponsorTitle = "sponsorTitle",
 	sponsorDescription = "sponsorDescription",
 	sponsorList = "sponsorList",
+	sponsorTotal = "sponsorTotal",
 	sponsorEmpty = "sponsorEmpty",
 	scanToSponsor = "scanToSponsor",
 

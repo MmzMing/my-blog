@@ -19,6 +19,23 @@ const description =
 const enabledMethods = sponsorConfig.methods.filter((method) => method.enabled);
 const sponsors = sponsorConfig.sponsors || [];
 const showSponsorsList = sponsorConfig.showSponsorsList !== false;
+const sponsorAmountsInFen = sponsors
+	.map((sponsor) => {
+		const normalizedAmount = sponsor.amount?.replace(/[^\d.]/g, "");
+		const amount = normalizedAmount ? Number(normalizedAmount) : Number.NaN;
+
+		return Number.isFinite(amount) ? Math.round(amount * 100) : null;
+	})
+	.filter((amount): amount is number => amount !== null);
+const sponsorTotal = sponsorAmountsInFen.reduce(
+	(total, amount) => total + amount,
+	0,
+);
+const formattedSponsorTotal = new Intl.NumberFormat("zh-CN", {
+	style: "currency",
+	currency: "CNY",
+	currencyDisplay: "narrowSymbol",
+}).format(sponsorTotal / 100);
 ---
 
 <MainGridLayout title={title} description={description} hasOwnH1={true}>
@@ -111,15 +128,20 @@ const showSponsorsList = sponsorConfig.showSponsorsList !== false;
     </div>
   </div>
 
-  <!-- 赞助者列表 -->
+  <!-- 打赏列表 -->
   {showSponsorsList && (
     <div class="flex w-full rounded-(--radius-large) overflow-hidden relative mt-4">
       <div class="card-base z-10 px-9 py-6 relative w-full">
-        <div class="flex items-center justify-between mb-6">
-          <div class="flex items-center gap-3">
+        <div class="flex items-center mb-6">
+          <div class="sponsor-list__heading">
             <h2 class="text-xl font-bold text-neutral-900 dark:text-neutral-100">
               {i18n(I18nKey.sponsorList)}
             </h2>
+            {sponsorAmountsInFen.length > 0 && (
+              <span class="sponsor-list__total">
+                {i18n(I18nKey.sponsorTotal)} {formattedSponsorTotal}
+              </span>
+            )}
           </div>
         </div>
         {sponsors.length > 0 ? (

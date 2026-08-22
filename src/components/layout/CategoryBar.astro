@@ -21,6 +21,12 @@ const searchParams = Astro.url.searchParams;
 const homeUrl = url("/");
 const isHome = isHomePage(pathname);
 const isPostPage = !!postSlug;
+const wideTitleInsetPages = new Set(
+	[url("/collections/"), url("/gallery/")].map((path) =>
+		path.replace(/\/+$/, ""),
+	),
+);
+const hasWideTitleInset = wideTitleInsetPages.has(pathname);
 
 // 归档页匹配：/archive 或 /archive?category=xxx
 const archivePath = url("/archive/").replace(/\/+$/, "");
@@ -209,7 +215,11 @@ if (!isHome) {
 ---
 
 {items.length > 0 && (
-<nav class="cb" id="breadcrumb-nav" aria-label="Breadcrumb">
+<nav
+	class:list={["cb", hasWideTitleInset && "cb--wide-title-inset"]}
+	id="breadcrumb-nav"
+	aria-label="Breadcrumb"
+>
 	<ol class="cb__list">
 		{items.map((item, idx) => (
 			<li class="cb__item">

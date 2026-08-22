@@ -154,14 +154,15 @@ export const ja: Translation = {
 
 	// 投稿リストレイアウト
 
-	// スポンサーページ
-	[Key.sponsor]: "スポンサー",
-	[Key.sponsorTitle]: "サポート",
+	// 投げ銭ページ
+	[Key.sponsor]: "投げ銭",
+	[Key.sponsorTitle]: "投げ銭",
 	[Key.sponsorDescription]:
-		"支援方法と支援者一覧を掲載しています。いただいたご支援は、サイトの運営、コンテンツ制作、継続的な更新に活用されます。",
-	[Key.sponsorList]: "スポンサーリスト",
-	[Key.sponsorEmpty]: "スポンサー記録なし",
-	[Key.scanToSponsor]: "スキャンしてスポンサー",
+		"投げ銭の方法と支援者一覧を掲載しています。いただいた投げ銭は、サイトの運営、コンテンツ制作、継続的な更新に活用されます。",
+	[Key.sponsorList]: "投げ銭一覧",
+	[Key.sponsorTotal]: "投げ銭合計",
+	[Key.sponsorEmpty]: "投げ銭の記録はまだありません",
+	[Key.scanToSponsor]: "スキャンして投げ銭",
 
 	// サイト統計
 	[Key.siteStats]: "サイト統計",

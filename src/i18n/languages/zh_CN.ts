@@ -150,14 +150,15 @@ export const zh_CN: Translation = {
 
 	// 文章布局
 
-	// 赞助页面
-	[Key.sponsor]: "赞助",
-	[Key.sponsorTitle]: "赞助支持",
+	// 打赏页面
+	[Key.sponsor]: "打赏",
+	[Key.sponsorTitle]: "打赏",
 	[Key.sponsorDescription]:
-		"本页提供赞助方式和赞助者名单，用于支持本站内容创作、维护与持续更新；感谢每一份支持。",
-	[Key.sponsorList]: "赞助列表",
-	[Key.sponsorEmpty]: "暂无赞助记录",
-	[Key.scanToSponsor]: "扫码赞助",
+		"本页提供打赏方式和打赏名单，用于支持本站内容创作、维护与持续更新；感谢每一份支持。",
+	[Key.sponsorList]: "打赏列表",
+	[Key.sponsorTotal]: "打赏总和",
+	[Key.sponsorEmpty]: "暂无打赏记录",
+	[Key.scanToSponsor]: "扫码打赏",
 
 	// 站点统计
 	[Key.siteStats]: "站点统计",

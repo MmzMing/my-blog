@@ -152,14 +152,15 @@ export const zh_TW: Translation = {
 
 	// 文章佈局
 
-	// 贊助頁面
-	[Key.sponsor]: "贊助",
-	[Key.sponsorTitle]: "贊助支持",
+	// 打賞頁面
+	[Key.sponsor]: "打賞",
+	[Key.sponsorTitle]: "打賞",
 	[Key.sponsorDescription]:
-		"本頁提供贊助方式和贊助者名單，用於支持本站內容創作、維護與持續更新；感謝每一份支持。",
-	[Key.sponsorList]: "贊助列表",
-	[Key.sponsorEmpty]: "暫無贊助記錄",
-	[Key.scanToSponsor]: "掃碼贊助",
+		"本頁提供打賞方式和打賞名單，用於支持本站內容創作、維護與持續更新；感謝每一份支持。",
+	[Key.sponsorList]: "打賞列表",
+	[Key.sponsorTotal]: "打賞總和",
+	[Key.sponsorEmpty]: "暫無打賞記錄",
+	[Key.scanToSponsor]: "掃碼打賞",
 
 	// 站點統計
 	[Key.siteStats]: "站點統計",

@@ -154,14 +154,15 @@ export const en: Translation = {
 
 	// Post List Layout
 
-	// Sponsor Page
-	[Key.sponsor]: "Sponsor",
-	[Key.sponsorTitle]: "Support Me",
+	// Tipping Page
+	[Key.sponsor]: "Tip",
+	[Key.sponsorTitle]: "Tip",
 	[Key.sponsorDescription]:
-		"Find available sponsorship methods and a list of supporters. Contributions help maintain the site, fund new content, and support ongoing updates.",
-	[Key.sponsorList]: "Sponsors",
-	[Key.sponsorEmpty]: "No sponsors yet",
-	[Key.scanToSponsor]: "Scan to Sponsor",
+		"Find available tipping methods and a list of supporters. Tips help maintain the site, fund new content, and support ongoing updates.",
+	[Key.sponsorList]: "Tips",
+	[Key.sponsorTotal]: "Total tips",
+	[Key.sponsorEmpty]: "No tips yet",
+	[Key.scanToSponsor]: "Scan to Tip",
 
 	// Site Statistics
 	[Key.siteStats]: "Site Statistics",

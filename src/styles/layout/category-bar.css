@@ -6,6 +6,8 @@
 .cb {
 	margin-bottom: 1rem;
 	padding: 0.75rem;
+	/* 跟随页面内容卡片的内缩，让面包屑与下方标题文字对齐。 */
+	padding-inline-start: 1rem;
 	background: var(--card-bg, transparent);
 	border-radius: var(--radius-large, 0.75rem);
 }
@@ -205,4 +207,15 @@
 		left: auto;
 		right: 0;
 	}
+}
+
+@media (min-width: 768px) {
+	.cb {
+		padding-inline-start: 2.25rem;
+	}
+}
+
+/* 工具导航和相册首页的标题卡片在移动端也使用较大的内缩。 */
+.cb--wide-title-inset {
+	padding-inline-start: 2.25rem;
 }
