@@ -12,6 +12,7 @@
 /* === 组件层 === */
 @import './components/page-loader.css';
 @import './components/page-title.css';
+@import './components/footer.css';
 @import './components/image-pixel-reveal.css';
 @import './components/floating-dock.css';
 @import './components/mobile-dock.css';

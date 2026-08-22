@@ -173,6 +173,8 @@ export const ru: Translation = {
 	[Key.siteStatsVisitors]: "Посетители",
 	[Key.siteStatsSource]: "Источник",
 	[Key.footerRunningDays]: "Работает {days} дней",
+	[Key.footerRunningTime]:
+		"Работает {days} д. {hours} ч. {minutes} мин. {seconds} сек.",
 	[Key.footerLastUpdate]: "Последнее обновление {days} дней назад",
 	[Key.today]: "Сегодня",
 

@@ -172,6 +172,7 @@ export const en: Translation = {
 	[Key.siteStatsVisitors]: "Visitors",
 	[Key.siteStatsSource]: "Source",
 	[Key.footerRunningDays]: "Running for {days} days",
+	[Key.footerRunningTime]: "Running for {days}d {hours}h {minutes}m {seconds}s",
 	[Key.footerLastUpdate]: "Last updated {days} days ago",
 	[Key.today]: "Today",
 

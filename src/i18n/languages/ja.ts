@@ -172,6 +172,8 @@ export const ja: Translation = {
 	[Key.siteStatsVisitors]: "訪問者",
 	[Key.siteStatsSource]: "ソース",
 	[Key.footerRunningDays]: "運用 {days} 日",
+	[Key.footerRunningTime]:
+		"運用 {days} 日 {hours} 時間 {minutes} 分 {seconds} 秒",
 	[Key.footerLastUpdate]: "最終更新は {days} 日前",
 	[Key.today]: "今日",
 

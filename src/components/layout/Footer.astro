@@ -1,5 +1,6 @@
 ---
 import Icon from "@components/common/Icon.astro";
+import FooterSignature from "@components/layout/FooterSignature.astro";
 import { footerConfig, homeConfig, siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -7,200 +8,270 @@ import { getSortedPosts } from "@/utils/content-utils";
 import { url } from "@/utils/url-utils";
 
 const currentYear = new Date().getFullYear();
-
-// 从配置中获取站点开始日期
-const siteStartDate = siteConfig.siteStartDate || "2025-01-01";
+const siteStartDate = siteConfig.siteStartDate || "";
 const { socialLinks, beian, poweredBy } = footerConfig;
+const bioText = Array.isArray(homeConfig.bio)
+	? homeConfig.bio[0] || ""
+	: homeConfig.bio || "";
 
-// 获取最新文章日期（用于计算最后活动时间）
+function getSiteStartTimestamp(value: string): number | null {
+	if (!value) return null;
+
+	const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(value)
+		? `${value}T00:00:00+08:00`
+		: value;
+	const timestamp = Date.parse(normalizedValue);
+
+	return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+const startTimestamp = getSiteStartTimestamp(siteStartDate);
+const initialRunningDays =
+	startTimestamp === null
+		? null
+		: Math.max(0, Math.floor((Date.now() - startTimestamp) / 86_400_000));
+
 const posts = await getSortedPosts();
 const latestPost = posts.reduce((latest, post) => {
 	if (!latest) return post;
 	return post.data.published > latest.data.published ? post : latest;
 }, posts[0]);
-
 const lastPostDate = latestPost
 	? latestPost.data.published.toISOString()
 	: null;
 
-const runningDaysText = i18n(I18nKey.footerRunningDays);
+const runningTimeText = i18n(I18nKey.footerRunningTime);
 const lastUpdateText = i18n(I18nKey.footerLastUpdate);
 const todayText = i18n(I18nKey.today);
 
+function formatInitialRunningTime(
+	template: string,
+	elapsedSeconds: number,
+): string {
+	const days = Math.floor(elapsedSeconds / 86_400);
+	const hours = Math.floor((elapsedSeconds % 86_400) / 3_600);
+	const minutes = Math.floor((elapsedSeconds % 3_600) / 60);
+	const seconds = elapsedSeconds % 60;
+
+	return template
+		.replace("{days}", days.toString())
+		.replace("{hours}", hours.toString())
+		.replace("{minutes}", minutes.toString())
+		.replace("{seconds}", seconds.toString());
+}
+
+const initialRunningTime =
+	startTimestamp === null
+		? ""
+		: formatInitialRunningTime(
+				runningTimeText,
+				Math.max(0, Math.floor((Date.now() - startTimestamp) / 1_000)),
+			);
+
+function getInitialLastUpdateText(value: string | null): string | null {
+	if (!value) return null;
+
+	const timestamp = Date.parse(value);
+	if (Number.isNaN(timestamp)) return null;
+
+	const days = Math.max(0, Math.floor((Date.now() - timestamp) / 86_400_000));
+	return days === 0
+		? todayText
+		: lastUpdateText.replace("{days}", days.toString());
+}
+
+const initialLastUpdateText = getInitialLastUpdateText(lastPostDate);
+
 // mailto:/tel: 链接不在新标签打开
-const isExternalLink = (href: string) => !/^(mailto:|tel:)/i.test(href);
+const opensInNewTab = (href: string) => !/^(mailto:|tel:)/i.test(href);
 ---
 
-<div
-	class="transition border-dashed border-[oklch(85%_0.01_var(--hue))] dark:border-white/15 rounded-2xl mb-12 flex flex-col items-center justify-center px-6"
->
-	<div class="transition text-50 text-base text-center wrap flex flex-col gap-2">
-		{/* 第一层：社交链接 */}
-		<div class="flex items-center justify-center gap-3 text-neutral-500 dark:text-neutral-400 text-sm flex-wrap">
-			{socialLinks.map((link, index) => (
-				<>
-					<a
-						class="transition text-(--primary) font-bold hover:scale-105 inline-flex items-center gap-1"
-						target={isExternalLink(link.href) ? "_blank" : undefined}
-						href={link.href}
+<footer class="footer site-footer" data-site-footer>
+	<div class="site-footer__inner">
+		<div class="site-footer__primary">
+			<section class="site-footer__brand" aria-label={homeConfig.name}>
+				<div class="site-footer__brand-copy">
+					<FooterSignature />
+					{bioText && <p class="site-footer__tagline">{bioText}</p>}
+				</div>
+			</section>
+
+			<nav class="site-footer__contact" aria-label={i18n(I18nKey.contactMethods)}>
+				<p class="site-footer__eyebrow">{i18n(I18nKey.contactMethods)}</p>
+				<ul class="site-footer__social-list" role="list">
+					{socialLinks.map((link) => (
+						<li>
+							<a
+								class="site-footer__social-link"
+								href={link.href}
+								target={opensInNewTab(link.href) ? "_blank" : undefined}
+								rel={opensInNewTab(link.href) ? "noreferrer" : undefined}
+								aria-label={link.label}
+								data-tooltip={link.label}
+							>
+								<Icon name={link.icon} is:inline aria-hidden="true" />
+							</a>
+						</li>
+					))}
+				</ul>
+				<div class="site-footer__utility-links">
+					<a href={url("sitemap-index.xml")} target="_blank" rel="noreferrer">Sitemap</a>
+					<span aria-hidden="true">/</span>
+					<a href={url("rss/")} target="_blank" rel="noreferrer">RSS</a>
+					<span aria-hidden="true">/</span>
+					<button
+						class="site-footer__utility-button"
+						onclick="window.openPrivacyModal && window.openPrivacyModal()"
+						type="button"
 					>
-						<Icon name={link.icon} is:inline class="text-base" />
-						<span>{link.label}</span>
-					</a>
-					{index < socialLinks.length - 1 && (
-						<span class="text-neutral-300 dark:text-neutral-600">|</span>
-					)}
-				</>
-			))}
-		</div>
-
-		{/* 第二层：站点地图 | RSS | 隐私政策 | 用户协议 */}
-		<div class="flex items-center justify-center gap-2 text-neutral-500 dark:text-neutral-400 text-sm">
-			<a
-				class="transition text-(--primary) font-bold hover:scale-105 inline-flex items-center gap-1"
-				target="_blank"
-				href={url("sitemap-index.xml")}
-			>
-				<Icon name="material-symbols:map-outline" is:inline class="text-base" />
-				<span>Sitemap</span>
-			</a>
-			<span class="text-neutral-300 dark:text-neutral-600">|</span>
-			<a
-				class="transition text-(--primary) font-bold hover:scale-105 inline-flex items-center gap-1"
-				target="_blank"
-				href={url("rss/")}
-			>
-				<Icon name="material-symbols:rss-feed-rounded" is:inline class="text-base" />
-				<span>RSS</span>
-			</a>
-			<span class="text-neutral-300 dark:text-neutral-600">|</span>
-			<button
-				class="transition text-(--primary) font-bold bg-transparent border-none cursor-pointer p-0 hover:scale-105 inline-flex items-center gap-1"
-				onclick="window.openPrivacyModal && window.openPrivacyModal()"
-				type="button"
-			>
-				<Icon name="material-symbols:shield-outline" is:inline class="text-base" />
-				<span>{i18n(I18nKey.privacyPolicy)}</span>
-			</button>
-			<span class="text-neutral-300 dark:text-neutral-600">|</span>
-			<button
-				class="transition text-(--primary) font-bold bg-transparent border-none cursor-pointer p-0 hover:scale-105 inline-flex items-center gap-1"
-				onclick="window.openUserAgreementModal && window.openUserAgreementModal()"
-				type="button"
-			>
-				<Icon name="material-symbols:description-outline" is:inline class="text-base" />
-				<span>{i18n(I18nKey.userAgreement)}</span>
-			</button>
-		</div>
-
-		{/* 第三层：站点运行信息 */}
-		<div class="flex items-center justify-center gap-3 text-neutral-500 dark:text-neutral-400 text-sm">
-			<span class="flex items-center gap-1">
-				<Icon name="material-symbols:calendar-clock-outline" is:inline class="text-base" />
-				<span id="footer-running-days" data-template={runningDaysText}>--</span>
-			</span>
-			<span class="text-neutral-300 dark:text-neutral-600">|</span>
-			<span class="flex items-center gap-1">
-				<Icon name="mingcute:heartbeat-line" is:inline class="text-base" />
-				<span id="footer-last-update" data-template={lastUpdateText} data-today={todayText}>--</span>
-			</span>
-		</div>
-
-		{/* 第四层：版权 */}
-		<div class="flex items-center justify-center gap-2 text-neutral-500 dark:text-neutral-400 text-sm flex-wrap">
-			<span>&copy; <span id="copyright-year">{currentYear}</span> {homeConfig.name}</span>
-		</div>
-
-		{/* 第五层：备案信息 */}
-		{(beian.icp || beian.police) && (
-			<div class="flex items-center justify-center gap-2 text-neutral-500 dark:text-neutral-400 text-sm flex-wrap">
-				{beian.icp && (
-					<a
-						class="transition text-(--primary) font-bold hover:scale-105 inline-flex items-center gap-1"
-						target="_blank"
-						href={beian.icpUrl}
+						{i18n(I18nKey.privacyPolicy)}
+					</button>
+					<span aria-hidden="true">/</span>
+					<button
+						class="site-footer__utility-button"
+						onclick="window.openUserAgreementModal && window.openUserAgreementModal()"
+						type="button"
 					>
-						<span>{beian.icp}</span>
-					</a>
-				)}
-				{beian.icp && beian.police && (
-					<span class="text-neutral-300 dark:text-neutral-600">|</span>
-				)}
-				{beian.police && (
-					<a
-						class="transition text-(--primary) font-bold hover:scale-105 inline-flex items-center gap-1"
-						target="_blank"
-						rel="noreferrer"
-						href={beian.policeUrl}
-					>
-						<img src={beian.policeIcon} alt={i18n(I18nKey.policeBeianAlt)} class="w-4 h-4 inline-block" />
-						<span>{beian.police}</span>
-					</a>
+						{i18n(I18nKey.userAgreement)}
+					</button>
+				</div>
+			</nav>
+		</div>
+
+		<div class="site-footer__lower">
+			<div class="site-footer__legal">
+				<div class="site-footer__copyright-row">
+					<p class="site-footer__copyright">&copy; {currentYear} {homeConfig.name}</p>
+					{poweredBy.map((item) => (
+						<>
+							<span class="site-footer__copyright-divider" aria-hidden="true">·</span>
+							<span class="site-footer__powered-by">
+								<span>{item.label}</span>
+								<a href={item.href} target="_blank" rel="noreferrer">{item.name}</a>
+							</span>
+						</>
+					))}
+				</div>
+				{(beian.icp || beian.police) && (
+					<div class="site-footer__beian">
+						{beian.icp && (
+							<a href={beian.icpUrl} target="_blank" rel="noreferrer">{beian.icp}</a>
+						)}
+						{beian.icp && beian.police && <span aria-hidden="true">/</span>}
+						{beian.police && (
+							<a
+								class="site-footer__police-link"
+								href={beian.policeUrl}
+								target="_blank"
+								rel="noreferrer"
+							>
+								<img src={beian.policeIcon} alt={i18n(I18nKey.policeBeianAlt)} />
+								<span>{beian.police}</span>
+							</a>
+						)}
+					</div>
 				)}
 			</div>
-		)}
 
-		{/* 第六层：Powered by */}
-		<div class="flex items-center justify-center gap-1 text-neutral-500 dark:text-neutral-400 text-sm">
-			{poweredBy.map((item, index) => (
-				<>
-					<span>{item.label}</span>
-					<a
-						class="transition text-(--primary) font-bold hover:scale-105"
-						target="_blank"
-						href={item.href}
-					>
-						{item.name}
-					</a>
-					{index < poweredBy.length - 1 && (
-						<span class="text-neutral-300 dark:text-neutral-600">|</span>
-					)}
-				</>
-			))}
+			<div class="site-footer__status">
+				{initialRunningDays !== null && (
+					<p class="site-footer__status-line">
+						<Icon name="material-symbols:calendar-clock-outline" is:inline aria-hidden="true" />
+						<span data-footer-running-time data-template={runningTimeText}>{initialRunningTime}</span>
+					</p>
+				)}
+				{initialLastUpdateText && (
+					<p class="site-footer__status-line">
+						<Icon name="mingcute:heartbeat-line" is:inline aria-hidden="true" />
+						<span data-footer-last-update data-template={lastUpdateText} data-today={todayText}>{initialLastUpdateText}</span>
+					</p>
+				)}
+			</div>
 		</div>
 	</div>
-</div>
+</footer>
 
-<script is:inline define:vars={{ siteStartDate, lastPostDate, runningDaysText, lastUpdateText, todayText }}>
-	function updateFooterStats() {
-		const today = new Date();
+<script is:inline define:vars={{ siteStartDate, lastPostDate, runningTimeText, lastUpdateText, todayText }}>
+	const footer = document.querySelector("[data-site-footer]");
 
-		// 更新运行天数
-		const startDate = new Date(siteStartDate);
-		const diffTime = Math.abs(today.getTime() - startDate.getTime());
-		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+	function parseSiteStartTimestamp(value) {
+		if (!value) return null;
 
-		const runningDaysEl = document.getElementById('footer-running-days');
-		if (runningDaysEl) {
-			const template = runningDaysEl.dataset.template || runningDaysText;
-			runningDaysEl.textContent = template.replace('{days}', diffDays.toString());
-		}
+		const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(value)
+			? `${value}T00:00:00+08:00`
+			: value;
+		const timestamp = Date.parse(normalizedValue);
 
-		// 更新最后活动时间
-		const lastUpdateEl = document.getElementById('footer-last-update');
-		if (lastUpdateEl && lastPostDate) {
-			const lastPost = new Date(lastPostDate);
-			const timeSinceLastPost = Math.abs(today.getTime() - lastPost.getTime());
-			const daysSinceLastUpdate = Math.floor(timeSinceLastPost / (1000 * 60 * 60 * 24));
-			const template = lastUpdateEl.dataset.template || lastUpdateText;
-			const todayLabel = lastUpdateEl.dataset.today || todayText;
-
-			if (daysSinceLastUpdate === 0) {
-				lastUpdateEl.textContent = todayLabel;
-			} else {
-				lastUpdateEl.textContent = template.replace('{days}', daysSinceLastUpdate.toString());
-			}
-		}
+		return Number.isNaN(timestamp) ? null : timestamp;
 	}
 
-	// 页面加载时更新
-	updateFooterStats();
+	function formatRunningTime(template, elapsedSeconds) {
+		const days = Math.floor(elapsedSeconds / 86_400);
+		const hours = Math.floor((elapsedSeconds % 86_400) / 3_600);
+		const minutes = Math.floor((elapsedSeconds % 3_600) / 60);
+		const seconds = elapsedSeconds % 60;
 
-	// 页面切换时重新更新（防止 swup 重复执行脚本导致监听器累积）
-	if (!window.__footer_listener) {
-		window.__footer_listener = true;
-		document.addEventListener("astro:page-load", () => {
-			setTimeout(updateFooterStats, 100);
-		});
+		return template
+			.replace("{days}", days.toString())
+			.replace("{hours}", hours.toString())
+			.replace("{minutes}", minutes.toString())
+			.replace("{seconds}", seconds.toString());
+	}
+
+	if (footer instanceof HTMLElement) {
+		const runningTimeElement = footer.querySelector("[data-footer-running-time]");
+		const lastUpdateElement = footer.querySelector("[data-footer-last-update]");
+		const startTimestamp = parseSiteStartTimestamp(siteStartDate);
+		const lastPostTimestamp = lastPostDate ? Date.parse(lastPostDate) : Number.NaN;
+
+		function updateFooterStats() {
+			const now = Date.now();
+
+			if (runningTimeElement && startTimestamp !== null) {
+				const template = runningTimeElement.dataset.template || runningTimeText;
+				const elapsedSeconds = Math.max(0, Math.floor((now - startTimestamp) / 1_000));
+				runningTimeElement.textContent = formatRunningTime(template, elapsedSeconds);
+			}
+
+			if (lastUpdateElement && !Number.isNaN(lastPostTimestamp)) {
+				const daysSinceLastUpdate = Math.max(
+					0,
+					Math.floor((now - lastPostTimestamp) / 86_400_000),
+				);
+				const template = lastUpdateElement.dataset.template || lastUpdateText;
+				const todayLabel = lastUpdateElement.dataset.today || todayText;
+
+				lastUpdateElement.textContent =
+					daysSinceLastUpdate === 0
+						? todayLabel
+						: template.replace("{days}", daysSinceLastUpdate.toString());
+			}
+		}
+
+		function initSignature() {
+			const signature = footer.querySelector("[data-footer-signature]");
+			const reducedMotion = window.matchMedia(
+				"(prefers-reduced-motion: reduce)",
+			).matches;
+
+			if (!signature || reducedMotion || !("IntersectionObserver" in window)) return;
+
+			footer.classList.add("is-signature-pending");
+			const observer = new IntersectionObserver(
+				(entries) => {
+					if (!entries.some((entry) => entry.isIntersecting)) return;
+
+					footer.classList.add("is-signature-drawn");
+					observer.disconnect();
+				},
+				{ threshold: 0.35 },
+			);
+
+			observer.observe(signature);
+		}
+
+		updateFooterStats();
+		window.setInterval(updateFooterStats, 1_000);
+		initSignature();
 	}
 </script>

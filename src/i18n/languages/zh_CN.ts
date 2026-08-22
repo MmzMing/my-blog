@@ -168,6 +168,8 @@ export const zh_CN: Translation = {
 	[Key.siteStatsVisitors]: "访客",
 	[Key.siteStatsSource]: "来源",
 	[Key.footerRunningDays]: "已运行 {days} 天",
+	[Key.footerRunningTime]:
+		"本站已苟活 {days} 天 {hours} 时 {minutes} 分 {seconds} 秒",
 	[Key.footerLastUpdate]: "最后更新于 {days} 天前",
 	[Key.today]: "今天",
 

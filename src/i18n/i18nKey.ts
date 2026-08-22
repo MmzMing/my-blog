@@ -147,6 +147,7 @@ enum I18nKey {
 	siteStatsVisitors = "siteStatsVisitors",
 	siteStatsSource = "siteStatsSource",
 	footerRunningDays = "footerRunningDays",
+	footerRunningTime = "footerRunningTime",
 	footerLastUpdate = "footerLastUpdate",
 	today = "today",
 

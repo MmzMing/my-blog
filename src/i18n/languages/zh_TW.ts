@@ -170,6 +170,8 @@ export const zh_TW: Translation = {
 	[Key.siteStatsVisitors]: "訪客",
 	[Key.siteStatsSource]: "來源",
 	[Key.footerRunningDays]: "已運行 {days} 天",
+	[Key.footerRunningTime]:
+		"本站已運行 {days} 天 {hours} 小時 {minutes} 分 {seconds} 秒",
 	[Key.footerLastUpdate]: "最後更新於 {days} 天前",
 	[Key.today]: "今天",
 

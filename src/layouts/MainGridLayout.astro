@@ -103,13 +103,11 @@ const navLinks = navBarConfig.links.map((item) => {
 				<div id="content-wrapper" class="onload-animation">
 					<slot></slot>
 				</div>
-				<div class="footer onload-animation mt-16 pt-8 border-t">
-					<Footer></Footer>
-				</div>
 			</main>
 
 			{spineModelConfig.enable && <SpineModel />}
 			{live2dModelConfig.enable && <Live2DWidget config={live2dModelConfig} />}
 		</div>
+		<Footer></Footer>
 	</div>
 </Layout>
