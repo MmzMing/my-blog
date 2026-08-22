@@ -42,7 +42,11 @@ const totalPostLabel = i18n(
 	data-article-list-umami-api-base={umamiPageviews?.apiBase || ""}
 	data-article-list-umami-share-id={umamiPageviews?.shareId || ""}
 >
-	<PinnedArticleList posts={pinnedPosts} />
+	<PinnedArticleList
+		posts={pinnedPosts}
+		fallbackImageUrl={fallbackImageUrl}
+		showCoverLoading={showCoverLoading}
+	/>
 
 	<header class="article-list-toolbar">
 		<div class="article-list-toolbar__summary">
@@ -106,8 +110,10 @@ const totalPostLabel = i18n(
 		if (!articleListRoot) return;
 		const articleList = articleListRoot;
 
-		const cards = Array.from(
-			articleList.querySelectorAll<HTMLElement>("[data-article-list-card]"),
+		const coverHosts = Array.from(
+			articleList.querySelectorAll<HTMLElement>(
+				"[data-article-list-cover-wrap]",
+			),
 		);
 		const pinnedList = articleList.querySelector<HTMLElement>(
 			"[data-article-list-pinned]",
@@ -134,12 +140,8 @@ const totalPostLabel = i18n(
 		}
 
 		function initCoverLoading() {
-			cards.forEach((card) => {
-				const wrap = card.querySelector<HTMLElement>(
-					"[data-article-list-cover-wrap]",
-				);
-				if (!wrap) return;
-				const image = card.querySelector<HTMLImageElement>(
+			coverHosts.forEach((wrap) => {
+				const image = wrap.querySelector<HTMLImageElement>(
 					"[data-article-list-cover]",
 				);
 				if (!image) return;
@@ -152,8 +154,11 @@ const totalPostLabel = i18n(
 					baseUrl: window.location.href,
 					signal,
 				});
-				coverLifecycles.set(card, lifecycle);
-				lifecycle.setVisible(true);
+				coverLifecycles.set(wrap, lifecycle);
+				const pinnedItem = wrap.closest<HTMLElement>(
+					"[data-article-list-pinned-item]",
+				);
+				lifecycle.setVisible(!pinnedItem?.hidden);
 			});
 		}
 
@@ -192,6 +197,12 @@ const totalPostLabel = i18n(
 			let rotationTimer: number | undefined;
 			let fadeTimer: number | undefined;
 
+			function setPinnedCoverVisibility(item: HTMLElement, visible: boolean) {
+				item
+					.querySelectorAll<HTMLElement>("[data-article-list-cover-wrap]")
+					.forEach((wrap) => coverLifecycles.get(wrap)?.setVisible(visible));
+			}
+
 			function updatePinnedDots() {
 				pinnedDots.forEach((dot, index) => {
 					dot.setAttribute("aria-current", String(index === activeIndex));
@@ -215,8 +226,10 @@ const totalPostLabel = i18n(
 				currentItem.classList.add("is-carousel-leaving");
 				fadeTimer = window.setTimeout(() => {
 					currentItem.hidden = true;
+					setPinnedCoverVisibility(currentItem, false);
 					currentItem.classList.remove("is-carousel-leaving");
 					nextItem.hidden = false;
+					setPinnedCoverVisibility(nextItem, true);
 					nextItem.classList.remove("is-carousel-leaving");
 					void nextItem.offsetWidth;
 					nextItem.classList.add("is-carousel-entering");
