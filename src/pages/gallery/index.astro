@@ -23,6 +23,12 @@ const albums = await Promise.all(
 		return { ...album, cover, photoCount: photos.length };
 	}),
 );
+const galleryTabs = [
+	{ id: "all", label: "全部" },
+	...Array.from(
+		new Set(galleryConfig.albums.flatMap((album) => album.tags ?? [])),
+	).map((tag) => ({ id: tag, label: tag })),
+];
 ---
 
 <MainGridLayout title={title} description={description} hasOwnH1={true}>
@@ -33,7 +39,31 @@ const albums = await Promise.all(
       </div>
 
       {albums.length > 0 ? (
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        <div class="gallery-tabs-wrapper">
+          <div class="gallery-tabs-pill" data-gallery-tab-nav role="tablist" aria-label="相册分类">
+            <div class="gallery-tabs-indicator" data-gallery-tab-indicator></div>
+            {galleryTabs.map((tab, index) => (
+              <button
+                class:list={[
+                  "gallery-tab-btn",
+                  {
+                    "gallery-tab-btn--active": index === 0,
+                    "gallery-tab-btn--inactive": index !== 0,
+                  },
+                ]}
+                data-gallery-tab={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={index === 0 ? "true" : "false"}
+                aria-controls="gallery-albums"
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div id="gallery-albums" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6" role="tabpanel">
           {albums.map((album) => (
             <AlbumCard
               id={album.id}
@@ -55,4 +85,72 @@ const albums = await Promise.all(
       )}
     </div>
   </div>
+
+  <script is:inline>
+    (function() {
+      if (window.__galleryTabsReady) return;
+      window.__galleryTabsReady = true;
+
+      function updateGalleryIndicator(nav) {
+        if (!nav) return;
+        var indicator = nav.querySelector("[data-gallery-tab-indicator]");
+        if (!indicator) return;
+        var activeBtn = nav.querySelector(".gallery-tab-btn--active");
+        if (!activeBtn) return;
+        var navRect = nav.getBoundingClientRect();
+        var btnRect = activeBtn.getBoundingClientRect();
+        indicator.style.left = (btnRect.left - navRect.left) + "px";
+        indicator.style.top = (btnRect.top - navRect.top) + "px";
+        indicator.style.width = btnRect.width + "px";
+        indicator.style.height = btnRect.height + "px";
+        indicator.style.opacity = "1";
+      }
+
+      function activateGalleryTab(tabId) {
+        var tabButtons = document.querySelectorAll("[data-gallery-tab]");
+        var albums = document.querySelectorAll("[data-gallery-album]");
+
+        tabButtons.forEach(function(btn) {
+          var isActive = btn.dataset.galleryTab === tabId;
+          btn.classList.toggle("gallery-tab-btn--active", isActive);
+          btn.classList.toggle("gallery-tab-btn--inactive", !isActive);
+          btn.setAttribute("aria-selected", String(isActive));
+        });
+
+        albums.forEach(function(album) {
+          var tags = (album.dataset.galleryTags || "").split(",");
+          var isVisible = tabId === "all" || tags.indexOf(tabId) !== -1;
+          album.classList.toggle("hidden", !isVisible);
+        });
+
+        var nav = document.querySelector("[data-gallery-tab-nav]");
+        if (nav) updateGalleryIndicator(nav);
+      }
+
+      document.addEventListener("click", function(event) {
+        var target = event.target;
+        if (!(target instanceof Element)) return;
+        var btn = target.closest("[data-gallery-tab]");
+        if (!btn) return;
+        activateGalleryTab(btn.dataset.galleryTab);
+      });
+
+      window.addEventListener("resize", function() {
+        var nav = document.querySelector("[data-gallery-tab-nav]");
+        if (nav) updateGalleryIndicator(nav);
+      });
+
+      function initGalleryTabs() {
+        var nav = document.querySelector("[data-gallery-tab-nav]");
+        if (nav) {
+          requestAnimationFrame(function() {
+            updateGalleryIndicator(nav);
+          });
+        }
+      }
+
+      initGalleryTabs();
+      document.addEventListener("astro:page-load", initGalleryTabs);
+    })();
+  </script>
 </MainGridLayout>

@@ -27,7 +27,8 @@ const displayLocation = truncateLocation(location);
 
 <a
   href={url(`/gallery/${id}/`)}
-  data-tags={tags?.join(",") || ""}
+  data-gallery-album
+  data-gallery-tags={tags?.join(",") || ""}
   class="album-card group"
 >
   <!-- Image wrapper -->

@@ -1,4 +1,85 @@
 /* 相册详情与相册卡片 */
+.gallery-tabs-wrapper {
+	margin-bottom: 1.5rem;
+}
+
+.gallery-tabs-pill {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.375rem;
+	padding: 0.375rem;
+	border: 1.5px solid #000;
+	border-radius: 1rem;
+}
+
+:root.dark .gallery-tabs-pill {
+	border-color: #fff;
+}
+
+.gallery-tabs-indicator {
+	position: absolute;
+	z-index: 0;
+	border-radius: 9999px;
+	background: #000;
+	opacity: 0;
+	pointer-events: none;
+	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+		top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+		width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+		height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root.dark .gallery-tabs-indicator {
+	background: #fff;
+}
+
+.gallery-tab-btn {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	flex-shrink: 0;
+	padding: 0.375rem 0.875rem;
+	border: none;
+	border-radius: 9999px;
+	background: transparent;
+	font-size: 0.8125rem;
+	font-weight: 500;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: color 0.2s;
+}
+
+.gallery-tab-btn--active {
+	color: #fff;
+	cursor: default;
+}
+
+:root.dark .gallery-tab-btn--active {
+	color: #000;
+}
+
+.gallery-tab-btn--inactive {
+	color: #000;
+}
+
+.gallery-tab-btn--inactive:hover {
+	opacity: 0.7;
+}
+
+:root.dark .gallery-tab-btn--inactive {
+	color: #fff;
+}
+
+@media (max-width: 640px) {
+	.gallery-tabs-pill {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+	}
+}
+
 @media (min-width: 640px) {
 	.gallery-masonry {
 		column-width: var(--col-width, 240px) !important;
