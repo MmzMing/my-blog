@@ -229,9 +229,21 @@ export function initHomeHeroDialogue(
 		state.config.topics.forEach((topic, topicIndex) => {
 			const item = document.createElement("li");
 			const button = document.createElement("button");
+			const particles = document.createElement("span");
+			const label = document.createElement("span");
 			button.type = "button";
 			button.className = "home-hero__dialogue-menu-item";
-			button.textContent = topic.title;
+			particles.className = "home-hero__dialogue-menu-particles";
+			particles.setAttribute("aria-hidden", "true");
+			for (let particleIndex = 0; particleIndex < 10; particleIndex += 1) {
+				const particle = document.createElement("span");
+				particle.className = "home-hero__dialogue-menu-particle";
+				particles.appendChild(particle);
+			}
+			label.className = "home-hero__dialogue-menu-label";
+			label.textContent = topic.title;
+			button.appendChild(particles);
+			button.appendChild(label);
 			button.addEventListener("click", (event) => {
 				event.stopPropagation();
 				state.mode = "topic";

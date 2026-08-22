@@ -75,7 +75,7 @@
 	}
 
 	.mobile-dock[data-shape="card"] .mobile-dock__bar {
-		border-bottom: 1px solid var(--line-divider);
+		border-bottom: 0;
 		padding-left: 0.55rem;
 	}
 
