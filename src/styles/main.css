@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
 
 /* === 布局层 === */
 @import './transition.css';
@@ -39,6 +40,7 @@
 @import './pages/article-list.css';
 @import './pages/archive-panel.css';
 @import './pages/friends.css';
+@import './pages/404.css';
 
 
 @plugin '@tailwindcss/typography';

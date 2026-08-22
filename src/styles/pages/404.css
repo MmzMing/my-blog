@@ -1,84 +1,143 @@
-/* ============================================
-   404 页 — 来自 404.astro
-   ============================================ */
+/* 404 电梯场景 */
+
+html:has(.page-404) #content-wrapper:has(> .page-404) {
+	animation: none;
+}
+
+html:has(.page-404) .site-footer {
+	margin-top: 0;
+}
 
 .page-404 {
 	position: relative;
-	display: flex;
-	width: 100%;
-	min-height: 28rem;
+	isolation: isolate;
+	width: 100vw;
+	height: 100svh;
+	min-height: 34rem;
+	margin-inline: calc(50% - 50vw);
 	overflow: hidden;
-	animation: fadeInUp404 0.6s ease-out;
+	background: var(--page-bg);
+	color: var(--deep-text);
 }
 
-.page-404__glow {
+.page-404__visual {
 	pointer-events: none;
 	position: absolute;
-	inset: -20% auto auto 50%;
-	width: min(36rem, 90vw);
-	height: min(36rem, 90vw);
-	translate: -50% 0;
-	border-radius: 9999px;
-	background: radial-gradient(
-		circle,
-		color-mix(in oklab, var(--deep-text) 10%, transparent) 0%,
-		transparent 68%
-	);
-	opacity: 0.9;
+	inset: 0;
+	z-index: 0;
+	contain: layout paint style;
+}
+
+.page-404__stairs {
+	pointer-events: none;
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.page-404__glyph-layer {
+	pointer-events: none;
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+}
+
+.page-404__glyph {
+	pointer-events: none;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 0;
+	height: 0;
+	transform-origin: 0 0;
+	will-change: transform;
+}
+
+.page-404__glyph-character {
+	display: block;
+	width: max-content;
+	transform: translate(-50%, -50%);
+	font-family: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: var(--page-404-glyph-size);
+	font-variation-settings: "wght" 380;
+	font-weight: 380;
+	line-height: 1;
+	letter-spacing: 0;
+	color: transparent;
+	-webkit-text-fill-color: transparent;
+	-webkit-text-stroke: var(--page-404-glyph-stroke, 1.25px) color-mix(in oklab, var(--deep-text) 86%, transparent);
+	paint-order: stroke fill;
+}
+
+.page-404__static-code {
+	pointer-events: none;
+	position: absolute;
+	top: 16%;
+	left: 10%;
+	opacity: 0;
+	transform: rotate(-12deg);
+	font-family: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 7rem;
+	font-variation-settings: "wght" 380;
+	font-weight: 380;
+	line-height: 1;
+	letter-spacing: 0;
+	color: transparent;
+	-webkit-text-fill-color: transparent;
+	-webkit-text-stroke: 1px color-mix(in oklab, var(--deep-text) 72%, transparent);
 }
 
 .page-404__content {
-	position: relative;
-	z-index: 1;
+	position: absolute;
+	top: clamp(5rem, 14vh, 9rem);
+	right: clamp(1.5rem, 8vw, 10rem);
+	z-index: 2;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	padding: 3rem 2rem;
-	text-align: center;
+	align-items: flex-end;
+	width: min(22rem, calc(100vw - 3rem));
+	padding: 0.625rem 1.5rem 0.625rem 1.25rem;
+	text-align: right;
 }
 
-.page-404__code {
-	margin-bottom: 0.75rem;
-	font-size: clamp(4.5rem, 14vw, 7.5rem);
-	font-weight: 800;
-	line-height: 1;
-	letter-spacing: 0.04em;
-	color: var(--deep-text);
-	opacity: 0.12;
-	user-select: none;
-}
-
-.page-404__icon {
-	display: grid;
-	place-items: center;
-	margin-bottom: 1.25rem;
-	width: 4.5rem;
-	height: 4.5rem;
-	border-radius: 0.75rem;
-	border: 2px solid var(--deep-text);
-	background: transparent;
-	color: var(--deep-text);
-}
-
-.page-404__icon-svg {
-	font-size: 2.25rem;
+.page-404__content::before {
+	position: absolute;
+	top: 0.625rem;
+	bottom: 0.625rem;
+	right: 0;
+	width: 0.375rem;
+	border-radius: 999px;
+	background: color-mix(in oklab, var(--deep-text) 84%, transparent);
+	content: "";
 }
 
 .page-404__title {
-	margin: 0 0 0.75rem;
-	font-size: clamp(1.5rem, 3.5vw, 2rem);
-	font-weight: 700;
-	line-height: 1.3;
+	margin: 0;
+	font-family: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 3.5rem;
+	font-variation-settings: "wght" 460;
+	font-weight: 460;
+	line-height: 1.08;
+	letter-spacing: 0;
 	color: var(--deep-text);
 }
 
+@supports (-webkit-text-stroke: 1px var(--deep-text)) {
+	.page-404__title {
+		color: transparent;
+		-webkit-text-fill-color: transparent;
+		-webkit-text-stroke: 1.75px color-mix(in oklab, var(--deep-text) 92%, transparent);
+		paint-order: stroke fill;
+	}
+}
+
 .page-404__desc {
-	margin: 0 0 1.75rem;
-	max-width: 28rem;
+	margin: 0.875rem 0 1.5rem;
 	font-size: 1rem;
 	line-height: 1.7;
+	letter-spacing: 0;
 	color: var(--content-meta);
 }
 
@@ -86,8 +145,8 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	justify-content: center;
-	gap: 0.75rem;
+	justify-content: flex-end;
+	gap: 0.625rem;
 }
 
 .page-404__btn {
@@ -96,18 +155,15 @@
 	justify-content: center;
 	gap: 0.5rem;
 	min-height: 2.75rem;
-	padding: 0.625rem 1.25rem;
-	border-radius: 0.75rem;
+	padding: 0.625rem 1rem;
+	border: 1px solid var(--deep-text);
+	border-radius: 999px;
 	font-size: 0.9375rem;
 	font-weight: 700;
 	line-height: 1;
+	letter-spacing: 0;
 	text-decoration: none;
-	border: 2px solid var(--deep-text);
-	transition:
-		transform 0.2s ease,
-		background-color 0.2s ease,
-		border-color 0.2s ease,
-		color 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .page-404__btn-icon {
@@ -115,88 +171,86 @@
 }
 
 .page-404__btn--primary {
-	color: var(--page-bg);
-	background: var(--deep-text);
-}
-
-.page-404__btn--primary:hover {
-	transform: translateY(-2px);
-	background: transparent;
-	color: var(--deep-text);
-}
-
-.page-404__btn--ghost {
-	color: var(--deep-text);
-	background: transparent;
-}
-
-.page-404__btn--ghost:hover {
-	transform: translateY(-2px);
 	background: var(--deep-text);
 	color: var(--page-bg);
 }
 
-.page-404__decor {
-	position: absolute;
-	z-index: 0;
-	opacity: 0.12;
+.page-404__btn--secondary {
+	background: transparent;
 	color: var(--deep-text);
-	pointer-events: none;
 }
 
-.page-404__decor--tl {
-	top: 1rem;
-	left: 1rem;
+.page-404__btn:hover,
+.page-404__btn:focus-visible {
+	border-color: var(--deep-text);
+	background: var(--page-bg);
+	color: var(--deep-text);
 }
 
-.page-404__decor--br {
-	right: 1rem;
-	bottom: 1rem;
+.page-404__btn--secondary:hover,
+.page-404__btn--secondary:focus-visible {
+	background: var(--deep-text);
+	color: var(--page-bg);
 }
 
-.page-404__decor-icon {
-	font-size: 2rem;
-}
-
-@keyframes fadeInUp404 {
-	from {
-		opacity: 0;
-		transform: translateY(24px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
+.page-404__btn:focus-visible {
+	outline: 2px solid var(--deep-text);
+	outline-offset: 3px;
 }
 
 @media (max-width: 768px) {
 	.page-404 {
-		min-height: 22rem;
+		height: 100vh;
+		height: 100lvh;
+		min-height: 32rem;
+	}
+
+	.page-404__static-code {
+		top: 19%;
+		left: 8%;
+		font-size: 4.5rem;
 	}
 
 	.page-404__content {
-		padding: 2.25rem 1.25rem;
+		top: 4rem;
+		right: 1.25rem;
+		width: min(18rem, calc(100vw - 2.5rem));
+		padding: 0.5rem 1.25rem 0.5rem 1rem;
 	}
 
-	.page-404__icon {
-		width: 3.75rem;
-		height: 3.75rem;
+	.page-404__content::before {
+		top: 0.5rem;
+		bottom: 0.5rem;
+		width: 0.3125rem;
 	}
 
-	.page-404__icon-svg {
-		font-size: 1.875rem;
+	.page-404__title {
+		font-size: 3rem;
+	}
+
+	.page-404__desc {
+		margin-bottom: 1.25rem;
+		font-size: 0.9375rem;
+	}
+
+	.page-404__actions {
+		justify-content: flex-end;
+		gap: 0.5rem;
+	}
+
+	.page-404__btn {
+		min-height: 2.75rem;
+		padding-inline: 0.875rem;
+		font-size: 0.875rem;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.page-404 {
-		animation: none;
+	.page-404__static-code {
+		opacity: 0.38;
 	}
 
-	.page-404__btn,
-	.page-404__btn--primary:hover,
-	.page-404__btn--ghost:hover {
+	.page-404__btn {
 		transition: none;
-		transform: none;
 	}
 }
