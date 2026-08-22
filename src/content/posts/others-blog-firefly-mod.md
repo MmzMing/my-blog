@@ -1,6 +1,6 @@
 ---
 title: Firefly魔改总结
-published: 2026-07-23
+published: 2026-08-21
 description: 记录 Firefly 博客主题的二次开发，涵盖 Astro 内容系统、Svelte 交互、首页动效、音乐可视化、标签图谱、留言板和 Cloudflare 集成。
 tags: [博客, 二开, firefly]
 category: 学习文档
@@ -15,7 +15,7 @@ draft: false
 
 项目最初定位为个人主页，后续增加了文章、评论、搜索和统计能力，因此选择继续在 Astro 内容系统上演进。没有迁移到 Fuwari 的主要原因是现有文章、组件和部署配置已经围绕 Astro 组织，迁移成本高于继续维护。
 
-截至本文发布时，项目本地构建时间约为 40 s；性能结果取决于图片数量、网络环境和部署平台，不能直接作为所有环境的基准。后续重构的主要成本来自交互组件、Swup 生命周期和外部服务配置之间的耦合。
+截至本文发布时，项目本地构建时间约为 24 s；性能结果取决于图片数量、网络环境和部署平台，不能直接作为所有环境的基准。后续重构的主要成本来自交互组件、Swup 生命周期和外部服务配置之间的耦合。
 
 **项目地址**
 
@@ -227,151 +227,98 @@ sequenceDiagram
 
 ### 5、关于
 
-关于页使用 Markdown 编写，Canvas 绘制可拖拽画布，Pretext 负责按可用宽度处理 Markdown 文本排版。该实现减少了手动计算换行的代码，但仍需在移动端和低性能设备上验证。
+关于页内容使用 MDX 编写，正文里直接内嵌 Astro 组件（资料卡、技术栈卡片、时间线、社交链接和聊天气泡），排版交给框架的 Markdown 渲染管线，无需手动处理换行。页面底部附带一张更新日志图谱：构建时解析 `log.md` 的变更记录，生成按类型着色的日志卡片，并用 SVG 连线标注条目之间的关联页面。
 
 | 技术栈 | 版本 | 作用 |
 | --- | --- | --- |
-| Markdown | Markdown 标准能力 | 维护个人资料文本，内容更新不需要修改页面逻辑 |
-| Svelte | `5.55.5` | 提供局部交互 |
+| MDX | Markdown 标准能力 + 组件语法 | 维护个人资料文本并内嵌交互组件，内容更新不需要修改页面逻辑 |
+| Astro 组件 | `6.4.6` | 资料卡、技术栈、时间线、社交链接等区块均为 `.astro` 组件，构建时静态渲染 |
+| SVG | 浏览器标准 | 绘制更新日志图谱中条目之间的关联连线与箭头 |
+| Pointer Events | 浏览器原生 API | 处理日志卡片的悬停高亮与展开交互 |
 | Tailwind CSS | `4.2.4` | 提供排版和响应式样式 |
-| TypeScript | `5.9.2` | 约束站点标题、导航、主题、统计和页面开关配置 |
-| Canvas 2D API、Pointer Events | 浏览器原生 API | 绘制可拖拽的资料画布并处理指针交互 |
-| （核心）`@chenglou/pretext` | `0.0.7` | 按可用宽度计算 Markdown 文本的换行与排版 |
+| TypeScript | `5.9.2` | 约束日志解析工具和组件 Props 的类型 |
 
 ### 6、日历
 
-日历聚合文章发布日期、节假日、生日和自定义日程，在固定的 `6 × 7` 月视图中展示公历和农历信息，并提供近期事件与当天详情。
+日历以全局小组件形式提供，聚合文章发布日期、法定节假日、内置节日和生日/纪念日，在固定的 `6 × 7` 月视图中展示公历和农历信息，并提供近期事件与当天详情。
 
 | 技术栈 | 版本 | 作用 |
 | --- | --- | --- |
 | `lunar-typescript` | `1.8.6` | 将公历与农历日期互转，生成农历日期和农历生日、节日事件 |
-| Fetch API | 浏览器原生 API | 获取文章元数据和节假日 JSON 数据，用于日历小组件或页面初始数据 |
+| Fetch API | 浏览器原生 API | 日历小组件在浏览器端获取文章元数据和节假日静态 JSON 数据 |
 | CSS Grid | 浏览器标准 | 使用 `6 × 7` 网格稳定渲染每月 42 个日期单元格 |
 
 #### 6.1 接口列表
 
-页面在 SSR 阶段（构建时）调用以下两个内部 API 获取数据。其中 `/api/holidays.json` 内部还会调用第三方节假日 API 获取数据。
+以下两个内部 API 在构建时预渲染为静态 JSON；日历小组件在浏览器端运行时 fetch 这两份数据。其中 `/api/holidays.json` 在构建时会调用第三方节假日 API 获取数据。
 
 ```ts
 // --------------------------------------------------------------------------
 
 // GET /api/allPostMeta.json
 // Headers: 无
-// 调用方：/calendar/ 页面（SSR 阶段 fetch）
-// 构建时由 Astro Content Collections 生成，包含所有文章的元数据
-fetch(new URL("/api/allPostMeta.json", Astro.url))
+// 调用方：日历小组件客户端脚本（浏览器运行时 fetch）
+// 构建时由 Astro Content Collections 生成并预渲染为静态 JSON，包含所有文章的元数据
+fetch("/api/allPostMeta.json")
 // Response: Array<{ id: string, title: string, published: number, category?: string, password?: boolean }>
 
 // --------------------------------------------------------------------------
 
 // GET /api/holidays.json
 // Headers: 无
-// 调用方：/calendar/ 页面（SSR 阶段 fetch）
-// 构建时内部调用第三方 API 获取节假日数据后合并内置节日，输出 JSON
-fetch(new URL("/api/holidays.json", Astro.url))
+// 调用方：日历小组件客户端脚本（浏览器运行时 fetch）
+// 构建时内部调用第三方 API 获取节假日数据后合并内置节日，预渲染为静态 JSON
+fetch("/api/holidays.json")
 // Response: Array<{ date: string, name: string, isOfficial?: boolean, isWorkday?: boolean, icon?: string, source: "api" | "builtin", rest?: number }>
 
 // --------------------------------------------------------------------------
 
 // GET https://timor.tech/api/holiday/year/<year>
 // Headers: Accept: application/json
-// 调用方：/api/holidays.json 内部（构建时由 holidayApi 配置驱动，仅 SSR 阶段）
+// 调用方：/api/holidays.json 内部（构建时由 holidayApi 配置驱动）
 // 获取中国法定节假日、调休补班日
 // 配置路径：src/config/calendarConfig.ts → holidayApi.url
 fetch("https://timor.tech/api/holiday/year/2026")
 // Response: { code: number, holiday: Record<string, { holiday: boolean, name: string, rest?: number }> }
 ```
 
-两个内部 API 在 `astro build` 时被调用并输出为静态 JSON，生产环境由静态资源直接返回。文章或节假日更新后需要重新构建才能反映到日历上。
+两个内部 API 只在 `astro build` 时执行并输出为静态 JSON，生产环境由静态资源直接返回，浏览器端 fetch 到的是静态文件。文章或节假日更新后需要重新构建才能反映到日历上。
 
 ### 7、归档
 
-归档页按年、月和文章组织时间线，支持分类和标签筛选，并显示年度文章进度。所有统计均在构建时根据文章元数据生成，不依赖额外的动态接口。
+归档页按年、月和文章组织时间线，支持分类和标签筛选，并显示年度文章进度。文章列表与统计在构建时根据文章元数据生成；由于静态构建无法读取查询参数，分类和标签筛选在客户端执行，不依赖额外的动态接口。
 
 | 技术栈 | 版本 | 作用 |
 | --- | --- | --- |
-| SVG | 浏览器标准 | 绘制年份、月份与文章节点之间的高亮连接线 |
-| Intl.DateTimeFormat | 浏览器原生 API | 按站点时区计算当前年度，用于年度文章统计 |
+| Intl.DateTimeFormat | 浏览器原生 API | 构建时按站点时区归组年月，用于年度/月度文章统计 |
+| URLSearchParams | 浏览器原生 API | 客户端读取 `?tag` / `?category` / `?uncategorized` 筛选参数 |
+| Svelte | `5.55.5` | 统计卡片组件，配合 `requestAnimationFrame` 做数字过渡动画（尊重减少动态效果偏好） |
 
 ### 8、其他
 
 1. 取消了侧边栏，首页和文章页将主要导航集中到顶部与移动端 Dock。
 2. 修改了整体 UI 风格，保留亮色与暗色两种主题，不再维护背景图和多套背景配置。
-3. 添加了日历功能，按文章发布日期展示内容，不需要外部数据源。
+3. 添加了日历功能，按文章发布日期展示内容；节假日数据在构建时从第三方 API 拉取并合并内置节日，运行时只读静态 JSON。
 4. 删除了追番功能，避免相关数据请求和资源处理进入构建流程。
 5. 使用 Pagefind `1.5.2` 构建本地全文索引；使用 Cloudflare Vectorize、Workers AI 和 Durable Objects 提供可选的 AI 语义搜索与限流。
 6. 使用 Cloudflare Workers 运行时承担可选的 AI 搜索和随机封面代理等动态接口；静态文章、图片和 Pagefind 索引仍由静态资源服务返回。
 
-## 二、部署流程
 
-### 1、本地部署
-
-1. 安装依赖：安装 Node.js 22 和 pnpm 9，然后执行 `pnpm install`。
-2. 到目录 `src/config` 下，一个个配置里面的配置信息，我都加了注释的，尤其页脚备案那块。AI 搜索默认关闭，因此普通本地预览和部署不需要额外环境变量。
-3. 构建 `pnpm build` ，运行 `pnpm dev`,查看 `http://localhost:4321/`。
-4. 只有需要启用 AI 搜索时，才按下面的“AI 搜索配置”完成配置：
-  - 在 `src/config/aiSearchConfig.ts` 中将 `enabled` 设为 `true`。
-  - 创建 `.env.cf` 文件，复制 `.env.cf.example` 内容并填写 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`，用于创建和写入 Vectorize 索引。
-  - 如果使用第三方 Embedding / Chat API，再创建 `.env` 并填写 `AI_API_KEY`；不配置时会回退到 Workers AI。
-  - 登录cloudflare `npx wrangler login` ，第一次运行可能会有点长
-  - 创建向量索引：`npx wrangler vectorize create blog-ai-search --dimensions 1024 --metric cosine`。
-  - 构建向量索引：`pnpm build-index`。
-  - 运行 `npx wrangler dev --port 8088`。查看 `http://localhost:8088/` 即可。
-5. 上方都没问题后，可以参考下方视频部署到cloudflare workers，下方视频是firefly的部署方式。启用 AI 搜索时，还需要在 Cloudflare 中配置对应的 Vectorize、Workers AI 和 Durable Objects 绑定；使用第三方 API 时再设置 `AI_API_KEY` Secret。
-
-<iframe width="100%" height="468"   src="//player.bilibili.com/player.html?bvid=BV17Njb6nEH8&p=1&autoplay=0"   scrolling="no" border="0" frameborder="no"   framespacing="0" allowfullscreen="true"> </iframe>
-
-### 2、AI 搜索配置（可选）
-
-以下配置仅在 `src/config/aiSearchConfig.ts` 中开启 AI 搜索后需要。未开启时无需创建这些环境变量或向量索引。
-
-| 变量 | 用途 | 存放位置 |
-| --- | --- | --- |
-| `AI_API_KEY`（可选） | 调用第三方 Embedding / Chat API；不配则回退 Workers AI | `.env`（本地/构建）/ Cloudflare Secret（生产） |
-| `CLOUDFLARE_API_TOKEN` | 构建脚本上传向量到 Vectorize | `.env.cf` |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 账户标识，供构建脚本使用 | `.env.cf` |
-
-#### 2.1 AI\_API\_KEY（可选）
-
-1. 登录 [魔搭社区 ModelScope](https://modelscope.cn)
-2. 右上角头像 → **API-KEY 管理** → **创建 API Key**
-3. 复制 Key，粘贴到 `.env` 的 `AI_API_KEY=`
-4. 部署后同样设置 Cloudflare Secret：`npx wrangler secret put AI_API_KEY`
-
-#### 2.2 CLOUDFLARE\_API\_TOKEN
-
-1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. 右上角头像 → **My Profile** → **API Tokens** → **Create Token**
-3. 选择 **Custom token**，权限勾选：
-  - **Account > Vectorize > Edit**
-  - **Account > Workers AI > Use**
-4. 创建后复制 Token，粘贴到 `.env.cf` 的 `CLOUDFLARE_API_TOKEN=`
-
-#### 2.3 CLOUDFLARE\_ACCOUNT\_ID
-
-1. Cloudflare Dashboard → 任意域名概览页
-2. 右侧栏 **API** 区域 → **Account ID**（或直接从 URL `https://dash.cloudflare.com/<account_id>/...` 复制）
-3. 粘贴到 `.env.cf` 的 `CLOUDFLARE_ACCOUNT_ID=`
-
-> 不要将 `.env`、`.env.cf`、真实 Token 或 Cloudflare API Token 提交到仓库。
-
-## 三、用到的AI模型
+## 二、用到的AI模型
 
 - MIMO V2.5/PRO（送的百亿补贴）
 - claude opus 4.64.74.8fable 5
 - GPT 5.5/5.6
 - antigravity的gemini 3.1/3.5
 - TRAE上的 GLM/豆包/KIMI/QWEN/DeepSeek（都是拿来测试性能好在工作上确定是否实用）
-- codeBuddy
 
 本次试用成本约为 30 元。不同平台的模型、上下文管理和工具链存在差异，不能仅凭一次试用归因于模型或平台。实际接入时应使用小任务验证代码质量，并通过测试和审查控制回归风险。
 
-## 四、优点与UI复制
+## 三、优点与UI复制
 
 纯静态，部署快，维护简单，成本低（只需要域名的费用）。
 
 外部 UI 参考可以加速原型制作，但接入前需要统一交互规范、无障碍要求和许可证边界，避免把不兼容的组件直接拼接到站点中。
 
-## 五、后续计划
 
-后续工作包括继续完善文章内容、修复已知问题，并降低交互组件之间的耦合。UI 调整过程中保留了早期个人主页的实验性特征，但文章页仍以可读性和稳定性为优先。
+::github{repo="MmzMing/my-blog"}
