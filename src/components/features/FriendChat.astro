@@ -1,6 +1,7 @@
 ---
 import { join, normalize } from "node:path";
 import Icon from "@components/common/Icon.astro";
+import masterAvatar from "@/assets/images/avatar-master.webp";
 import { friendsPageConfig, homeConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -58,7 +59,7 @@ const siteInfoRows = site
         data-friend-chat-item
         data-text={msg.text}
       >
-        <span class:list={["friend-chat__avatar", msg.role === "owner" && "friend-chat__avatar--text"]} aria-hidden="true">
+        <span class="friend-chat__avatar" aria-hidden="true">
           {msg.role === "cat"
             ? (
               catAvatarImg || avatarValue ? (
@@ -73,7 +74,15 @@ const siteInfoRows = site
                 <span class="friend-chat__avatar-text">{msg.name}</span>
               )
             )
-            : <span class="friend-chat__avatar-text">{msg.name}</span>}
+            : (
+              <img
+                class="friend-chat__avatar-img"
+                src={masterAvatar.src}
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
+            )}
         </span>
         <div class="friend-chat__bubble">
           <span class="friend-chat__name">{msg.name}</span>
