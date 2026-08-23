@@ -28,6 +28,14 @@ html:has(.home-hero) #top-row {
 	contain: layout paint;
 }
 
+/* 动效脚本接管前先隐藏首屏标题，避免静态 HTML 首帧闪现整段文字。 */
+.home-page--motion-pending .home-hero__identity,
+.home-page--motion-pending .home-hero__contact {
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+}
+
 .home-hero__visual,
 .home-hero__backdrop,
 .home-hero__shade,

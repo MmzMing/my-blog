@@ -33,7 +33,7 @@
 	flex-direction: column;
 	padding: clamp(1.5rem, 3.5svh, 2.5rem) clamp(1.5rem, 6vw, 8rem)
 		clamp(3.75rem, 6svh, 4.75rem) clamp(2.25rem, 12vw, 14rem);
-	border-top: clamp(0.25rem, 0.45vw, 0.4rem) solid var(--home-hero-ink);
+	border-top: 2.5px solid var(--home-hero-ink);
 	background-color: color-mix(
 		in oklch,
 		var(--home-hero-surface) 68%,
@@ -133,13 +133,13 @@
 
 .home-hero__dialogue-body {
 	position: relative;
-	bottom: clamp(2rem, 4svh, 3rem);
+	bottom: 0;
 	left: clamp(2rem, 4vw, 5rem);
-	display: flex;
+	display: grid;
 	min-height: 0;
 	flex: 1 1 auto;
-	flex-direction: column;
-	justify-content: flex-end;
+	grid-template-rows: auto minmax(0, 1fr);
+	align-content: start;
 	padding-bottom: clamp(0.25rem, 1svh, 0.75rem);
 	cursor: pointer;
 	/* galgame 台词文本不参与选中，避免拖选干扰推进交互 */
@@ -150,11 +150,14 @@
 .home-hero__dialogue-nameplate {
 	display: inline-flex;
 	min-width: 0;
+	min-height: 1.2em;
 	align-items: center;
 	gap: var(--space-2);
+	justify-self: start;
 	margin-bottom: clamp(0.45rem, 1.2svh, 0.85rem);
 	font-size: clamp(1.1rem, 3svh, 1.55rem);
 	font-weight: 750;
+	line-height: 1.2;
 }
 
 .home-hero__dialogue-name {
@@ -176,10 +179,16 @@
 }
 
 .home-hero__dialogue-text {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
 	max-width: 52rem;
+	max-height: 2.8em;
 	margin: 0;
+	overflow: hidden;
 	font-size: clamp(1.45rem, 4svh, 2rem);
 	line-height: 1.4;
+	text-overflow: ellipsis;
 	text-wrap: pretty;
 }
 
@@ -431,9 +440,20 @@
 	border: 0;
 	background: transparent;
 	color: inherit;
-	opacity: 0.85;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateY(-0.35rem);
 	cursor: pointer;
-	transition: opacity 150ms ease, transform 150ms ease;
+	transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+}
+
+.home-hero__dialogue-advance[data-ready="true"] {
+	opacity: 0.85;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateY(0);
+	transition-delay: 0s;
 }
 
 .home-hero__dialogue-advance svg {
@@ -647,6 +667,7 @@
 	}
 
 	.home-hero__dialogue-text {
+		max-height: 2.9em;
 		font-size: clamp(1.125rem, 3.4svh, 1.5rem);
 		line-height: 1.45;
 	}

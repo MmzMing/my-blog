@@ -57,7 +57,14 @@ const dialogueConfig = {
 						<Icon name="material-symbols:pause-rounded" class="home-hero__dialogue-icon-pause" is:inline aria-hidden="true" />
 					</button>
 				</div>
-				<button type="button" class="home-hero__dialogue-advance" data-dialogue-advance>
+				<button
+					type="button"
+					class="home-hero__dialogue-advance"
+					data-dialogue-advance
+					data-ready="false"
+					aria-hidden="true"
+					tabindex="-1"
+				>
 					<span class="sr-only" data-dialogue-advance-label>{i18n(I18nKey.dialogueNext)}</span>
 					<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline aria-hidden="true" />
 				</button>

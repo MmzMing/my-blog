@@ -195,9 +195,6 @@ export function mountHomeHero() {
 	const random = createSeededRandom(config.mosaic.seed ^ 0x9e3779b9);
 
 	bindQuickActions(hero, abortController);
-	document
-		.querySelector(".home-page--motion-pending")
-		?.classList.remove("home-page--motion-pending");
 
 	const stopIdleRotation = () => {
 		window.clearInterval(idleTimer);
@@ -804,6 +801,9 @@ export function mountHomeHero() {
 		playTilesIntro();
 		prepareFlyText();
 	}
+	document
+		.querySelector(".home-page--motion-pending")
+		?.classList.remove("home-page--motion-pending");
 
 	if (resetAfterReload) {
 		requestAnimationFrame(() => {

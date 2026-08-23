@@ -82,6 +82,14 @@ function clearTimers(state: DialogueState) {
 	clearAutoTimer(state);
 }
 
+function setAdvanceReady(state: DialogueState, ready: boolean) {
+	const advance = state.elements.advance;
+	if (!advance) return;
+	advance.dataset.ready = String(ready);
+	advance.setAttribute("aria-hidden", String(!ready));
+	advance.tabIndex = ready ? 0 : -1;
+}
+
 function setSpeaker(state: DialogueState, speaker?: "host" | "visitor") {
 	const resolvedSpeaker = speaker === "visitor" ? "visitor" : "host";
 	state.elements.name.textContent = state.config.speakers[resolvedSpeaker];
@@ -218,6 +226,7 @@ export function initHomeHeroDialogue(
 
 	const showMenu = () => {
 		clearTimers(state);
+		setAdvanceReady(state, false);
 		state.mode = "menu";
 		state.typing = false;
 		state.elements.box.dataset.typing = "false";
@@ -272,6 +281,7 @@ export function initHomeHeroDialogue(
 				state.lines[state.lineIndex]?.text ?? "";
 			state.typing = false;
 			state.elements.box.dataset.typing = "false";
+			setAdvanceReady(state, true);
 			updateAdvanceLabel(state);
 			scheduleAutoAdvance(state, advance);
 			return;
@@ -294,6 +304,7 @@ export function initHomeHeroDialogue(
 		state.lineIndex = lineIndex;
 		state.typing = true;
 		state.elements.box.dataset.typing = "true";
+		setAdvanceReady(state, false);
 		state.elements.menu.hidden = true;
 		state.elements.text.hidden = false;
 		state.elements.text.textContent = "";
@@ -310,6 +321,7 @@ export function initHomeHeroDialogue(
 				state.typing = false;
 				state.typeTimer = null;
 				state.elements.box.dataset.typing = "false";
+				setAdvanceReady(state, true);
 				updateAdvanceLabel(state);
 				scheduleAutoAdvance(state, advance);
 				return;
@@ -393,6 +405,7 @@ export function initHomeHeroDialogue(
 	);
 
 	setSpeaker(state, "host");
+	setAdvanceReady(state, false);
 	setClosedState(state, false);
 
 	return {
@@ -414,6 +427,7 @@ export function initHomeHeroDialogue(
 						state.lines[state.lineIndex]?.text ?? "";
 					state.typing = false;
 					state.elements.box.dataset.typing = "false";
+					setAdvanceReady(state, true);
 					updateAdvanceLabel(state);
 				}
 				return;
