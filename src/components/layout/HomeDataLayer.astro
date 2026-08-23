@@ -86,6 +86,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 	id="home-data-layer"
 	data-stats-base-url={statsBaseUrl}
 	data-stats-share-id={statsShareId}
+	data-guide-opening="pending"
 >
 	<div class="home-data-layer__inner">
 		<div class="home-data-layer__heading">
@@ -205,13 +206,19 @@ const statsShareId = umamiConfig?.shareId ?? "";
 
 	type Cleanup = () => void;
 	type ShareData = { websiteId: string; token: string };
-	type GuideOpeningBlock = {
+	type GuideOpeningTargets = {
+		visitCard: HTMLElement;
+		archiveCard: HTMLElement;
+		pinnedCard: HTMLElement;
+		latestCard: HTMLElement;
+		dealCards: HTMLElement[];
+	};
+	type GuideDealPose = {
 		element: HTMLElement;
-		collapseX: number;
-		collapseY: number;
-		entryX: number;
-		entryY: number;
+		x: number;
+		y: number;
 		rotation: number;
+		zIndex: number;
 	};
 
 	const shareCache = createCache<ShareData>({ key: "umami_share_data", ttl: 3_600_000 });
@@ -232,44 +239,98 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		return window.matchMedia("(min-width: 769px)").matches;
 	}
 
-	function getGuideOpeningBlocks(layer: HTMLElement): GuideOpeningBlock[] {
-		const cards = Array.from(layer.querySelectorAll<HTMLElement>(
-			".home-data-layer__top-grid > .data-card, .home-guide-grid > .guide-card",
-		));
-		if (cards.length === 0) return [];
+	function getGuideOpeningTargets(layer: HTMLElement): GuideOpeningTargets | null {
+		const [visitCard, archiveCard] = Array.from(
+			layer.querySelectorAll<HTMLElement>(
+				".home-data-layer__top-grid > .data-card",
+			),
+		);
+		const pinnedCard = layer.querySelector<HTMLElement>(".guide-card--pinned");
+		const latestCard = layer.querySelector<HTMLElement>(".guide-card--latest");
+		const dealCards = [
+			layer.querySelector<HTMLElement>(".guide-card--categories"),
+			layer.querySelector<HTMLElement>(".guide-card--tags"),
+			layer.querySelector<HTMLElement>(".guide-card--contact"),
+		];
 
-		const topGrid = layer.querySelector<HTMLElement>(".home-data-layer__top-grid");
-		const guideGrid = layer.querySelector<HTMLElement>(".home-guide-grid");
-		if (!topGrid || !guideGrid) return [];
+		if (
+			!visitCard ||
+			!archiveCard ||
+			!pinnedCard ||
+			!latestCard ||
+			dealCards.some((card) => !card)
+		) {
+			return null;
+		}
 
-		const topRect = topGrid.getBoundingClientRect();
-		const guideRect = guideGrid.getBoundingClientRect();
-		const stageCenterX = (topRect.left + topRect.right) / 2;
-		const stageCenterY = (topRect.top + guideRect.bottom) / 2;
+		return {
+			visitCard,
+			archiveCard,
+			pinnedCard,
+			latestCard,
+			dealCards: dealCards as HTMLElement[],
+		};
+	}
+
+	function getDropOffset(layerRect: DOMRect, cardRect: DOMRect) {
+		return -(cardRect.top - layerRect.top + cardRect.height * 1.15);
+	}
+
+	function getLeftEntryOffset(layerRect: DOMRect, cardRect: DOMRect) {
+		return -(cardRect.right - layerRect.left + cardRect.width * 0.15);
+	}
+
+	function getLatestPeekOffset(layerRect: DOMRect, cardRect: DOMRect) {
+		return layerRect.right - cardRect.left - cardRect.width * 0.2;
+	}
+
+	function getGuideDealPoses(
+		layerRect: DOMRect,
+		cards: HTMLElement[],
+	): GuideDealPose[] {
+		const deckCenterX = (layerRect.left + layerRect.right) / 2;
+		const handPoses = [
+			{ x: -0.16, y: 6, rotation: -13, zIndex: 1 },
+			{ x: 0, y: -12, rotation: 0, zIndex: 3 },
+			{ x: 0.16, y: 6, rotation: 13, zIndex: 2 },
+		];
+		// 斜放时两侧下角会越过普通卡片的边界，预留空间避免被整层裁切。
+		const fanBottomInset = cards.reduce((inset, element, index) => {
+			const rect = element.getBoundingClientRect();
+			const pose = handPoses[index] ?? handPoses[1];
+			const rotationOverflow =
+				Math.abs(Math.sin((pose.rotation * Math.PI) / 180)) *
+				rect.width *
+				0.5;
+			return Math.max(
+				inset,
+				rotationOverflow + rect.height * 0.14 + 18,
+			);
+		}, 24);
 
 		return cards.map((element, index) => {
 			const rect = element.getBoundingClientRect();
+			const pose = handPoses[index] ?? handPoses[1];
 			const cardCenterX = (rect.left + rect.right) / 2;
 			const cardCenterY = (rect.top + rect.bottom) / 2;
-			const deltaX = cardCenterX - stageCenterX;
-			const deltaY = cardCenterY - stageCenterY;
-			const distance = Math.max(Math.hypot(deltaX, deltaY), 1);
-			const outwardDistance = Math.min(window.innerWidth * 0.2, 280);
-			const rotation = [-7, 6, -5, 5, -4, 4, 7][index] ?? 0;
+			const deckCenterY =
+				layerRect.bottom - rect.height * 0.5 - fanBottomInset + pose.y;
 
 			return {
 				element,
-				collapseX: stageCenterX - cardCenterX,
-				collapseY: stageCenterY - cardCenterY,
-				entryX: stageCenterX - cardCenterX + (deltaX / distance) * outwardDistance,
-				entryY: stageCenterY - cardCenterY + (deltaY / distance) * outwardDistance,
-				rotation,
+				x: deckCenterX + rect.width * pose.x - cardCenterX,
+				y: deckCenterY - cardCenterY,
+				rotation: pose.rotation,
+				zIndex: pose.zIndex,
 			};
 		});
 	}
 
 	async function initGuideOpening(layer: HTMLElement, token: number) {
-		if (prefersReducedMotion() || !isDesktopGuideOpening()) return;
+		if (prefersReducedMotion() || !isDesktopGuideOpening()) {
+			layer.dataset.guideOpening = "complete";
+			return;
+		}
 
 		await waitForPageLoaderHidden();
 		if (token !== guideOpeningToken || !document.contains(layer)) return;
@@ -277,16 +338,29 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		const title = layer.querySelector<HTMLElement>(".home-data-layer__title-matrix");
 		const kicker = layer.querySelector<HTMLElement>(".home-data-layer__kicker");
 		const titleMain = layer.querySelector<HTMLElement>(".home-data-layer__title-main");
-		const blocks = getGuideOpeningBlocks(layer);
-		if (!title || !kicker || !titleMain || blocks.length === 0) return;
+		const targets = getGuideOpeningTargets(layer);
+		if (!title || !kicker || !titleMain || !targets) {
+			layer.dataset.guideOpening = "complete";
+			return;
+		}
+
+		const headings = [kicker, titleMain, title];
+		const cards = [
+			targets.visitCard,
+			targets.archiveCard,
+			targets.pinnedCard,
+			targets.latestCard,
+			...targets.dealCards,
+		];
 
 		const release = () => {
 			layer.dataset.guideOpening = "complete";
-			gsap.set([kicker, titleMain, title], {
-				clearProps: "opacity,visibility,transform,clipPath,filter",
+			gsap.set(headings, {
+				clearProps: "opacity,visibility,transform,filter",
 			});
-			gsap.set(blocks.map(({ element }) => element), {
-				clearProps: "opacity,visibility,transform,clipPath,filter,pointerEvents",
+			gsap.set(cards, {
+				clearProps:
+					"opacity,visibility,transform,pointerEvents,transformOrigin,zIndex",
 			});
 		};
 
@@ -302,69 +376,177 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			if (started) return;
 			started = true;
 			layer.dataset.guideOpening = "playing";
-			gsap.set([kicker, titleMain], { autoAlpha: 0, y: 18 });
-			gsap.set(title, {
-				autoAlpha: 0,
-				x: -96,
-				scaleX: 0.72,
-				transformOrigin: "0% 50%",
-				clipPath: "inset(0 100% 0 0)",
+			const layerRect = layer.getBoundingClientRect();
+			const visitRect = targets.visitCard.getBoundingClientRect();
+			const archiveRect = targets.archiveCard.getBoundingClientRect();
+			const pinnedRect = targets.pinnedCard.getBoundingClientRect();
+			const latestRect = targets.latestCard.getBoundingClientRect();
+			const dealPoses = getGuideDealPoses(layerRect, targets.dealCards);
+			const visitLandingAt = 0.42;
+			const dealStartAt = 1;
+			const latestEntryAt = dealStartAt + 0.5;
+			if (dealPoses.length !== targets.dealCards.length) {
+				finish();
+				return;
+			}
+
+			gsap.set(headings, { autoAlpha: 0, filter: "blur(12px)" });
+			gsap.set(cards, { autoAlpha: 1, pointerEvents: "none" });
+			gsap.set(
+				[
+					targets.visitCard,
+					targets.archiveCard,
+					targets.pinnedCard,
+					...targets.dealCards,
+				],
+				{ autoAlpha: 0 },
+			);
+			gsap.set(targets.visitCard, {
+				y: getDropOffset(layerRect, visitRect),
+				scaleX: 1,
+				scaleY: 1,
+				transformOrigin: "50% 100%",
 			});
-			blocks.forEach(({ element, entryX, entryY, rotation }) => {
+			gsap.set(targets.archiveCard, {
+				y: getDropOffset(layerRect, archiveRect),
+				scaleX: 1,
+				scaleY: 1,
+				transformOrigin: "50% 100%",
+			});
+			gsap.set(targets.pinnedCard, {
+				x: getLeftEntryOffset(layerRect, pinnedRect),
+				transformOrigin: "50% 50%",
+			});
+			gsap.set(targets.latestCard, {
+				x: getLatestPeekOffset(layerRect, latestRect),
+				transformOrigin: "50% 100%",
+			});
+			dealPoses.forEach(({ element, x, y, rotation, zIndex }) => {
 				gsap.set(element, {
-					autoAlpha: 0,
-					x: entryX,
-					y: entryY,
-					scale: 0.56,
+					x,
+					y,
+					scale: 0.92,
 					rotation,
-					pointerEvents: "none",
-					transformOrigin: "50% 50%",
+					zIndex,
+					transformOrigin: "50% 108%",
 				});
 			});
 
 			timeline = gsap.timeline({
-				defaults: { ease: "expo.inOut" },
 				onComplete: finish,
 			});
 			timeline
-				.to([kicker, titleMain], {
+				.to(headings, {
+					autoAlpha: 1,
+					filter: "blur(0px)",
+					duration: 0.32,
+					stagger: 0.06,
+					ease: "power2.out",
+				}, 0)
+				.to(targets.visitCard, {
 					autoAlpha: 1,
 					y: 0,
-					duration: 0.5,
-					stagger: 0.08,
-					ease: "power3.out",
-				}, 0.12)
-				.to(title, {
+					scaleX: 1.012,
+					scaleY: 0.976,
+					duration: 0.32,
+					ease: "power2.in",
+				}, 0.1)
+				.to(targets.visitCard, {
+					y: -20,
+					scaleX: 1,
+					scaleY: 1,
+					duration: 0.07,
+					ease: "power2.out",
+				}, visitLandingAt)
+				.to(targets.visitCard, {
+					y: 0,
+					scaleX: 1.007,
+					scaleY: 0.99,
+					duration: 0.08,
+					ease: "power1.in",
+				}, 0.49)
+				.to(targets.visitCard, {
+					y: -9,
+					scaleX: 1,
+					scaleY: 1,
+					duration: 0.06,
+					ease: "power2.out",
+				}, 0.57)
+				.to(targets.visitCard, {
+					y: 0,
+					scale: 1,
+					duration: 0.07,
+					ease: "power1.in",
+				}, 0.63)
+				.to(targets.archiveCard, {
+					autoAlpha: 1,
+					y: 0,
+					scaleX: 1.009,
+					scaleY: 0.982,
+					duration: 0.36,
+					ease: "power2.in",
+				}, visitLandingAt)
+				.to(targets.archiveCard, {
+					y: -14,
+					scaleX: 1,
+					scaleY: 1,
+					duration: 0.1,
+					ease: "power2.out",
+				}, 0.78)
+				.to(targets.archiveCard, {
+					y: 0,
+					scale: 1,
+					duration: 0.1,
+					ease: "power1.in",
+				}, 0.88)
+				.to(targets.pinnedCard, {
 					autoAlpha: 1,
 					x: 0,
-					scaleX: 1,
-					clipPath: "inset(0 0% 0 0)",
-					duration: 1.2,
-					ease: "expo.out",
-				}, 0)
-				.to(blocks.map(({ element }) => element), {
+					duration: 0.64,
+					ease: "power4.out",
+				}, 0.32)
+				.to(targets.dealCards, {
 					autoAlpha: 1,
-					duration: 0.2,
-					stagger: 0.055,
-					ease: "none",
-				}, 0.48)
-				.to(blocks.map(({ element }) => element), {
-					x: (index) => blocks[index]?.collapseX ?? 0,
-					y: (index) => blocks[index]?.collapseY ?? 0,
-					scale: 0.82,
-					rotation: 0,
-					duration: 0.34,
-					stagger: 0.027,
-					ease: "expo.inOut",
-				}, 0.5)
-				.to(blocks.map(({ element }) => element), {
+					duration: 0.12,
+					ease: "power2.out",
+				}, dealStartAt)
+				.to(targets.dealCards, {
 					x: 0,
 					y: 0,
 					scale: 1,
-					duration: 0.8,
-					stagger: 0.05,
-					ease: "expo.out",
-				}, "+=0.18");
+					rotation: 0,
+					duration: 0.28,
+					stagger: 0.04,
+					ease: "power3.out",
+				}, dealStartAt + 0.14)
+				.to(targets.latestCard, {
+					x: getLatestPeekOffset(layerRect, latestRect) * 0.74,
+					rotation: -3.2,
+					transformOrigin: "0% 100%",
+					duration: 0.12,
+					ease: "power1.inOut",
+				}, latestEntryAt)
+				.to(targets.latestCard, {
+					x: getLatestPeekOffset(layerRect, latestRect) * 0.48,
+					rotation: 3,
+					transformOrigin: "100% 100%",
+					duration: 0.12,
+					ease: "power1.inOut",
+				}, latestEntryAt + 0.12)
+				.to(targets.latestCard, {
+					x: getLatestPeekOffset(layerRect, latestRect) * 0.22,
+					rotation: -1.6,
+					transformOrigin: "0% 100%",
+					duration: 0.12,
+					ease: "power1.inOut",
+				}, latestEntryAt + 0.24)
+				.to(targets.latestCard, {
+					x: 0,
+					rotation: 0,
+					transformOrigin: "50% 50%",
+					duration: 0.14,
+					ease: "power2.out",
+				}, latestEntryAt + 0.36);
 		};
 		const preloadObserver = new IntersectionObserver((entries) => {
 			if (!entries.some((entry) => entry.isIntersecting)) return;
@@ -376,9 +558,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		cleanups.push(() => {
 			preloadObserver.disconnect();
 			timeline?.kill();
-			gsap.set([kicker, titleMain, title, ...blocks.map(({ element }) => element)], {
-				clearProps: "opacity,visibility,transform,clipPath,filter,pointerEvents",
-			});
+			release();
 		});
 	}
 
