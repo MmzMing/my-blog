@@ -15,7 +15,7 @@
 	position: relative;
 }
 
-/* ── 椭圆段通用样式：常驻磨砂玻璃 ── */
+/* ── 椭圆段通用样式：常驻不透明底色 ── */
 .navbar-seg {
 	display: flex;
 	align-items: center;
@@ -23,7 +23,7 @@
 	flex-shrink: 0;
 	border-radius: 9999px;
 	padding: 0.25rem 0.5rem;
-	background: color-mix(in oklch, var(--float-panel-bg) 92%, transparent);
+	background-color: var(--navbar-bg);
 	border: none;
 	transition:
 		max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
@@ -33,10 +33,6 @@
 		border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1),
 		left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
 		transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-:root.dark .navbar-seg {
-	background: color-mix(in oklch, var(--float-panel-bg) 92%, transparent);
 }
 
 /* 左段：默认贴最左 */
@@ -306,7 +302,7 @@
 	height: 2.25rem;
 	border-radius: 9999px;
 	border: none;
-	background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	background-color: var(--navbar-highlight-bg);
 	opacity: 0;
 	transition:
 		left 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
@@ -319,9 +315,14 @@
 	z-index: -1;
 }
 
-/* 选中态：更深一层背景 */
+/* 当前栏目沿用导航悬停高亮。 */
 .navbar-nav.nav-has-active .navbar-hover-highlight {
-	background-color: color-mix(in oklch, var(--deep-text) 12%, transparent);
+	background-color: var(--navbar-highlight-bg);
+}
+
+.navbar-nav .dropdown-container.is-highlighted > a,
+.navbar-nav .dropdown-container.is-highlighted > button {
+	color: var(--navbar-highlight-text) !important;
 }
 
 /* 当前栏目图标：独立于各导航项移动，避免布局宽度参与动画。 */
@@ -334,6 +335,10 @@
 	pointer-events: none;
 	z-index: 30;
 	will-change: transform, opacity;
+}
+
+.navbar-nav:has(.dropdown-container.is-highlighted.nav-item-active) .navbar-moving-icon {
+	color: var(--navbar-highlight-text);
 }
 
 .navbar-moving-icon__glyph {

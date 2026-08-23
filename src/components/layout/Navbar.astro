@@ -147,6 +147,10 @@ function pathMatches(currentPath: string, href: string): boolean {
 }
 
 function moveHighlight(navContainer: HTMLElement, hoverBorder: HTMLElement, item: HTMLElement | null) {
+	navContainer.querySelectorAll<HTMLElement>(":scope > .dropdown-container").forEach((navItem) => {
+		navItem.classList.toggle("is-highlighted", navItem === item);
+	});
+
 	if (!item) {
 		hoverBorder.style.opacity = '0';
 		return;

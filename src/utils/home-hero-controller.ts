@@ -12,6 +12,9 @@ gsap.registerPlugin(ScrollTrigger);
 
 const RAIN_ACTIVATE_TIME = 0.99;
 const DIALOGUE_REVEAL_TIME = 1.08;
+const DIALOGUE_REVEAL_DURATION = 0.11;
+const DIALOGUE_REVEAL_END_TIME =
+	DIALOGUE_REVEAL_TIME + DIALOGUE_REVEAL_DURATION;
 const QUICK_ACTIONS_REVEAL_TIME = 1.14;
 const INTERACTION_HOLD_START = 1.31;
 let initialReloadHandled = false;
@@ -52,15 +55,17 @@ type TileState = {
 	initiallyVisible: boolean;
 };
 
-type TileEntranceTransform = {
+type TileTransform = {
 	x: number;
 	y: number;
 	rotation: number;
-	scale: number;
+	scaleX: number;
+	scaleY: number;
 	blur: number;
 };
 
-type TileIdleTransform = TileEntranceTransform;
+type TileEntranceTransform = TileTransform;
+type TileIdleTransform = TileTransform;
 
 function parseRuntimeConfig(hero: HTMLElement): HeroRuntimeConfig | null {
 	try {
@@ -174,6 +179,8 @@ export function mountHomeHero() {
 	);
 	const tiles = getTileStates(hero);
 	let timeline: ReturnType<typeof gsap.timeline> | null = null;
+	let heroScrollTrigger: ReturnType<typeof ScrollTrigger.create> | null = null;
+	let scrollDriver: ReturnType<typeof gsap.to> | null = null;
 	let idleTimer = 0;
 	let idleTween: ReturnType<typeof gsap.timeline> | null = null;
 	let tilesIntroTimeline: ReturnType<typeof gsap.timeline> | null = null;
@@ -227,13 +234,15 @@ export function mountHomeHero() {
 					x: enteringTransform.x,
 					y: enteringTransform.y,
 					rotation: enteringTransform.rotation,
-					scale: enteringTransform.scale * 0.88,
+					scaleX: enteringTransform.scaleX * 0.88,
+					scaleY: enteringTransform.scaleY * 0.88,
 					filter: `blur(${enteringTransform.blur}px)`,
 					autoAlpha: 0,
 				},
 				{
 					autoAlpha: 1,
-					scale: enteringTransform.scale,
+					scaleX: enteringTransform.scaleX,
+					scaleY: enteringTransform.scaleY,
 					duration: 0.48,
 					ease: "power3.out",
 				},
@@ -248,13 +257,14 @@ export function mountHomeHero() {
 		);
 		tiles.forEach((tile) => {
 			const transform = tile.initiallyVisible
-				? getTileIdleTransform(tile)
+				? getTileInitialTransform(tile)
 				: getTileEntranceTransform(tile);
 			gsap.set(tile.element, {
 				x: transform.x,
 				y: transform.y,
 				rotation: transform.rotation,
-				scale: transform.scale,
+				scaleX: transform.scaleX,
+				scaleY: transform.scaleY,
 				filter: `blur(${transform.blur}px)`,
 				autoAlpha: tile.initiallyVisible ? 1 : 0,
 			});
@@ -334,7 +344,8 @@ export function mountHomeHero() {
 			x: normalizedX * travelMultiplier * horizontalRange,
 			y: normalizedY * travelMultiplier * verticalRange,
 			rotation: tile.rotation * 0.12,
-			scale: 0.66 + Math.min(0.16, Math.max(0, (tile.scale - 0.72) * 0.48)),
+			scaleX: 0.66 + Math.min(0.16, Math.max(0, (tile.scale - 0.72) * 0.48)),
+			scaleY: 0.66 + Math.min(0.16, Math.max(0, (tile.scale - 0.72) * 0.48)),
 			blur: blurBase + (tile.blur / 5) * blurRange,
 		};
 	};
@@ -357,9 +368,103 @@ export function mountHomeHero() {
 			x: targetX - tileCenterX,
 			y: targetY - tileCenterY,
 			rotation: tile.rotation,
-			scale: 1.18 - depthProgress * 0.38,
+			scaleX: 1.18 - depthProgress * 0.38,
+			scaleY: 1.18 - depthProgress * 0.38,
 			blur: depthProgress * 7,
 		};
+	};
+
+	// 首屏布局只服务于第一次静止展示；进入轮换后仍回到上面的随机布局。
+	const getTileInitialTransform = (tile: TileState): TileTransform => {
+		const layout = config.mosaic.initialLayout?.[tile.order];
+		if (mobileQuery.matches || !mosaic || !layout) {
+			return getTileIdleTransform(tile);
+		}
+
+		const mosaicWidth = Math.max(1, mosaic.offsetWidth);
+		const mosaicHeight = Math.max(1, mosaic.offsetHeight);
+		const columns = Math.max(1, config.mosaic.columns);
+		const rows = Math.max(1, config.mosaic.rows);
+		const clampRatio = (value: number, fallback: number) =>
+			Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+		const centerX = clampRatio(layout.x, 0.5) * mosaicWidth;
+		const centerY = clampRatio(layout.y, 0.5) * mosaicHeight;
+		const tileCenterX = ((tile.column + 0.5) / columns) * mosaicWidth;
+		const tileCenterY = ((tile.row + 0.5) / rows) * mosaicHeight;
+		const width = Math.max(0.01, clampRatio(layout.width, 1 / columns));
+		const height = Math.max(0.01, clampRatio(layout.height, 1 / rows));
+		const rotation =
+			typeof layout.rotation === "number" && Number.isFinite(layout.rotation)
+				? layout.rotation
+				: 0;
+		const blur = Number.isFinite(layout.blur)
+			? Math.max(0, layout.blur ?? 0)
+			: 0;
+
+		return {
+			x: centerX - tileCenterX,
+			y: centerY - tileCenterY,
+			rotation,
+			scaleX: width * columns,
+			scaleY: height * rows,
+			blur,
+		};
+	};
+
+	const getBaseScrollDistance = () =>
+		mobileQuery.matches
+			? getHeroPinEndDistance(
+					config.mosaic.mobileScrollDistance,
+					window.innerHeight,
+					config.mosaic.mobileMinViewports,
+				)
+			: getHeroPinEndDistance(
+					config.mosaic.desktopScrollDistance,
+					window.innerHeight,
+					config.mosaic.desktopMinViewports,
+				);
+
+	const getDialogueEndProgress = () => {
+		const duration = Math.max(0.001, timeline?.duration() ?? 1);
+		return Math.min(1, DIALOGUE_REVEAL_END_TIME / duration);
+	};
+
+	const getDialogueTailDistance = () => {
+		if (getDialogueEndProgress() >= 1) return 0;
+		return Math.max(
+			0,
+			mobileQuery.matches
+				? config.mosaic.mobileDialogueTailDistance
+				: config.mosaic.desktopDialogueTailDistance,
+		);
+	};
+
+	const getCompressedScrollDistance = () =>
+		getBaseScrollDistance() * getDialogueEndProgress() +
+		getDialogueTailDistance();
+
+	const mapScrollProgressToTimelineProgress = (scrollProgress: number) => {
+		const progress = Math.min(1, Math.max(0, scrollProgress));
+		const baseDistance = getBaseScrollDistance();
+		const dialogueEndProgress = getDialogueEndProgress();
+		const preservedDistance = baseDistance * dialogueEndProgress;
+		const tailDistance = getDialogueTailDistance();
+		const scrollDistance = progress * (preservedDistance + tailDistance);
+
+		if (scrollDistance <= preservedDistance) {
+			return Math.min(
+				dialogueEndProgress,
+				scrollDistance / Math.max(1, baseDistance),
+			);
+		}
+		if (tailDistance <= 0) return 1;
+
+		return Math.min(
+			1,
+			dialogueEndProgress +
+				((scrollDistance - preservedDistance) / tailDistance) *
+					(1 - dialogueEndProgress),
+		);
 	};
 
 	const buildTimeline = () => {
@@ -368,17 +473,18 @@ export function mountHomeHero() {
 		gsap.set(mosaic, { xPercent: -50, y: 0, scale: 1 });
 		gsap.set(mosaicComplete, { autoAlpha: 0 });
 		gsap.set(backdrop, { autoAlpha: 0 });
-		gsap.set(dialogueRoot, { autoAlpha: 0, y: 30, scale: 0.96 });
+		gsap.set(dialogueRoot, { autoAlpha: 0, y: 16, scale: 0.96 });
 		gsap.set(quickActions, { autoAlpha: 0, y: 38, scale: 0.42 });
 		for (const tile of tiles) {
 			const transform = tile.initiallyVisible
-				? getTileIdleTransform(tile)
+				? getTileInitialTransform(tile)
 				: getTileEntranceTransform(tile);
 			gsap.set(tile.element, {
 				x: transform.x,
 				y: transform.y,
 				rotation: transform.rotation,
-				scale: transform.scale,
+				scaleX: transform.scaleX,
+				scaleY: transform.scaleY,
 				filter: `blur(${transform.blur}px)`,
 				autoAlpha: tile.initiallyVisible ? 1 : 0,
 			});
@@ -386,31 +492,7 @@ export function mountHomeHero() {
 
 		timeline = gsap.timeline({
 			defaults: { ease: "none" },
-			scrollTrigger: {
-				id: "home-hero-two-layer",
-				trigger: hero,
-				start: "top top",
-				end: () => {
-					const distance = mobileQuery.matches
-						? getHeroPinEndDistance(
-								config.mosaic.mobileScrollDistance,
-								window.innerHeight,
-								config.mosaic.mobileMinViewports,
-							)
-						: getHeroPinEndDistance(
-								config.mosaic.desktopScrollDistance,
-								window.innerHeight,
-								config.mosaic.desktopMinViewports,
-							);
-					return `+=${distance}`;
-				},
-				pin: hero,
-				pinSpacing: true,
-				scrub: config.mosaic.scrub,
-				anticipatePin: 1,
-				invalidateOnRefresh: true,
-				onUpdate: (self) => updateSceneState(self.progress),
-			},
+			paused: true,
 		});
 
 		timeline.to({}, { duration: 1 });
@@ -445,7 +527,8 @@ export function mountHomeHero() {
 					x: () => getTileEntranceTransform(tile).x,
 					y: () => getTileEntranceTransform(tile).y,
 					rotation: () => getTileEntranceTransform(tile).rotation,
-					scale: () => getTileEntranceTransform(tile).scale,
+					scaleX: () => getTileEntranceTransform(tile).scaleX,
+					scaleY: () => getTileEntranceTransform(tile).scaleY,
 					filter: () => `blur(${getTileEntranceTransform(tile).blur}px)`,
 					autoAlpha: 0,
 				},
@@ -453,7 +536,8 @@ export function mountHomeHero() {
 					x: 0,
 					y: 0,
 					rotation: 0,
-					scale: 1,
+					scaleX: 1,
+					scaleY: 1,
 					filter: "blur(0px)",
 					autoAlpha: 1,
 					duration: 0.09,
@@ -490,7 +574,7 @@ export function mountHomeHero() {
 					autoAlpha: 1,
 					y: 0,
 					scale: 1,
-					duration: 0.11,
+					duration: DIALOGUE_REVEAL_DURATION,
 					ease: "power3.out",
 				},
 				DIALOGUE_REVEAL_TIME,
@@ -538,7 +622,44 @@ export function mountHomeHero() {
 			INTERACTION_HOLD_START,
 		);
 
-		updateSceneState(timeline.scrollTrigger?.progress ?? 0);
+		const scrollState = { progress: 0 };
+		scrollDriver = gsap.to(scrollState, {
+			progress: 1,
+			duration: 1,
+			ease: "none",
+			paused: true,
+			onUpdate: () => {
+				timeline?.totalProgress(
+					mapScrollProgressToTimelineProgress(scrollState.progress),
+				);
+			},
+		});
+		heroScrollTrigger = ScrollTrigger.create({
+			id: "home-hero-two-layer",
+			trigger: hero,
+			start: "top top",
+			end: () => `+=${getCompressedScrollDistance()}`,
+			pin: hero,
+			pinSpacing: true,
+			scrub: config.mosaic.scrub,
+			anticipatePin: 1,
+			invalidateOnRefresh: true,
+			animation: scrollDriver,
+			onRefreshInit: () => timeline?.invalidate(),
+			onRefresh: (self) => {
+				const progress = mapScrollProgressToTimelineProgress(self.progress);
+				timeline?.totalProgress(progress);
+				updateSceneState(progress);
+			},
+			onUpdate: (self) =>
+				updateSceneState(mapScrollProgressToTimelineProgress(self.progress)),
+		});
+
+		const initialProgress = mapScrollProgressToTimelineProgress(
+			heroScrollTrigger.progress,
+		);
+		timeline.totalProgress(initialProgress);
+		updateSceneState(initialProgress);
 		ScrollTrigger.refresh();
 	};
 
@@ -554,7 +675,7 @@ export function mountHomeHero() {
 				tilesIntroTimeline = null;
 				tilesIntroDone = true;
 				if (
-					(timeline?.scrollTrigger?.progress ?? 0) <= 0.002 &&
+					(heroScrollTrigger?.progress ?? 0) <= 0.002 &&
 					!reducedMotionQuery.matches &&
 					!idleTimer
 				) {
@@ -563,18 +684,20 @@ export function mountHomeHero() {
 			},
 		});
 		for (const tile of idleTiles) {
-			const transform = getTileIdleTransform(tile);
+			const transform = getTileInitialTransform(tile);
 			tilesIntroTimeline.fromTo(
 				tile.element,
 				{
 					y: transform.y + 24,
-					scale: transform.scale * 0.92,
+					scaleX: transform.scaleX * 0.92,
+					scaleY: transform.scaleY * 0.92,
 					filter: `blur(${transform.blur + 5}px)`,
 					autoAlpha: 0,
 				},
 				{
 					y: transform.y,
-					scale: transform.scale,
+					scaleX: transform.scaleX,
+					scaleY: transform.scaleY,
 					filter: `blur(${transform.blur}px)`,
 					autoAlpha: 1,
 					duration: 0.85,
@@ -648,7 +771,7 @@ export function mountHomeHero() {
 
 			mountContactScatter();
 
-			const progress = timeline?.scrollTrigger?.progress ?? 0;
+			const progress = heroScrollTrigger?.progress ?? 0;
 			if (progress <= 0.01) {
 				const intro = gsap.timeline();
 				const contactEntrances = flyHandles
@@ -706,7 +829,10 @@ export function mountHomeHero() {
 		dialogue.destroy();
 		destroySticker();
 		abortController.abort();
-		timeline?.scrollTrigger?.kill();
+		heroScrollTrigger?.kill();
+		heroScrollTrigger = null;
+		scrollDriver?.kill();
+		scrollDriver = null;
 		timeline?.kill();
 		timeline = null;
 		delete hero.dataset.heroMounted;

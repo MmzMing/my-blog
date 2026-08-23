@@ -98,7 +98,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 				type="button"
 				aria-label={siteTitle}
 			>
-				<span class="mobile-dock__status-dot" aria-hidden="true"></span>
 				<span class="mobile-dock__back-mark" aria-hidden="true">
 					<Icon name="material-symbols:arrow-back-rounded" is:inline />
 				</span>
@@ -393,8 +392,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		const overlay = document.getElementById("mobile-dock-overlay") as HTMLElement;
 		const card = document.getElementById("mobile-dock-card") as HTMLElement;
 		const cardInner = card?.querySelector<HTMLElement>(".mobile-dock__card-inner") as HTMLElement;
-		const bar = dock?.querySelector<HTMLElement>(".mobile-dock__bar");
-		const toolbar = dock?.querySelector<HTMLElement>(".mobile-dock__toolbar");
 		const contextButton = document.getElementById("mobile-dock-context-btn") as HTMLButtonElement;
 		const menuButton = document.getElementById("mobile-dock-menu-btn") as HTMLButtonElement;
 		const viewTitle = document.getElementById("mobile-dock-view-title") as HTMLElement;
@@ -445,118 +442,16 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		let keyboardOpen = false;
 		let mobileTOCManager: { cleanup: () => void } | null = null;
 		let scrollFrame: number | null = null;
-		let openingTimer: number | null = null;
 		let closingTimer: number | null = null;
-		let toolbarRollTimer: number | null = null;
-		let toolbarRollSetupFrame: number | null = null;
-		let toolbarRollAnimation: Animation | null = null;
-		let toolbarRoller: HTMLElement | null = null;
-		let toolbarRollTrack: HTMLElement | null = null;
 
 		function prefersReducedMotion() {
 			return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 		}
 
-		function clearToolbarRoll() {
-			toolbarRollAnimation?.cancel();
-			toolbarRollAnimation = null;
-			toolbarRoller?.remove();
-			toolbarRoller = null;
-			toolbarRollTrack = null;
-			toolbar?.classList.remove("is-rolling");
-		}
-
-		function createToolbarRollFace(faceType: "dock" | "toolbar") {
-			const source = faceType === "dock" ? bar : toolbar;
-			if (!source) return null;
-			const face = document.createElement("div");
-			face.className = `mobile-dock__toolbar-roll-face mobile-dock__toolbar-roll-face--${faceType}`;
-			const clone = source.cloneNode(true) as HTMLElement;
-			clone.removeAttribute("id");
-			clone.setAttribute("aria-hidden", "true");
-			clone.querySelectorAll("[id]").forEach((element) => element.removeAttribute("id"));
-			clone.querySelectorAll<HTMLElement>("a, button, input, select, textarea, [tabindex]").forEach((element) => {
-				element.setAttribute("tabindex", "-1");
-			});
-			face.appendChild(clone);
-			return face;
-		}
-
-
-		function getToolbarRollHeight() {
-			if (!toolbar) return 0;
-			return Math.max(
-				Math.ceil(toolbar.getBoundingClientRect().height),
-				toolbar.scrollHeight,
-				Math.ceil(bar?.getBoundingClientRect().height || 0),
-			);
-		}
-
-		function mountToolbarRoller(initialFace: "dock" | "toolbar") {
-			if (!toolbar) return null;
-			clearToolbarRoll();
-
-			const height = getToolbarRollHeight();
-			if (height <= 0) return null;
-
-			const roller = document.createElement("div");
-			const track = document.createElement("div");
-			const firstFace = createToolbarRollFace("dock");
-			const secondFace = createToolbarRollFace("toolbar");
-			if (!firstFace || !secondFace) return null;
-
-			roller.className = "mobile-dock__toolbar-roller";
-			roller.classList.toggle("has-playing-context", dock.classList.contains("has-playing-context"));
-			roller.setAttribute("aria-hidden", "true");
-			roller.style.setProperty("--mobile-dock-toolbar-roll-height", `${height}px`);
-			track.className = "mobile-dock__toolbar-roll-track";
-			if (initialFace === "toolbar") track.style.transform = "translate3d(0, -50%, 0)";
-			track.appendChild(firstFace);
-			track.appendChild(secondFace);
-			roller.appendChild(track);
-			dock.appendChild(roller);
-			toolbarRoller = roller;
-			toolbarRollTrack = track;
-			return track;
-		}
-
-		function playToolbarRoll(direction: "open" | "close") {
-			if (!toolbar || prefersReducedMotion()) return;
-			const track = toolbarRollTrack || mountToolbarRoller(direction === "open" ? "dock" : "toolbar");
-			if (!track) return;
-
-			toolbarRollAnimation?.cancel();
-			toolbar.classList.add("is-rolling");
-			const from = direction === "open" ? "translate3d(0, 0, 0)" : "translate3d(0, -50%, 0)";
-			const to = direction === "open" ? "translate3d(0, -50%, 0)" : "translate3d(0, 0, 0)";
-			const animation = track.animate(
-				[{ transform: from }, { transform: to }],
-				{ duration: direction === "open" ? 220 : 200, easing: "linear", fill: "forwards" },
-			);
-			toolbarRollAnimation = animation;
-			track.style.willChange = "transform";
-			animation.finished.then(() => {
-				if (toolbarRollAnimation !== animation) return;
-				track.style.willChange = "auto";
-				toolbarRollAnimation = null;
-				if (direction === "open") {
-					clearToolbarRoll();
-					dock.classList.remove("is-toolbar-pending");
-				}
-			}).catch(() => {});
-		}
-
 		function clearMotionTimers() {
-			if (openingTimer !== null) window.clearTimeout(openingTimer);
 			if (closingTimer !== null) window.clearTimeout(closingTimer);
-			if (toolbarRollTimer !== null) window.clearTimeout(toolbarRollTimer);
-			if (toolbarRollSetupFrame !== null) cancelAnimationFrame(toolbarRollSetupFrame);
-			openingTimer = null;
 			closingTimer = null;
-			toolbarRollTimer = null;
-			toolbarRollSetupFrame = null;
-			clearToolbarRoll();
-			dock.classList.remove("is-opening", "is-closing", "is-toolbar-pending");
+			dock.classList.remove("is-closing");
 			overlay.classList.remove("is-closing");
 		}
 
@@ -572,7 +467,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			overlay.classList.toggle("is-open", isCard);
 			if (!isCard) {
 				overlay.classList.remove("is-closing");
-				dock.classList.remove("is-toolbar-pending");
 			}
 			overlay.setAttribute("aria-hidden", String(!isCard));
 
@@ -595,58 +489,22 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 				clearMotionTimers();
 				return;
 			}
-			dock.classList.add("is-opening", "is-toolbar-pending");
 			setShape("card");
-			if (prefersReducedMotion()) {
-				dock.classList.remove("is-opening", "is-toolbar-pending");
-				return;
-			}
-			toolbarRollSetupFrame = requestAnimationFrame(() => {
-				toolbarRollSetupFrame = null;
-				if (shape === "card" && dock.classList.contains("is-toolbar-pending")) playToolbarRoll("open");
-			});
-			openingTimer = window.setTimeout(() => {
-				dock.classList.remove("is-opening");
-				openingTimer = null;
-			}, 460);
 		}
 
 		function closeCard() {
 			if (shape !== "card" || dock.classList.contains("is-closing")) return;
 			if (prefersReducedMotion()) {
-				clearToolbarRoll();
-				dock.classList.remove("is-toolbar-pending");
 				setShape("pill");
 				return;
 			}
-			const toolbarWasPending = dock.classList.contains("is-toolbar-pending");
-			if (openingTimer !== null) window.clearTimeout(openingTimer);
-			if (toolbarRollTimer !== null) window.clearTimeout(toolbarRollTimer);
-			if (toolbarRollSetupFrame !== null) cancelAnimationFrame(toolbarRollSetupFrame);
-			openingTimer = null;
-			toolbarRollTimer = null;
-			toolbarRollSetupFrame = null;
-			dock.classList.remove("is-opening");
-			dock.classList.remove("is-toolbar-pending");
-			if (toolbarWasPending) {
-				toolbarRollAnimation?.cancel();
-				toolbarRollAnimation = null;
-				if (!toolbarRollTrack) mountToolbarRoller("dock");
-				toolbarRollTrack?.getAnimations().forEach((animation) => animation.cancel());
-				if (toolbarRollTrack) {
-					toolbarRollTrack.style.willChange = "auto";
-					toolbarRollTrack.style.transform = "translate3d(0, 0, 0)";
-				}
-				toolbar?.classList.add("is-rolling");
-			} else playToolbarRoll("close");
 			dock.classList.add("is-closing");
 			overlay.classList.add("is-closing");
 			closingTimer = window.setTimeout(() => {
-				clearToolbarRoll();
-				dock.classList.remove("is-closing");
 				closingTimer = null;
 				setShape("pill");
-			}, 220);
+				dock.classList.remove("is-closing");
+			}, 500);
 		}
 
 		function setView(nextView: DockView) {
