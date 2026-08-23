@@ -2,6 +2,7 @@
   --code-block-bg: var(--codeblock-bg);
   --code-block-topbar-bg: var(--codeblock-topbar-bg);
   --code-block-border: var(--codeblock-border);
+  --code-block-accent: #00A29B;
   --code-window-control-close: #ff5f57;
   --code-window-control-minimize: #ffbd2e;
   --code-window-control-zoom: #28c840;
@@ -55,8 +56,40 @@
   /* Language Badge 样式适配主题色和亮暗色 */
   /* 覆盖 expressive-code-language-badge 插件的默认样式 */
   [data-language]::before {
-    color: var(--btn-content) !important;
+    color: var(--code-block-accent) !important;
     background: var(--btn-regular-bg) !important;
+  }
+
+  /* 复制按钮与语言徽章使用同一青色强调色。 */
+  .frame .copy button {
+    border: 1px solid var(--code-block-accent) !important;
+    background: var(--code-block-accent) !important;
+  }
+
+  .frame .copy button > div {
+    background: transparent !important;
+  }
+
+  .frame .copy button::before {
+    border-color: var(--code-block-accent) !important;
+    opacity: 1 !important;
+  }
+
+  .frame .copy button::after {
+    background-color: #000 !important;
+  }
+
+  .frame .copy button:hover {
+    filter: brightness(1.08);
+  }
+
+  .frame .copy button:active {
+    filter: brightness(0.92);
+  }
+
+  .frame .copy .feedback {
+    --tooltip-bg: var(--code-block-accent);
+    color: #000;
   }
 
   /* 折叠按钮样式适配主题色和亮暗色 */
@@ -96,5 +129,43 @@
     transparent 0%,
     var(--ec-collapse-bg-color, var(--code-background, #000000da)) 100%
   ) !important;
+}
+
+/* Tab 代码块（rehype-code-group）：保留插件结构，仅适配本站主题变量。 */
+.rehype-code-group {
+	margin: 1rem 0;
+}
+
+.rehype-code-group .rcg-tab-container {
+	flex-wrap: wrap;
+	border-bottom-color: var(--line-divider);
+}
+
+.rehype-code-group .rcg-tab {
+	color: var(--btn-content);
+	opacity: var(--opacity-80);
+	transition:
+		color var(--duration-normal) var(--ease-standard),
+		opacity var(--duration-normal) var(--ease-standard);
+}
+
+.rehype-code-group .rcg-tab:hover,
+.rehype-code-group .rcg-tab.active {
+	color: var(--primary);
+	opacity: var(--opacity-100);
+}
+
+.rehype-code-group .rcg-tab.active {
+	border-bottom-color: var(--primary);
+}
+
+.rehype-code-group .rcg-tab:focus-visible {
+	border-radius: 0.25rem;
+	outline: 2px solid var(--primary);
+	outline-offset: -2px;
+}
+
+.rehype-code-group .rcg-block > .expressive-code {
+	margin: 0 !important;
 }
 

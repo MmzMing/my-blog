@@ -4,6 +4,7 @@ import La51Analytics from "@components/analytics/La51Analytics.astro";
 import MicrosoftClarity from "@components/analytics/MicrosoftClarity.astro";
 import UmamiAnalytics from "@components/analytics/UmamiAnalytics.astro";
 import CalendarManager from "@components/features/CalendarManager.astro";
+import CodeGroupManager from "@components/features/CodeGroupManager.astro";
 import FancyboxManager from "@components/features/FancyboxManager.astro";
 import FloatingLyrics from "@components/features/FloatingLyrics.astro";
 import FontManager from "@components/features/FontManager.astro";
@@ -11,6 +12,7 @@ import MusicManager from "@components/features/MusicManager.astro";
 import PageLoader from "@components/features/PageLoader.astro";
 import PrivacyModal from "@components/features/PrivacyModal.astro";
 import UserAgreementModal from "@components/features/UserAgreementModal.astro";
+import WikiLinkCardManager from "@components/features/WikiLinkCardManager.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
 import MobileDock from "@components/layout/MobileDock.astro";
 import FloatingDock from "@/components/controls/FloatingDock.astro";
@@ -266,6 +268,8 @@ const siteLang = lang.replace("_", "-");
     <PrivacyModal />
     <UserAgreementModal />
     <FancyboxManager />
+    <CodeGroupManager />
+    <WikiLinkCardManager />
   </body>
 </html>
 

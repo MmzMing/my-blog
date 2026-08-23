@@ -1,0 +1,77 @@
+---
+// Wiki Link 文章卡片封面管理器。
+//
+// 卡片由 Markdown 构建期生成；这里仅复用现有文章封面生命周期，处理随机封面
+// 的重试、兜底图与像素揭示效果。Layout 位于 Swup 容器外，因此用
+// astro:page-load 为每次页面替换后的新卡片重新建立实例。
+---
+
+<script>
+	import {
+		createArticleCoverLifecycle,
+		parseArticleCoverApiUrls,
+		type ArticleCoverLifecycle,
+	} from "@/utils/article-cover-lifecycle";
+
+	const root = document.documentElement;
+	const COVER_SELECTOR = "[data-wiki-link-card-cover]";
+	const IMAGE_SELECTOR = "[data-wiki-link-card-cover-image]";
+	let cleanupActiveCards: (() => void) | undefined;
+
+	function initializeWikiLinkCards() {
+		cleanupActiveCards?.();
+		cleanupActiveCards = undefined;
+
+		const covers = Array.from(
+			document.querySelectorAll<HTMLElement>(COVER_SELECTOR),
+		);
+		if (covers.length === 0) return;
+
+		const controller = new AbortController();
+		const lifecycles = new Map<HTMLElement, ArticleCoverLifecycle>();
+		let observer: IntersectionObserver | undefined;
+
+		covers.forEach((cover) => {
+			const image = cover.querySelector<HTMLImageElement>(IMAGE_SELECTOR);
+			if (!image) return;
+
+			const lifecycle = createArticleCoverLifecycle({
+				host: cover,
+				image,
+				apiUrls: parseArticleCoverApiUrls(image.dataset.apiUrls),
+				fallbackSrc: image.dataset.fallbackSrc,
+				baseUrl: window.location.href,
+				signal: controller.signal,
+			});
+			lifecycles.set(cover, lifecycle);
+		});
+
+		if ("IntersectionObserver" in window) {
+			observer = new IntersectionObserver(
+				(entries) => {
+					entries.forEach((entry) => {
+						const lifecycle = lifecycles.get(entry.target as HTMLElement);
+						lifecycle?.setVisible(entry.isIntersecting);
+					});
+				},
+				{ rootMargin: "200px 0px" },
+			);
+			lifecycles.forEach((_, cover) => observer?.observe(cover));
+		} else {
+			lifecycles.forEach((lifecycle) => lifecycle.setVisible(true));
+		}
+
+		cleanupActiveCards = () => {
+			observer?.disconnect();
+			controller.abort();
+			lifecycles.forEach((lifecycle) => lifecycle.dispose());
+			lifecycles.clear();
+		};
+	}
+
+	if (!root.dataset.wikiLinkCardManagerInitialized) {
+		root.dataset.wikiLinkCardManagerInitialized = "true";
+		initializeWikiLinkCards();
+		document.addEventListener("astro:page-load", initializeWikiLinkCards);
+	}
+</script>

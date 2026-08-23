@@ -17,6 +17,7 @@ import rehypeKatex from "rehype-katex";
 import katex from "katex";
 import "katex/dist/contrib/mhchem.mjs"; // 加载 mhchem 扩展
 import rehypeSlug from "rehype-slug";
+import rehypeCodeGroup from "rehype-code-group"; /* Tab 代码块 */
 import remarkDirective from "remark-directive"; /* Handle directives */
 import remarkMath from "remark-math";
 import rehypeCallouts from "rehype-callouts";
@@ -41,6 +42,7 @@ import { remarkExcerpt } from "./src/plugins/remark-excerpt.js";
 import { remarkMermaid } from "./src/plugins/remark-mermaid.js";
 import { remarkPlantuml } from "./src/plugins/remark-plantuml.js";
 import { remarkReadingTime } from "./src/plugins/remark-reading-time.mjs";
+import { remarkWikiLink } from "./src/plugins/remark-wiki-link.js";
 import mdx from "@astrojs/mdx";
 import rehypeEmailProtection from "./src/plugins/rehype-email-protection.mjs";
 import rehypeExternalLinks from "./src/plugins/rehype-external-links.mjs";
@@ -250,6 +252,7 @@ export default defineConfig({
 			remarkPlugins: [
 				remarkMath,
 				remarkReadingTime,
+				remarkWikiLink,
 				remarkImageGrid,
 				remarkExcerpt,
 				remarkDirective,
@@ -262,6 +265,7 @@ export default defineConfig({
 				[rehypeKatex, { katex }],
 				[rehypeCallouts, { theme: siteConfig.rehypeCallouts.theme }],
 				rehypeSlug,
+				rehypeCodeGroup,
 				[rehypeMermaid, mermaidConfig],
 				rehypePlantuml,
 				rehypeDiagramPanZoom,
