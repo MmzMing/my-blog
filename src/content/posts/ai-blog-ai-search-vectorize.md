@@ -5,6 +5,7 @@ description: 基于 Cloudflare Vectorize 构建博客 AI 语义搜索，介绍 M
 tags: [AI, RAG, Cloudflare]
 category: 设计文档
 draft: false
+wikiExclude: true
 ---
 
 > [!NOTE] 提示

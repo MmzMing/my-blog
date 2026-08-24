@@ -28,7 +28,7 @@ html:has(.home-hero) #top-row {
 	contain: layout paint;
 }
 
-/* 动效脚本接管前先隐藏首屏标题，避免静态 HTML 首帧闪现整段文字。 */
+/* 动效脚本接管前先隐藏首屏标题和联系按钮，避免静态 HTML 首帧闪现整段文字。 */
 .home-page--motion-pending .home-hero__identity,
 .home-page--motion-pending .home-hero__contact {
 	opacity: 0;
@@ -498,10 +498,6 @@ html:has(.home-hero) #top-row {
 		filter: none;
 		background-image: none;
 		color: var(--home-hero-ink);
-	}
-
-	.home-hero__identity {
-		display: none;
 	}
 
 	.home-hero__quick-action {

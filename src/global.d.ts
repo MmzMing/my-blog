@@ -29,9 +29,7 @@ declare global {
 		) => void;
 		floatingTOCListenersInitialized?: boolean;
 		__articleOutlineRailRuntime?: ArticleOutlineRailRuntime;
-		__aiSearchOpen?: boolean;
 		__searchLoadersReady?: boolean;
-		__aiSearchMounted?: boolean;
 		__searchModalMounted?: boolean;
 		__friendImagePreviewReady?: boolean;
 		_showLive2DWidget?: () => void;

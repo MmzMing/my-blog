@@ -33,6 +33,8 @@ export const llmsConfig: LlmsConfig = {
 	machineEntrypoints: {
 		heading: "机器入口",
 		items: [
+			// Wiki 索引：列出所有公开文章及其 Markdown / JSON 资源。
+			{ label: "LLM Wiki", path: "/wiki/index.json" },
 			// RSS：提供按发布时间组织的增量内容入口。
 			{ label: "RSS", path: "/rss.xml" },
 			// Sitemap：帮助搜索引擎或抓取程序发现站点页面。

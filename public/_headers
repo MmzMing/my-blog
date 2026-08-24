@@ -1,4 +1,4 @@
-# 静态资源缓存策略（Cloudflare Workers Assets / EdgeOne Pages 均支持 _headers）
+# 静态资源缓存策略（Cloudflare Pages / EdgeOne Pages 均支持 _headers）
 # 仅覆盖内容哈希路径：/_astro/* 文件名含 hash，内容变则 URL 变，可安全 immutable。
 # /assets/*、/fonts/* 为非哈希路径，不设 immutable，以免资源更新后客户端长期持旧缓存。
 /_astro/*
@@ -7,7 +7,7 @@
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 /fonts/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
-/knowledge/*
+/wiki/*
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400
 /llms.txt
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400

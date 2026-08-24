@@ -45,7 +45,6 @@ export type {
 	MermaidThemeName,
 } from "../types/mermaidConfig";
 // 核心配置
-export { aiSearchConfig } from "./aiSearchConfig"; // AI 搜索配置
 export { announcementConfig } from "./announcementConfig"; // 公告配置
 export { calendarConfig } from "./calendarConfig"; // 日历配置
 export { collectionsApiConfig } from "./collectionsApiConfig"; // 收藏API配置
@@ -60,7 +59,7 @@ export { galleryConfig } from "./galleryConfig"; // 相册配置
 export { guestbookConfig } from "./guestbookConfig"; // 留言板配置
 export { homeConfig } from "./homeConfig"; // 首页与用户资料配置
 export { licenseConfig } from "./licenseConfig"; // 许可证配置
-export { llmsConfig } from "./llmsConfig"; // LLM 机器入口配置
+export { llmsConfig } from "./llmsConfig"; // llms.txt 机器入口配置
 export { mermaidConfig } from "./mermaidConfig"; // Mermaid 图表配置
 // 组件配置
 export { musicPlayerConfig } from "./musicConfig"; // 音乐播放器配置

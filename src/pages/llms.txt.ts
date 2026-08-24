@@ -1,4 +1,4 @@
-import { getSortedPostsList } from "@utils/content-utils";
+import { getWikiPosts } from "@utils/llm-wiki";
 import { getPostUrlBySlug } from "@utils/url-utils";
 import type { APIRoute } from "astro";
 import { llmsConfig, siteConfig } from "@/config";
@@ -13,9 +13,7 @@ function escapeLinkText(text: string): string {
 export const GET: APIRoute = async ({ site }) => {
 	const base = site ?? new URL(siteConfig.site_url);
 
-	const posts = (await getSortedPostsList())
-		.filter((post) => !post.data.password)
-		.slice(0, llmsConfig.featuredPosts.limit);
+	const posts = (await getWikiPosts()).slice(0, llmsConfig.featuredPosts.limit);
 
 	const lines = [
 		`# ${siteConfig.title}`,

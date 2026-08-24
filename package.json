@@ -15,12 +15,8 @@
 		"lint": "biome check --write ./src",
 		"preinstall": "npx only-allow pnpm",
 		"icons": "node scripts/generate-icons.js",
-		"build-index": "tsx scripts/ai-search/build-index.ts",
-		"build-index:dry-run": "tsx scripts/ai-search/build-index.ts --dry-run",
 		"indexnow": "tsx scripts/indexnow.ts",
-		"worker:types": "wrangler types",
-		"test": "vitest run",
-		"test:worker": "vitest run --config vitest.config.ts"
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@astrojs/check": "^0.9.10",
@@ -89,8 +85,6 @@
 	"devDependencies": {
 		"@astrojs/ts-plugin": "^1.10.10",
 		"@biomejs/biome": "2.4.15",
-		"@cloudflare/vitest-pool-workers": "0.18.4",
-		"@cloudflare/workers-types": "5.20260715.1",
 		"@iconify-json/mdi": "^1.2.3",
 		"@iconify-json/svg-spinners": "^1.2.4",
 		"@iconify/types": "^2.0.0",
@@ -106,8 +100,7 @@
 		"postcss-nesting": "^13.0.2",
 		"tailwindcss": "^4.2.4",
 		"tsx": "^4.23.1",
-		"vitest": "4.1.10",
-		"wrangler": "4.110.0"
+		"vitest": "4.1.10"
 	},
 	"packageManager": "pnpm@9.14.4"
 }

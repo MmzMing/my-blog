@@ -40,10 +40,9 @@
     }
   },
   "include": [
-    ".astro/types.d.ts",
-    "worker-configuration.d.ts",
+		".astro/types.d.ts",
     "src/**/*",
-    "scripts/ai-search/**/*.ts"
+    "scripts/**/*.ts"
   ],
   "exclude": [
     "dist"

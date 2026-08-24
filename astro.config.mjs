@@ -184,6 +184,7 @@ export default defineConfig({
 		sitemap({
 			customPages: [
 				new URL("/llms.txt", siteConfig.site_url).toString(),
+				new URL("/wiki/index.json", siteConfig.site_url).toString(),
 			],
 			filter: (page) => {
 				// 根据页面开关配置过滤sitemap
@@ -312,12 +313,6 @@ export default defineConfig({
 			watch: {
 				ignored: ["**/package/**", "**/Firefly-docs/**"],
 			},
-			proxy: {
-				"^/api/(?!allPostMeta\\.json/?(?:$|\\?)|holidays\\.json/?(?:$|\\?))": {
-					target: "http://localhost:8787",
-					changeOrigin: true,
-				},
-			},
 		},
 		resolve: {
 			alias: {
@@ -345,7 +340,6 @@ export default defineConfig({
 							if (id.includes("pixi") || id.includes("live2d")) return "vendor-live2d";
 							if (id.includes("gsap")) return "vendor-gsap";
 						}
-						if (id.includes("AISearch")) return "vendor-ai";
 						if (id.includes("Guestbook")) return "vendor-guestbook";
 						if (id.includes("CalendarGrid")) return "vendor-calendar";
 					},

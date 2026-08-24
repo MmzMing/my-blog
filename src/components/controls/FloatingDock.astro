@@ -7,7 +7,6 @@ import CalendarWidget from "@/components/controls/CalendarWidget.astro";
  */
 import MusicPlayer from "@/components/features/MusicPlayer.astro";
 import { announcementConfig, spineModelConfig } from "@/config";
-import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import { musicPlayerConfig } from "@/config/musicConfig";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -17,13 +16,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 
 <div class="floating-dock" id="floating-dock">
 	<div class="dock-buttons">
-		{aiSearchPublicConfig.enabled && (
-			<button class="dock-btn dock-btn-ai-search" id="dock-ai-search-btn" aria-label={i18n(I18nKey.aiSearch)} type="button" data-tooltip={i18n(I18nKey.aiSearch)}>
-				<span class="dock-btn-icon"><Icon name="ri:ai" class="text-3xl" /></span>
-				<span class="dock-btn-label">{i18n(I18nKey.aiSearch)}</span>
-			</button>
-		)}
-
 		{musicPlayerConfig.showInNavbar !== false && (
 			<button class="dock-btn dock-btn-music" id="dock-music-btn" aria-label={i18n(I18nKey.music)} type="button" data-tooltip={i18n(I18nKey.music)}>
 				<span class="dock-btn-icon"><Icon name="material-symbols:music-note-rounded" class="text-3xl" /></span>
@@ -266,14 +258,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			event.stopPropagation();
 			document.getElementById("post-comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
 		}, { signal: dockSignal });
-
-		// AI 搜索
-		document.getElementById("dock-ai-search-btn")?.addEventListener("click", (event) => {
-			event.stopPropagation();
-			window.dispatchEvent(new CustomEvent("toggle-ai-search"));
-			closeAllDrawers();
-		}, { signal: dockSignal });
-
 		function updateScrollDependent() {
 			const topButton = document.getElementById("dock-top-btn");
 			if (!topButton) return;

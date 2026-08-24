@@ -285,7 +285,6 @@ export const en: Translation = {
 	[Key.copyTemplate]: "Copy template",
 
 	// ===== 悬浮坞 / 导航 / 主题 =====
-	[Key.aiSearch]: "AI Search",
 	[Key.switchToDark]: "Switch to dark mode",
 	[Key.switchToLight]: "Switch to light mode",
 	[Key.spineModel]: "Spine model",
@@ -300,14 +299,11 @@ export const en: Translation = {
 	[Key.searchPlaceholder2]: "Type a keyword to start searching",
 	[Key.searchPlaceholder3]: "Try searching for 'Astro' or 'Svelte'",
 	[Key.searchPlaceholder4]: "Press ESC to close the search panel",
-	[Key.searchPlaceholder5]:
-		"Ctrl+K switches between AI search and normal search",
 	[Key.searchViewAllPrefix]: "View all",
 	[Key.searchViewAllSuffix]: "results →",
 	[Key.searchHintClose]: "ESC to close",
 	[Key.searchHintSearch]: "ENTER to search",
 	[Key.searchHintToggle]: "Ctrl+K to switch",
-
 	// ===== 首页 Hero 对话 =====
 	[Key.techBlogSuffix]: "'s Tech Blog",
 	[Key.dialogueMenuTitle]: "What shall we talk about?",
@@ -459,44 +455,13 @@ export const en: Translation = {
 	[Key.postAiSummaryLabel]: "AI Summary",
 	[Key.coverImageAltSuffix]: " cover image",
 
-	// ===== AI 搜索 / 留言板（Phase B）=====
+	// ===== 留言板 =====
 	[Key.sending]: "Sending",
 	[Key.saving]: "Saving",
 	[Key.deleting]: "Deleting",
 	[Key.image]: "Image",
 	[Key.none]: "None",
 	[Key.emoji]: "Emoji",
-	[Key.aiSuggestionBlog]: "How is this blog built?",
-	[Key.aiSuggestionIntro]: "Introduce yourself",
-	[Key.aiFollowUpPosts]: "Talk about recent posts",
-	[Key.aiFollowUpProjects]: "Any projects to recommend?",
-	[Key.aiJustNow]: "Just now",
-	[Key.aiMinutesAgo]: "{n} min ago",
-	[Key.aiHoursAgo]: "{n} h ago",
-	[Key.aiDaysAgo]: "{n} d ago",
-	[Key.aiInputTooLong]: "Input is too long, max {max} characters~",
-	[Key.aiStreamErrorPrefix]: "Error: {error}",
-	[Key.aiCancelled]: "(cancelled)",
-	[Key.aiRateLimited]: "Too many requests, please try again later~",
-	[Key.aiRequestError]: "Sorry, something went wrong. Please try again later~",
-	[Key.aiAssistantName]: "Miaodun",
-	[Key.aiHistory]: "History",
-	[Key.aiClearAllSessions]: "Clear all sessions",
-	[Key.aiNewSession]: "New session",
-	[Key.aiDeleteSession]: "Delete session",
-	[Key.aiNoHistory]: "No history sessions",
-	[Key.aiEmptyTitle]: "What would you like to ask?",
-	[Key.aiRefsTitle]: "References",
-	[Key.aiResizeTitle]: "Drag to resize",
-	[Key.aiAskLabel]: "Ask",
-	[Key.aiInputPlaceholder]: "Type your question...",
-	[Key.aiInputAria]: "AI search question",
-	[Key.aiStopGeneration]: "Stop generating",
-	[Key.aiPrivacyNotice]:
-		"Your question and the last 6 messages will be sent to ModelScope or Cloudflare Workers AI. Do not submit passwords, tokens, or sensitive information. Sessions are kept for 7 days.",
-	[Key.aiRequestFailedStatus]: "Request failed ({status})",
-	[Key.aiStreamUnreadable]: "Unable to read response stream",
-	[Key.aiNewChat]: "New chat",
 	[Key.gbVisitor]: "Visitor",
 	[Key.gbAnonymousVisitor]: "Anonymous visitor",
 	[Key.gbServerNotConfiguredLogin]:

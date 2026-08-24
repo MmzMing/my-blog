@@ -30,7 +30,7 @@ Firefly-Mod 是个性化魔改版本，已独立演进。
 
 - 重构整体UI，黑白简约风格，组件可交互为主，删除背景图片。
 - 首页更偏向于展示个人能力爱好，不展示最新文章，删除侧边栏。
-- 可选的 AI 语义搜索（RAG）功能，基于 Cloudflare Vectorize 向量索引。
+- 构建期生成 LLM Wiki，为 AI、搜索引擎和阅读器提供稳定的 JSON / Markdown 入口。
 - QQ 群聊风格留言板，直接复用 Waline 登录、审核与评论数据，不依赖项目 Worker 或 KV。
 - 新增日历页面，展示文章发布时间。
 - 关于页面，注重交互。
@@ -51,28 +51,19 @@ Firefly-Mod 是个性化魔改版本，已独立演进。
 | Lint + 自动修复 | `pnpm lint` |
 | 新建博客文章 | `pnpm new-post <filename>` |
 | 重新生成图标 | `pnpm icons` |
-| 构建/更新 AI 向量索引 | `pnpm build-index` |
+| 推送文章 URL | `pnpm indexnow --diff --dry-run` |
 
-## AI 搜索（可选）
+## LLM Wiki（静态）
 
-AI 搜索默认关闭。只有在 `src/config/aiSearchConfig.ts` 中将 `enabled` 设为 `true` 后，才需要创建向量索引和配置以下凭证：
+项目不在构建阶段运行 Embedding 或 Vectorize。`pnpm build` 会从公开文章集合生成机器入口：
 
-- `.env.cf`：`CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`，用于创建和更新 Vectorize 索引。
-- `.env`：`AI_API_KEY`，仅在使用第三方 Embedding / Chat API 时需要；不配置时会回退到 Workers AI。
+- `dist/llms.txt`：站点级入口和精选文章。
+- `dist/wiki/index.json`：文章目录、摘要、章节和每篇文章的资源地址。
+- `dist/wiki/articles/{slug}.json`：单篇文章的元数据、章节和原始正文。
+- `dist/wiki/articles/{slug}.md`：带规范元数据的纯 Markdown 文章。
 
-```bash
-# 登录 Cloudflare
-npx wrangler login
+草稿、密码文章以及设置了 `wikiExclude: true` 的历史文章不会进入 Wiki，但仍可正常生成站内文章页。文章更新后重新构建即可同步机器入口。
 
-# 首次启用时创建索引；向量维度需与 aiSearchConfig.ts 保持一致
-npx wrangler vectorize create blog-ai-search --dimensions 1024 --metric cosine
-
-# 构建/更新 AI 搜索向量索引（增量）
-pnpm build-index
-
-# 强制全量重建 AI 搜索向量索引
-pnpm build-index -- --force
-```
 
 ## 配置系统
 
@@ -99,7 +90,7 @@ pnpm build-index -- --force
 | `expressiveCodeConfig.ts` | 代码块渲染配置 |
 | `plantumlConfig.ts` | PlantUML 配置 |
 | `collectionsApiConfig.ts` | 收藏 API 配置 |
-| `aiSearchConfig.ts` | AI 搜索配置（模型、Embedding、向量索引） |
+| `llmsConfig.ts` | `/llms.txt` 和 LLM Wiki 的机器入口配置 |
 
 ## CI/CD 工作流
 
@@ -125,18 +116,15 @@ pnpm build-index -- --force
 
 | 检查项 | 说明 |
 |--------|------|
-| 托管平台 | 支持任何静态托管：Cloudflare Pages、Vercel、Netlify、Nginx 等 |
+| 托管平台 | 可部署到 Cloudflare Pages、Vercel、Netlify、Nginx 等静态托管平台 |
 | 评论服务 | 若启用评论，需自行部署对应后端（Waline / Twikoo / Artalk 等） |
 | 留言板 | 留言板固定使用 Waline `/guestbook/` 频道；启用前需在 `src/config/commentConfig.ts` 中配置 Waline（只适配这个，若需要其他评论需要自行对接API） |
-| 统计服务 | 站点访问统计通过 Umami 获取（`siteConfig.ts` 中配置 `analytics.umamiAnalytics`，Worker 中配置 `UMAMI_TOKEN` Secret） |
-| AI 搜索（可选） | 仅在 `aiSearchConfig.ts` 开启后配置：需 Cloudflare Vectorize 索引；构建索引需 `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`；LLM/Embedding 默认走 Workers AI，也可配置第三方 API 并设置 `AI_API_KEY` |
+| 统计服务 | 站点访问统计通过 Umami 获取（在 `siteConfig.ts` 中配置 `analytics.umamiAnalytics`） |
 | 图片上传（可选） | 留言板默认将不超过 128 KB 的图片内嵌到 Waline 留言；如需上传不超过 5 MB 的图片，可在 `commentConfig.waline.imageUploadURL` 中配置兼容的自建上传接口。文章图片仍建议使用独立图床 |
 
-## Cloudflare Pages 部署方案
+## 静态部署方案
 
-静态内容可通过 Cloudflare Pages 部署；需要 AI 搜索、随机封面代理等运行时接口时，使用项目的 Cloudflare Worker 部署配置。
-
-AI 搜索保持关闭时，无需创建 Vectorize 索引或配置 AI 相关环境变量。启用后请按上方“AI 搜索（可选）”完成索引与凭证配置。
+构建产物 `dist/` 可直接部署到 Cloudflare Pages、Vercel、Netlify、Nginx 等静态托管平台，不需要 Cloudflare Worker、Wrangler、Vectorize、Embedding 或 Durable Object 资源。
 
 ## Live2D 版权声明
 

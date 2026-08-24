@@ -24,8 +24,7 @@ src/config/
 ├── sponsorConfig.ts           # 赞助配置
 ├── coverImageConfig.ts        # 封面图配置
 ├── calendarConfig.ts          # 日历小组件配置
-├── aiSearchConfig.ts          # AI 搜索配置
-├── llmsConfig.ts              # LLM 机器入口与 GEO 文案配置
+├── llmsConfig.ts              # llms.txt 机器入口与 GEO 文案配置
 ├── collectionsApiConfig.ts    # 收藏 API 配置
 ├── plantumlConfig.ts          # PlantUML 图表配置
 └── README.md                  # 本文件
@@ -63,8 +62,7 @@ import { homeConfig } from '../config/homeConfig';
 - `sponsorConfig.ts` - 赞助配置（赞助方式、二维码等）
 - `coverImageConfig.ts` - 封面图配置（随机封面图列表等）
 - `calendarConfig.ts` - 日历小组件配置
-- `aiSearchConfig.ts` - AI 搜索配置
-- `llmsConfig.ts` - LLM 机器入口、主题说明与 GEO 文案配置
+- `llmsConfig.ts` - llms.txt 机器入口、主题说明与 GEO 文案配置
 - `collectionsApiConfig.ts` - 收藏 API 配置
 - `plantumlConfig.ts` - PlantUML 图表配置
 

@@ -10,7 +10,6 @@ import {
 	siteConfig,
 	spineModelConfig,
 } from "@/config";
-import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import { musicPlayerConfig } from "@/config/musicConfig";
 import { LinkPresets } from "@/constants/link-presets";
 import I18nKey from "@/i18n/i18nKey";
@@ -346,12 +345,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 					<Icon name="material-symbols:format-list-bulleted" is:inline />
 					<span>{i18n(I18nKey.tableOfContents)}</span>
 				</button>
-				{aiSearchPublicConfig.enabled && (
-					<button type="button" id="mobile-dock-ai-search-btn" aria-label={i18n(I18nKey.aiSearch)}>
-						<Icon name="ri:ai" is:inline />
-						<span>{i18n(I18nKey.aiSearch)}</span>
-					</button>
-				)}
 				<button class="is-hidden" type="button" id="mobile-dock-comment-btn" aria-label={i18n(I18nKey.comments)}>
 					<Icon name="mingcute:comment-line" is:inline />
 					<span>{i18n(I18nKey.comments)}</span>
@@ -859,11 +852,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		document.getElementById("mobile-dock-search-btn")?.addEventListener("click", () => {
 			closeCard();
 			requestSearchModalToggle();
-		}, { signal });
-
-		document.getElementById("mobile-dock-ai-search-btn")?.addEventListener("click", () => {
-			closeCard();
-			window.dispatchEvent(new CustomEvent("toggle-ai-search"));
 		}, { signal });
 
 		document.getElementById("mobile-dock-theme-btn")?.addEventListener("click", () => {

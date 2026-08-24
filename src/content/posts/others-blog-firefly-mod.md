@@ -300,8 +300,8 @@ fetch("https://timor.tech/api/holiday/year/2026")
 2. 修改了整体 UI 风格，保留亮色与暗色两种主题，不再维护背景图和多套背景配置。
 3. 添加了日历功能，按文章发布日期展示内容；节假日数据在构建时从第三方 API 拉取并合并内置节日，运行时只读静态 JSON。
 4. 删除了追番功能，避免相关数据请求和资源处理进入构建流程。
-5. 使用 Pagefind `1.5.2` 构建本地全文索引；使用 Cloudflare Vectorize、Workers AI 和 Durable Objects 提供可选的 AI 语义搜索与限流。
-6. 使用 Cloudflare Workers 运行时承担可选的 AI 搜索和随机封面代理等动态接口；静态文章、图片和 Pagefind 索引仍由静态资源服务返回。
+5. 使用 Pagefind `1.5.2` 构建本地全文索引，并在构建期生成 LLM Wiki 的 JSON / Markdown 机器入口。
+6. 站点完全静态生成，可直接部署到 Cloudflare Pages、Vercel、Netlify 或其他静态托管平台；评论和统计使用各自的外部服务。
 
 
 ## 二、用到的AI模型

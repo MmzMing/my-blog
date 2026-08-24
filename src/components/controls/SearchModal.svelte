@@ -1,7 +1,6 @@
 <script lang="ts">
 import { navigateToPage } from "@utils/navigation-utils";
 import { onMount, tick } from "svelte";
-import { aiSearchPublicConfig } from "@/config/aiSearchConfig";
 import type { SearchResult } from "@/global";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -245,31 +244,12 @@ function handleResultClick(e: MouseEvent, url: string) {
 }
 
 // --- Global keyboard shortcut (Ctrl+K / Cmd+K) ---
-// 统一处理：默认打开普通搜索，再次按切换到 AI 搜索，再按关闭
 function handleGlobalKeyDown(e: KeyboardEvent) {
 	// 用 e.code(物理按键)判断，不受 Caps Lock / 输入法 / 键盘布局导致的大小写影响
 	if ((e.ctrlKey || e.metaKey) && e.code === "KeyK") {
 		e.preventDefault();
-		if (!aiSearchPublicConfig.enabled) {
-			if (visible) {
-				close();
-			} else {
-				open();
-			}
-			return;
-		}
-		const aiOpen = !!window.__aiSearchOpen;
-		if (aiOpen) {
-			// AI 搜索已打开 → 关闭它
-			window.dispatchEvent(new CustomEvent("toggle-ai-search"));
-		} else if (visible) {
-			// 普通搜索已打开 → 切换到 AI 搜索
-			close();
-			window.dispatchEvent(new CustomEvent("toggle-ai-search"));
-		} else {
-			// 都没打开 → 打开普通搜索
-			open();
-		}
+		if (visible) close();
+		else open();
 	}
 }
 

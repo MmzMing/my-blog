@@ -27,16 +27,14 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { siteConfig } from "../src/config/siteConfig";
-import { loadPosts } from "./ai-search/content";
+import { loadPostFiles } from "./post-loader";
 
 const INDEXNOW_API = "https://api.indexnow.org/indexnow";
 const MAX_URLS_PER_REQUEST = 10000;
 
 function loadEnvironment(cwd = process.cwd()): void {
-	for (const filename of [".env.cf", ".env"]) {
-		const filePath = path.resolve(cwd, filename);
-		if (fs.existsSync(filePath)) process.loadEnvFile(filePath);
-	}
+	const filePath = path.resolve(cwd, ".env");
+	if (fs.existsSync(filePath)) process.loadEnvFile(filePath);
 }
 
 /** 收集相对 HEAD 变更的文章 slug（含已暂存、未跟踪的新文件，排除已删除） */
@@ -150,8 +148,9 @@ async function collectUrls(
 
 	switch (args.mode) {
 		case "all": {
-			const posts = await loadPosts(cwd);
+			const posts = await loadPostFiles(cwd);
 			for (const post of posts) {
+				if (post.draft || post.password) continue;
 				urlSet.add(buildPostUrl(siteUrl, post.slug));
 			}
 			break;
@@ -164,8 +163,12 @@ async function collectUrls(
 			break;
 		}
 		case "ids": {
-			const posts = await loadPosts(cwd);
-			const knownSlugs = new Set(posts.map((post) => post.slug));
+			const posts = await loadPostFiles(cwd);
+			const knownSlugs = new Set(
+				posts
+					.filter((post) => !post.draft && !post.password)
+					.map((post) => post.slug),
+			);
 			for (const id of args.ids) {
 				if (!knownSlugs.has(id)) {
 					console.warn(`警告: 未找到文章 "${id}"，已跳过`);

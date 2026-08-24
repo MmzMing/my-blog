@@ -286,7 +286,6 @@ export const ja: Translation = {
 	[Key.copyTemplate]: "テンプレートをコピー",
 
 	// ===== 悬浮坞 / 导航 / 主题 =====
-	[Key.aiSearch]: "AI検索",
 	[Key.switchToDark]: "ダークモードに切替",
 	[Key.switchToLight]: "ライトモードに切替",
 	[Key.spineModel]: "Spineモデル",
@@ -301,13 +300,11 @@ export const ja: Translation = {
 	[Key.searchPlaceholder2]: "キーワードを入力して検索",
 	[Key.searchPlaceholder3]: "「Astro」や「Svelte」を試してみて",
 	[Key.searchPlaceholder4]: "ESCで検索パネルを閉じる",
-	[Key.searchPlaceholder5]: "Ctrl+KでAI検索と通常検索を切替",
 	[Key.searchViewAllPrefix]: "すべて見る",
 	[Key.searchViewAllSuffix]: "件の結果 →",
 	[Key.searchHintClose]: "ESC 閉じる",
 	[Key.searchHintSearch]: "ENTER 検索",
 	[Key.searchHintToggle]: "Ctrl+K 切替",
-
 	// ===== 首页 Hero 对话 =====
 	[Key.techBlogSuffix]: "の技術ブログ",
 	[Key.dialogueMenuTitle]: "何を話そうか？",
@@ -458,46 +455,13 @@ export const ja: Translation = {
 	[Key.postAiSummaryLabel]: "AI 要約",
 	[Key.coverImageAltSuffix]: "のカバー画像",
 
-	// ===== AI 搜索 / 留言板（Phase B）=====
+	// ===== 留言板 =====
 	[Key.sending]: "送信中",
 	[Key.saving]: "保存中",
 	[Key.deleting]: "削除中",
 	[Key.image]: "画像",
 	[Key.none]: "なし",
 	[Key.emoji]: "絵文字",
-	[Key.aiSuggestionBlog]: "このブログはどうやって作られたの？",
-	[Key.aiSuggestionIntro]: "自分を紹介して",
-	[Key.aiFollowUpPosts]: "最近の記事について話して",
-	[Key.aiFollowUpProjects]: "おすすめのプロジェクトは？",
-	[Key.aiJustNow]: "たった今",
-	[Key.aiMinutesAgo]: "{n}分前",
-	[Key.aiHoursAgo]: "{n}時間前",
-	[Key.aiDaysAgo]: "{n}日前",
-	[Key.aiInputTooLong]: "入力が長すぎますニャ、最大 {max} 文字まで~",
-	[Key.aiStreamErrorPrefix]: "エラー：{error}",
-	[Key.aiCancelled]: "（キャンセル済み）",
-	[Key.aiRateLimited]:
-		"リクエストが多すぎますニャ、少し待ってから再試行してください~",
-	[Key.aiRequestError]:
-		"申し訳ありません、リクエストエラーが発生しました。少し待ってから再試行してください~",
-	[Key.aiAssistantName]: "ミャオドゥン",
-	[Key.aiHistory]: "履歴セッション",
-	[Key.aiClearAllSessions]: "全セッションを削除",
-	[Key.aiNewSession]: "新規セッション",
-	[Key.aiDeleteSession]: "セッションを削除",
-	[Key.aiNoHistory]: "履歴セッションはありません",
-	[Key.aiEmptyTitle]: "何を聞きたい？",
-	[Key.aiRefsTitle]: "参考記事",
-	[Key.aiResizeTitle]: "ドラッグで高さを調整",
-	[Key.aiAskLabel]: "質問",
-	[Key.aiInputPlaceholder]: "質問を入力...",
-	[Key.aiInputAria]: "AI検索の質問",
-	[Key.aiStopGeneration]: "生成を停止",
-	[Key.aiPrivacyNotice]:
-		"質問と直近6回の対話は ModelScope または Cloudflare Workers AI に送信されます。パスワード、トークン、機密情報を入力しないでください。セッションは7日間保存されます。",
-	[Key.aiRequestFailedStatus]: "リクエスト失敗 ({status})",
-	[Key.aiStreamUnreadable]: "レスポンスストリームを読み取れません",
-	[Key.aiNewChat]: "新しい対話",
 	[Key.gbVisitor]: "訪問者",
 	[Key.gbAnonymousVisitor]: "匿名訪問者",
 	[Key.gbServerNotConfiguredLogin]:

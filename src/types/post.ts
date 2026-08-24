@@ -17,6 +17,7 @@ export interface PostData {
 	comment?: boolean;
 	password?: string;
 	passwordHint?: string;
+	wikiExclude?: boolean;
 	prevTitle: string;
 	prevSlug: string;
 	nextTitle: string;

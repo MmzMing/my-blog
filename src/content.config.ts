@@ -22,6 +22,8 @@ const postsCollection = defineCollection({
 		comment: z.boolean().optional().default(true),
 		password: z.string().optional().default(""),
 		passwordHint: z.string().optional().default(""),
+		// 仅从公开机器知识入口排除，文章页面仍然保留。
+		wikiExclude: z.boolean().optional().default(false),
 
 		/* For internal use */
 		prevTitle: z.string().default(""),
