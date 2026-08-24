@@ -18,6 +18,7 @@ const buildNavBarConfig = (): NavBarConfig => {
 	// 1. 构建文章下拉菜单
 	const postsNav: NavBarLink = {
 		...LinkPresets[LinkPreset.NavPosts],
+		activePathPrefixes: ["/posts/"],
 		children: [LinkPreset.Archive, LinkPreset.Categories, LinkPreset.PostList],
 	};
 

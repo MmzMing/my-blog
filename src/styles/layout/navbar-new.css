@@ -312,7 +312,7 @@
 		opacity 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
 		background-color 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	pointer-events: none;
-	z-index: -1;
+	z-index: 0;
 }
 
 /* 当前栏目沿用导航悬停高亮。 */

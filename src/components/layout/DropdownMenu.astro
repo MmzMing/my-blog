@@ -37,7 +37,11 @@ const processedLink = {
 const hasChildren = processedLink.children && processedLink.children.length > 0;
 ---
 
-<div class:list={["dropdown-container", className]} data-dropdown>
+<div
+	class:list={["dropdown-container", className]}
+	data-dropdown
+	data-active-path-prefixes={processedLink.activePathPrefixes?.join(" ")}
+>
 	{hasChildren ? (
 		<button
 			class="btn-plain scale-animation rounded-lg h-9 font-bold px-3 pr-7 active:scale-95 dropdown-trigger relative"

@@ -464,6 +464,21 @@ export function mountHomeHero() {
 		);
 	};
 
+	const renderTimelineForScroll = (scrollProgress: number) => {
+		const progress = mapScrollProgressToTimelineProgress(scrollProgress);
+		timeline?.totalProgress(progress);
+		updateSceneState(progress);
+	};
+
+	const invalidateTimelineFromInitialState = () => {
+		if (!timeline) return;
+		const progress = timeline.totalProgress();
+		// GSAP 的 to tween 会以 invalidate 时的当前值作为起点，先回到初始帧才能保留原始起点。
+		timeline.totalProgress(0, true);
+		timeline.invalidate();
+		timeline.totalProgress(progress, true);
+	};
+
 	const buildTimeline = () => {
 		if (!title || !mosaic || !backdrop || tiles.length === 0) return;
 
@@ -625,12 +640,9 @@ export function mountHomeHero() {
 			duration: 1,
 			ease: "none",
 			paused: true,
-			onUpdate: () => {
-				timeline?.totalProgress(
-					mapScrollProgressToTimelineProgress(scrollState.progress),
-				);
-			},
+			onUpdate: () => renderTimelineForScroll(scrollState.progress),
 		});
+
 		heroScrollTrigger = ScrollTrigger.create({
 			id: "home-hero-two-layer",
 			trigger: hero,
@@ -640,23 +652,19 @@ export function mountHomeHero() {
 			pinSpacing: true,
 			scrub: config.mosaic.scrub,
 			anticipatePin: 1,
-			invalidateOnRefresh: true,
 			animation: scrollDriver,
-			onRefreshInit: () => timeline?.invalidate(),
+			invalidateOnRefresh: true,
+			onRefreshInit: invalidateTimelineFromInitialState,
 			onRefresh: (self) => {
-				const progress = mapScrollProgressToTimelineProgress(self.progress);
-				timeline?.totalProgress(progress);
-				updateSceneState(progress);
+				self.update();
+				renderTimelineForScroll(scrollDriver?.progress() ?? self.progress);
 			},
-			onUpdate: (self) =>
-				updateSceneState(mapScrollProgressToTimelineProgress(self.progress)),
+			onUpdate: (self) => {
+				if (!scrollDriver) renderTimelineForScroll(self.progress);
+			},
 		});
 
-		const initialProgress = mapScrollProgressToTimelineProgress(
-			heroScrollTrigger.progress,
-		);
-		timeline.totalProgress(initialProgress);
-		updateSceneState(initialProgress);
+		renderTimelineForScroll(heroScrollTrigger.progress);
 		ScrollTrigger.refresh();
 	};
 
@@ -809,6 +817,7 @@ export function mountHomeHero() {
 		requestAnimationFrame(() => {
 			window.scrollTo(0, 0);
 			timeline?.progress(0);
+			scrollDriver?.progress(0);
 			updateSceneState(0);
 			ScrollTrigger.refresh();
 			history.scrollRestoration = "auto";

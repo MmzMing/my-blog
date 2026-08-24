@@ -401,7 +401,7 @@ function initHoverSlider(animateActiveChange = false) {
 			: { rect: null, markup: '' };
 
 		navItems.forEach((item) => {
-			// 收集所有可匹配的 href：自身 + 子菜单
+			// 收集所有可匹配的路径：自身、子菜单和配置声明的额外前缀。
 			const hrefs: string[] = [];
 			const selfLink = item.querySelector(':scope > a') as HTMLAnchorElement | null;
 			if (selfLink) {
@@ -414,7 +414,12 @@ function initHoverSlider(animateActiveChange = false) {
 				if (href) hrefs.push(href);
 			});
 
-			const matched = hrefs.some((href) => pathMatches(currentPath, href));
+			const activePathPrefixes = item.dataset.activePathPrefixes
+				?.split(/\s+/)
+				.filter(Boolean) ?? [];
+			const matched = [...hrefs, ...activePathPrefixes].some((href) =>
+				pathMatches(currentPath, href),
+			);
 			if (matched && !activeItem) activeItem = item;
 		});
 

@@ -110,25 +110,10 @@ export function initHomeHeroRain(
 		const x1 = Math.max(0, bounds.left - heroBounds.left);
 		const x2 = Math.min(width, bounds.right - heroBounds.left);
 		const top = Math.max(0, Math.min(height, bounds.top - heroBounds.top));
-		const boxWidth = x2 - x1;
-		const boxHeight = bounds.height;
-		if (boxWidth <= 0 || top <= 0 || top >= height) return;
+		if (x2 <= x1 || top <= 0 || top >= height) return;
 
-		const dialogueEdges: HitEdge[] = [
-			{
-				x1,
-				x2: x1 + boxWidth * 0.25,
-				y: top,
-				captureRate: 0.62,
-			},
-			{
-				x1: x1 + boxWidth * 0.3,
-				x2,
-				y: Math.min(height - 2, top + boxHeight * 0.24),
-				captureRate: 0.62,
-			},
-		];
-		hitEdges.unshift(...dialogueEdges);
+		// 对话框现在是平面矩形，雨滴只需要沿实际可见的上边碰撞。
+		hitEdges.unshift({ x1, x2, y: top, captureRate: 0.62 });
 	}
 
 	function resize() {

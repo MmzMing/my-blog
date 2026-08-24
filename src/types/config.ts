@@ -215,6 +215,7 @@ export type NavBarLink = {
 	external?: boolean;
 	icon?: string; // 菜单项图标
 	action?: string; // 可选：点击时触发的自定义事件名（不跳转页面）
+	activePathPrefixes?: string[]; // 额外激活路径前缀，用于聚合不直接对应菜单链接的页面
 	children?: (NavBarLink | LinkPreset)[]; // 支持子菜单，可以是NavBarLink或LinkPreset
 };
 
