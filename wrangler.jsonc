@@ -1,0 +1,24 @@
+{
+	// 编辑器智能提示与校验（自动补全、错误红线），不影响部署行为
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	// 纯静态资产部署：dist/ 由 Workers 静态资产服务直接分发，无 Worker 脚本
+	// Worker 名称，必须与 Cloudflare 后台已连接 Git 构建的那个 Worker 一致
+	"name": "my-blog",
+	// Workers 运行时兼容性日期，纯静态资产服务下无实质影响
+	"compatibility_date": "2026-05-07",
+	"assets": {
+		// 构建产物目录（astro build 输出）
+		"directory": "./dist",
+		// 强制尾斜杠重定向：访问不带斜杠的 /posts 会 301 到 /posts/
+		// 与站点 trailingSlash: "always" 一致，统一 URL 避免 SEO 权重分散
+		"html_handling": "force-trailing-slash",
+		// 未命中路由时返回 dist/404.html（附 404 状态码）
+		"not_found_handling": "404-page"
+	},
+	// Workers 日志（后台 Logs 面板可查看），采样率 1 = 100% 采集
+	// 纯静态请求基本不产生日志，预留为日后挂 Worker 脚本（如访客计数）时使用
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+}
