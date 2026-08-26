@@ -476,6 +476,17 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "毛",
+		imgurl:
+			"https://img.huchao.vip/file/avatar/1782805912195_7cf1163ce5b4c2783fc89f56e11124c1.jpg",
+		desc: "如果有不可能，那就去创造！",
+		siteurl: "https://blog.huchao.vip/",
+		image: "/assets/images/friends/huchao.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
