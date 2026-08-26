@@ -14,11 +14,5 @@
 		"html_handling": "force-trailing-slash",
 		// 未命中路由时返回 dist/404.html（附 404 状态码）
 		"not_found_handling": "404-page"
-	},
-	// Workers 日志（后台 Logs 面板可查看），采样率 1 = 100% 采集
-	// 纯静态请求基本不产生日志，预留为日后挂 Worker 脚本（如访客计数）时使用
-	"observability": {
-		"enabled": true,
-		"head_sampling_rate": 1
 	}
 }
