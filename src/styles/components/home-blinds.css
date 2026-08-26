@@ -52,8 +52,7 @@
 	pointer-events: none;
 }
 
-.home-blinds__background,
-.home-blinds__portal-image {
+.home-blinds__background {
 	position: absolute;
 	inset: 0;
 	display: block;
@@ -63,6 +62,25 @@
 	object-position: center;
 	user-select: none;
 	-webkit-user-drag: none;
+}
+
+/* 过渡层里的图片不吃 inset：控制器按「视口 cover 的渲染尺寸」给它显式宽高，
+   收缩全程只用等比 scale，object-fit 因此永不重算裁切，也就不再每帧重光栅。
+   居中交给控制器写的 xPercent / yPercent，这里只给 top / left。 */
+.home-blinds__portal-image {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: block;
+	/* 兜底尺寸：图片自然尺寸未就绪时控制器写不出精确宽高，先按满屏 cover 撑住，
+	   就绪后由控制器替换成「视口 cover 的渲染尺寸」 */
+	width: 100vw;
+	height: 100vh;
+	object-fit: cover;
+	object-position: center;
+	user-select: none;
+	-webkit-user-drag: none;
+	will-change: transform;
 }
 
 .home-blinds__background {
@@ -96,14 +114,15 @@
 
 .home-blinds__portal,
 .home-blinds-scenes__track,
-.home-blinds-scenes__stands,
-.home-blinds-scenes__strings {
+.home-blinds-scenes__stands {
 	position: absolute;
 	inset: 0;
 }
 
-/* 过渡层：全屏背景收缩成首幕图框。边框宽度由控制器从 0 补到 1.5px，
-   收缩终点与 .home-blinds-scene__frame 完全重合，切换瞬间不跳变 */
+/* 过渡层：全屏背景收缩成首幕图框。元素尺寸恒为满屏，收缩靠 clip-path 收窗
+   （只触发 paint）加内部图片的等比 scale（走合成），不再补间 width / height。
+   起点可视区精确等于「视口 cover」、终点精确等于「图框 cover」，两端交接都不跳变。
+   1.5px 边框拆到 .home-blinds__portal-edge：clip-path 会把元素自身的边框一并裁掉。 */
 .home-blinds__portal {
 	z-index: 5;
 	top: 50%;
@@ -111,12 +130,28 @@
 	width: 100vw;
 	height: 100vh;
 	overflow: hidden;
-	box-sizing: border-box;
-	border: 0 solid var(--deep-text);
 	background: var(--page-bg);
 	opacity: 0;
 	visibility: hidden;
-	will-change: width, height, transform, opacity;
+	will-change: clip-path, opacity;
+}
+
+/* 收缩终点的图框边框：尺寸由控制器按图框布局尺寸写入，不参与任何缩放，
+   只在收缩后段淡入，终点与 .home-blinds-scene__frame 的 1.5px 边框重合。
+   opacity 归 shrinkTimeline、visibility 归 applyPhase，两者不抢同一属性。
+   边框变量定义在 .home-blinds-scenes 上，这里取不到，故显式给同值兜底。 */
+.home-blinds__portal-edge {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	z-index: 6;
+	display: block;
+	box-sizing: border-box;
+	border: 1.5px solid var(--deep-text);
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	will-change: opacity;
 }
 
 /* ============================================
@@ -141,19 +176,38 @@
 	--home-blinds-headline-ink: #00a29b;
 	/* 辅助线与虚线圆另走浅色，不跟着墨色变青，免得整屏一色糊成一片 */
 	--home-blinds-headline-rule: #fff;
-	--home-blinds-headline-title-size: clamp(2.1rem, 5.6vw, 5.4rem);
+	--home-blinds-headline-title-size: clamp(2.6rem, 7.2vw, 7rem);
 	--home-blinds-headline-message-size: calc(
 		var(--home-blinds-headline-title-size) * 0.84
 	);
 	--home-blinds-headline-tracking: 0.08em;
 	--home-blinds-headline-line: 1.5px;
+	/* 中缝横线与两侧竖线比虚线圆更粗一档，免得在大字号下显得细弱 */
+	--home-blinds-headline-rule-line: calc(var(--home-blinds-headline-line) * 1.5);
+	/* 横线末端的空心方块：既是刻度也是与虚线圆之间的断点 */
+	--home-blinds-headline-axis-mark: 0.68rem;
+	--home-blinds-headline-axis-gap: 2.4vw;
+	/* 横线不贴视窗两边，外端留出的空白 */
+	--home-blinds-headline-axis-inset: 5vw;
+	/* 中点竖线两侧的断口：横线到此断开，不连续 */
+	--home-blinds-headline-axis-split: 0.62rem;
 	--home-blinds-headline-band-height: calc(
 		var(--home-blinds-headline-title-size) * 1.28
 	);
 	--home-blinds-headline-band-inset: 8.6vw;
 	--home-blinds-headline-edge-inset: 13.2vw;
-	--home-blinds-headline-edge-height: 46vh;
-	--home-blinds-headline-ring-size: min(46vw, 88vh);
+	--home-blinds-headline-edge-height: 34vh;
+	--home-blinds-headline-ring-size: min(33vw, 64vh);
+	/* 圆心准星：内圈细圆 + 四向短刻度 */
+	--home-blinds-headline-core-size: calc(
+		var(--home-blinds-headline-ring-size) * 0.42
+	);
+	--home-blinds-headline-core-tick: calc(
+		var(--home-blinds-headline-core-size) * 0.14
+	);
+	--home-blinds-headline-core-tick-gap: calc(
+		var(--home-blinds-headline-core-size) * 0.07
+	);
 	--home-blinds-headline-line-gap: calc(
 		var(--home-blinds-headline-title-size) * 0.3
 	);
@@ -183,35 +237,74 @@
 	will-change: transform, opacity;
 }
 
-/* 中缝横线：自中间往两侧揭开，末端带方形刻度 */
+/* 中缝横线：自中间往两侧揭开。
+   盒高等于末端方块的边长，横线本体用垂直居中的渐变画出来 —— 这样入场的 clip-path
+   只在水平方向收放，方块与中点竖线不会被裁掉。
+   两端各留一段空白：内端 axis-gap 与虚线圆断开、止于空心方块，外端 axis-inset
+   不贴视窗边；横线本体是两段渐变，在中点竖线处断开，并不连续 */
 .home-blinds-headline__axis {
 	position: absolute;
-	top: calc(50% - var(--home-blinds-headline-line) / 2);
+	top: calc(50% - var(--home-blinds-headline-axis-mark) / 2);
 	z-index: 1;
-	width: calc(50% - var(--home-blinds-headline-ring-size) / 2);
-	height: var(--home-blinds-headline-line);
-	/* 末端方形刻度用 currentcolor，故此处顺带把 color 换成浅色 */
+	width: calc(
+		50% - var(--home-blinds-headline-ring-size) / 2 -
+			var(--home-blinds-headline-axis-gap) -
+			var(--home-blinds-headline-axis-inset)
+	);
+	height: var(--home-blinds-headline-axis-mark);
+	/* 方块与中点竖线都吃 currentcolor，故此处顺带把 color 换成浅色 */
 	color: var(--home-blinds-headline-rule);
-	background: color-mix(in srgb, currentcolor 52%, transparent);
+	/* 第一层＝外段，第二层＝内段（内段再让出末端方块的位置） */
+	background-image: linear-gradient(
+			color-mix(in srgb, currentcolor 72%, transparent),
+			color-mix(in srgb, currentcolor 72%, transparent)
+		),
+		linear-gradient(
+			color-mix(in srgb, currentcolor 72%, transparent),
+			color-mix(in srgb, currentcolor 72%, transparent)
+		);
+	background-repeat: no-repeat;
+	background-size: calc(50% - var(--home-blinds-headline-axis-split) / 2)
+			var(--home-blinds-headline-rule-line),
+		calc(
+				50% - var(--home-blinds-headline-axis-split) / 2 -
+					var(--home-blinds-headline-axis-mark)
+			)
+			var(--home-blinds-headline-rule-line);
 	opacity: 0;
 	visibility: hidden;
 	will-change: transform, opacity, clip-path;
 }
 
+/* 中点竖线：把这一侧的横线一分为二 */
+.home-blinds-headline__axis::before {
+	position: absolute;
+	top: 0;
+	left: calc(50% - var(--home-blinds-headline-rule-line) / 2);
+	display: block;
+	width: var(--home-blinds-headline-rule-line);
+	height: 100%;
+	content: "";
+	background: currentcolor;
+}
+
+/* 末端空心方块 */
 .home-blinds-headline__axis::after {
 	position: absolute;
-	top: 50%;
+	top: 0;
 	display: block;
-	width: 0.38rem;
-	height: 0.38rem;
+	width: var(--home-blinds-headline-axis-mark);
+	height: 100%;
 	content: "";
 	box-sizing: border-box;
-	border: var(--home-blinds-headline-line) solid currentcolor;
-	margin-top: -0.19rem;
+	border: var(--home-blinds-headline-rule-line) solid currentcolor;
 }
 
 .home-blinds-headline__axis[data-headline-axis="left"] {
-	left: 0;
+	left: var(--home-blinds-headline-axis-inset);
+	/* 外段贴左（视窗侧），内段贴右并让出末端方块 */
+	background-position: 0 50%,
+		calc(100% - var(--home-blinds-headline-axis-mark)) 50%;
 }
 
 .home-blinds-headline__axis[data-headline-axis="left"]::after {
@@ -219,11 +312,80 @@
 }
 
 .home-blinds-headline__axis[data-headline-axis="right"] {
-	right: 0;
+	right: var(--home-blinds-headline-axis-inset);
+	/* 右侧整体镜像：外段贴右，内段贴左并让出末端方块 */
+	background-position: 100% 50%, var(--home-blinds-headline-axis-mark) 50%;
 }
 
 .home-blinds-headline__axis[data-headline-axis="right"]::after {
 	left: 0;
+}
+
+/* 圆心准星：内圈细圆 + 四向短刻度，随虚线圆一起显露并转 90° */
+.home-blinds-headline__core {
+	position: absolute;
+	top: calc(50% - var(--home-blinds-headline-core-size) / 2);
+	left: calc(50% - var(--home-blinds-headline-core-size) / 2);
+	z-index: 0;
+	width: var(--home-blinds-headline-core-size);
+	height: var(--home-blinds-headline-core-size);
+	color: var(--home-blinds-headline-rule);
+	opacity: 0;
+	visibility: hidden;
+	transform-origin: 50% 50%;
+	will-change: transform, opacity;
+}
+
+.home-blinds-headline__core-ring {
+	position: absolute;
+	inset: 0;
+	box-sizing: border-box;
+	border: var(--home-blinds-headline-line) solid
+		color-mix(in srgb, currentcolor 38%, transparent);
+	border-radius: 50%;
+}
+
+/* 四向刻度整组斜 45°：刻度仍按内圈四个边中点排布，整组转过来即落在对角线上，
+   自身也跟着倾斜 45°，正好是「沿对角线朝外的四道斜杠」 */
+.home-blinds-headline__core-ticks {
+	position: absolute;
+	inset: 0;
+	transform: rotate(45deg);
+}
+
+.home-blinds-headline__core-tick {
+	position: absolute;
+	background: color-mix(in srgb, currentcolor 62%, transparent);
+}
+
+.home-blinds-headline__core-tick[data-core-tick="top"],
+.home-blinds-headline__core-tick[data-core-tick="bottom"] {
+	left: calc(50% - var(--home-blinds-headline-rule-line) / 2);
+	width: var(--home-blinds-headline-rule-line);
+	height: var(--home-blinds-headline-core-tick);
+}
+
+.home-blinds-headline__core-tick[data-core-tick="left"],
+.home-blinds-headline__core-tick[data-core-tick="right"] {
+	top: calc(50% - var(--home-blinds-headline-rule-line) / 2);
+	width: var(--home-blinds-headline-core-tick);
+	height: var(--home-blinds-headline-rule-line);
+}
+
+.home-blinds-headline__core-tick[data-core-tick="top"] {
+	bottom: calc(100% + var(--home-blinds-headline-core-tick-gap));
+}
+
+.home-blinds-headline__core-tick[data-core-tick="bottom"] {
+	top: calc(100% + var(--home-blinds-headline-core-tick-gap));
+}
+
+.home-blinds-headline__core-tick[data-core-tick="left"] {
+	right: calc(100% + var(--home-blinds-headline-core-tick-gap));
+}
+
+.home-blinds-headline__core-tick[data-core-tick="right"] {
+	left: calc(100% + var(--home-blinds-headline-core-tick-gap));
 }
 
 /* 两侧竖线：随长条一起横移，长条固定时一并固定 */
@@ -231,7 +393,7 @@
 	position: absolute;
 	top: calc(50% - var(--home-blinds-headline-edge-height) / 2);
 	z-index: 1;
-	width: var(--home-blinds-headline-line);
+	width: var(--home-blinds-headline-rule-line);
 	height: var(--home-blinds-headline-edge-height);
 	background: color-mix(in srgb, var(--home-blinds-headline-rule) 62%, transparent);
 	opacity: 0;
@@ -295,13 +457,14 @@
 	white-space: nowrap;
 }
 
+/* 逐字节点数量随祝福语条数增长，不在此常驻 will-change：
+   翻页期间由控制器临时写入、播完清成 auto，避免长期占用合成层 */
 .home-blinds-headline__message-char {
 	display: inline-block;
 	opacity: 0;
 	visibility: hidden;
 	backface-visibility: hidden;
 	transform-origin: 50% 50%;
-	will-change: transform, opacity;
 }
 
 /* 长条：外缘钉在 band-inset 上，只靠 scaleX 让内缘往两侧退，
@@ -326,7 +489,7 @@
 	transform-origin: 100% 50%;
 }
 
-/* ---------- 第二层背景跑马灯：与立牌同时纸牌式立起，之后持续右移循环 ----------
+/* ---------- 第二层背景跑马灯：与立牌同时自后方纸牌式立起，之后持续左移循环 ----------
    transform 由控制器写入（rotationX + transformPerspective），
    这里只给铰链位置；单格宽度由组件按图片数量算好后注入 --home-blinds-cycle-cell */
 
@@ -378,24 +541,6 @@
 	object-position: center;
 	user-select: none;
 	-webkit-user-drag: none;
-}
-
-.home-blinds-scenes__strings {
-	/* 立牌层级为 5，操纵杆压在画面之上、立牌之下一层 */
-	z-index: 4;
-	width: 100%;
-	height: 100%;
-	overflow: visible;
-	pointer-events: none;
-}
-
-.home-blinds-scenes__string {
-	/* 皮影戏木杆：连接立牌与画面底部的操纵杆，需明显粗于吊线 */
-	stroke: #9e8d76;
-	stroke-width: 6px;
-	stroke-linecap: round;
-	opacity: 0;
-	will-change: opacity;
 }
 
 .home-blinds-scenes__track {
@@ -708,10 +853,11 @@
 	margin: 0;
 }
 
+/* 五幕字幕合计上百个逐字节点，不在此常驻 will-change（尤其 filter，提升代价最高）：
+   由 playSceneIntro 在入场期间临时写入、播完清成 auto */
 .home-blinds-scene__caption-char {
 	display: inline-block;
 	white-space: pre;
-	will-change: transform, opacity, filter;
 }
 
 /* 序幕：贴底整幅字幕条 */
@@ -917,6 +1063,26 @@
 	object-position: center bottom;
 	user-select: none;
 	-webkit-user-drag: none;
+	will-change: transform;
+}
+
+/* 皮影戏木杆：接在立牌底边正下方，跟着立牌图一起做跳跃位移。
+   长度 = 立牌底边到视窗底的 8vh + 最大跳跃高度的余量，多出来的部分由
+   .home-blinds-scenes__viewport 的 overflow: hidden 裁掉，所以跳到最高点时
+   下端依旧越过视窗底边，不会露出杆尾。
+   跳跃高度（控制器 startBounce 的 jumpHeights，当前最高 95px）若调大，这里的
+   140px 余量要同步加大。木杆是立牌的子元素，进出场的 autoAlpha 与立起的
+   rotationX 都直接继承，无需单独补间。 */
+.home-blinds-scenes__stand-pole {
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	display: block;
+	width: 6px;
+	height: calc(8vh + 140px);
+	margin-left: -3px;
+	border-radius: 3px;
+	background: #9e8d76;
 	will-change: transform;
 }
 

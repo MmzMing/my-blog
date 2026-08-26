@@ -14,6 +14,43 @@
 
   最新记录写在最上面。
 -->
+## 替换旧首页展示层为百叶窗交互效果
+
+- 日期：2026-08-26
+- 类型：refactor
+- 页面：home
+- 简述：移除旧照片墙展示层，替换为百叶窗交互效果
+
+1. 移除旧的 HomeDisplayLayer 展示层与 home-portfolio-shutter 相关组件、样式及脚本。
+
+2. 新增 HomeBlinds / HomeBlindsScene 组件、home-blinds 样式与百叶窗控制器，实现全新交互场景。
+
+3. 新增百叶窗各幕图片资源，清理 home-truncated 旧图片与冗余相册图片，精简 homeConfig 配置。
+
+## 删除 AI 搜索功能，新增站点 Wiki 供 AI 爬取
+
+- 日期：2026-08-24
+- 类型：refactor
+- 页面：site
+- 简述：移除 AI 搜索，新增站点 Wiki 输出供 AI 爬取
+
+1. 删除 AI 搜索全部相关代码：服务端核心逻辑、Cloudflare Worker 绑定实现、前端 AISearch 组件与样式、向量索引构建脚本及 Worker 动态路由。
+
+2. 新增站点 Wiki 功能：llm-wiki 工具、/wiki/ 端点（索引与文章的 JSON / Markdown 输出）及 llmsConfig 配置，供 AI 爬虫获取站点内容。
+
+3. 清理 AI 搜索相关的 i18n 文案、图标引用、类型定义与依赖项。
+
+## 新增 Wiki 链接卡片、代码块标签组功能
+
+- 日期：2026-08-23
+- 类型：feat
+- 页面：post
+- 简述：文章支持 Wiki 链接卡片与代码块标签组展示
+
+1. 新增 remark-wiki-link 插件与 WikiLinkCardManager 组件，支持在文章中渲染 Wiki 链接卡片。
+
+2. 新增 CodeGroupManager 代码块标签组功能，优化 expressive-code 代码块样式。
+
 ## 重构 404 页面，添加动态楼梯交互场景
 
 - 日期：2026-08-23

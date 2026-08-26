@@ -281,6 +281,26 @@ export function mountHomeHero() {
 		}
 	};
 
+	/**
+	 * 雨的激活条件原本只有下界（时间线过了 RAIN_ACTIVATE_TIME 就一直为真），
+	 * 于是滚过首屏之后 canvas 的 rAF 仍在每帧整屏清屏重绘，白白和下方的
+	 * 影像层抢主线程。这里补一个视口闸门：hero 离开视口即停，回来再恢复。
+	 */
+	let heroInView = true;
+	let rainWanted = false;
+	const syncRain = () => {
+		rain.setActive(rainWanted && heroInView && !reducedMotionQuery.matches);
+	};
+	const heroVisibility = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) heroInView = entry.isIntersecting;
+			syncRain();
+		},
+		// 留一点提前量，滚回首屏时雨已经在跑，不会看到空档
+		{ rootMargin: "15% 0px" },
+	);
+	heroVisibility.observe(hero);
+
 	const updateSceneState = (progress: number) => {
 		const timelineTime = progress * (timeline?.duration() ?? 1);
 		const rainActive = timelineTime >= RAIN_ACTIVATE_TIME;
@@ -292,7 +312,8 @@ export function mountHomeHero() {
 			action.tabIndex = layerActive ? 0 : -1;
 			action.setAttribute("aria-hidden", String(!layerActive));
 		});
-		rain.setActive(rainActive && !reducedMotionQuery.matches);
+		rainWanted = rainActive;
+		syncRain();
 		if (progress > 0.002) {
 			stopIdleRotation();
 			completePendingIntros();
@@ -834,6 +855,7 @@ export function mountHomeHero() {
 		for (const handle of flyHandles) handle.destroy();
 		flyHandles = [];
 		contactScatterTimeline = null;
+		heroVisibility.disconnect();
 		rain.destroy();
 		dialogue.destroy();
 		destroySticker();

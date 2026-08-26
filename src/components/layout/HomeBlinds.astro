@@ -24,7 +24,7 @@ const standImages = config.scenes.standImages.slice(
 );
 /**
  * 背景跑马灯：单格宽度固定为 CYCLE_CELL_VW，先把列表重复到「一轮 ≥ 一屏宽」，
- * 再整轮复制一份首尾相接，控制器把 xPercent 从 -50 走到 0 即为无缝右移。
+ * 再整轮复制一份首尾相接，控制器把 xPercent 从 0 走到 -50 即为无缝左移。
  */
 const CYCLE_CELL_VW = 38;
 const cycleImages = config.scenes.cycleImages.filter(Boolean);
@@ -89,6 +89,16 @@ const runtimeConfig = {
 		<div class="home-blinds__headline-window" data-headline-window>
 			<div class="home-blinds-headline" data-blinds-headline>
 				<span class="home-blinds-headline__ring" data-headline-ring></span>
+				<span class="home-blinds-headline__core" data-headline-core>
+					<span class="home-blinds-headline__core-ring"></span>
+					<!-- 四向刻度整组斜 45°，故单独套一层容器：外层的 rotation 归控制器 -->
+					<span class="home-blinds-headline__core-ticks">
+						<span class="home-blinds-headline__core-tick" data-core-tick="top"></span>
+						<span class="home-blinds-headline__core-tick" data-core-tick="right"></span>
+						<span class="home-blinds-headline__core-tick" data-core-tick="bottom"></span>
+						<span class="home-blinds-headline__core-tick" data-core-tick="left"></span>
+					</span>
+				</span>
 				<span class="home-blinds-headline__axis" data-headline-axis="left"></span>
 				<span class="home-blinds-headline__axis" data-headline-axis="right"></span>
 				<span class="home-blinds-headline__edge" data-headline-edge="left"></span>
@@ -121,15 +131,18 @@ const runtimeConfig = {
 			</div>
 		</div>
 
-		<!-- 全屏背景收缩成首幕画面的过渡层，几何尺寸对齐首幕图框 -->
+		<!-- 全屏背景收缩成首幕画面的过渡层：元素恒为满屏，收缩靠 clip-path 收窗
+		     加图片等比 scale；1.5px 边框单独一层，不参与缩放也不被 clip 裁掉 -->
 		<div class="home-blinds__portal" data-scenes-portal>
 			<img
 				class="home-blinds__portal-image"
 				src={background}
 				alt=""
 				decoding="async"
+				data-scenes-portal-image
 			/>
 		</div>
+		<span class="home-blinds__portal-edge" data-scenes-portal-edge></span>
 	</div>
 
 	<section class="home-blinds-reveal" data-home-blinds-reveal aria-label="影像揭示">
@@ -138,7 +151,7 @@ const runtimeConfig = {
 
 	<section class="home-blinds-scenes" data-home-blinds-scenes aria-label="横向影像叙事">
 		<div class="home-blinds-scenes__viewport" data-scenes-viewport>
-			<!-- 背景跑马灯：与立牌同时以纸牌立起的姿态入场，之后持续从左往右无缝循环 -->
+			<!-- 背景跑马灯：与立牌同时从后方以纸牌立起的姿态入场，之后持续从右往左无缝循环 -->
 			<div
 				class="home-blinds-scenes__cycle"
 				style={`--home-blinds-cycle-cell: ${CYCLE_CELL_VW}vw`}
@@ -161,22 +174,6 @@ const runtimeConfig = {
 					}
 				</div>
 			</div>
-
-			<svg class="home-blinds-scenes__strings" aria-hidden="true" data-scene-strings>
-				{
-					standImages.map((_, index) => (
-						<line
-							class="home-blinds-scenes__string"
-							x1="0"
-							y1="0"
-							x2="0"
-							y2="0"
-							data-scene-string
-							data-string-index={index}
-						/>
-					))
-				}
-			</svg>
 
 			<div class="home-blinds-scenes__track" data-scenes-track>
 				{
@@ -233,6 +230,9 @@ const runtimeConfig = {
 								decoding="async"
 								data-scene-stand-image
 							/>
+							<span
+								class="home-blinds-scenes__stand-pole"
+								data-scene-stand-pole></span>
 						</div>
 					))
 				}

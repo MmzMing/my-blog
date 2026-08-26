@@ -191,7 +191,7 @@ export const homeConfig: HomeConfig = {
 		},
 		scenes: {
 			scrollDistance: 3400,
-			// 背景跑马灯：列表从左往右无缝循环，只有一张也会自动复制到铺满
+			// 背景跑马灯：列表从右往左无缝循环，只有一张也会自动复制到铺满
 			cycleImages: ["/assets/images/home-blinds/act-cycle/1.webp"],
 			cycleDuration: 26,
 			composite: {

@@ -63,6 +63,12 @@
 	animation-play-state: paused;
 }
 
+/* 离屏暂停：CSS 无限动画在视口外一样持续占用主线程与合成，
+   data-in-view 由组件里的 IntersectionObserver 写入 */
+.home-ticker[data-in-view="false"] .home-ticker__track {
+	animation-play-state: paused;
+}
+
 .home-ticker__text {
 	font-size: 0.8125rem;
 	font-weight: 600;

@@ -282,7 +282,15 @@ function playSceneIntro(gsap: Gsap, scene: SceneRefs) {
 	scene.intro?.kill();
 	hideSceneChrome(gsap, scene);
 
-	const timeline = gsap.timeline();
+	// 字幕逐字节点每幕二十余个、五幕上百个，will-change 不在 CSS 里常驻：
+	// 入场期间临时挂上（含代价最高的 filter），播完立刻清成 auto
+	const timeline = gsap.timeline({
+		onStart: () =>
+			gsap.set(scene.captionChars, {
+				willChange: "transform, opacity, filter",
+			}),
+		onComplete: () => gsap.set(scene.captionChars, { willChange: "auto" }),
+	});
 
 	timeline
 		.to(
@@ -362,6 +370,15 @@ function setupScenes(context: SetupContext) {
 		"[data-scenes-meter-value]",
 	);
 	const portal = selectRequired<HTMLElement>(root, "[data-scenes-portal]");
+	const portalImage = selectRequired<HTMLImageElement>(
+		portal,
+		"[data-scenes-portal-image]",
+	);
+	// 收缩终点的图框边框：独立一层，不参与缩放也不被 portal 的 clip-path 裁掉
+	const portalEdge = selectRequired<HTMLElement>(
+		root,
+		"[data-scenes-portal-edge]",
+	);
 	const stage = selectRequired<HTMLElement>(root, "[data-blinds-stage]");
 	const stageBackground = selectRequired<HTMLImageElement>(
 		stage,
@@ -377,10 +394,6 @@ function setupScenes(context: SetupContext) {
 		stage,
 		"[data-headline-window]",
 	);
-	const strings = selectRequired<SVGSVGElement>(
-		section,
-		"[data-scene-strings]",
-	);
 	const scenes = Array.from(
 		section.querySelectorAll<HTMLElement>("[data-home-blinds-scene]"),
 	).map(collectScene);
@@ -392,10 +405,14 @@ function setupScenes(context: SetupContext) {
 	const stand = stands[0] ?? null;
 	const standImage =
 		stand?.querySelector<HTMLElement>("[data-scene-stand-image]") ?? null;
-	const lines = Array.from(
-		section.querySelectorAll<SVGLineElement>("[data-scene-string]"),
+	// 木杆改成立牌的子元素：横位恒定、只随立牌图一起上下动，
+	// 因此不再需要每帧按 getBoundingClientRect 重算两端坐标
+	const standPole =
+		stand?.querySelector<HTMLElement>("[data-scene-stand-pole]") ?? null;
+	// 立牌图与木杆同步做跳跃位移，避免抬起时杆头与鞋底脱开
+	const standJumpTargets = [standImage, standPole].filter(
+		(element): element is HTMLElement => element !== null,
 	);
-	const line = lines[0] ?? null;
 	const cycleStage = selectRequired<HTMLElement>(
 		section,
 		"[data-scenes-cycle]",
@@ -425,14 +442,14 @@ function setupScenes(context: SetupContext) {
 	let pinTrigger: ScrollTriggerInstance | null = null;
 	let actVisible = false;
 	let bounceTimeline: GsapTimeline | null = null;
-	// 背景跑马灯：两份等长列表首尾相接，xPercent 从 -50 走到 0 正好换过一整轮，
-	// 因为两份内容一致，接缝处画面完全重合，循环看不出跳帧。
+	// 背景跑马灯：两份等长列表首尾相接，xPercent 从 0 走到 -50 正好换过一整轮，
+	// 即画面持续左移；因为两份内容一致，接缝处画面完全重合，循环看不出跳帧。
 	const cycleLoop = gsap.timeline({ repeat: -1, paused: true });
 	cycleLoop.fromTo(
 		cycleTrack,
-		{ xPercent: -50 },
+		{ xPercent: 0 },
 		{
-			xPercent: 0,
+			xPercent: -50,
 			duration: Math.max(4, config.scenes.cycleDuration),
 			ease: "none",
 		},
@@ -440,41 +457,94 @@ function setupScenes(context: SetupContext) {
 
 	// 图框尺寸完全由 CSS 变量决定；offset* 取的是不受 transform 影响的布局尺寸，
 	// 所以可以直接当作全屏背景收缩的终点，无需和 CSS 重复一遍计算公式。
-	const sceneWidth = () =>
-		cards[0]?.offsetWidth || Math.round(window.innerWidth * 0.44);
-	const sceneHeight = () =>
-		cards[0]?.offsetHeight || Math.round(window.innerWidth * 0.33);
-	// 画面放大后横向间距同步拉开：一幕宽度 + 至少 16vw 的留白
-	const sceneStep = () =>
-		sceneWidth() + Math.max(150, window.innerWidth * 0.16);
+	// 这三个值只随视口变化，因此按 resize / refresh 缓存：横移的每一帧都要用它们，
+	// 而逐帧读 offsetWidth 会在样式写入之后强制同步布局，是 pin 段掉帧的主因之一。
+	let cachedSceneWidth = 0;
+	let cachedSceneHeight = 0;
+	let cachedSceneStep = 0;
+	// 过渡层收缩的终点缩放比 = 图框 cover 缩放 / 视口 cover 缩放
+	let cachedPortalScale = 1;
+	/** 把图片按 cover 铺满给定框所需的缩放比 */
+	const coverScale = (boxWidth: number, boxHeight: number) =>
+		Math.max(
+			boxWidth / portalImage.naturalWidth,
+			boxHeight / portalImage.naturalHeight,
+		);
+	const measureScene = () => {
+		cachedSceneWidth =
+			cards[0]?.offsetWidth || Math.round(window.innerWidth * 0.44);
+		cachedSceneHeight =
+			cards[0]?.offsetHeight || Math.round(window.innerWidth * 0.33);
+		// 画面放大后横向间距同步拉开：一幕宽度 + 至少 16vw 的留白
+		cachedSceneStep =
+			cachedSceneWidth + Math.max(150, window.innerWidth * 0.16);
+
+		// 过渡层：给图片写死「视口 cover 的渲染尺寸」作为布局宽高，收缩全程只做等比
+		// scale，object-fit 因此不再随尺寸重算裁切（那正是每帧重光栅的来源）。
+		// 起点 scale=1 精确等于视口 cover，终点等于图框 cover，两端分别与 reveal 层
+		// 背景、首幕图框重合。等比缩放对任意长宽比都成立，无边界条件。
+		// 居中一律要写，自然尺寸没就绪时也得先摆正（此时尺寸走 CSS 的 100vw/100vh 兜底）
+		gsap.set(portalImage, { xPercent: -50, yPercent: -50 });
+		if (portalImage.naturalWidth > 0 && portalImage.naturalHeight > 0) {
+			const viewportCover = coverScale(window.innerWidth, window.innerHeight);
+			const frameCover = coverScale(cachedSceneWidth, cachedSceneHeight);
+			cachedPortalScale = frameCover / viewportCover;
+			gsap.set(portalImage, {
+				width: portalImage.naturalWidth * viewportCover,
+				height: portalImage.naturalHeight * viewportCover,
+			});
+		}
+		// 边框只按图框布局尺寸定位，全程不参与缩放
+		gsap.set(portalEdge, {
+			xPercent: -50,
+			yPercent: -50,
+			width: cachedSceneWidth,
+			height: cachedSceneHeight,
+		});
+	};
+	measureScene();
+	// 首次测量时图片可能尚未解码，naturalWidth 为 0、上面那个分支会被跳过；
+	// 就绪后补量一次，并让 ScrollTrigger 按新几何重算收缩终点。
+	if (!portalImage.complete || portalImage.naturalWidth === 0) {
+		portalImage.addEventListener(
+			"load",
+			() => {
+				measureScene();
+				ScrollTrigger.refresh();
+			},
+			{ once: true, signal },
+		);
+	}
 
 	const stopBounce = () => {
 		bounceTimeline?.kill();
 		bounceTimeline = null;
-		if (!standImage) return;
-		gsap.killTweensOf(standImage);
-		gsap.set(standImage, { y: 0, scaleX: 1, scaleY: 1 });
+		if (standJumpTargets.length === 0) return;
+		gsap.killTweensOf(standJumpTargets);
+		gsap.set(standJumpTargets, { y: 0, scaleX: 1, scaleY: 1 });
 	};
 
 	/**
 	 * 跳跃循环：只有单纯的上下位移，不带蓄力下蹲、拉伸压缩等形变。
 	 */
 	const startBounce = () => {
-		if (!actVisible || !standImage) return;
+		if (!actVisible || standJumpTargets.length === 0) return;
 		stopBounce();
 		const timeline = gsap.timeline({ repeat: -1 });
+		// 最高一跳 95px：CSS 里木杆的长度余量按这个值给，改这里要同步改
+		// .home-blinds-scenes__stand-pole 的 height
 		const jumpHeights = [-95, -78];
 
 		for (let jump = 0; jump < 2; jump += 1) {
 			timeline
 				// 上升
-				.to(standImage, {
+				.to(standJumpTargets, {
 					y: jumpHeights[jump],
 					duration: 0.29,
 					ease: "power2.out",
 				})
 				// 下落
-				.to(standImage, {
+				.to(standJumpTargets, {
 					y: 0,
 					duration: 0.29,
 					ease: "power2.in",
@@ -486,8 +556,10 @@ function setupScenes(context: SetupContext) {
 
 	/**
 	 * 背景跑马灯与立牌同时入场，走同一套纸牌立起的姿态：
-	 * 以底边为铰链从近乎平躺（rotationX -88）转到竖直，配合 transformPerspective
-	 * 造出「屏幕从地面立起来」的透视。立牌收一点回弹，背景大面积不回弹免得晃。
+	 * 以底边为铰链从向后平躺（rotationX 正 88，顶边朝远离视线的方向倒）转到竖直，
+	 * 配合 transformPerspective 造出「屏幕从后方地面立起来」的透视；
+	 * 正号不可写成负号，负号会变成朝观众一侧倒、成了从前面立起来。
+	 * 立牌收一点回弹，背景大面积不回弹免得晃。
 	 */
 	const showAct = () => {
 		if (actVisible) return;
@@ -503,15 +575,10 @@ function setupScenes(context: SetupContext) {
 		});
 		cycleLoop.play();
 
-		if (!stand || !line) return;
+		if (!stand) return;
 		gsap.killTweensOf(stand);
 		gsap.set(stand, { xPercent: -50, rotation: 0 });
-		gsap.to(line, {
-			opacity: 1,
-			duration: 0.24,
-			ease: "power2.out",
-			overwrite: "auto",
-		});
+		// 木杆是立牌的子元素，autoAlpha 与 rotationX 直接继承，无需单独补间
 		gsap.to(stand, {
 			autoAlpha: 1,
 			rotationX: 0,
@@ -522,6 +589,11 @@ function setupScenes(context: SetupContext) {
 		});
 	};
 
+	/**
+	 * 退场只做渐出，不再倒回平躺：整段淡出期间都保持竖直姿态，
+	 * 淡完（此时已不可见）才把 rotationX 悄悄复位到 88，下次进场照样从后方立起。
+	 * 淡出被 showAct 打断时 onComplete 不执行，元素保持竖直直接淡回来，不会突然摊平。
+	 */
 	const hideAct = () => {
 		if (!actVisible) return;
 		actVisible = false;
@@ -530,50 +602,34 @@ function setupScenes(context: SetupContext) {
 		gsap.killTweensOf(cycleStage);
 		gsap.to(cycleStage, {
 			autoAlpha: 0,
-			rotationX: -88,
 			duration: 0.5,
-			ease: "power3.in",
+			ease: "power2.in",
 			overwrite: "auto",
+			onComplete: () => gsap.set(cycleStage, { rotationX: 88 }),
 		});
 		cycleLoop.pause();
 
-		if (!stand || !line) return;
+		if (!stand) return;
 		gsap.killTweensOf(stand);
-		gsap.to(line, {
-			opacity: 0,
-			duration: 0.18,
-			ease: "power2.in",
-			overwrite: "auto",
-		});
 		gsap.to(stand, {
 			autoAlpha: 0,
-			rotationX: -88,
 			duration: 0.46,
-			ease: "power3.in",
+			ease: "power2.in",
 			overwrite: "auto",
+			onComplete: () => gsap.set(stand, { rotationX: 88 }),
 		});
-	};
-
-	const updateStrings = () => {
-		if (!actVisible || !standImage || !line) return;
-		const viewportRect = viewport.getBoundingClientRect();
-		strings.setAttribute(
-			"viewBox",
-			`0 0 ${viewportRect.width} ${viewportRect.height}`,
-		);
-
-		const standRect = standImage.getBoundingClientRect();
-		const standCenterX =
-			standRect.left + standRect.width / 2 - viewportRect.left;
-		line.setAttribute("x1", String(standCenterX));
-		line.setAttribute("y1", String(standRect.bottom - viewportRect.top));
-		line.setAttribute("x2", String(standCenterX));
-		line.setAttribute("y2", String(viewportRect.height));
 	};
 
 	const resetWind = () => {
 		for (const setRotation of rotationSetters) setRotation(0);
 	};
+
+	// 上一帧已写入的取整值：序号、百分比文本与显隐取整后大多数帧并无变化，
+	// 按值短路可省掉每帧的 textContent / setAttribute / autoAlpha 写入。
+	// 驱动 clip-path 的两个 CSS 变量要保持连续，不参与短路。
+	let lastMeterOrdinal = -1;
+	let lastMeterPercentage = -1;
+	let lastMeterVisible: boolean | null = null;
 
 	/** 共用长条进度：按当前居中的连续幕索引更新，不播放额外入场动画。 */
 	const renderMeter = (sceneProgress: number, isVisible: boolean) => {
@@ -591,15 +647,24 @@ function setupScenes(context: SetupContext) {
 			"--home-blinds-scenes-meter-percent",
 			`${progressRatio * 100}%`,
 		);
-		meterOrdinal.textContent = String(currentIndex).padStart(2, "0");
-		meterValue.textContent = `${percentage}%`;
-		meter.setAttribute("aria-valuenow", String(percentage));
-		gsap.set(meter, { autoAlpha: isVisible ? 1 : 0 });
+		if (currentIndex !== lastMeterOrdinal) {
+			meterOrdinal.textContent = String(currentIndex).padStart(2, "0");
+			lastMeterOrdinal = currentIndex;
+		}
+		if (percentage !== lastMeterPercentage) {
+			meterValue.textContent = `${percentage}%`;
+			meter.setAttribute("aria-valuenow", String(percentage));
+			lastMeterPercentage = percentage;
+		}
+		if (isVisible !== lastMeterVisible) {
+			gsap.set(meter, { autoAlpha: isVisible ? 1 : 0 });
+			lastMeterVisible = isVisible;
+		}
 	};
 
 	const renderScenes = (sceneProgress: number, isVisible: boolean) => {
 		renderMeter(sceneProgress, isVisible);
-		const step = sceneStep();
+		const step = cachedSceneStep;
 		let moving = false;
 
 		for (let index = 0; index < sceneCount; index += 1) {
@@ -645,7 +710,6 @@ function setupScenes(context: SetupContext) {
 		// 背景跑马灯与立牌同进同出；立牌钉在起始横位不再随横移滑动
 		if (isVisible) showAct();
 		else hideAct();
-		updateStrings();
 	};
 
 	function applyPhase() {
@@ -654,6 +718,10 @@ function setupScenes(context: SetupContext) {
 			autoAlpha: phase === "reveal" ? 1 : 0,
 		});
 		gsap.set(portal, { autoAlpha: phase === "shrink" ? 1 : 0 });
+		// 边框的 opacity 归 shrinkTimeline，这里只切 visibility，两处不抢同一属性
+		gsap.set(portalEdge, {
+			visibility: phase === "shrink" ? "visible" : "hidden",
+		});
 	}
 
 	/** 只依赖滚动位置，因此 refresh 之后也能得到正确阶段 */
@@ -686,31 +754,30 @@ function setupScenes(context: SetupContext) {
 		);
 	}
 
+	// 尺寸恒为满屏，收缩由 clip-path 收窗完成，故这里不再写 width / height
 	gsap.set(portal, {
 		xPercent: -50,
 		yPercent: -50,
 		x: 0,
 		y: 0,
-		width: () => window.innerWidth,
-		height: () => window.innerHeight,
-		borderWidth: "0px",
+		clipPath: "inset(0px 0px 0px 0px)",
 		autoAlpha: 0,
 	});
+	gsap.set(portalEdge, { opacity: 0, visibility: "hidden" });
 	gsap.set(cards, { autoAlpha: 0 });
-	// 立牌与背景跑马灯的初始姿态：以底边为铰链几乎平躺，入场时立起来
+	// 立牌与背景跑马灯的初始姿态：以底边为铰链向后（远离视线）几乎平躺，入场时朝观众立起来
 	gsap.set(stands, {
 		xPercent: -50,
 		y: 0,
-		rotationX: -88,
+		rotationX: 88,
 		transformPerspective: 1100,
 		autoAlpha: 0,
 	});
 	gsap.set(cycleStage, {
-		rotationX: -88,
+		rotationX: 88,
 		transformPerspective: 1400,
 		autoAlpha: 0,
 	});
-	gsap.set(lines, { opacity: 0 });
 	renderMeter(0, false);
 	for (const scene of scenes) hideSceneChrome(gsap, scene);
 
@@ -727,27 +794,55 @@ function setupScenes(context: SetupContext) {
 	});
 	shrinkTrigger = shrinkTimeline.scrollTrigger ?? null;
 
-	// 全屏背景 → 首幕 4:3 图框：尺寸与 1.5px 黑白边框一起补到位，
-	// 终点与 .home-blinds-scene__frame 完全重合，交接瞬间看不出换层。
+	// 全屏背景 → 首幕 4:3 图框，全程不碰布局属性：portal 用 clip-path 把可视窗口
+	// 从满屏收到图框（只触发 paint），内部图片同步做等比 scale（走合成），
+	// 1.5px 边框在后段淡入，终点与 .home-blinds-scene__frame 完全重合。
 	// 这条时间线开了 invalidateOnRefresh，用 fromTo 显式写出起始值，
 	// 缩放窗口后重新记录的起点才不会被当前已渲染的终点状态污染。
-	shrinkTimeline.fromTo(
-		portal,
-		{
-			width: () => window.innerWidth,
-			height: () => window.innerHeight,
-			borderWidth: "0px",
-		},
-		{
-			width: sceneWidth,
-			height: sceneHeight,
-			borderWidth: "1.5px",
-			duration: 1,
-			ease: "power3.inOut",
-			immediateRender: false,
-		},
-		0,
-	);
+	shrinkTimeline
+		.fromTo(
+			portal,
+			{ clipPath: "inset(0px 0px 0px 0px)" },
+			{
+				clipPath: () => {
+					const insetX = Math.max(
+						0,
+						(window.innerWidth - cachedSceneWidth) / 2,
+					);
+					const insetY = Math.max(
+						0,
+						(window.innerHeight - cachedSceneHeight) / 2,
+					);
+					return `inset(${insetY}px ${insetX}px ${insetY}px ${insetX}px)`;
+				},
+				duration: 1,
+				ease: "power3.inOut",
+				immediateRender: false,
+			},
+			0,
+		)
+		.fromTo(
+			portalImage,
+			{ scale: 1 },
+			{
+				scale: () => cachedPortalScale,
+				duration: 1,
+				ease: "power3.inOut",
+				immediateRender: false,
+			},
+			0,
+		)
+		.fromTo(
+			portalEdge,
+			{ opacity: 0 },
+			{
+				opacity: 1,
+				duration: 0.34,
+				ease: "power2.out",
+				immediateRender: false,
+			},
+			0.66,
+		);
 
 	pinTrigger = ScrollTrigger.create({
 		id: "home-blinds-scenes-pin",
@@ -785,7 +880,12 @@ function setupScenes(context: SetupContext) {
 	rootInView = rootTrigger.isActive;
 
 	// refresh 事件在所有触发器重新测量之后触发，是缩放后唯一可靠的补偿时机。
-	ScrollTrigger.addEventListener("refresh", syncStage);
+	// 必须先按新视口量一遍图框尺寸，再按新尺寸同步各幕位置，顺序不能颠倒。
+	const handleRefresh = () => {
+		measureScene();
+		syncStage();
+	};
+	ScrollTrigger.addEventListener("refresh", handleRefresh);
 
 	// 不支持鼠标拖拽横移：横向推进只跟随滚轮/触控板，避免与页面滚动抢手感
 	viewport.addEventListener(
@@ -819,14 +919,12 @@ function setupScenes(context: SetupContext) {
 		{ signal },
 	);
 
-	gsap.ticker.add(updateStrings);
 	syncStage();
 
 	return () => {
 		window.clearTimeout(resetWindTimer);
 		window.clearTimeout(resizeTimer);
-		gsap.ticker.remove(updateStrings);
-		ScrollTrigger.removeEventListener("refresh", syncStage);
+		ScrollTrigger.removeEventListener("refresh", handleRefresh);
 		stopBounce();
 		cycleLoop.kill();
 		for (const scene of scenes) {
@@ -839,8 +937,10 @@ function setupScenes(context: SetupContext) {
 			...cards,
 			...swings,
 			...stands,
-			...lines,
+			...standJumpTargets,
 			portal,
+			portalImage,
+			portalEdge,
 			stageBackground,
 			stageForegroundWindow,
 			stageHeadlineWindow,
@@ -987,6 +1087,9 @@ function setupHeadline(context: SetupContext) {
 	const stack = selectRequired<HTMLElement>(headline, "[data-headline-stack]");
 	const title = selectRequired<HTMLElement>(headline, "[data-headline-title]");
 	const ring = selectRequired<HTMLElement>(headline, "[data-headline-ring]");
+	const core = selectRequired<HTMLElement>(headline, "[data-headline-core]");
+	// 虚线圆与圆心准星同进同出，一并当作一组处理
+	const reticle = [ring, core];
 	const axisLeft = selectRequired<HTMLElement>(
 		headline,
 		'[data-headline-axis="left"]',
@@ -1074,9 +1177,19 @@ function setupHeadline(context: SetupContext) {
 	function advance() {
 		const outgoing = messages[current];
 		current = (current + 1) % messages.length;
+		const incoming = messages[current];
+		// 只在翻页这段时间提升参与翻转的两句逐字节点，播完清成 auto；
+		// CSS 里不再常驻 will-change，避免祝福语条数一多就长期占住合成层
+		const flipping = [...outgoing, ...incoming];
 		flip?.kill();
 		flip = gsap
-			.timeline({ onComplete: scheduleNext })
+			.timeline({
+				onStart: () => gsap.set(flipping, { willChange: "transform, opacity" }),
+				onComplete: () => {
+					gsap.set(flipping, { willChange: "auto" });
+					scheduleNext();
+				},
+			})
 			.to(
 				outgoing,
 				{
@@ -1089,7 +1202,7 @@ function setupHeadline(context: SetupContext) {
 				0,
 			)
 			.fromTo(
-				messages[current],
+				incoming,
 				{ rotationX: 92, autoAlpha: 0 },
 				{
 					rotationX: 0,
@@ -1124,7 +1237,7 @@ function setupHeadline(context: SetupContext) {
 			autoAlpha: 0,
 			clipPath: "inset(0% 100% 0% 0%)",
 		});
-		gsap.set(ring, { autoAlpha: 0, rotation: -90, scale: 0.92 });
+		gsap.set(reticle, { autoAlpha: 0, rotation: -90, scale: 0.92 });
 		gsap.set(stack, { y: titleY });
 		for (const chars of messages) {
 			gsap.set(chars, { rotationX: 92, autoAlpha: 0 });
@@ -1148,7 +1261,7 @@ function setupHeadline(context: SetupContext) {
 			autoAlpha: 1,
 			clipPath: "inset(0% 0% 0% 0%)",
 		});
-		gsap.set(ring, { autoAlpha: 1, rotation: 0, scale: 1 });
+		gsap.set(reticle, { autoAlpha: 1, rotation: 0, scale: 1 });
 		gsap.set(stack, { y: stackY });
 		for (let index = 0; index < messages.length; index += 1) {
 			gsap.set(
@@ -1211,7 +1324,7 @@ function setupHeadline(context: SetupContext) {
 				span * 0.52,
 			)
 			.to(
-				ring,
+				reticle,
 				{
 					autoAlpha: 1,
 					rotation: 0,
@@ -1303,7 +1416,7 @@ function setupHeadline(context: SetupContext) {
 		gsap.killTweensOf([
 			headline,
 			stack,
-			ring,
+			...reticle,
 			axisLeft,
 			axisRight,
 			...edges,

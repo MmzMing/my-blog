@@ -38,6 +38,7 @@ const items = [...announcementConfig.items].sort((a, b) => b.sort - a.sort);
 		private inner: HTMLElement | null = null;
 		private sourceSequence: HTMLElement | null = null;
 		private resizeObserver: ResizeObserver | null = null;
+		private visibilityObserver: IntersectionObserver | null = null;
 		private layoutFrame = 0;
 
 		connectedCallback() {
@@ -58,6 +59,19 @@ const items = [...announcementConfig.items].sort((a, b) => b.sort - a.sort);
 			this.resizeObserver.observe(this.inner);
 			this.scheduleLayout();
 
+			// 跑马灯是 CSS 无限动画，滚出视口后仍会持续占用主线程与合成；
+			// data-in-view 交给 CSS 把 animation-play-state 切成 paused
+			this.visibilityObserver?.disconnect();
+			this.visibilityObserver = new IntersectionObserver(
+				(entries) => {
+					for (const entry of entries) {
+						this.dataset.inView = String(entry.isIntersecting);
+					}
+				},
+				{ rootMargin: "10% 0px" },
+			);
+			this.visibilityObserver.observe(this);
+
 			document.fonts?.ready.then(() => {
 				if (this.isConnected) this.scheduleLayout();
 			});
@@ -66,6 +80,8 @@ const items = [...announcementConfig.items].sort((a, b) => b.sort - a.sort);
 		disconnectedCallback() {
 			this.resizeObserver?.disconnect();
 			this.resizeObserver = null;
+			this.visibilityObserver?.disconnect();
+			this.visibilityObserver = null;
 			cancelAnimationFrame(this.layoutFrame);
 		}
 
