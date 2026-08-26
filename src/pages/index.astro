@@ -1,6 +1,6 @@
 ---
+import HomeBlinds from "@components/layout/HomeBlinds.astro";
 import HomeDataLayer from "@components/layout/HomeDataLayer.astro";
-import HomeDisplayLayer from "@components/layout/HomeDisplayLayer.astro";
 import HomeHero from "@components/layout/HomeHero.astro";
 import HomeMobile from "@components/layout/HomeMobile.astro";
 import HomeTicker from "@components/layout/HomeTicker.astro";
@@ -8,13 +8,12 @@ import SiteStructuredData from "@/components/seo/SiteStructuredData.astro";
 import { siteConfig } from "@/config";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import "@/styles/components/home-data-layer.css";
-import "@/styles/components/home-display-layer.css";
 import "@/styles/components/home-hero-dialogue.css";
 import "@/styles/components/home-hero.css";
-import "@/styles/components/home-portfolio-shutter.css";
 import "@/styles/components/home-section.css";
 import "@/styles/components/home-ticker.css";
 import "@/styles/components/home-mobile.css";
+import "@/styles/components/home-blinds.css";
 ---
 
 <MainGridLayout
@@ -27,7 +26,7 @@ import "@/styles/components/home-mobile.css";
 		<HomeHero />
 		<HomeTicker />
 		<HomeDataLayer />
-		<HomeDisplayLayer />
+		<HomeBlinds />
 		<HomeMobile />
 	</div>
 </MainGridLayout>

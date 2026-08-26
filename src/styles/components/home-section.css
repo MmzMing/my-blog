@@ -6,6 +6,12 @@
 	padding-bottom: 0;
 }
 
+/* 仅首页：最底层底部贴合页脚，去掉全局页脚的顶部间距；
+   离开首页后 .home-page 随 Swup 替换，:has() 不再命中，其余页面不受影响 */
+#main-grid-wrapper:has(.home-page) .site-footer {
+	margin-top: 0;
+}
+
 .home-section-title-wrapper {
 	width: 100%;
 	max-width: 24rem;

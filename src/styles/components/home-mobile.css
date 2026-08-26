@@ -17,8 +17,7 @@
 	   避免 home-ticker.css 的 display:block 等规则在导入顺序上覆盖） */
 	section.home-hero,
 	home-ticker.home-ticker,
-	section.home-data-layer,
-	section.home-display-layer {
+	section.home-data-layer {
 		display: none;
 	}
 }

@@ -1,0 +1,107 @@
+---
+import type { HomeBlindsSceneItem } from "@/types/config";
+
+interface Props {
+	index: number;
+	total: number;
+	item: HomeBlindsSceneItem;
+	/** 首幕由上一层背景合成，图片与固定舞台共用同一张 */
+	composite?: boolean;
+}
+
+const { index, total, item, composite = false } = Astro.props;
+
+/**
+ * 五幕介绍层各用一套版式：
+ * curtain=底部字幕条 / column=左下竖排题签 / tag=右上标签块 /
+ * ribbon=斜切色带 / inset=居中内框。动效由控制器按 variant 分发。
+ */
+const CAPTION_VARIANTS = [
+	"curtain",
+	"column",
+	"tag",
+	"ribbon",
+	"inset",
+] as const;
+const variant = CAPTION_VARIANTS[index % CAPTION_VARIANTS.length];
+
+const isFirst = index === 0;
+const isLast = index === total - 1;
+// 顶栏右侧指示词：首幕为序幕、末幕为终幕，中间为 NEXT
+const cueLabel = isFirst ? "序幕" : isLast ? "终幕" : "NEXT";
+const cueMark = isLast ? "■" : "→";
+const cueKind = isFirst ? "prologue" : isLast ? "finale" : "next";
+const captionChars = Array.from(item.description);
+---
+
+<article
+	class:list={[
+		"home-blinds-scene",
+		{ "home-blinds-scene--composite": composite },
+	]}
+	data-home-blinds-scene
+	data-scene-index={index}
+	data-scene-variant={variant}
+	data-scene-cue={cueKind}
+	aria-label={item.title}
+>
+	<div class="home-blinds-scene__swing" data-scene-swing>
+		<div class="home-blinds-scene__rail" data-scene-rail>
+			<span class="home-blinds-scene__rail-dot" aria-hidden="true" data-scene-rail-dot
+			></span>
+			<span class="home-blinds-scene__rail-eyebrow" data-scene-rail-eyebrow
+				>{item.eyebrow}</span
+			>
+			<span class="home-blinds-scene__rail-line" aria-hidden="true" data-scene-rail-line
+			></span>
+			<span class="home-blinds-scene__rail-title" data-scene-rail-title
+				>{item.title}</span
+			>
+		</div>
+
+		<header class="home-blinds-scene__head">
+			<span class="home-blinds-scene__head-code" data-scene-head-code
+				>{item.eyebrow}</span
+			>
+			<span class="home-blinds-scene__head-title" data-scene-head-title
+				>{item.title}</span
+			>
+			<span class="home-blinds-scene__head-cue" data-scene-head-cue>
+				<span class="home-blinds-scene__head-cue-label">{cueLabel}</span>
+				<span class="home-blinds-scene__head-cue-mark" aria-hidden="true"
+					>{cueMark}</span
+				>
+			</span>
+		</header>
+
+		<div class="home-blinds-scene__frame" data-scene-frame>
+			<img
+				class="home-blinds-scene__image"
+				src={item.image}
+				alt={item.alt}
+				loading={index === 0 ? "eager" : "lazy"}
+				decoding="async"
+			/>
+			<div class="home-blinds-scene__caption" data-scene-caption>
+				<span
+					class="home-blinds-scene__caption-veil"
+					aria-hidden="true"
+					data-scene-caption-veil></span>
+				<span
+					class="home-blinds-scene__caption-mark"
+					aria-hidden="true"
+					data-scene-caption-mark></span>
+				<p class="home-blinds-scene__caption-text">
+					{
+						captionChars.map((char) => (
+							<span class="home-blinds-scene__caption-char" data-scene-caption-char>
+								{char}
+							</span>
+						))
+					}
+				</p>
+			</div>
+		</div>
+
+	</div>
+</article>

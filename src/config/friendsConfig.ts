@@ -467,7 +467,8 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 		title: "Yukihime",
-		imgurl: "https://yukihime.dev/assets/images/moments-avatar.webp?v=20260725-avatar",
+		imgurl:
+			"https://yukihime.dev/assets/images/moments-avatar.webp?v=20260725-avatar",
 		desc: "你的瞳色 是我生命苦寻的永生花",
 		siteurl: "https://yukihime.dev/",
 		image: "/assets/images/friends/yukihime.webp",

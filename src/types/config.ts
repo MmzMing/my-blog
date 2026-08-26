@@ -223,64 +223,65 @@ export type NavBarConfig = {
 	links: (NavBarLink | LinkPreset)[];
 };
 
-export type HomePortfolioShutterPanel = {
+export type HomeBlindsSceneItem = {
+	/** 左侧竖排与顶栏左侧共用的英文标识 */
+	eyebrow: string;
 	title: string;
-	english: string;
+	/** 图片内的介绍文案，五幕各有一套版式与动效 */
 	description: string;
 	image: string;
-	alt?: string;
-};
-
-export type HomePortfolioShutterInterlude = {
-	/** 前景大图（仅显示上半部分） */
-	foreground: string;
-	/** 背景左侧滑入长条（从左向右） */
-	stripLeft: string;
-	/** 背景右侧滑入长条（从右向左） */
-	stripRight: string;
-	/** 中景左侧文字（人物左侧） */
-	copyLeft: string;
-	/** 中景右侧文字（人物右侧） */
-	copyRight: string;
-};
-
-export type HomePortfolioShutterFinalImage = {
-	/** 中景图（首层渐入，代替原 utl.webp） */
-	midgroundImage: string;
-	/** 后景视频（中景完全显现后渐入，最底层，静音循环） */
-	backgroundVideo: string;
-	/** 前景人物图（与后景同时渐入，最前层，不裁剪） */
-	foregroundImage: string;
 	alt: string;
 };
 
-export type HomePortfolioShutterConfig = {
-	enabled: boolean;
-	kicker: string;
+/**
+ * 揭示层（blinds 第一层）的入场标题。
+ * 节奏：整条长条横移 → 内缘往两侧退开露出「背面」的标题 →
+ * 侧边竖线与中缝横线跟随滑动后固定 → 长条往两侧缩放消失、中央虚线圆转 90° →
+ * 标题上移，第二层祝福语逐字翻入并循环。
+ */
+export type HomeBlindsHeadlineConfig = {
+	/** 标题文案，单行显示（参考版式为 4 字） */
 	title: string;
-	description: string;
-	scrollDistance: number;
-	finalImage: HomePortfolioShutterFinalImage;
-	panels: HomePortfolioShutterPanel[];
-	/** 5 张长条图之后的插入动画段：三层布局（背景长条 / 中景文字 / 前景大图） */
-	interlude: HomePortfolioShutterInterlude;
+	/** 标题上移后循环播放的祝福语，每条单行显示（参考版式为 5 字） */
+	messages: string[];
+	/** 长条揭示到虚线圆就位的入场总时长（秒），默认 0.5 */
+	enterDuration?: number;
+	/** 单条祝福语的停留时长（秒），默认 2.6 */
+	messageHold?: number;
+	/** 祝福语换一条的总时长（秒，含逐字延迟的尾巴），默认 0.75 */
+	messageFlipDuration?: number;
 };
 
-export type HomeDisplayLayerConfig = {
-	/** 是否启用展示层（移动端与 prefers-reduced-motion 下始终隐藏） */
+export type HomeBlindsConfig = {
+	/** 是否启用桌面端首页双层影像交互 */
 	enabled: boolean;
-	/** 左侧垂直大字 */
-	kicker: string;
-	/** 中间垂直主标题（建议英文，纵向显示） */
-	title: string;
-	/** 右侧英文长句，作为副释义 */
-	description: string;
-	/** pin 滚动距离（px），最终值取该值与「最小视口倍数」中的较大者 */
-	scrollDistance: number;
-	/** 柱子最终宽度（初始垂直线水平扩展到该宽度后停留） */
-	pillarFinalWidth: string;
-	/** 底部发射图（水平居中、垂直底部），线条从其上方往上延展，柱子扩展后覆盖它 */
-	emitterImage?: string;
+	reveal: {
+		/** 固定背景图（首屏揭示层与首幕画面共用） */
+		backgroundImage: string;
+		/** 透明前景图 */
+		foregroundImage: string;
+		foregroundAlt: string;
+		/** 前景图完全进入后的透明度，取值 0-1 */
+		foregroundOpacity: number;
+		/** 前景图跟随鼠标移动的最大像素距离 */
+		pointerTravel: number;
+		/** 长条横移揭示的入场标题与循环祝福语 */
+		headline: HomeBlindsHeadlineConfig;
+	};
+	scenes: {
+		/** 横向影像层固定滚动距离，越小则横移越快 */
+		scrollDistance: number;
+		/** 背景跑马灯图片，按顺序从左往右无缝循环；只放一张也能跑 */
+		cycleImages: string[];
+		/** 跑马灯走完一轮列表的时长（秒），越大越慢 */
+		cycleDuration: number;
+		/** 由上一层背景与透明前景图合成的首幕文案（序幕） */
+		composite: Omit<HomeBlindsSceneItem, "image" | "alt"> & { alt: string };
+		/** 后续画面，运行时最多读取前 4 张 */
+		items: HomeBlindsSceneItem[];
+		/** 立牌图 */
+		standImages: string[];
+	};
 };
 
 /** galgame 对话框：单句台词 */
@@ -429,14 +430,8 @@ export type HomeConfig = {
 		archiveImage: string;
 		contactImage: string;
 	};
-	/** 展示层：垂直线 → 长柱 → 字体显隐 → 柱子扩全屏，衔接百叶窗 */
-	displayLayer: HomeDisplayLayerConfig;
-	portfolioShutter: HomePortfolioShutterConfig;
-	skills?: {
-		name: string;
-		icon?: string;
-		group?: string;
-	}[];
+	/** 桌面端首页揭示层与横向明信片层 */
+	homeBlinds: HomeBlindsConfig;
 	links: {
 		name: string;
 		url: string;

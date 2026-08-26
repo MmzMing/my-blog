@@ -39,12 +39,13 @@ export const homeConfig: HomeConfig = {
 				{ x: 0.639, y: 0.751, width: 0.116, height: 0.228 },
 			],
 			scrub: 0.45,
-			desktopScrollDistance: 6500,
-			mobileScrollDistance: 4600,
+			// 滑动距离整体砍半，同样的滚动量推进更快
+			desktopScrollDistance: 3250,
+			mobileScrollDistance: 2300,
 			desktopDialogueTailDistance: 240,
 			mobileDialogueTailDistance: 180,
-			desktopMinViewports: 8.1,
-			mobileMinViewports: 6.1,
+			desktopMinViewports: 4.05,
+			mobileMinViewports: 3.05,
 			interactionHold: 0.06,
 		},
 		quickActions: [
@@ -169,94 +170,69 @@ export const homeConfig: HomeConfig = {
 		contactImage: "/assets/images/home/home-data-3.avif",
 	},
 
-	// 展示层：垂直线 → 长柱 → 字体显隐 → 柱子扩全屏 → 衔接百叶窗
-	displayLayer: {
+	// 桌面端双层影像交互：固定背景揭示 → 五幕画面横向叙事
+	homeBlinds: {
 		enabled: true,
-		kicker: "作品展示",
-		title: "CRYSTALLIZE GALLERY",
-		description:
-			"Where fleeting visions crystallize into permanence — each frame a frozen breath of time, each work a memory hardened into light.",
-		scrollDistance: 4000,
-		pillarFinalWidth: "18vw",
-		emitterImage: "/assets/images/home-truncated/td.avif",
-	},
-
-	portfolioShutter: {
-		enabled: true,
-		kicker: "The End",
-		title: "愿你每一天 都闪闪发光",
-		description: "岁岁常欢愉，万事皆胜意",
-		scrollDistance: 3000,
-		finalImage: {
-			midgroundImage: "/assets/images/home-truncated/utl-back1.avif",
-			backgroundVideo: "/assets/images/home-truncated/utl-back2.mp4",
-			foregroundImage: "/assets/images/home-truncated/utl-1.avif",
-			alt: "2026年 加油！",
+		reveal: {
+			backgroundImage: "/assets/images/home-blinds/act2/1.webp",
+			foregroundImage: "/assets/images/home-blinds/act1/1.webp",
+			foregroundAlt: "奔跑人物剪影",
+			foregroundOpacity: 0.5,
+			pointerTravel: 28,
+			// 长条横移揭示的入场标题：标题单行显示（版式按 4 字排），
+			// 祝福语单行显示（版式按 5 字排），可自由增减条数
+			headline: {
+				title: "祝愿各位",
+				messages: ["夜路有星光", "岁岁皆欢愉", "所念皆星河", "版本无回滚"],
+				enterDuration: 0.5,
+				messageHold: 2.6,
+				messageFlipDuration: 0.75,
+			},
 		},
-		interlude: {
-			foreground: "/assets/images/home-truncated/b-1.avif",
-			stripLeft: "/assets/images/home-truncated/b-2.avif",
-			stripRight: "/assets/images/home-truncated/b-3.avif",
-			copyLeft: "菲比",
-			copyRight: "啾比",
+		scenes: {
+			scrollDistance: 3400,
+			// 背景跑马灯：列表从左往右无缝循环，只有一张也会自动复制到铺满
+			cycleImages: ["/assets/images/home-blinds/act-cycle/1.webp"],
+			cycleDuration: 26,
+			composite: {
+				eyebrow: "PROLOGUE / RUN",
+				title: "奔向下一幕",
+				description: "光影从身后掠过，把正在发生的故事收进这一帧。",
+				alt: "背景与奔跑人物剪影合成的首幕画面",
+			},
+			items: [
+				{
+					eyebrow: "SCENE 02 / LIGHT",
+					title: "沿途拾光",
+					description: "让短暂的风景停驻，在下一次转场前多看一眼。",
+					image: "/assets/images/home-blinds/act3/1.webp",
+					alt: "第二幕插画",
+				},
+				{
+					eyebrow: "SCENE 03 / WIND",
+					title: "风经过这里",
+					description: "留在画里的是此刻，被风吹动的是仍未写完的旅程。",
+					image: "/assets/images/home-blinds/act3/2.webp",
+					alt: "第三幕插画",
+				},
+				{
+					eyebrow: "SCENE 04 / PAGE",
+					title: "收进一页",
+					description: "把颜色、温度与偶然相遇的瞬间，一起留在纸面。",
+					image: "/assets/images/home-blinds/act3/3.webp",
+					alt: "第四幕插画",
+				},
+				{
+					eyebrow: "FINALE / ARRIVE",
+					title: "抵达之前",
+					description: "最后一幕停在中央，下一段路从这里重新开始。",
+					image: "/assets/images/home-blinds/act3/4.webp",
+					alt: "第五幕插画",
+				},
+			],
+			standImages: ["/assets/images/home-blinds/act4/1.webp"],
 		},
-		panels: [
-			{
-				title: "外部站点",
-				english: "PROJECTS",
-				description: "菲比主站 · 工具导航",
-				image: "/assets/images/home-truncated/1.avif",
-				alt: "外部站点",
-			},
-			{
-				title: "术业专攻",
-				english: "SPECIALITIES",
-				description: "AI学习 · 技术架构 · 踩坑记录",
-				image: "/assets/images/home-truncated/2.avif",
-				alt: "术业专攻",
-			},
-			{
-				title: "博客特色",
-				english: "BLOG FEATURES",
-				description: "RAG 知识检索 · 归档热力图 · 结构化知识库",
-				image: "/assets/images/home-truncated/3.avif",
-				alt: "博客特色",
-			},
-			{
-				title: "站点技术",
-				english: "STACK",
-				description: "Astro · SSG静态生成 · 纯AI零手工",
-				image: "/assets/images/home-truncated/4.avif",
-				alt: "站点技术",
-			},
-			{
-				title: "相册收录",
-				english: "PHOTO ALBUM",
-				description: "AI 生图 · API 接入",
-				image: "/assets/images/home-truncated/5.avif",
-				alt: "相册收录",
-			},
-		],
 	},
-
-	// 首页技能图标
-	skills: [
-		{ name: "Astro", icon: "simple-icons:astro", group: "Frontend" },
-		{ name: "Svelte", icon: "simple-icons:svelte", group: "Frontend" },
-		{ name: "TypeScript", icon: "simple-icons:typescript", group: "Language" },
-		{ name: "React", icon: "simple-icons:react", group: "Frontend" },
-		{ name: "Tailwind", icon: "simple-icons:tailwindcss", group: "Style" },
-		{ name: "Java", icon: "mdi:language-java", group: "Backend" },
-		{ name: "Python", icon: "simple-icons:python", group: "Language" },
-		{ name: "Spring", icon: "simple-icons:spring", group: "Backend" },
-		{ name: "Redis", icon: "simple-icons:redis", group: "Storage" },
-		{ name: "MySQL", icon: "simple-icons:mysql", group: "Storage" },
-		{ name: "MongoDB", icon: "simple-icons:mongodb", group: "Storage" },
-		{ name: "RabbitMQ", icon: "simple-icons:rabbitmq", group: "Backend" },
-		{ name: "Docker", icon: "simple-icons:docker", group: "DevOps" },
-		{ name: "Linux", icon: "simple-icons:linux", group: "DevOps" },
-		{ name: "Nginx", icon: "simple-icons:nginx", group: "DevOps" },
-	],
 
 	// 链接配置
 	// 已经预装的图标集：fa7-brands，fa7-regular，fa7-solid，material-symbols，simple-icons
