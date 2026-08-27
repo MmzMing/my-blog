@@ -493,8 +493,10 @@ function bindMediaWatchers() {
 
 	const desktopQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
 	const reducedMotionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+	// 先整层拆掉再重建：teardown 会作废仍在飞的异步初始化并复位 activeRoot，
+	// 因此紧随其后的 boot 一定会走完整流程（越过 nextRoot === activeRoot 的短路）
 	const restart = () => {
-		activeRoot = null;
+		teardownHomeBlinds();
 		bootHomeBlinds();
 	};
 
@@ -1804,20 +1806,51 @@ async function initializeHomeBlinds(root: HTMLElement, generation: number) {
 		config,
 		signal: abortController.signal,
 	};
-	const revealCleanup = setupReveal(context);
-	const headlineCleanup = setupHeadline(context);
-	const scenesCleanup = setupScenes(context);
+
+	/**
+	 * 三层按序搭建，各自返回自己的 cleanup。
+	 * 每层都用 selectRequired 取节点，缺一个就 throw，所以必须边搭边记：
+	 * 若后面的层抛错而前面的层已经建好，那些 ScrollTrigger 再没有引用能清掉，
+	 * 会一直挂在 ScrollTrigger 全局列表里对着游离节点更新（Swup 下每次导航都还在）。
+	 * 逆序回滚，重复调用无副作用（栈已清空）。
+	 */
+	const cleanups: Array<() => void> = [];
+	const teardown = () => {
+		abortController.abort();
+		while (cleanups.length > 0) cleanups.pop()?.();
+	};
+
+	try {
+		cleanups.push(setupReveal(context));
+		cleanups.push(setupHeadline(context));
+		cleanups.push(setupScenes(context));
+	} catch (error) {
+		teardown();
+		throw error;
+	}
 
 	root.dataset.homeBlindsReady = "ready";
 	ScrollTrigger.refresh();
 
 	return () => {
-		abortController.abort();
-		revealCleanup();
-		headlineCleanup();
-		scenesCleanup();
+		teardown();
 		delete root.dataset.homeBlindsReady;
 	};
+}
+
+/**
+ * Swup 容器被替换之前拆掉整层。
+ * 只挂 astro:page-load 的话，清理会推迟到 content:replace 之后 ——
+ * 那时被 pin 的 section 和 ScrollTrigger 自己插的 .pin-spacer 已经随容器一起摘掉，
+ * kill() 变成在游离节点上做 revert；而离场淡出期间跑马灯与跳跃这两条
+ * repeat: -1 的时间线还在跑。递增 generation 同时作废仍在飞的异步初始化。
+ * 复位 activeRoot 后，下一次 bootHomeBlinds 会照常重建（非首页时两者同为 null，直接短路）。
+ */
+export function teardownHomeBlinds() {
+	bootGeneration += 1;
+	activeCleanup?.();
+	activeCleanup = null;
+	activeRoot = null;
 }
 
 export function bootHomeBlinds() {

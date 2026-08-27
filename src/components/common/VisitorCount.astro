@@ -153,6 +153,8 @@ const config = visitorConfigMap[type];
 	}
 
 	run();
+	// astro:page-load 每次导航（含首次加载）都会触发一次，已经够了。
+	// 原来还挂了一个 swup:contentReplaced —— 那是 swup 3 的事件名，swup 4 不会触发，
+	// 补成 swup 4 的名字反而会让每次导航多打一次 umami 请求，因此直接去掉
 	document.addEventListener("astro:page-load", run);
-	document.addEventListener("swup:contentReplaced", run);
 </script>

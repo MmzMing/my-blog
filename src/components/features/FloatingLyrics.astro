@@ -207,7 +207,6 @@ import { i18n } from "@/i18n/translation";
 					window.removeEventListener("fm:track", onTrack);
 					window.removeEventListener("fm:toggle-floating-lyrics", onToggleFloatingLyrics);
 					document.removeEventListener("astro:page-load", syncFromManager);
-					document.removeEventListener("swup:contentReplaced", syncFromManager);
 					document.removeEventListener("visibilitychange", onVisibilityChange);
 					observer.disconnect();
 					return;
