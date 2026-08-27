@@ -159,6 +159,8 @@ const siteInfoRows = site
 </section>
 
 <script>
+  import { definePageIsland } from "@/utils/swup-lifecycle";
+
   // 已播放过的对话根节点，防止重复触发
   const playedRoots = new WeakSet<HTMLElement>();
 
@@ -248,10 +250,6 @@ const siteInfoRows = site
     initFriendCopy();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initAll);
-  } else {
-    initAll();
-  }
-  document.addEventListener("astro:page-load", initAll);
+  // 只存在于 /friends/，随容器进出；初始化本身靠 WeakSet 与 dataset 标记保持幂等
+  definePageIsland({ name: "friend-chat", mount: initAll });
 </script>

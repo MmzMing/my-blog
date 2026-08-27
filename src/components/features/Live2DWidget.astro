@@ -1062,9 +1062,11 @@ function initTrigger() {
 	// 页面可见性变化（切换浏览器标签）
 	document.addEventListener("visibilitychange", handleVisibilityChange, { signal: _sig });
 
-	// Swup SPA 导航后恢复状态（核心：跨页面状态保持）
+	// Swup SPA 导航后恢复状态（核心：跨页面状态保持）。
+	// 本脚本是 is:inline，取不到 @/utils/swup-lifecycle 的导出，只能直接听 DOM 事件。
+	// 只听 astro:page-load 一个：它正是 @swup/astro 挂在 swup 的 page:view 上桥接出来的，
+	// 原先又加了一条 swup:page:view，两者同一时刻触发，等于每次导航都恢复两遍状态
 	document.addEventListener("astro:page-load", handlePageLoad, { signal: _sig });
-	document.addEventListener("swup:page:view", handlePageLoad, { signal: _sig });
 
 	// 页面卸载时清理
 	window.addEventListener("beforeunload", cleanup, { signal: _sig });

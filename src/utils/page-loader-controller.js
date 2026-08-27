@@ -1,3 +1,5 @@
+import { onNavigation, onSwupHook } from "@/utils/swup-lifecycle";
+
 const DEFAULT_HIDE_DELAY = 0;
 const DEFAULT_MAX_WAIT = 8000;
 /** waitForPageLoaderHidden 的兜底上限，比 DEFAULT_MAX_WAIT 更宽，正常路径不会走到 */
@@ -228,36 +230,28 @@ export function waitForPageLoaderHidden({
 
 /* ========== Swup 绑定 ========== */
 
-function bindSwup({ controller, document: documentRef, window: windowRef }) {
-	let isBound = false;
-
-	function bind() {
-		if (isBound || !windowRef.swup?.hooks) return;
-		isBound = true;
-
-		windowRef.swup.hooks.on("link:click", (_visit, { el } = {}) => {
-			const href = el?.getAttribute?.("href");
-			if (isInternalPageVisit(href, windowRef) && isHomeUrl(href, windowRef))
-				controller.show("swup-link-click");
-		});
-		windowRef.swup.hooks.on("visit:start", (visit) => {
-			if (isHomeUrl(getVisitUrl(visit), windowRef))
-				controller.show("swup-visit-start");
-		});
-		windowRef.swup.hooks.on("content:replace", (visit) => {
-			if (isHomeUrl(getVisitUrl(visit), windowRef))
-				controller.show("swup-content-replace");
-		});
-		windowRef.swup.hooks.on("page:view", () => {
-			void controller.hideWhenReady("swup-page-view");
-		});
-		windowRef.swup.hooks.on("visit:end", () => {
-			void controller.hideWhenReady("swup-visit-end");
-		});
-	}
-
-	bind();
-	documentRef.addEventListener("swup:enable", bind, { once: true });
+// 实例就绪时序统一交给 swup-lifecycle，不再自己写
+// 「先查 window.swup、查不到再等 swup:enable」那套判断
+function bindSwup({ controller, window: windowRef }) {
+	onSwupHook("link:click", (_visit, args) => {
+		const href = args?.el?.getAttribute?.("href");
+		if (isInternalPageVisit(href, windowRef) && isHomeUrl(href, windowRef))
+			controller.show("swup-link-click");
+	});
+	onSwupHook("visit:start", (visit) => {
+		if (isHomeUrl(getVisitUrl(visit), windowRef))
+			controller.show("swup-visit-start");
+	});
+	onSwupHook("content:replace", (visit) => {
+		if (isHomeUrl(getVisitUrl(visit), windowRef))
+			controller.show("swup-content-replace");
+	});
+	onSwupHook("page:view", () => {
+		void controller.hideWhenReady("swup-page-view");
+	});
+	onSwupHook("visit:end", () => {
+		void controller.hideWhenReady("swup-visit-end");
+	});
 }
 
 /* ========== 初始化 ========== */
@@ -305,12 +299,12 @@ export function initPageLoader({
 		else windowRef.addEventListener("load", hideInitialLoader, { once: true });
 	}
 
-	documentRef.addEventListener("astro:page-load", () => {
+	onNavigation(() => {
 		documentRef.dispatchEvent(new CustomEvent(LOADER_READY_EVENT));
 		void controller.hideWhenReady("astro-page-load");
 	});
 
-	bindSwup({ controller, document: documentRef, window: windowRef });
+	bindSwup({ controller, window: windowRef });
 
 	return controller;
 }

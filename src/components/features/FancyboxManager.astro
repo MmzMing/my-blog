@@ -5,6 +5,8 @@ import "@/styles/fancybox-custom.css";
 ---
 
 <script>
+  import { definePageIsland } from "@/utils/swup-lifecycle";
+
   let Fancybox: any;
 
   async function setup() {
@@ -117,18 +119,21 @@ import "@/styles/fancybox-custom.css";
     observerTimer = setTimeout(stopObserving, 5000);
   }
 
-  // 初始化
-  setup();
-  observeFancyboxElements();
-
-  // Swup 生命周期整合
-  document.addEventListener("swup:visit:start", () => {
-    cleanupFancybox();
-    stopObserving();
-  });
-  document.addEventListener("swup:content:replace", () => {
-    setup();
-    observeFancyboxElements();
+  // 灯箱绑定的是容器内的图片，随容器一起换，因此按页面级孤岛登记。
+  // 原先直接监听 swup 原生 DOM 事件（swup:visit:start / swup:content:replace），
+  // 全站只有这一处这么写；统一改走 @swup/astro 桥接出来的那三个 astro:* 事件
+  definePageIsland({
+    name: "fancybox",
+    mount: () => {
+      setup();
+      observeFancyboxElements();
+    },
+    unmount: () => {
+      // 容器替换前关掉灯箱并停掉全页 MutationObserver，
+      // 否则观察者会留在即将被替换掉的 DOM 上
+      cleanupFancybox();
+      stopObserving();
+    },
   });
 
   // 加密文章解密后重新绑定灯箱

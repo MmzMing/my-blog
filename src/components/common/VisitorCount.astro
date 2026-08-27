@@ -122,6 +122,7 @@ const config = visitorConfigMap[type];
 		getUmamiPageviewLookup,
 		normalizeUmamiPageviewPath,
 	} from "@/utils/umami-pageviews";
+	import { definePageIsland } from "@/utils/swup-lifecycle";
 
 	async function fillUmamiPageviews() {
 		const nodes = document.querySelectorAll<HTMLElement>("[data-umami-pageview]");
@@ -152,9 +153,8 @@ const config = visitorConfigMap[type];
 		void fillUmamiPageviews();
 	}
 
-	run();
-	// astro:page-load 每次导航（含首次加载）都会触发一次，已经够了。
-	// 原来还挂了一个 swup:contentReplaced —— 那是 swup 3 的事件名，swup 4 不会触发，
-	// 补成 swup 4 的名字反而会让每次导航多打一次 umami 请求，因此直接去掉
-	document.addEventListener("astro:page-load", run);
+	// 注意：astro:page-load 是 @swup/astro 挂在 swup 的 page:view 上桥接出来的，
+	// **首次加载不会触发**（直接打开页面没有 visit）。所以不能只挂它，
+	// 首次那一次由 definePageIsland 统一补上，一次导航也只会打一次 umami 请求
+	definePageIsland({ name: "visitor-count", mount: run });
 </script>

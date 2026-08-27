@@ -127,7 +127,6 @@ html.is-rendering:has(.article-outline-rail) .transition-swup-main {
 
 #progress-bar {
     --progress-height: 3px;
-    --progress-duration: 8s;
 
     position: fixed;
     top: 0;
@@ -143,29 +142,8 @@ html.is-rendering:has(.article-outline-rail) .transition-swup-main {
     transform: scaleX(0);
 }
 
-@keyframes progress-loading {
-    0% { transform: scaleX(0); }
-    100% { transform: scaleX(0.95); }
-}
-
-#progress-bar.loading {
-    opacity: 1;
-    transform: scaleX(0);
-    animation: progress-loading var(--progress-duration) cubic-bezier(0.1, 0.05, 0.1, 1) forwards;
-}
-
-#progress-bar.finishing {
-    animation: none;
-    transform: scaleX(1);
-    opacity: 1;
-    transition: transform 200ms ease-out;
-}
-
-#progress-bar.done {
-    transform: scaleX(1);
-    opacity: 0;
-    transition: opacity 300ms ease-out;
-}
+/* 进度条的增长/收尾动画由 src/utils/progress-bar.ts 用 WAAPI 驱动，
+   不再依赖 CSS 类，这里只保留静态基础样式 */
 
 /* --------------------------------------------------------------------------
    5. Reduced Motion
@@ -175,16 +153,6 @@ html.is-rendering:has(.article-outline-rail) .transition-swup-main {
     .onload-animation {
         opacity: 1;
         animation: none;
-    }
-
-    #progress-bar.loading {
-        animation: none;
-        transform: scaleX(0.95);
-    }
-
-    #progress-bar.finishing,
-    #progress-bar.done {
-        transition: none;
     }
 }
 

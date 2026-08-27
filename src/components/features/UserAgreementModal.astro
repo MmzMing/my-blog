@@ -38,52 +38,41 @@ if (agreementPost) {
 </dialog>
 
 <script>
-	let userAgreementController: AbortController | null = null;
+	import { definePersistentIsland } from "@/utils/swup-lifecycle";
 
-	function initUserAgreementModal() {
+	// 同 PrivacyModal：容器外组件，DOM 与监听跨导航持久存在，只需初始化一次
+	definePersistentIsland("user-agreement-modal", () => {
 		const modal = document.getElementById("user-agreement-modal") as HTMLDialogElement | null;
 		if (!modal) return;
 
-		if (userAgreementController) userAgreementController.abort();
-		userAgreementController = new AbortController();
-		const signal = userAgreementController.signal;
-
-		function openModal() {
-			modal!.showModal();
+		const openModal = () => {
+			modal.showModal();
 			document.body.style.overflow = "hidden";
-		}
+		};
 
-		function closeModal() {
-			modal!.close();
+		const closeModal = () => {
+			modal.close();
 			document.body.style.overflow = "";
-		}
+		};
 
 		modal.querySelectorAll("[data-close-user-agreement]").forEach((element) => {
-			element.addEventListener("click", closeModal, { signal });
+			element.addEventListener("click", closeModal);
 		});
 
 		modal.addEventListener("click", (event) => {
 			if (event.target === modal) closeModal();
-		}, { signal });
+		});
 
 		modal.addEventListener("close", () => {
 			document.body.style.overflow = "";
-		}, { signal });
+		});
 
 		modal.addEventListener("cancel", (event) => {
 			event.preventDefault();
 			closeModal();
-		}, { signal });
+		});
 
-		window.addEventListener("user-agreement:open", openModal, { signal });
-		(window as any).openUserAgreementModal = openModal;
-	}
-
-	if (document.readyState === "loading") {
-		document.addEventListener("DOMContentLoaded", initUserAgreementModal);
-	} else {
-		initUserAgreementModal();
-	}
-	document.addEventListener("astro:page-load", initUserAgreementModal);
-	document.addEventListener("astro:after-swap", initUserAgreementModal);
+		window.addEventListener("user-agreement:open", openModal);
+		window.openUserAgreementModal = openModal;
+	});
 </script>

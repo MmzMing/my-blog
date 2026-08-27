@@ -375,7 +375,9 @@
 		initInteraction(container);
 	};
 
-	document.addEventListener("astro:before-preparation", closeAll);
+	// 全屏层挂在 body（Swup 容器外），容器替换前主动关闭；
+	// astro:before-preparation 是 View Transitions 事件，本项目纯 swup 不会派发
+	document.addEventListener("astro:before-swap", closeAll);
 	document.addEventListener("astro:page-load", () => {
 		closeAll();
 		initAll();

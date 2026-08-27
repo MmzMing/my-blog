@@ -1,3 +1,5 @@
+import { definePageIsland } from "@/utils/swup-lifecycle";
+
 type OutlineLevel = 1 | 2 | 3;
 
 interface OutlineHeading {
@@ -607,20 +609,16 @@ export class ArticleOutlineRailRuntime {
 	private controller: ArticleOutlineRailController | null = null;
 
 	public start(): void {
-		document.addEventListener(
-			"astro:before-swap",
-			() => this.destroyCurrent(),
-			{
-				signal: this.abortController.signal,
-			},
-		);
-		document.addEventListener("astro:page-load", () => this.initialize(), {
-			signal: this.abortController.signal,
+		// 首次加载 + 每次导航各挂一次，容器替换前拆掉：时序统一交给 swup-lifecycle
+		definePageIsland({
+			name: "article-outline-rail",
+			mount: () => this.initialize(),
+			unmount: () => this.destroyCurrent(),
 		});
+		// 加密文章解密后正文标题才出现，需要补建一次（initialize 自带幂等）
 		document.addEventListener("password:decrypted", () => this.initialize(), {
 			signal: this.abortController.signal,
 		});
-		this.initialize();
 	}
 
 	public destroy(): void {

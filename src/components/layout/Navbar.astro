@@ -100,6 +100,11 @@ if (isLocalSrcLogo) {
 
 <script>
 import { requestSearchModalToggle } from "@/utils/search-modal-controller";
+import {
+	definePageIsland,
+	definePersistentIsland,
+	onNavigation,
+} from "@/utils/swup-lifecycle";
 
 let _hoverSliderAbortController: AbortController | null = null;
 let _hoverSliderMouseEnterHandlers: Array<[Element, (e: Event) => void]> = [];
@@ -483,8 +488,6 @@ function initHoverSlider(animateActiveChange = false) {
 	detectActiveItem();
 }
 
-initHoverSlider();
-
 type NavbarRuntimeWindow = Window & {
 	__navbarScrollLayoutCleanup?: () => void;
 };
@@ -560,7 +563,7 @@ function initNavbarScrollLayout() {
 
 	window.addEventListener('scroll', handleScroll, { passive: true, signal });
 	window.addEventListener('resize', scheduleCompactLayout, { passive: true, signal });
-	document.addEventListener('astro:page-load', syncCompactState, { signal });
+	onNavigation(syncCompactState, { signal });
 
 	const resizeObserver = new ResizeObserver(scheduleCompactLayout);
 	resizeObserver.observe(segments);
@@ -582,7 +585,8 @@ function initNavbarScrollLayout() {
 	updateCompactLayout();
 }
 
-initNavbarScrollLayout();
+// 滚动/尺寸监听绑在 window 与 ResizeObserver 上，跨导航一直有效，只需装一次
+definePersistentIsland("navbar:scroll-layout", initNavbarScrollLayout);
 
 function initSearchShortcut() {
 	const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -592,9 +596,16 @@ function initSearchShortcut() {
 	});
 }
 
-document.addEventListener("astro:page-load", () => {
-	initHoverSlider(true);
-	initSearchShortcut();
+// generation === 0 就是首次加载：此时激活项已经是服务端渲染好的，不要做位移过渡；
+// 导航后才需要动画。原先首次加载只在模块顶层调了 initHoverSlider()，
+// initSearchShortcut() 却只挂在 astro:page-load 上 —— 而该事件首次加载并不触发，
+// 于是直接打开页面时快捷键提示（⌘K / Ctrl K）一直是空的
+definePageIsland({
+	name: "navbar:hover-slider",
+	mount: ({ generation }) => {
+		initHoverSlider(generation > 0);
+		initSearchShortcut();
+	},
 });
 
 // Navbar search button → open search modal

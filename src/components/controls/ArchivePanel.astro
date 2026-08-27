@@ -233,8 +233,9 @@ function postLabel(count: number): string {
 </div>
 
 <script>
+	import { definePageIsland } from "@/utils/swup-lifecycle";
+
 	// 静态构建拿不到查询参数，过滤在客户端执行。
-	// 首次加载立即运行一次；之后每次 Swup 导航由 astro:page-load 触发。
 	function applyArchiveFilters() {
 		const panel = document.querySelector<HTMLElement>(".archive-panel");
 		if (!panel) return;
@@ -319,6 +320,6 @@ function postLabel(count: number): string {
 		filterEl.hidden = false;
 	}
 
-	applyArchiveFilters();
-	document.addEventListener("astro:page-load", applyArchiveFilters);
+	// 首次加载与每次导航各过滤一次：纯读 DOM + 切 class，无需 unmount
+	definePageIsland({ name: "archive-panel", mount: applyArchiveFilters });
 </script>

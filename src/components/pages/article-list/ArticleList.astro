@@ -97,6 +97,7 @@ const totalPostLabel = i18n(
 		getUmamiPageviewLookup,
 		normalizeUmamiPageviewPath,
 	} from "@/utils/umami-pageviews";
+	import { definePageIsland } from "@/utils/swup-lifecycle";
 
 	let cleanupActiveArticleList: (() => void) | undefined;
 
@@ -304,14 +305,14 @@ const totalPostLabel = i18n(
 		};
 	}
 
-	const globalWindow = window as Window & {
-		__articleListPageLoadBound?: boolean;
-	};
-
-	if (!globalWindow.__articleListPageLoadBound) {
-		globalWindow.__articleListPageLoadBound = true;
-		document.addEventListener("astro:page-load", initArticleList);
-	}
-
-	initArticleList();
+	// 列表随容器一起被替换：容器替换前先拆掉封面生命周期与 AbortController，
+	// 原先只在下一次 initArticleList() 开头补拆，中间那段时间它们还挂在旧 DOM 上
+	definePageIsland({
+		name: "article-list",
+		mount: initArticleList,
+		unmount: () => {
+			cleanupActiveArticleList?.();
+			cleanupActiveArticleList = undefined;
+		},
+	});
 </script>

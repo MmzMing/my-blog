@@ -141,6 +141,7 @@ const description =
       <!-- 头像加载失败回退首字母 + 封面图加载动效 + 悬停图片预览 -->
       <script>
       import { revealImageWithPixels } from "@/utils/image-pixel-reveal";
+      import { definePageIsland } from "@/utils/swup-lifecycle";
 
             function initFriendAvatars(): void {
         document
@@ -265,9 +266,6 @@ const description =
           if (!preview.classList.contains("is-visible")) return;
           place(e.clientX, e.clientY);
         });
-
-        // 页面切换后清除残留预览
-        document.addEventListener("astro:page-load", hide);
       }
 
       function initFriendMedia(): void {
@@ -276,12 +274,20 @@ const description =
         initFriendImagePreview();
       }
 
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initFriendMedia);
-      } else {
-        initFriendMedia();
+      // 预览元素挂在 body（Swup 容器外）跨导航留存，离开本页前清掉残留的可见态
+      function hideFriendImagePreview(): void {
+        document
+          .querySelector(".friend-image-preview")
+          ?.classList.remove("is-visible");
       }
-      document.addEventListener("astro:page-load", initFriendMedia);
+
+      definePageIsland({
+        name: "friends:media",
+        // 登记会跨导航留存在运行时登记表里，match 保证只在友链页挂载
+        match: () => !!document.querySelector("[data-friend-avatar]"),
+        mount: initFriendMedia,
+        unmount: hideFriendImagePreview,
+      });
       </script>
     </div>
   </div>

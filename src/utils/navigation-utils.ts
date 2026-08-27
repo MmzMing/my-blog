@@ -1,11 +1,12 @@
-import {
-	isHomePage as isHomePageByPath,
-	isPostPage as isPostPageByPath,
-} from "@/utils/layout-utils";
 /**
  * 导航工具函数
  * 提供统一的页面导航功能，支持 Swup 无刷新跳转
  */
+import {
+	isHomePage as isHomePageByPath,
+	isPostPage as isPostPageByPath,
+} from "@/utils/layout-utils";
+import { getSwup } from "@/utils/swup-lifecycle";
 
 /**
  * 导航到指定页面
@@ -45,22 +46,19 @@ export function navigateToPage(
 		return;
 	}
 
-	// 检查 Swup 是否可用
-	if (typeof window !== "undefined" && window.swup) {
-		try {
-			// 使用 Swup 进行无刷新跳转
-			if (options?.replace) {
-				window.swup.navigate(url, { history: false });
-			} else {
-				window.swup.navigate(url);
-			}
-		} catch (error) {
-			console.error("Swup navigation failed:", error);
-			// 降级到普通跳转
-			fallbackNavigation(url, options);
-		}
-	} else {
-		// Swup 不可用时的降级处理
+	// Swup 尚未就绪（实例是 module 脚本异步挂上来的）时降级为整页跳转
+	const swup = getSwup();
+	if (!swup) {
+		fallbackNavigation(url, options);
+		return;
+	}
+
+	try {
+		// swup 4 的 history 只认 "push" / "replace"，传别的值会被静默忽略掉，
+		// 于是 replace 语义会退化成 push —— 这里必须给字符串
+		swup.navigate(url, options?.replace ? { history: "replace" } : undefined);
+	} catch (error) {
+		console.error("Swup navigation failed:", error);
 		fallbackNavigation(url, options);
 	}
 }

@@ -90,7 +90,7 @@ const runtimeConfig = {
 
 	// 挂载时机与去重全部交给 bindHomeLayer：顶层自启和 astro:page-load 谁先谁后都只挂一次，
 	// 否则第二次挂载会把第一次那条 document.fonts.ready 回调放进来，contact 被拆成两套字符节点
-	bindHomeLayer({
+	bindHomeLayer("hero", {
 		boot: () => {
 			cleanupHomeHero?.();
 			cleanupHomeHero = mountHomeHero();

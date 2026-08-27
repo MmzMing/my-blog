@@ -60,34 +60,12 @@ const config = {
     }
   }
 
-  // 页面加载时初始化
-  document.addEventListener("DOMContentLoaded", initTwikoo);
-
-  // 防止 swup 重复执行脚本导致监听器累积
-  if (!window.__twikoo_listeners_done) {
-    window.__twikoo_listeners_done = true;
-
-    // Swup 页面切换后重新初始化
-    if (window.swup && window.swup.hooks) {
-      window.swup.hooks.on("content:replace", function () {
-        setTimeout(initTwikoo, 200);
-      });
-    } else {
-      document.addEventListener("swup:enable", function () {
-        if (window.swup && window.swup.hooks) {
-          window.swup.hooks.on("content:replace", function () {
-            setTimeout(initTwikoo, 200);
-          });
-        }
-      });
-    }
-
-    // 自定义事件监听
-    document.addEventListener("firefly:page:loaded", function () {
-      const commentEl = document.getElementById("tcomment");
-      if (commentEl) {
-        initTwikoo();
-      }
-    });
-  }
+  // 本脚本是 is:inline 且没有 data-swup-ignore-script，SwupScriptsPlugin 会在每次
+  // content:replace 时把它整段重新执行一遍（原来那个 __twikoo_listeners_done 标记
+  // 就是为此存在的）。既然如此，顶层直接调用一次就同时覆盖了首次加载和每次导航：
+  //   - #tcomment 在本脚本之前输出，取得到；
+  //   - initTwikoo 会先清空容器再初始化，且 twikoo 未就绪时自带重试，是幂等的。
+  // 于是原先那套「查 window.swup、查不到再等 swup:enable」的时序判断、
+  // 200ms 延时，以及 firefly:page:loaded 二次初始化都不再需要 —— 少一条路径，少一次重复渲染
+  initTwikoo();
 </script>

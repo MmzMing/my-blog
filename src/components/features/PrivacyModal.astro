@@ -38,58 +38,45 @@ if (privacyPost) {
 </dialog>
 
 <script>
-	let privacyController: AbortController | null = null;
+	import { definePersistentIsland } from "@/utils/swup-lifecycle";
 
-	function initPrivacyModal() {
-		const modal = document.getElementById('privacy-modal') as HTMLDialogElement | null;
+	// 本组件在 Swup 容器之外，DOM 与监听跨导航持久存在，因此只需初始化一次。
+	// 原先同时挂了 astro:page-load 和 astro:after-swap（两者都由 @swup/astro 派发），
+	// 一次导航会重建两遍监听，只能再靠 AbortController 兜回来 —— 那层兜底现在不需要了
+	definePersistentIsland("privacy-modal", () => {
+		const modal = document.getElementById("privacy-modal") as HTMLDialogElement | null;
 		if (!modal) return;
 
-		// Abort previous listeners to prevent accumulation
-		if (privacyController) privacyController.abort();
-		privacyController = new AbortController();
-		const signal = privacyController.signal;
+		const openModal = () => {
+			modal.showModal();
+			document.body.style.overflow = "hidden";
+		};
 
-		function openModal() {
-			modal!.showModal();
-			document.body.style.overflow = 'hidden';
-		}
+		const closeModal = () => {
+			modal.close();
+			document.body.style.overflow = "";
+		};
 
-		function closeModal() {
-			modal!.close();
-			document.body.style.overflow = '';
-		}
-
-		modal.querySelectorAll('[data-close-privacy]').forEach(el => {
-			el.addEventListener('click', closeModal, { signal });
+		modal.querySelectorAll("[data-close-privacy]").forEach((element) => {
+			element.addEventListener("click", closeModal);
 		});
 
-		modal.addEventListener('click', (e) => {
-			if (e.target === modal) closeModal();
-		}, { signal });
+		modal.addEventListener("click", (event) => {
+			if (event.target === modal) closeModal();
+		});
 
-		modal.addEventListener('close', () => {
-			document.body.style.overflow = '';
-		}, { signal });
+		modal.addEventListener("close", () => {
+			document.body.style.overflow = "";
+		});
 
-		modal.addEventListener('cancel', (e) => {
-			e.preventDefault();
+		modal.addEventListener("cancel", (event) => {
+			event.preventDefault();
 			closeModal();
-		}, { signal });
+		});
 
-		window.addEventListener('privacy:open', () => {
-			openModal();
-		}, { signal });
-
-		(window as any).openPrivacyModal = openModal;
-	}
-
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', initPrivacyModal);
-	} else {
-		initPrivacyModal();
-	}
-	document.addEventListener('astro:page-load', initPrivacyModal);
-	document.addEventListener('astro:after-swap', initPrivacyModal);
+		window.addEventListener("privacy:open", openModal);
+		window.openPrivacyModal = openModal;
+	});
 </script>
 
 <!-- 样式已迁移至 src/styles/components/privacy-modal.css -->

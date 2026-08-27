@@ -12,8 +12,8 @@
 		parseArticleCoverApiUrls,
 		type ArticleCoverLifecycle,
 	} from "@/utils/article-cover-lifecycle";
+	import { definePageIsland } from "@/utils/swup-lifecycle";
 
-	const root = document.documentElement;
 	const COVER_SELECTOR = "[data-wiki-link-card-cover]";
 	const IMAGE_SELECTOR = "[data-wiki-link-card-cover-image]";
 	let cleanupActiveCards: (() => void) | undefined;
@@ -69,9 +69,15 @@
 		};
 	}
 
-	if (!root.dataset.wikiLinkCardManagerInitialized) {
-		root.dataset.wikiLinkCardManagerInitialized = "true";
-		initializeWikiLinkCards();
-		document.addEventListener("astro:page-load", initializeWikiLinkCards);
-	}
+	// 卡片本身在 Swup 容器内，随容器一起被替换，所以按页面级孤岛登记：
+	// 容器替换前先 dispose 掉旧卡片的 IntersectionObserver 与 fetch，
+	// 不然它们会一直挂在已经脱离文档的节点上直到下一次 page-load
+	definePageIsland({
+		name: "wiki-link-cards",
+		mount: initializeWikiLinkCards,
+		unmount: () => {
+			cleanupActiveCards?.();
+			cleanupActiveCards = undefined;
+		},
+	});
 </script>

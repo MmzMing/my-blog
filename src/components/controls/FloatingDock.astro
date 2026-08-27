@@ -123,8 +123,10 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 	import I18nKey from "@/i18n/i18nKey";
 	import { i18n } from "@/i18n/translation";
 	import { getStoredTheme, setTheme } from "@/utils/setting-utils";
+	import { definePersistentIsland, onNavigation } from "@/utils/swup-lifecycle";
 
-	(function initFloatingDock() {
+	// 悬浮坞在 Swup 容器之外，DOM 与监听跨导航持久存在，只需初始化一次
+	definePersistentIsland("floating-dock", () => {
 		const dockAbortController = new AbortController();
 		const dockSignal = dockAbortController.signal;
 		const dock = document.getElementById("floating-dock");
@@ -284,7 +286,8 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		updateScrollDependent();
 		updatePathDependent();
 		window.addEventListener("scroll", updateScrollDependent, { passive: true, signal: dockSignal });
-		document.addEventListener("astro:page-load", () => {
+		// 只在导航后收抽屉、重算路径相关按钮；首次加载的初始态由上面两行直接调用负责
+		onNavigation(() => {
 			if (preserveCalendarDrawerOnNavigation) {
 				preserveCalendarDrawerOnNavigation = false;
 				closeAllDrawers();
@@ -296,5 +299,5 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			updatePathDependent();
 			updateScrollDependent();
 		}, { signal: dockSignal });
-	})();
+	});
 </script>

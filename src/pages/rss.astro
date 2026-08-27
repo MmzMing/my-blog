@@ -102,6 +102,8 @@ const recentPosts = posts.slice(0, 6);
     </div>
 
     <script>
+        import { definePageIsland } from "@/utils/swup-lifecycle";
+
         function initRssCopy() {
             const copyBtn = document.getElementById('copy-rss-btn');
             if (!copyBtn) return;
@@ -135,20 +137,10 @@ const recentPosts = posts.slice(0, 6);
             });
         }
         
-        // 立即初始化（支持直接访问页面和刷新）
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initRssCopy);
-        } else {
-            // DOM 已加载，直接初始化
-            setTimeout(initRssCopy, 0);
-        }
-        
-        // 支持 Swup 客户端路由（如果存在）
-        if (typeof window !== 'undefined' && (window as any).swup) {
-            (window as any).swup.hooks.on('content:replace', () => {
-                // 延迟执行以确保 DOM 已更新
-                setTimeout(initRssCopy, 100);
-            });
-        }
+        // 首次加载与每次导航各绑定一次。
+        // 原先靠 (window as any).swup 直接注册 content:replace 钩子：既用 as any 绕过了类型检查，
+        // 也没有任何就绪兜底 —— 本脚本先于 swup 初始化执行时，那个钩子根本注册不上，
+        // 导航过来复制按钮就是死的
+        definePageIsland({ name: "rss-copy", mount: initRssCopy });
     </script>
 </MainGridLayout>

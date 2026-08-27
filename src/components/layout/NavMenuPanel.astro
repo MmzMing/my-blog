@@ -127,6 +127,8 @@ if (isLocalSrcLogo) {
 <!-- 样式已迁移至 src/styles/layout/nav-menu-panel.css -->
 
 <script>
+import { definePageIsland } from "@/utils/swup-lifecycle";
+
 let drawerAbortController: AbortController | null = null;
 
 function initNavDrawer() {
@@ -197,9 +199,13 @@ function initNavDrawer() {
 	}, { signal });
 }
 
-initNavDrawer();
-
-document.addEventListener('astro:page-load', () => {
-	initNavDrawer();
+// 面板在 Swup 容器之外，但抽屉里的链接高亮依赖当前路径，每次导航都要重建
+definePageIsland({
+	name: "nav-menu-panel",
+	mount: initNavDrawer,
+	unmount: () => {
+		drawerAbortController?.abort();
+		drawerAbortController = null;
+	},
 });
 </script>

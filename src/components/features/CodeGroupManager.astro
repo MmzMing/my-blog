@@ -6,11 +6,10 @@
 ---
 
 <script>
-	const root = document.documentElement;
+	import { definePersistentIsland } from "@/utils/swup-lifecycle";
 
-	if (!root.dataset.codeGroupManagerInitialized) {
-		root.dataset.codeGroupManagerInitialized = "true";
-
+	// 事件委托挂在 document 上，跨导航一直有效，所以只需注册一次
+	definePersistentIsland("code-group-manager", () => {
 		const GROUP_SELECTOR = ".rehype-code-group";
 		const TAB_SELECTOR = ".rcg-tab";
 		const BLOCK_SELECTOR = ".rcg-block";
@@ -95,5 +94,5 @@
 			event.preventDefault();
 			activate(found.group, nextIndex, true);
 		});
-	}
+	});
 </script>

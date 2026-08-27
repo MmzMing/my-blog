@@ -997,5 +997,5 @@ const statsShareId = umamiConfig?.shareId ?? "";
 	// swup 4 的 DOM 事件名是冒号分段的（swup:content:replace），旧的 swup:willReplaceContent
 	// 永远不会触发；而 @swup/astro 派发的 astro:before-swap 挂在
 	// hooks.before("content:replace") 上，正是要的那个时机
-	bindHomeLayer({ boot: initHomeDataLayer, teardown: cleanupHomeDataLayer });
+	bindHomeLayer("data-layer", { boot: initHomeDataLayer, teardown: cleanupHomeDataLayer });
 </script>

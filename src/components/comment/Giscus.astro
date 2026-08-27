@@ -46,28 +46,15 @@ const giscus = commentConfig.giscus;
     container.appendChild(s);
   }
 
+  // 本脚本是 is:inline 且没有 data-swup-ignore-script，SwupScriptsPlugin 会在每次
+  // content:replace 时把它整段重新执行一遍，所以这句顶层调用已经同时覆盖了
+  // 首次加载和每次导航。原先还额外挂了一个 content:replace 钩子去 setTimeout(loadGiscus, 200)，
+  // 那是在同一次导航里把评论区又装了一遍
   loadGiscus();
 
-  // 防止 swup 重复执行脚本导致监听器累积
+  // theme-change 是常驻监听，必须防住上面说的重复执行，否则每访问一次评论页就多叠一个
   if (!window.__giscus_listeners_done) {
     window.__giscus_listeners_done = true;
-
-    // 站点主题切换时同步 Giscus 主题
     window.addEventListener('theme-change', syncGiscusTheme);
-
-    // Swup 页面切换后重新加载
-    if (window.swup && window.swup.hooks) {
-      window.swup.hooks.on('content:replace', function () {
-        setTimeout(loadGiscus, 200);
-      });
-    } else {
-      document.addEventListener('swup:enable', function () {
-        if (window.swup && window.swup.hooks) {
-          window.swup.hooks.on('content:replace', function () {
-            setTimeout(loadGiscus, 200);
-          });
-        }
-      });
-    }
   }
 </script>

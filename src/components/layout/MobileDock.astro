@@ -369,6 +369,7 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 	import { i18n } from "@/i18n/translation";
 	import { requestSearchModalToggle } from "@/utils/search-modal-controller";
 	import { getStoredTheme, setTheme } from "@/utils/setting-utils";
+	import { onNavigation, preloadUrl } from "@/utils/swup-lifecycle";
 
 	type DockShape = "pill" | "bubble" | "card";
 	type DockView = "menu" | "music" | "calendar" | "announcement" | "tags" | "toc";
@@ -825,7 +826,7 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		}, { signal });
 
 		contextButton.addEventListener("touchstart", () => {
-			if (!musicState?.isPlaying) void window.swup?.preload?.("/")?.catch(() => {});
+			if (!musicState?.isPlaying) preloadUrl("/");
 		}, { passive: true, signal });
 
 		overlay.addEventListener("click", closeCard, { signal });
@@ -935,7 +936,8 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			}
 		}, { signal });
 
-		document.addEventListener("astro:page-load", () => {
+		// 只在导航后收起面板并同步路径相关状态；首次加载的初始态由上面两行直接调用负责
+		onNavigation(() => {
 			mobileTOCManager?.cleanup();
 			mobileTOCManager = null;
 			lastScrollY = window.scrollY;

@@ -178,6 +178,8 @@ const pageLabels = Object.fromEntries(
 </div>
 
 <script>
+	import { definePageIsland } from "@/utils/swup-lifecycle";
+
 	function initChangelogGraph() {
 		const rootEl = document.querySelector<HTMLElement>("[data-changelog]");
 		if (!rootEl) return;
@@ -574,6 +576,6 @@ const pageLabels = Object.fromEntries(
 		layout();
 	}
 
-	initChangelogGraph();
-	document.addEventListener("astro:page-load", initChangelogGraph);
+	// 只存在于关于页，随容器进出；__cleanup 在 initChangelogGraph 开头自调用保持幂等
+	definePageIsland({ name: "changelog-graph", mount: initChangelogGraph });
 </script>

@@ -66,6 +66,7 @@ const initialStatus =
   import type { TagGraphController } from "@/utils/tag-graph-controller";
   import I18nKey from "@/i18n/i18nKey";
   import { i18n } from "@/i18n/translation";
+  import { definePageIsland } from "@/utils/swup-lifecycle";
 
   let activeController: TagGraphController | null = null;
   let loadingObserver: IntersectionObserver | null = null;
@@ -116,6 +117,11 @@ const initialStatus =
     loadingObserver.observe(surface);
   }
 
-  initTagGraphLoader();
-  document.addEventListener("astro:page-load", initTagGraphLoader);
+  // 标签图在侧边栏动态容器内，随容器被替换；容器替换前把 d3 实例和
+  // IntersectionObserver 拆掉，否则它们会留在已脱离文档的节点上
+  definePageIsland({
+    name: "tag-graph",
+    mount: initTagGraphLoader,
+    unmount: cleanupTagGraphLoader,
+  });
 </script>

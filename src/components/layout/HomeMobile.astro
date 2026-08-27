@@ -678,5 +678,5 @@ const statsShareId = umamiConfig?.shareId ?? "";
 
 	// 同 HomeDataLayer：容器替换前清理（bindHomeLayer 内部走 astro:before-swap），
 	// 旧的 swup:willReplaceContent 是 swup 3 的名字，在 swup 4 下不会触发
-	bindHomeLayer({ boot: initHomeMobile, teardown: cleanupHomeMobile });
+	bindHomeLayer("mobile", { boot: initHomeMobile, teardown: cleanupHomeMobile });
 </script>

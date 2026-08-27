@@ -37,6 +37,7 @@ import { url } from "@/utils/url-utils";
 
 <script>
 	import { mountNotFoundScene } from "@/utils/not-found-scene";
+	import { definePageIsland } from "@/utils/swup-lifecycle";
 
 	let cleanupNotFoundScene: (() => void) | null = null;
 
@@ -54,7 +55,9 @@ import { url } from "@/utils/url-utils";
 		cleanupNotFoundScene = mountNotFoundScene(root);
 	}
 
-	bootNotFoundScene();
-	document.addEventListener("astro:page-load", bootNotFoundScene);
-	document.addEventListener("astro:before-swap", teardownNotFoundScene);
+	definePageIsland({
+		name: "not-found-scene",
+		mount: bootNotFoundScene,
+		unmount: teardownNotFoundScene,
+	});
 </script>

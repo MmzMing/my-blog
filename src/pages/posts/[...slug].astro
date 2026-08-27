@@ -529,6 +529,7 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
 
   <script>
     import dayjs from "dayjs";
+    import { definePageIsland } from "@/utils/swup-lifecycle";
 
     function initPostCoverImage() {
       const cover = document.getElementById("post-cover");
@@ -648,11 +649,17 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
       });
     }
 
-    initPostCoverImage();
-    initPostShare();
-    document.addEventListener("astro:page-load", initPostCoverImage);
-    document.addEventListener("astro:page-load", checkOutdated);
-    document.addEventListener("astro:page-load", initPostShare);
+    // checkOutdated 原先只挂在 astro:page-load 上、顶层没调，
+    // 而该事件首次加载并不触发 —— 直接打开文章页时「内容可能过时」提示从来不显示。
+    // 三个初始化统一走 definePageIsland，首次加载与每次导航各跑一次
+    definePageIsland({
+      name: "post-detail",
+      mount: () => {
+        initPostCoverImage();
+        checkOutdated();
+        initPostShare();
+      },
+    });
   </script>
 
   <div

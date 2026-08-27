@@ -96,6 +96,8 @@ const { groups } = Astro.props;
 )}
 
 <script>
+	import { definePageIsland } from "@/utils/swup-lifecycle";
+
 	// 分类浏览器:悬停预览、点击固定(桌面);点按展开/收起(移动端手风琴)
 	// 全量面板在构建期渲染,交互仅切换 data-active / data-pinned 属性,零 DOM 创建
 	const desktopQuery = window.matchMedia("(min-width: 768px)");
@@ -197,6 +199,7 @@ const { groups } = Astro.props;
 		activeIndex = items.findIndex((el) => el.hasAttribute("data-active"));
 	}
 
-	initCategoryExplorer();
-	document.addEventListener("astro:page-load", initCategoryExplorer);
+	// 交互监听是委托在 document 上的常驻监听，这里只需在每次导航后
+	// 重新抓取新容器里的节点并同步状态
+	definePageIsland({ name: "category-explorer", mount: initCategoryExplorer });
 </script>

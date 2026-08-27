@@ -1,3 +1,4 @@
+import type { SwupInstance, SwupRuntimeState } from "@/types/swup";
 import type { ArticleOutlineRailRuntime } from "@/utils/article-outline-controller";
 
 declare global {
@@ -12,8 +13,15 @@ declare global {
 	}
 
 	interface Window {
-		// biome-ignore lint/suspicious/noExplicitAny: External library
-		swup: any;
+		/**
+		 * `@swup/astro` 的 `globalInstance: true` 挂上来的实例。
+		 * swup 初始化脚本与组件脚本都是 module，执行先后不定，因此这里是可选的 ——
+		 * 读它请统一走 `@/utils/swup-lifecycle` 的 `getSwup()` / `onSwupReady()`，
+		 * 不要自己写「查实例、查不到再等 swup:enable」的时序判断。
+		 */
+		swup?: SwupInstance;
+		/** swup-lifecycle 的运行时状态，只应由该模块读写 */
+		__fireflySwupRuntime?: SwupRuntimeState;
 		live2dModelInitialized?: boolean;
 		// biome-ignore lint/suspicious/noExplicitAny: External library (PIXI live2d)
 		_live2dApp?: any;
@@ -28,6 +36,10 @@ declare global {
 			options?: Record<string, unknown>,
 		) => void;
 		floatingTOCListenersInitialized?: boolean;
+		/** 由 PrivacyModal 挂上，供 Footer 的 inline onclick 调用 */
+		openPrivacyModal?: () => void;
+		/** 由 UserAgreementModal 挂上，供 Footer 的 inline onclick 调用 */
+		openUserAgreementModal?: () => void;
 		__articleOutlineRailRuntime?: ArticleOutlineRailRuntime;
 		__searchLoadersReady?: boolean;
 		__searchModalMounted?: boolean;

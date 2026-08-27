@@ -27,7 +27,12 @@ import { url } from "@/utils/url-utils";
 <!-- 引入消息框组件 -->
 <MessageBox />
 
-<script is:inline define:vars={{ spineModelConfig, modelPath: url(spineModelConfig.model.path), atlasPath: url(spineModelConfig.model.path.replace(".json", ".atlas")), cssPath: url("/pio/static/spine-player.min.css"), jsPath: url("/pio/static/spine-player.min.js") }}>
+{/* data-swup-ignore-script：本组件在 Swup 容器之外常驻，而 SwupScriptsPlugin 的扫描范围是
+    整个 document（不只是容器内），不加这个属性的话每次导航都会把整段重新执行一遍 ——
+    下面第 409 行的 window.__spineAbortController 会被无守卫地换成新的，
+    旧的 resize / popstate 监听从此再也 abort 不到，按访问次数累积。
+    同为容器外常驻内联脚本的 Live2DWidget / MusicManager / CalendarManager 都带着这个属性 */}
+<script is:inline data-swup-ignore-script define:vars={{ spineModelConfig, modelPath: url(spineModelConfig.model.path), atlasPath: url(spineModelConfig.model.path.replace(".json", ".atlas")), cssPath: url("/pio/static/spine-player.min.css"), jsPath: url("/pio/static/spine-player.min.js") }}>
   // 动态加载 Spine CSS（带本地备用）
   function loadSpineCSS() {
     if (!spineModelConfig.enable) return;
@@ -412,15 +417,14 @@ import { url } from "@/utils/url-utils";
   // 监听页面卸载事件，清理资源
   window.addEventListener("beforeunload", cleanupSpineModel, { signal: spineSignal });
 
-  // 监听 Swup 页面切换事件（如果使用了 Swup）
-  if (typeof window.swup !== "undefined" && window.swup.hooks) {
-    window.swup.hooks.on("content:replace", () => {
-      // 只更新响应式显示，不重新创建模型
-      setTimeout(() => {
-        updateResponsiveDisplay();
-      }, 100);
-    });
-  }
+  // 导航后只更新响应式显示，不重新创建模型。
+  // 本脚本是 is:inline，取不到 @/utils/swup-lifecycle 的导出，所以直接听
+  // @swup/astro 桥接出来的 astro:after-swap（等价于 swup 的 content:replace）——
+  // 原先是自己去查 window.swup.hooks 注册钩子，但没有任何就绪兜底：
+  // 本脚本先于 swup 初始化执行时，那个钩子根本注册不上
+  document.addEventListener("astro:after-swap", () => {
+    setTimeout(updateResponsiveDisplay, 100);
+  }, { signal: spineSignal });
 
   // 监听 popstate 事件（浏览器前进后退）
   window.addEventListener("popstate", () => {
