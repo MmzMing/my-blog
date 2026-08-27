@@ -13,15 +13,15 @@ const { index, total, item, composite = false } = Astro.props;
 
 /**
  * 五幕介绍层各用一套版式：
- * curtain=底部字幕条 / column=左下竖排题签 / tag=右上标签块 /
- * ribbon=斜切色带 / inset=居中内框。动效由控制器按 variant 分发。
+ * camera=相机取景框 / bookmark=右侧竖排书签 / card=圆角半透明卡片 /
+ * ribbon=斜切色带 / pixel=像素方块终幕。动效由控制器按 variant 分发。
  */
 const CAPTION_VARIANTS = [
-	"curtain",
-	"column",
-	"tag",
+	"camera",
+	"bookmark",
+	"card",
 	"ribbon",
-	"inset",
+	"pixel",
 ] as const;
 const variant = CAPTION_VARIANTS[index % CAPTION_VARIANTS.length];
 
@@ -32,6 +32,68 @@ const cueLabel = isFirst ? "序幕" : isLast ? "终幕" : "NEXT";
 const cueMark = isLast ? "■" : "→";
 const cueKind = isFirst ? "prologue" : isLast ? "finale" : "next";
 const captionChars = Array.from(item.description);
+
+/** 取景框四角与终幕角标共用的角位标识 */
+const CORNERS = ["tl", "tr", "bl", "br"] as const;
+/** 首幕取景框左上角的相机参数：纯装饰，不进配置 */
+const CAMERA_PARAMS = [
+	"FOCUS LOCK",
+	"ISO 400 · f/1.8",
+	"1/250s · 24mm",
+	"AWB · +0.3EV",
+];
+/** 幕序号，第四幕的空心大字与第二幕的落款编号共用 */
+const ordinal = String(index + 1).padStart(2, "0");
+/** 第二幕大字：每行 2 字竖排，行自右向左排布 */
+const LEAD_CHARS_PER_LINE = 2;
+const leadChars = Array.from(item.title);
+const leadLines = Array.from(
+	{ length: Math.ceil(leadChars.length / LEAD_CHARS_PER_LINE) },
+	(_, line) =>
+		leadChars.slice(
+			line * LEAD_CHARS_PER_LINE,
+			(line + 1) * LEAD_CHARS_PER_LINE,
+		),
+);
+const serial = `No.${String(index + 1).padStart(2, "0")}`;
+/** 第三幕签名：构建期先填一个兜底日期，运行时由控制器改写成当天 */
+const signMaskId = `home-blinds-sign-sweep-${index}`;
+const buildDate = new Date();
+const signDate = `${buildDate.getFullYear()} / ${String(
+	buildDate.getMonth() + 1,
+).padStart(2, "0")} / ${String(buildDate.getDate()).padStart(2, "0")}`;
+/**
+ * 终幕像素方块：不是规整网格，而是散落在整幅画面上的不规则方块。
+ * x / y 为左上角百分比，size 为边长（占图框宽度的百分比，靠 aspect-ratio 保持正方）。
+ * kind：panel=柔白色块 / cross=带对角叉的空心方块 / outline=空心方块 / dot=实心小块。
+ * 底部中央 x 18~82%、y 76% 以下留给字幕，不摆方块。
+ */
+const PIXEL_BLOCKS = [
+	{ x: 5.5, y: 11, size: 3.2, kind: "cross" },
+	{ x: 12, y: 21, size: 7.4, kind: "panel" },
+	{ x: 4, y: 39, size: 2.2, kind: "outline" },
+	{ x: 17.5, y: 47, size: 1, kind: "dot" },
+	{ x: 7.5, y: 57, size: 4.2, kind: "cross" },
+	{ x: 21, y: 67, size: 2.6, kind: "outline" },
+	{ x: 3, y: 71, size: 1.1, kind: "dot" },
+	{ x: 9, y: 84, size: 2.8, kind: "cross" },
+	{ x: 27, y: 13, size: 2.4, kind: "outline" },
+	{ x: 33.5, y: 30, size: 0.8, kind: "dot" },
+	{ x: 29.5, y: 54, size: 5.6, kind: "panel" },
+	{ x: 40, y: 19, size: 3.6, kind: "cross" },
+	{ x: 46, y: 39, size: 1.1, kind: "dot" },
+	{ x: 48.5, y: 63, size: 2.2, kind: "outline" },
+	{ x: 55, y: 11, size: 2.8, kind: "outline" },
+	{ x: 62, y: 25, size: 6.8, kind: "panel" },
+	{ x: 58, y: 51, size: 3.4, kind: "cross" },
+	{ x: 70, y: 43, size: 1, kind: "dot" },
+	{ x: 76, y: 15, size: 4, kind: "cross" },
+	{ x: 84.5, y: 32, size: 8, kind: "panel" },
+	{ x: 88.5, y: 54, size: 2.4, kind: "outline" },
+	{ x: 79, y: 65, size: 1.2, kind: "dot" },
+	{ x: 68, y: 73, size: 2, kind: "outline" },
+	{ x: 90, y: 78, size: 3, kind: "cross" },
+];
 ---
 
 <article
@@ -82,11 +144,146 @@ const captionChars = Array.from(item.description);
 				loading={index === 0 ? "eager" : "lazy"}
 				decoding="async"
 			/>
+
+			{
+				variant === "camera" && (
+					<div class="home-blinds-scene__viewfinder" aria-hidden="true">
+						{CORNERS.map((corner) => (
+							<span
+								class="home-blinds-scene__viewfinder-corner"
+								data-viewfinder-corner={corner}
+								data-scene-decor-corner
+							/>
+						))}
+						<span class="home-blinds-scene__viewfinder-ring" data-scene-decor-ring />
+						<span class="home-blinds-scene__viewfinder-core" data-scene-decor-core />
+						<div class="home-blinds-scene__viewfinder-params">
+							{CAMERA_PARAMS.map((line) => (
+								<span
+									class="home-blinds-scene__viewfinder-param"
+									data-scene-decor-line
+								>
+									{line}
+								</span>
+							))}
+						</div>
+						<span class="home-blinds-scene__viewfinder-flash" data-scene-decor-flash />
+					</div>
+				)
+			}
+
+			{
+				variant === "card" && (
+					<div class="home-blinds-scene__sign" aria-hidden="true" data-scene-decor-sign>
+						<svg
+							class="home-blinds-scene__sign-art"
+							viewBox="0 0 280 92"
+							fill="none"
+						>
+							<defs>
+								<mask
+									id={signMaskId}
+									maskUnits="userSpaceOnUse"
+									x="-12"
+									y="0"
+									width="304"
+									height="92"
+								>
+									<path
+										class="home-blinds-scene__sign-sweep"
+										data-scene-decor-sign-sweep
+										d="M-8 40C34 22 66 56 108 38S170 24 202 42S248 54 288 36"
+										pathLength="1"
+										stroke="#fff"
+										stroke-width="72"
+										stroke-linecap="round"
+									/>
+								</mask>
+							</defs>
+							<text
+								class="home-blinds-scene__sign-date"
+								data-scene-decor-sign-date
+								x="8"
+								y="46"
+								textLength="252"
+								lengthAdjust="spacingAndGlyphs"
+								mask={`url(#${signMaskId})`}>{signDate}</text
+							>
+							<path
+								class="home-blinds-scene__sign-flourish"
+								data-scene-decor-sign-flourish
+								d="M8 68C48 78 104 58 156 66S238 76 272 56"
+								pathLength="1"
+								stroke="currentColor"
+								stroke-width="3.2"
+								stroke-linecap="round"
+							/>
+						</svg>
+						<span class="home-blinds-scene__sign-time" data-scene-decor-sign-time
+							>--:--</span
+						>
+					</div>
+				)
+			}
+
+			{
+				/* 终幕的故障层：同一张图的一条横带，悬停时被错位推开，做出信号故障感 */
+				variant === "pixel" && (
+					<span
+						class="home-blinds-scene__glitch"
+						aria-hidden="true"
+						style={`--home-blinds-glitch-image: url("${item.image}")`}
+					/>
+				)
+			}
+
+			{
+				/* 第四幕的静物式点缀：空心大序号 + 右侧双线与竖排标识，只做版面不抢戏 */
+				variant === "ribbon" && (
+					<div class="home-blinds-scene__accent" aria-hidden="true">
+						<span class="home-blinds-scene__accent-numeral" data-scene-decor-numeral>
+							{ordinal}
+						</span>
+						<div class="home-blinds-scene__accent-edge">
+							<span
+								class="home-blinds-scene__accent-rule"
+								data-accent-rule="long"
+								data-scene-decor-rule
+							/>
+							<span
+								class="home-blinds-scene__accent-rule"
+								data-accent-rule="short"
+								data-scene-decor-rule
+							/>
+							<span class="home-blinds-scene__accent-label" data-scene-decor-line>
+								{item.eyebrow}
+							</span>
+						</div>
+					</div>
+				)
+			}
+
 			<div class="home-blinds-scene__caption" data-scene-caption>
 				<span
 					class="home-blinds-scene__caption-veil"
 					aria-hidden="true"
 					data-scene-caption-veil></span>
+
+				{
+					/* 像素层放在 veil 之后、文字之前：压在双线内框之上，又不遮字 */
+					variant === "pixel" && (
+						<div class="home-blinds-scene__pixels" aria-hidden="true">
+							{PIXEL_BLOCKS.map((block) => (
+								<span
+									class="home-blinds-scene__pixel"
+									data-pixel-kind={block.kind}
+									style={`left: ${block.x}%; top: ${block.y}%; width: ${block.size}%`}
+									data-scene-decor-pixel
+								/>
+							))}
+						</div>
+					)
+				}
 				<span
 					class="home-blinds-scene__caption-mark"
 					aria-hidden="true"
@@ -100,8 +297,57 @@ const captionChars = Array.from(item.description);
 						))
 					}
 				</p>
+
+				{
+					variant === "bookmark" && (
+						<div class="home-blinds-scene__lead" aria-hidden="true">
+							{leadLines.map((line) => (
+								<span class="home-blinds-scene__lead-line">
+									{line.map((char) => (
+										<span
+											class="home-blinds-scene__lead-char"
+											data-scene-decor-lead-char
+										>
+											{char}
+										</span>
+									))}
+								</span>
+							))}
+						</div>
+					)
+				}
+
+				{
+					variant === "bookmark" && (
+						<div class="home-blinds-scene__credit" aria-hidden="true">
+							<span class="home-blinds-scene__credit-line" data-scene-decor-line>
+								{serial}
+							</span>
+							<span
+								class="home-blinds-scene__credit-line home-blinds-scene__credit-line--latin"
+								data-scene-decor-line
+							>
+								{item.eyebrow}
+							</span>
+							<span class="home-blinds-scene__credit-seal" data-scene-decor-mark />
+						</div>
+					)
+				}
+
+				{
+					variant === "pixel" && (
+						<div class="home-blinds-scene__pixel-corners" aria-hidden="true">
+							{CORNERS.map((corner) => (
+								<span
+									class="home-blinds-scene__pixel-corner"
+									data-pixel-corner={corner}
+									data-scene-decor-corner
+								/>
+							))}
+						</div>
+					)
+				}
 			</div>
 		</div>
-
 	</div>
 </article>

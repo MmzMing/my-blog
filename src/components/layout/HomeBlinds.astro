@@ -35,9 +35,17 @@ const cyclePass = Math.max(
 const cycleCells = Array.from({ length: cyclePass * 2 }).flatMap(
 	() => cycleImages,
 );
-// 底部进度条为整层共用的一条，始终停在水平中间，由控制器随横移进度连续增减
-const sceneTotalLabel = String(sceneItems.length).padStart(2, "0");
+// 底部电池为整层共用的一块，始终停在水平中间，由控制器随横移进度逐块点亮；
+// 序号与百分比不显示，数值只同步到 aria-valuenow
 const sceneInitialPercent = Math.round(100 / Math.max(1, sceneItems.length));
+// 电池内是一排等宽小方块（不是连续长条）。
+// 取 20 块：正好被 5 幕整除，每幕点亮 4 块
+const METER_BLOCK_COUNT = 20;
+const meterInitialLit = Math.max(
+	1,
+	Math.round((sceneInitialPercent / 100) * METER_BLOCK_COUNT),
+);
+const meterBlocks = Array.from({ length: METER_BLOCK_COUNT });
 const runtimeConfig = {
 	reveal: {
 		foregroundOpacity: config.reveal.foregroundOpacity,
@@ -132,7 +140,7 @@ const runtimeConfig = {
 		</div>
 
 		<!-- 全屏背景收缩成首幕画面的过渡层：元素恒为满屏，收缩靠 clip-path 收窗
-		     加图片等比 scale；1.5px 边框单独一层，不参与缩放也不被 clip 裁掉 -->
+		     加图片等比 scale；2px 边框单独一层，不参与缩放也不被 clip 裁掉 -->
 		<div class="home-blinds__portal" data-scenes-portal>
 			<img
 				class="home-blinds__portal-image"
@@ -197,20 +205,22 @@ const runtimeConfig = {
 				aria-valuemax="100"
 				aria-valuenow={sceneInitialPercent}
 			>
-				<span class="home-blinds-scenes__meter-index">
-					<span data-scenes-meter-ordinal>01</span><span
-						class="home-blinds-scenes__meter-total">/{sceneTotalLabel}</span
-					>
-				</span>
 				<span class="home-blinds-scenes__meter-track">
-					<span
-						class="home-blinds-scenes__meter-fill"
-						style={`--home-blinds-scenes-meter: ${sceneInitialPercent / 100}; --home-blinds-scenes-meter-percent: ${sceneInitialPercent}%`}
-						data-scenes-meter-fill></span>
+					<span class="home-blinds-scenes__meter-blocks" data-scenes-meter-blocks>
+						{
+							meterBlocks.map((_, blockIndex) => (
+								<span
+									class:list={[
+										"home-blinds-scenes__meter-block",
+										{ "is-lit": blockIndex < meterInitialLit },
+									]}
+									data-scenes-meter-block
+								/>
+							))
+						}
+					</span>
 				</span>
-				<span class="home-blinds-scenes__meter-value" data-scenes-meter-value
-					>{sceneInitialPercent}%</span
-				>
+				<span class="home-blinds-scenes__meter-cap" aria-hidden="true"></span>
 			</div>
 
 			<div class="home-blinds-scenes__stands" aria-hidden="true">
