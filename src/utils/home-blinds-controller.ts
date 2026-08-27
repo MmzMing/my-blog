@@ -1,3 +1,5 @@
+import { requestScrollTriggerRefresh } from "@/utils/scroll-trigger-refresh";
+
 type Gsap = typeof import("gsap")["gsap"];
 type ScrollTriggerPlugin = typeof import("gsap/ScrollTrigger")["ScrollTrigger"];
 type ScrollTriggerInstance = ReturnType<ScrollTriggerPlugin["create"]>;
@@ -1830,7 +1832,10 @@ async function initializeHomeBlinds(root: HTMLElement, generation: number) {
 	}
 
 	root.dataset.homeBlindsReady = "ready";
-	ScrollTrigger.refresh();
+	// 与 hero 的 refresh 合并到同一帧：hero 是同步建 pin，这一层要等
+	// await import("gsap") 之后才建，各自 refresh 会让先跑的那次量到还缺一层 pin-spacer
+	// 的文档高度，pin 起止点因此偏掉（进首页后第二幕与影像层的滚动进度对不上）
+	requestScrollTriggerRefresh(ScrollTrigger);
 
 	return () => {
 		teardown();

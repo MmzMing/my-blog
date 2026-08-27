@@ -1,5 +1,7 @@
 const DEFAULT_HIDE_DELAY = 0;
 const DEFAULT_MAX_WAIT = 8000;
+/** waitForPageLoaderHidden 的兜底上限，比 DEFAULT_MAX_WAIT 更宽，正常路径不会走到 */
+const DEFAULT_HIDDEN_WAIT = 10000;
 
 export const LOADER_READY_EVENT = "firefly:page-loader-ready";
 export const LOADER_HIDDEN_EVENT = "firefly:page-loader-hidden";
@@ -203,10 +205,24 @@ export function isPageLoaderVisible({ document: documentRef = document } = {}) {
 
 export function waitForPageLoaderHidden({
 	document: documentRef = document,
+	timeout = DEFAULT_HIDDEN_WAIT,
 } = {}) {
 	if (!isPageLoaderVisible({ document: documentRef })) return Promise.resolve();
 	return new Promise((resolve) => {
-		documentRef.addEventListener(LOADER_HIDDEN_EVENT, resolve, { once: true });
+		let timer;
+		const settle = () => {
+			documentRef.removeEventListener(LOADER_HIDDEN_EVENT, settle);
+			if (timer !== undefined) clearTimeout(timer);
+			resolve();
+		};
+		documentRef.addEventListener(LOADER_HIDDEN_EVENT, settle);
+		// 加载页的显隐由 Swup 的 link:click / visit:start / content:replace → page:view
+		// 这条链驱动：只要 show() 的 token 在 hideWhenReady() 取值之后又自增
+		// （例如一次进首页的导航被下一次打断），hidden 事件就再也不会派发。
+		// 没有上限的话，等它的调用方会被永久挂住 —— 首页数据层就会一直停在
+		// data-guide-opening="pending"，标题与全部卡片被 CSS 的 visibility: hidden 按住。
+		// 上限取得比 waitForBrowserPageReady 的 DEFAULT_MAX_WAIT 更宽，正常路径不会走到。
+		timer = setTimeout(settle, timeout);
 	});
 }
 

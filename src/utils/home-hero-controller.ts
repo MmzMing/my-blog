@@ -7,6 +7,10 @@ import { getHeroPinEndDistance } from "@/utils/home-hero-motion";
 import { initHomeHeroRain } from "@/utils/home-hero-rain";
 import { initHomeHeroSticker } from "@/utils/home-hero-sticker";
 import { navigateToPage } from "@/utils/navigation-utils";
+import {
+	cancelScrollTriggerRefresh,
+	requestScrollTriggerRefresh,
+} from "@/utils/scroll-trigger-refresh";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -19,6 +23,24 @@ const QUICK_ACTIONS_REVEAL_TIME = 1.14;
 const INTERACTION_HOLD_START = 1.31;
 let initialReloadHandled = false;
 
+/**
+ * navigation.type 描述的是「当前 document 是怎么来的」，Swup 导航不会改它：
+ * 在别的页面按了 F5，之后再跳进首页，这里读到的仍然是 "reload"。而本模块恰好是在
+ * 「进首页」那次导航里才第一次执行，于是 hero 的首次挂载会误判成「刚刷新了首页」，
+ * 多做一轮 scrollTo(0,0) + progress(0) + ScrollTrigger.refresh()，正好落在
+ * 影像层 pin 刚插入、首页高度还在变的时候，第二幕的滚动进度因此对不上。
+ * 用 navigation.name（document 首次加载的 URL）与当前路径比对即可排除这种情况。
+ */
+function isInitialDocumentPath(navigationName: string) {
+	try {
+		return (
+			new URL(navigationName, location.href).pathname === location.pathname
+		);
+	} catch {
+		return false;
+	}
+}
+
 function resetHeroScrollOnReload() {
 	if (initialReloadHandled) return false;
 	initialReloadHandled = true;
@@ -26,6 +48,7 @@ function resetHeroScrollOnReload() {
 		| PerformanceNavigationTiming
 		| undefined;
 	if (navigation?.type !== "reload") return false;
+	if (!isInitialDocumentPath(navigation.name)) return false;
 
 	history.scrollRestoration = "manual";
 	ScrollTrigger.clearScrollMemory("manual");
@@ -122,6 +145,17 @@ function bindQuickActions(hero: HTMLElement, abortController: AbortController) {
 	);
 }
 
+/**
+ * 摘掉首页的 motion-pending 状态类。
+ * 这个类在 index.astro 上静态渲染，CSS 会按住 identity 与 contact 不显示，
+ * 所以 mountHomeHero 的每条返回路径都必须走到这里，包括提前 return 的分支。
+ */
+function clearMotionPending() {
+	document
+		.querySelector(".home-page--motion-pending")
+		?.classList.remove("home-page--motion-pending");
+}
+
 function setReducedMotionState(
 	hero: HTMLElement,
 	dialogue: ReturnType<typeof initHomeHeroDialogue>,
@@ -133,9 +167,7 @@ function setReducedMotionState(
 		action.setAttribute("aria-hidden", "false");
 	});
 	dialogue.setSceneVisible(true);
-	document
-		.querySelector(".home-page--motion-pending")
-		?.classList.remove("home-page--motion-pending");
+	clearMotionPending();
 }
 
 export function mountHomeHero() {
@@ -147,17 +179,23 @@ export function mountHomeHero() {
 		document.getElementById("home-mobile") &&
 		window.matchMedia("(max-width: 768px)").matches
 	) {
-		document
-			.querySelector(".home-page--motion-pending")
-			?.classList.remove("home-page--motion-pending");
+		clearMotionPending();
 		return () => undefined;
 	}
 
 	const config = parseRuntimeConfig(hero);
-	if (!config) return () => undefined;
+	// 配置读不出来时也要摘掉 motion-pending，否则 identity / contact 会被 CSS 一直按住
+	if (!config) {
+		clearMotionPending();
+		return () => undefined;
+	}
 	const resetAfterReload = resetHeroScrollOnReload();
 
 	hero.dataset.heroMounted = "true";
+	// 本次挂载是否已被拆掉。document.fonts.ready 这类异步回调不能只看
+	// hero.dataset.heroMounted —— 那个标记会被下一次挂载重新写成 "true"，
+	// 上一次挂载的回调于是照样往下走，把 contact 拆成两套字符节点。
+	let disposed = false;
 	const abortController = new AbortController();
 	const dialogue = initHomeHeroDialogue(hero);
 	const destroySticker = initHomeHeroSticker(hero);
@@ -686,7 +724,10 @@ export function mountHomeHero() {
 		});
 
 		renderTimelineForScroll(heroScrollTrigger.progress);
-		ScrollTrigger.refresh();
+		// 影像层要等 await import("gsap") 之后才建 pin，比这里晚若干微任务。
+		// 立刻 refresh 会按「还没有影像层 .pin-spacer」的文档高度算 pin 起止点，
+		// 攒到下一帧统一 refresh，那时各层的 pin 都已插好。
+		requestScrollTriggerRefresh(ScrollTrigger);
 	};
 
 	// 初始可见碎片改为渐入，完成后进入常规 idle 轮换
@@ -778,14 +819,14 @@ export function mountHomeHero() {
 		const handleFlyLayoutChange = () => {
 			window.clearTimeout(flyLayoutTimer);
 			flyLayoutTimer = window.setTimeout(() => {
-				if (hero.dataset.heroMounted !== "true") return;
+				if (disposed) return;
 				for (const handle of flyHandles) handle.rebuild();
 				mountContactScatter();
 			}, 200);
 		};
 
 		document.fonts.ready.then(() => {
-			if (hero.dataset.heroMounted !== "true") return;
+			if (disposed) return;
 			flyHandles = contactHosts.map((host) => createFlyText(host));
 			for (const handle of flyHandles) {
 				handle.prepare();
@@ -840,12 +881,14 @@ export function mountHomeHero() {
 			timeline?.progress(0);
 			scrollDriver?.progress(0);
 			updateSceneState(0);
-			ScrollTrigger.refresh();
+			requestScrollTriggerRefresh(ScrollTrigger);
 			history.scrollRestoration = "auto";
 		});
 	}
 
 	return () => {
+		disposed = true;
+		cancelScrollTriggerRefresh();
 		stopIdleRotation();
 		window.clearTimeout(flyLayoutTimer);
 		tilesIntroTimeline?.kill();

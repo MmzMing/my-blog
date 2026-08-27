@@ -84,20 +84,20 @@ const runtimeConfig = {
 
 <script>
 	import { mountHomeHero } from "@/utils/home-hero-controller";
+	import { bindHomeLayer } from "@/utils/home-lifecycle";
 
 	let cleanupHomeHero: (() => void) | null = null;
 
-	function bootHomeHero() {
-		cleanupHomeHero?.();
-		cleanupHomeHero = mountHomeHero();
-	}
-
-	function teardownHomeHero() {
-		cleanupHomeHero?.();
-		cleanupHomeHero = null;
-	}
-
-	bootHomeHero();
-	document.addEventListener("astro:page-load", bootHomeHero);
-	document.addEventListener("astro:before-swap", teardownHomeHero);
+	// 挂载时机与去重全部交给 bindHomeLayer：顶层自启和 astro:page-load 谁先谁后都只挂一次，
+	// 否则第二次挂载会把第一次那条 document.fonts.ready 回调放进来，contact 被拆成两套字符节点
+	bindHomeLayer({
+		boot: () => {
+			cleanupHomeHero?.();
+			cleanupHomeHero = mountHomeHero();
+		},
+		teardown: () => {
+			cleanupHomeHero?.();
+			cleanupHomeHero = null;
+		},
+	});
 </script>

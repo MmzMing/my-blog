@@ -263,10 +263,9 @@ const runtimeConfig = {
 		bootHomeBlinds,
 		teardownHomeBlinds,
 	} from "@/utils/home-blinds-controller";
+	import { bindHomeLayer } from "@/utils/home-lifecycle";
 
-	bootHomeBlinds();
-	document.addEventListener("astro:page-load", bootHomeBlinds);
 	// 这一层带 pin 与两条无限循环时间线，必须在 Swup 替换容器之前拆掉，
 	// 否则 kill() 会落在已经脱离文档的节点上（同 HomeHero）
-	document.addEventListener("astro:before-swap", teardownHomeBlinds);
+	bindHomeLayer({ boot: bootHomeBlinds, teardown: teardownHomeBlinds });
 </script>

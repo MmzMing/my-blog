@@ -286,6 +286,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 <script>
 	import { createCache } from "@/utils/cache-utils";
 	import { formatCompactNumber } from "@/utils/home-data-layer.js";
+	import { bindHomeLayer } from "@/utils/home-lifecycle";
 
 	type Cleanup = () => void;
 	type ShareData = { websiteId: string; token: string };
@@ -675,9 +676,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		initDeck(root);
 	}
 
-	initHomeMobile();
-	document.addEventListener("astro:page-load", initHomeMobile);
-	// 同 HomeDataLayer：容器替换前清理，走 astro:before-swap，
+	// 同 HomeDataLayer：容器替换前清理（bindHomeLayer 内部走 astro:before-swap），
 	// 旧的 swup:willReplaceContent 是 swup 3 的名字，在 swup 4 下不会触发
-	document.addEventListener("astro:before-swap", cleanupHomeMobile);
+	bindHomeLayer({ boot: initHomeMobile, teardown: cleanupHomeMobile });
 </script>
