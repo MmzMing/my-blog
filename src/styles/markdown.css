@@ -3,14 +3,114 @@
 .custom-md {
   overflow-wrap: break-word;
 
+  /* 文章标题装饰色（青色），深色模式下略微调亮 */
+  --md-heading-accent: oklch(0.72 0.13 210);
+  /* 斜体波浪线（紫色） */
+  --md-italic-wavy: oklch(0.6 0.15 285);
+  /* 删除线（红色） */
+  --md-del-line: oklch(0.58 0.21 27);
+
   body.sticky-navbar & {
     [id] {
       scroll-margin-top: 5.5rem;
     }
   }
 
+  /* 一级标题：水平居中 + 下方居中短下划线 */
   h1 {
-    @apply text-3xl;
+    @apply text-3xl text-center;
+
+    &::after {
+      @apply content-[''] block rounded-full;
+      width: 3.5rem;
+      height: 0.3rem;
+      margin: 0.6rem auto 0;
+      background: var(--md-heading-accent);
+    }
+  }
+
+  /* 二级标题：左侧两条竖杠（左高右矮），每条杠独立圆角成椭圆长条 */
+  h2 {
+    @apply relative;
+    padding-left: 1.1rem;
+
+    &::before {
+      @apply content-[''] absolute top-1/2 -translate-y-1/2 left-0;
+      width: 0.3rem;
+      height: 1.2em;
+      border-radius: 0.15rem;
+      background: var(--md-heading-accent);
+    }
+
+    &::after {
+      @apply content-[''] absolute top-1/2 -translate-y-1/2 left-[0.6rem];
+      width: 0.3rem;
+      height: 0.72em;
+      border-radius: 0.15rem;
+      background: color-mix(in oklab, var(--md-heading-accent) 45%, transparent);
+    }
+  }
+
+  /* 三级标题：左侧一条竖杠 */
+  h3 {
+    @apply relative;
+    padding-left: 0.85rem;
+
+    &::before {
+      @apply content-[''] absolute top-1/2 -translate-y-1/2 left-0;
+      width: 0.3rem;
+      height: 1.05em;
+      border-radius: 0.15rem;
+      background: var(--md-heading-accent);
+    }
+  }
+
+  /* 四级标题：左侧实心圆点 */
+  h4 {
+    @apply relative;
+    padding-left: 1.15rem;
+
+    &::before {
+      @apply content-[''] absolute top-1/2 -translate-y-1/2 left-[0.15rem];
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--md-heading-accent);
+    }
+  }
+
+  /* 五级标题：左侧空心圆圈 */
+  h5 {
+    @apply relative;
+    padding-left: 1.15rem;
+
+    &::before {
+      @apply content-[''] absolute top-1/2 -translate-y-1/2 left-[0.15rem];
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      border: 2px solid var(--md-heading-accent);
+    }
+  }
+
+  /* 六级标题：左侧短横线 */
+  h6 {
+    @apply relative;
+    padding-left: 1.15rem;
+
+    &::before {
+      @apply content-[''] absolute top-1/2 -translate-y-1/2 left-0;
+      width: 0.6rem;
+      height: 0.18rem;
+      border-radius: 0.09rem;
+      background: var(--md-heading-accent);
+    }
+  }
+
+  :root.dark & {
+    --md-heading-accent: oklch(0.8 0.11 210);
+    --md-italic-wavy: oklch(0.75 0.12 285);
+    --md-del-line: oklch(0.7 0.19 25);
   }
 
   h1,
@@ -52,6 +152,28 @@
   strong,
   b {
     @apply font-bold text-(--strong-color);
+
+    /* 加粗仅深色模式用青色，浅色模式保持默认黑色 */
+    :root.dark & {
+      color: var(--md-heading-accent);
+    }
+  }
+
+  /* 斜体：保留倾斜 + 紫色波浪下划线 */
+  em,
+  i {
+    text-decoration: underline wavy;
+    text-decoration-color: var(--md-italic-wavy);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 4px;
+  }
+
+  /* 删除线：红色删除线（文字颜色不变） */
+  del,
+  s {
+    text-decoration: line-through;
+    text-decoration-color: var(--md-del-line);
+    text-decoration-thickness: 2px;
   }
 
   code {
@@ -229,6 +351,17 @@
   .markdown-bordered {
     padding: 1rem;
   }
+}
+
+/* Callout 提示框（[!NOTE] 等引用块）：增加对应颜色的浅色背景框。
+   注意容器是 <div class="callout">，不是 blockquote */
+.custom-md .callout {
+  border-radius: calc(var(--radius-large) - 0.5rem);
+  background: color-mix(in oklab, var(--rc-color-light, var(--rc-color-default, #888)) 12%, transparent);
+}
+
+:root.dark .custom-md .callout {
+  background: color-mix(in oklab, var(--rc-color-dark, var(--rc-color-default, #888)) 18%, transparent);
 }
 
 /* 文章详情页正文图片自适应尺寸限制 */
