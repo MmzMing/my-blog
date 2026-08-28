@@ -280,6 +280,7 @@ export const zh_TW: Translation = {
 	[Key.breadcrumb]: "麵包屑",
 	[Key.copyPrefix]: "複製",
 	[Key.copyTemplate]: "複製範本",
+	[Key.copyNotice]: "複製成功，轉載請標註本文地址",
 
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "切換深色",

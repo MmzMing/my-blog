@@ -1,0 +1,135 @@
+---
+// 文章复制提示管理器（全局常驻，位于 Swup 容器外）。
+//
+// 监听 document 的 copy 事件：仅当复制内容落在文章正文（#post-container）内时，
+// 在右上角弹出「复制成功，转载请标注本文地址」提示。提示自带消失进度条与关闭
+// 按钮；重复复制只重置计时并重播进度条，不叠加提示；监听挂在 document 上，
+// Swup 换页后依然有效。
+import Icon from "@components/common/Icon.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+
+const message = i18n(I18nKey.copyNotice);
+const closeLabel = i18n(I18nKey.close);
+const AUTO_HIDE_DELAY = 2500;
+---
+
+<div
+	id="copy-notice"
+	class="copy-notice pointer-events-none fixed top-20 right-5 z-90 flex max-w-[calc(100vw-2.5rem)] items-center gap-3 overflow-hidden rounded-2xl border-2 border-(--deep-text) bg-(--float-panel-bg) py-3 pr-2.5 pl-4 shadow-md"
+	role="status"
+	aria-live="polite"
+	style={`--copy-notice-duration: ${AUTO_HIDE_DELAY}ms;`}
+>
+	<span
+		class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-500 text-white"
+	>
+		<Icon name="material-symbols:check-rounded" class="h-4 w-4" />
+	</span>
+	<span class="text-base text-(--deep-text)">{message}</span>
+	<button
+		type="button"
+		class="copy-notice__close pointer-events-auto flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-(--deep-text) transition-opacity hover:opacity-60"
+		aria-label={closeLabel}
+	>
+		<Icon name="material-symbols:close" class="h-4 w-4" />
+	</button>
+	<span
+		class="copy-notice__progress absolute bottom-0 left-0 h-[3px] w-full bg-(--deep-text)"
+		aria-hidden="true"
+	></span>
+</div>
+
+<style>
+	/*
+	 * 进出场动画由 data-visible 驱动：出现用回弹曲线滑入，隐藏时先等透明度
+	 * 过渡结束再收回 visibility，避免瞬间消失。
+	 */
+	.copy-notice {
+		opacity: 0;
+		visibility: hidden;
+		transform: translate(12px, -6px);
+		transition:
+			opacity 0.25s ease,
+			transform 0.25s ease,
+			visibility 0s linear 0.25s;
+	}
+
+	.copy-notice[data-visible="true"] {
+		opacity: 1;
+		visibility: visible;
+		transform: translate(0, 0);
+		transition:
+			opacity 0.25s ease,
+			transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	/* 进度条只在可见时播放心跳倒计时；隐藏瞬间先归零透明度，避免回弹到满格被看见 */
+	.copy-notice__progress {
+		opacity: 0;
+		transform-origin: left;
+	}
+
+	.copy-notice[data-visible="true"] .copy-notice__progress {
+		opacity: 1;
+		animation: copy-notice-countdown var(--copy-notice-duration) linear forwards;
+	}
+
+	@keyframes copy-notice-countdown {
+		from {
+			transform: scaleX(1);
+		}
+		to {
+			transform: scaleX(0);
+		}
+	}
+</style>
+
+<script>
+	import { definePersistentIsland } from "@/utils/swup-lifecycle";
+
+	definePersistentIsland("copy-notice-manager", () => {
+		const POST_CONTENT_SELECTOR = "#post-container";
+		const TOAST_ID = "copy-notice";
+		const AUTO_HIDE_DELAY = 2500;
+
+		const toast = document.getElementById(TOAST_ID);
+		if (!toast) return;
+
+		const progressBar = toast.querySelector<HTMLElement>(".copy-notice__progress");
+		let hideTimer: ReturnType<typeof setTimeout> | undefined;
+
+		const hide = () => {
+			toast.dataset.visible = "false";
+		};
+
+		const reveal = () => {
+			toast.dataset.visible = "true";
+			clearTimeout(hideTimer);
+			// 重播进度条动画：先摘掉 animation，强制 reflow 后再还原
+			if (progressBar) {
+				progressBar.style.animation = "none";
+				void progressBar.offsetWidth;
+				progressBar.style.animation = "";
+			}
+			hideTimer = setTimeout(hide, AUTO_HIDE_DELAY);
+		};
+
+		toast.querySelector(".copy-notice__close")?.addEventListener("click", () => {
+			clearTimeout(hideTimer);
+			hide();
+		});
+
+		document.addEventListener("copy", () => {
+			const selection = document.getSelection();
+			if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
+
+			// 锚点节点必须落在文章正文内，其它区域（评论区、输入框等）不提示
+			const anchor = selection.anchorNode;
+			const host = anchor instanceof Element ? anchor : anchor?.parentElement;
+			if (!host?.closest(POST_CONTENT_SELECTOR)) return;
+
+			reveal();
+		});
+	});
+</script>

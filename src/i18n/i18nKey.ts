@@ -270,6 +270,7 @@ enum I18nKey {
 	breadcrumb = "breadcrumb",
 	copyPrefix = "copyPrefix",
 	copyTemplate = "copyTemplate",
+	copyNotice = "copyNotice",
 
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	switchToDark = "switchToDark",

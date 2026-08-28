@@ -284,6 +284,7 @@ export const ja: Translation = {
 	[Key.breadcrumb]: "パンくずリスト",
 	[Key.copyPrefix]: "コピー",
 	[Key.copyTemplate]: "テンプレートをコピー",
+	[Key.copyNotice]: "コピーしました。転載の際は本文のURLを明記してください",
 
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "ダークモードに切替",

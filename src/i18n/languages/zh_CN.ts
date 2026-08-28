@@ -279,6 +279,7 @@ export const zh_CN: Translation = {
 	[Key.breadcrumb]: "面包屑",
 	[Key.copyPrefix]: "复制",
 	[Key.copyTemplate]: "复制模板",
+	[Key.copyNotice]: "复制成功，转载请标注本文地址",
 
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "暗色",
