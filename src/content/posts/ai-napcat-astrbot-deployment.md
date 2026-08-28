@@ -1,5 +1,6 @@
 ---
 title: NapCat+AstrBot部署QQ机器人
+image: ./assets/ai-napcat-astrbot-deployment.webp
 published: 2026-05-12
 description: 使用 Docker Compose 部署 NapCat 与 AstrBot，介绍 OneBot 11 HTTP/WebSocket 对接、LLM 配置、人格提示词、插件和账号风控边界。
 tags: [AI, Bot, 部署]

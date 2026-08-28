@@ -1,5 +1,6 @@
 ---
 title: Cloudflare Vectorize实现AI搜索问答
+image: ./assets/ai-blog-ai-search-vectorize.webp
 published: 2026-05-14
 description: 基于 Cloudflare Vectorize 构建博客 AI 语义搜索，介绍 Markdown 分块、Embedding、RAG 检索、Worker 流式问答及向量索引配置。
 tags: [AI, RAG, Cloudflare]

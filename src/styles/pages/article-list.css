@@ -178,6 +178,15 @@
 	aspect-ratio: 2 / 1;
 }
 
+/* imageOptimization.formats 为 "both" 时 CoverImage 会输出 <picture>，
+   它默认是行内元素，需要撑成块级才不影响容器高度 */
+.article-list-pinned-item__cover-wrap picture,
+.article-list-card__cover-wrap picture {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
 .article-list-pinned-item__cover,
 .article-list-card__cover {
 	display: block;

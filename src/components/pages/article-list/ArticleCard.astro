@@ -1,4 +1,5 @@
 ---
+import CoverImage from "@/components/common/CoverImage.astro";
 import Icon from "@/components/common/Icon.astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 const { post, fallbackImageUrl, showCoverLoading = false } = Astro.props;
+const { cover } = post;
 const wordLabel = i18n(
 	post.wordCount === 1 ? I18nKey.wordCount : I18nKey.wordsCount,
 );
@@ -21,30 +23,30 @@ const wordLabel = i18n(
 	data-article-list-card
 	style={`--article-category-hue: ${post.categoryHue}`}
 >
-	<div
-		class="article-list-card__cover-wrap image-pixel-reveal-host"
-		data-article-list-cover-wrap
-	>
-		{showCoverLoading && (
-			<span class="article-list-card__cover-loader" aria-hidden="true">
-				<span class="article-list-card__cover-loader-dot"></span>
-				<span class="article-list-card__cover-loader-dot"></span>
-				<span class="article-list-card__cover-loader-dot"></span>
-				<span class="article-list-card__cover-loader-dot"></span>
-			</span>
-		)}
-		<span class="image-pixel-reveal" data-image-pixel-reveal aria-hidden="true"></span>
-		<img
-			class="article-list-card__cover image-pixel-reveal-source"
-			src={post.imageUrl}
-			alt={`${post.title}${i18n(I18nKey.coverImageAltSuffix)}`}
-			data-article-list-cover
-			data-fallback-src={fallbackImageUrl}
-			data-api-urls={post.apiUrls.length > 0 ? JSON.stringify(post.apiUrls) : undefined}
-			loading="lazy"
-			decoding="async"
-		/>
-	</div>
+	{cover && (
+		<div
+			class="article-list-card__cover-wrap image-pixel-reveal-host"
+			style={cover.lqipStyle}
+			data-article-list-cover-wrap
+		>
+			{showCoverLoading && (
+				<span class="article-list-card__cover-loader" aria-hidden="true">
+					<span class="article-list-card__cover-loader-dot"></span>
+					<span class="article-list-card__cover-loader-dot"></span>
+					<span class="article-list-card__cover-loader-dot"></span>
+					<span class="article-list-card__cover-loader-dot"></span>
+				</span>
+			)}
+			<span class="image-pixel-reveal" data-image-pixel-reveal aria-hidden="true"></span>
+			<CoverImage
+				cover={cover}
+				alt={`${post.title}${i18n(I18nKey.coverImageAltSuffix)}`}
+				class="article-list-card__cover image-pixel-reveal-source"
+				apiUrls={post.apiUrls}
+				fallbackSrc={fallbackImageUrl || undefined}
+			/>
+		</div>
+	)}
 
 	<div class="article-list-card__content">
 		<div class="article-list-card__title-row">

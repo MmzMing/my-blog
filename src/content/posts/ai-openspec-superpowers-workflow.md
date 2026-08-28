@@ -1,5 +1,6 @@
 ---
 title: OpenSpec+Superpowers 实现流水线开发
+image: ./assets/ai-openspec-superpowers-workflow.webp
 published: 2026-06-03
 description: 介绍 OpenSpec 与 Superpowers 的职责边界、安装配置和协同流程，建立从需求规范、任务实现到测试审查的 AI 编程工作流。
 tags: [AI, Skill, 工作流]

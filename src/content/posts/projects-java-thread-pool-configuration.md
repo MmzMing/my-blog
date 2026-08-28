@@ -1,5 +1,6 @@
 ---
 title: Java 线程池配置指南
+image: ./assets/projects-java-thread-pool-configuration.webp
 published: 2026-05-07
 description: Java ThreadPoolExecutor 配置指南，讲解核心参数、CPU/IO 线程数估算、有界队列、拒绝策略、监控告警和动态调优方法。
 tags: [Java, 线程池, 并发编程]

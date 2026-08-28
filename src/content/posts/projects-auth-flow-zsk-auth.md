@@ -1,5 +1,6 @@
 ---
 title: 滑块验证码、登录与注册完整流程
+image: ./assets/projects-auth-flow-zsk-auth.webp
 published: 2026-05-02
 description: 介绍 zsk-auth 登录注册认证链路，涵盖滑块验证码限流、RSA 密码传输、BCrypt 密码摘要、邮箱验证码和异常安全边界。
 tags: [认证, 登录, 安全]

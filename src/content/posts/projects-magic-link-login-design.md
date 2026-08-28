@@ -1,5 +1,6 @@
 ---
 title: 邮箱链接登录前后的实现方案
+image: ./assets/projects-magic-link-login-design.webp
 published: 2026-05-01
 description: 基于 Cloudflare Turnstile、Redis 一次性 Token 和邮件回调实现无密码登录，涵盖链接发送、校验消费、自动注册、Cookie 登录态和安全边界。
 tags: [认证, 登录, 安全]

@@ -1,5 +1,6 @@
 ---
 title: OAuth2第三方登录
+image: ./assets/projects-oauth2-third-party-login.webp
 published: 2026-05-03
 description: 统一设计 GitHub、微信和 QQ 第三方登录的 OAuth 2.0 授权码流程，涵盖 state 校验、回调换令牌、用户映射、策略模式和多环境配置。
 tags: [OAuth2, 认证, 登录]

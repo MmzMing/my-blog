@@ -1,5 +1,6 @@
 ---
 title: 扫码登录前后的实现
+image: ./assets/projects-qrcode-login-java-comparison.webp
 published: 2026-05-01
 description: 对比短轮询、长轮询、WebSocket 和 SSE 扫码登录方案，介绍 WebSocket + Redis 状态机、超时降级、二维码重放和登录态安全防护。
 tags: [扫码登录, 认证, WebSocket]

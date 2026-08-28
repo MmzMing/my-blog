@@ -8,11 +8,13 @@ import type { CoverImageConfig } from "../types/config";
  * 随机封面图使用说明：
  * 1. 文章 image 字段留空或设为 "api" 即可使用随机图功能
  * 2. 系统会依次尝试所有配置的 API，全部失败后使用兜底默认图片
+ * 3. fallback 只服务于随机图：随机图关闭后它不生效，此时没写 image 的文章
+ *    直接不渲染封面区域，不再统一套一张兜底图
  *
  * // 文章 Frontmatter 示例：
  * ---
  * title: 文章标题
- * image: "api"
+ * image: ./assets/cover.webp   # 相对文章的本地图，构建期会转码并生成 srcset
  * ---
  */
 export const coverImageConfig: CoverImageConfig = {
@@ -21,16 +23,16 @@ export const coverImageConfig: CoverImageConfig = {
 
 	randomCoverImage: {
 		// 随机封面图功能开关
-		enable: true,
+		enable: false,
 		// 封面图API列表
 		apis: [
 			"https://t.alcy.cc/pc",
 			"https://www.dmoe.cc/random.php",
 			"https://uapis.cn/api/v1/random/image?category=acg&type=pc",
 		],
-		// API失败时的回退图片路径（相对于src目录或以/开头的public目录路径）
+		// API失败时的回退图片路径（以/开头的public目录路径），仅在 enable 为 true 时生效
 		fallback: "/assets/images/aut.webp",
-		// 是否显示加载动画
+		// 是否显示封面加载动画
 		showLoading: true,
 	},
 };

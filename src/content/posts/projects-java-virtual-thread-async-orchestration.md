@@ -1,5 +1,6 @@
 ---
 title: 虚拟线程与异步编排
+image: ./assets/projects-java-virtual-thread-async-orchestration.webp
 published: 2026-05-07
 description: 以 Java 21 商品详情聚合为例，比较平台线程、线程池、CompletableFuture、响应式编程和虚拟线程的适用边界与编排方式。
 tags: [Java, 虚拟线程, 并发编程]

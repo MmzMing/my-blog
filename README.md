@@ -36,6 +36,7 @@ Firefly-Mod 是个性化魔改版本，已独立演进。
 - 关于页面，注重交互。
 - 删除动漫这些影响构建速度的功能。
 - 分类页使用 D3.js 力导向布局与 Canvas 绘制标签关系图谱：构建时根据文章标签生成节点与共现边，客户端支持缩放、拖拽、悬停和键盘跳转。
+- 封面图构建期优化：列表与文章页统一收口封面解析，本地封面经 Astro 图片服务转码并生成多格式 `srcset`，配合 LQIP 占位渐变（每张图仅 18 字节）消除图片加载闪白。
 
 ## 常用命令
 
@@ -51,6 +52,7 @@ Firefly-Mod 是个性化魔改版本，已独立演进。
 | Lint + 自动修复 | `pnpm lint` |
 | 新建博客文章 | `pnpm new-post <filename>` |
 | 重新生成图标 | `pnpm icons` |
+| 重新生成 LQIP 占位数据 | `pnpm lqips` |
 | 推送文章 URL | `pnpm indexnow --diff --dry-run` |
 
 ## LLM Wiki（静态）
@@ -63,6 +65,16 @@ Firefly-Mod 是个性化魔改版本，已独立演进。
 - `dist/wiki/articles/{slug}.md`：带规范元数据的纯 Markdown 文章。
 
 草稿、密码文章以及设置了 `wikiExclude: true` 的历史文章不会进入 Wiki，但仍可正常生成站内文章页。文章更新后重新构建即可同步机器入口。
+
+## 封面图与 LQIP
+
+文章 frontmatter 的 `image` 字段按三种形态处理：
+
+- 相对路径（`./assets/cover.webp`）：`src` 下的本地资源，构建期经 Astro 图片服务按 `siteConfig.ts` 的 `imageOptimization` 配置转码，产出多格式 `srcset` 与宽高，且不做放大（候选宽度截断到源图宽度）。
+- `/` 开头：`public` 下的资源，Astro 不做优化，原样引用。
+- `http(s)` / `data:`：远程图，原样引用，命中 `imageOptimization.noReferrerDomains` 时补 `referrerpolicy="no-referrer"`。
+
+`pnpm build` 会先运行 LQIP 生成脚本（`scripts/generate-lqips.ts`）：把 `src` 与 `public` 下的每张图片缩到 2x2 取角点颜色，压成 18 字符 hex 存入 `src/constants/lqips.json`，渲染时解码成 CSS 斜向渐变作为占位背景，不产生额外请求。脚本是增量的：已有条目直接复用，只处理新增图片并清理已删除图片的残留条目，新增或替换图片后重新构建即可，也可单独运行 `pnpm lqips`。
 
 
 ## 配置系统

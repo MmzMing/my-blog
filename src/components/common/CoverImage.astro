@@ -1,0 +1,64 @@
+---
+/**
+ * 封面图渲染。只输出 <picture>/<img> 本身，不带外层容器：
+ * 列表卡片、置顶卡片、文章详情页各自的包裹层、加载动画与像素揭示遮罩
+ * 都由调用方保留，尺寸和圆角仍由既有 CSS 控制。
+ *
+ * 图片数据由 buildCoverImage() 在构建期算好（含多格式 srcset 与 LQIP）。
+ * data-cover-image 是客户端封面生命周期定位 <img> 的统一标记。
+ */
+import type { CoverImageSource } from "@/types/cover-image";
+
+interface Props {
+	cover: CoverImageSource;
+	alt: string;
+	/** 加在 <img> 上的类名 */
+	class?: string;
+	loading?: "lazy" | "eager";
+	fetchpriority?: "high" | "low" | "auto";
+	decoding?: "async" | "auto" | "sync";
+	/** 随机图候选地址，客户端按序重试 */
+	apiUrls?: string[];
+	/** 候选全部失败后的兜底图地址 */
+	fallbackSrc?: string;
+}
+
+const {
+	cover,
+	alt,
+	loading = "lazy",
+	fetchpriority = "auto",
+	decoding = "async",
+	apiUrls = [],
+	fallbackSrc,
+} = Astro.props;
+const className = Astro.props.class;
+
+const imageAttributes = {
+	src: cover.src,
+	srcset: cover.srcset,
+	sizes: cover.srcset ? cover.sizes : undefined,
+	width: cover.width,
+	height: cover.height,
+	alt,
+	class: className,
+	loading,
+	fetchpriority,
+	decoding,
+	referrerpolicy: cover.referrerPolicy,
+	"data-cover-image": true,
+	"data-api-urls": apiUrls.length > 0 ? JSON.stringify(apiUrls) : undefined,
+	"data-fallback-src": fallbackSrc,
+};
+---
+
+{cover.sources.length > 0 ? (
+	<picture>
+		{cover.sources.map((source) => (
+			<source type={source.type} srcset={source.srcset} sizes={cover.sizes} />
+		))}
+		<img {...imageAttributes} />
+	</picture>
+) : (
+	<img {...imageAttributes} />
+)}

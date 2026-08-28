@@ -1,5 +1,6 @@
 ---
 title: Redis中Bitmap、雪花ID、分布式的坑
+image: ./assets/projects-redis-bitmap-snowflake-id.webp
 published: 2026-05-06
 description: 分析 Redis Bitmap 直接承载雪花 ID 时的初始化开销、映射碰撞、单线程阻塞和数据倾斜问题，并给出 String + Set 的替代方案。
 tags: [Redis, Bitmap, 分布式, 性能优化]

@@ -1,5 +1,6 @@
 ---
 title: 这个博客《纯AI，零人工》
+image: ./assets/ai-blog-ai-zero-editing.webp
 published: 2026-06-14
 description: 记录使用 AI 搭建和维护 Astro 博客的实践流程，涵盖视觉定位、HTML 原型、项目规范、功能开发、测试验证和持续迭代。
 tags: [AI, 前端, 博客]

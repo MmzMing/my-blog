@@ -531,6 +531,12 @@
   border-radius: var(--radius-large);
 }
 
+/* imageOptimization.formats 为 "both" 时 CoverImage 会输出 <picture> */
+.post-cover picture {
+  display: block;
+  width: 100%;
+}
+
 .post-cover img {
   display: block;
   width: 100%;

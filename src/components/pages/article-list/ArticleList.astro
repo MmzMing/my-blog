@@ -142,9 +142,7 @@ const totalPostLabel = i18n(
 
 		function initCoverLoading() {
 			coverHosts.forEach((wrap) => {
-				const image = wrap.querySelector<HTMLImageElement>(
-					"[data-article-list-cover]",
-				);
+				const image = wrap.querySelector<HTMLImageElement>("[data-cover-image]");
 				if (!image) return;
 
 				const lifecycle = createArticleCoverLifecycle({

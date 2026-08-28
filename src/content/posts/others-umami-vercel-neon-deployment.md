@@ -1,5 +1,6 @@
 ---
 title: Umami通过Vercel+Neon部署方案
+image: ./assets/others-umami-vercel-neon-deployment.webp
 published: 2026-05-07
 description: 使用 Vercel 部署 Umami、Neon 托管 PostgreSQL 数据库，介绍 Prisma 7 适配、自定义域名和 Share API 展示博客 UV/PV 的配置方法。
 tags: [Umami, 部署, Vercel]

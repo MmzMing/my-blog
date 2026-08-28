@@ -1,3 +1,5 @@
+import type { CoverImageSource } from "./cover-image";
+
 export type ArticleListPost = {
 	id: string;
 	title: string;
@@ -12,7 +14,8 @@ export type ArticleListPost = {
 	pinned: boolean;
 	password: boolean;
 	wordCount: number;
-	imageUrl: string;
+	/** 构建期算好的封面数据；为 null 表示这篇文章不渲染封面 */
+	cover: CoverImageSource | null;
 	apiUrls: string[];
 };
 

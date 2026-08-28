@@ -1,5 +1,6 @@
 ---
 title: MinIO文件存储签名有效期机制 
+image: ./assets/projects-object-storage-presigned-url.webp
 published: 2026-05-01
 description: 解释 MinIO/S3 签名 URL 的参数和 7 天有效期限制，对比预签名上传与下载，说明私有对象访问、链接泄露和过期刷新策略。
 tags: [MinIO, 对象存储, 安全]

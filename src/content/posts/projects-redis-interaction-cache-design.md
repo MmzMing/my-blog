@@ -1,5 +1,6 @@
 ---
 title: 交互数据Redis缓存实现
+image: ./assets/projects-redis-interaction-cache-design.webp
 published: 2026-05-13
 description: 设计 Redis 交互数据异步写入方案，对比 Set + MQ、Set + 定时扫描、Bitmap + MQ 的适用条件，并说明一致性、降级和数据恢复策略。
 tags: [Redis, 缓存设计, Bitmap, 高性能]

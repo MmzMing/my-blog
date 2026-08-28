@@ -1,6 +1,5 @@
 ---
 import { render } from "astro:content";
-import * as path from "node:path";
 import Comment from "@components/comment/index.astro";
 import Icon from "@components/common/Icon.astro";
 import Markdown from "@components/common/Markdown.astro";
@@ -22,11 +21,13 @@ import {
 } from "@utils/url-utils";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import CoverImage from "@/components/common/CoverImage.astro";
 import PostFooterActions from "@/components/misc/PostFooterActions.astro";
 import RelatedPosts from "@/components/misc/RelatedPosts.astro";
 import { coverImageConfig } from "@/config/coverImageConfig";
 import { homeConfig } from "@/config/homeConfig";
 import { siteConfig } from "@/config/siteConfig";
+import { buildCoverImage } from "@/utils/cover-image";
 import { formatDateI18nParts, formatDateToYYYYMMDD } from "@/utils/date-utils";
 import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
 import { url } from "@/utils/url-utils";
@@ -59,37 +60,32 @@ const bannerPostMeta = {
 // 处理随机图：如果image为"api"，则从配置的API获取随机图
 const processedImage = processCoverImageSync(entry.data.image, entry.id);
 const coverApiUrls = getApiUrlList(entry.data.image, entry.id);
-const posterFallbackCoverUrl = coverImageConfig.randomCoverImage.fallback
-	? url(coverImageConfig.randomCoverImage.fallback)
-	: null;
-let posterCoverUrl = processedImage;
-if (processedImage) {
-	const isLocal = !(
-		processedImage.startsWith("/") ||
-		processedImage.startsWith("http") ||
-		processedImage.startsWith("https") ||
-		processedImage.startsWith("data:")
-	);
-	if (isLocal) {
-		const basePath = getFileDirFromPath(entry.filePath || "");
-		const files = import.meta.glob<ImageMetadata>(
-			"../../**/*.{png,jpg,jpeg,webp,avif,gif}",
-			{
-				import: "default",
-			},
-		);
-		let normalizedPath = path
-			.normalize(path.join("../../", basePath, processedImage))
-			.replace(/\\/g, "/");
-		const file = files[normalizedPath];
-		if (file) {
-			const img = await file();
-			posterCoverUrl = img.src;
-		}
-	}
-}
+const { randomCoverImage } = coverImageConfig;
+// 兜底图只服务于随机图：随机图关闭时没写 image 的文章直接不渲染封面区域
+const coverFallbackPath = randomCoverImage.enable
+	? randomCoverImage.fallback || ""
+	: "";
+const coverFallbackUrl = coverFallbackPath ? url(coverFallbackPath) : "";
 
-const showPostCover = Boolean(coverImageConfig.enableInPost && posterCoverUrl);
+// 详情页封面按内容区最大宽度取档，最长边不超过源图
+const POST_COVER_WIDTHS = [640, 960, 1280];
+const POST_COVER_SIZES = "(max-width: 768px) 96vw, 1024px";
+const postCover =
+	(await buildCoverImage({
+		image: processedImage,
+		basePath: getFileDirFromPath(entry.filePath || ""),
+		widths: POST_COVER_WIDTHS,
+		sizes: POST_COVER_SIZES,
+	})) ??
+	(coverFallbackPath
+		? await buildCoverImage({
+				image: coverFallbackPath,
+				widths: POST_COVER_WIDTHS,
+				sizes: POST_COVER_SIZES,
+			})
+		: null);
+
+const showPostCover = Boolean(coverImageConfig.enableInPost && postCover);
 
 dayjs.extend(utc);
 
@@ -125,9 +121,19 @@ const shareQrCode = siteConfig.postShare
 	: "";
 const defaultStructuredImageUrl = new URL(siteConfig.defaultOgImage, Astro.site)
 	.href;
-const structuredImageUrl = posterCoverUrl
-	? new URL(posterCoverUrl, Astro.site).href
+const structuredImageUrl = postCover
+	? new URL(postCover.src, Astro.site).href
 	: defaultStructuredImageUrl;
+// 本地封面在构建期能拿到确定尺寸，输出带宽高的 ImageObject；远程图只有 URL
+const structuredImage =
+	postCover?.width && postCover.height
+		? {
+				"@type": "ImageObject",
+				url: structuredImageUrl,
+				width: postCover.width,
+				height: postCover.height,
+			}
+		: structuredImageUrl;
 
 const jsonLd = {
 	"@context": "https://schema.org",
@@ -138,7 +144,7 @@ const jsonLd = {
 	keywords: entry.data.tags,
 	articleSection: entry.data.category || i18n(I18nKey.uncategorized),
 	wordCount: remarkPluginFrontmatter.words,
-	image: structuredImageUrl,
+	image: structuredImage,
 	author: { "@id": `${Astro.site}#person` },
 	url: canonicalUrl,
 	isPartOf: { "@id": `${Astro.site}#website` },
@@ -462,19 +468,15 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
   }
 
   {/* Layer 3: Cover image */}
-  {showPostCover && (
-    <div
-      id="post-cover"
-      class="post-cover mb-2"
-      data-api-urls={coverApiUrls.length > 0 ? JSON.stringify(coverApiUrls) : undefined}
-      data-fallback-image={posterFallbackCoverUrl || undefined}
-    >
-      <img
-        src={posterCoverUrl}
+  {showPostCover && postCover && (
+    <div id="post-cover" class="post-cover mb-2" style={postCover.lqipStyle}>
+      <CoverImage
+        cover={postCover}
         alt={`${entry.data.title} - ${i18n(I18nKey.coverImageAltSuffix)}`}
         loading="eager"
         fetchpriority="high"
-        data-post-cover-image
+        apiUrls={coverApiUrls}
+        fallbackSrc={coverFallbackUrl || undefined}
       />
     </div>
   )}
@@ -536,13 +538,14 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
       if (!cover || cover.dataset.initialized === "true") return;
       cover.dataset.initialized = "true";
 
-      const image = cover.querySelector<HTMLImageElement>("img[data-post-cover-image]");
+      // 候选地址与兜底图都由 CoverImage 组件写在 <img> 上
+      const image = cover.querySelector<HTMLImageElement>("img[data-cover-image]");
       if (!image) return;
 
       let apiUrls: string[] = [];
-      if (cover.dataset.apiUrls) {
+      if (image.dataset.apiUrls) {
         try {
-          apiUrls = JSON.parse(cover.dataset.apiUrls);
+          apiUrls = JSON.parse(image.dataset.apiUrls);
         } catch {
           apiUrls = [];
         }
@@ -558,9 +561,11 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
           return;
         }
 
-        const fallbackImage = cover.dataset.fallbackImage;
+        const fallbackImage = image.dataset.fallbackSrc;
         if (fallbackImage && !triedFallback && image.currentSrc !== fallbackImage) {
           triedFallback = true;
+          // 重试时清掉 srcset，否则浏览器仍按 srcset 选源，src 不生效
+          image.removeAttribute("srcset");
           image.addEventListener("error", retryImage, { once: true });
           image.src = fallbackImage;
         }
@@ -602,7 +607,12 @@ const serializedBreadcrumbJsonLd = JSON.stringify(breadcrumbJsonLd).replace(
       textarea.style.pointerEvents = "none";
       document.body.appendChild(textarea);
       textarea.select();
-      const copied = document.execCommand("copy");
+      // execCommand 已废弃，但在 Clipboard API 不可用的非安全上下文里仍是唯一选择；
+      // 显式重写类型以绕开 astro check 的废弃提示
+      const execCommand = (
+        document as Document & { execCommand: (command: string) => boolean }
+      ).execCommand.bind(document);
+      const copied = execCommand("copy");
       textarea.remove();
       return copied;
     }
