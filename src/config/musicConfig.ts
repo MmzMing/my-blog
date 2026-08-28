@@ -23,8 +23,12 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 	// Meting API 配置
 	meting: {
 		// Meting API 地址
-		// 默认使用官方 API，也可以使用自定义 API
-		api: "https://api.i-meto.com/meting/api?server=:server&type=:type&id=:id&r=:r",
+		// 官方实例 i-meto.com 歌单接口仍返回 200，但取音频的第二跳
+		// type=url 已 404 —— 表现为列表加载正常却放不出声音。
+		// qijieya 与 moeyao 均经实测全链路可用（歌单/音频/封面/歌词
+		// 均 200 且带 Access-Control-Allow-Origin: *），字段名差异
+		// （name/artist/cover）由 MusicManager 的归一化逻辑兼容
+		api: "https://api.qijieya.cn/meting/?server=:server&type=:type&id=:id",
 		// 音乐平台：netease=网易云音乐, tencent=QQ音乐, kugou=酷狗音乐, xiami=虾米音乐, baidu=百度音乐
 		server: "netease",
 		// 类型：song=单曲, playlist=歌单, album=专辑, search=搜索, artist=艺术家
@@ -33,10 +37,11 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 		id: "17955431099",
 		// 认证 token（可选）
 		auth: "",
-		// 备用 API 配置（当主 API 失败时使用）
+		// 备用 API 配置（当主 API 失败时使用）。
+		// injahow 已无法连接（超时），不再列入
 		fallbackApis: [
-			"https://api.injahow.cn/meting/?server=:server&type=:type&id=:id",
 			"https://api.moeyao.cn/meting/?server=:server&type=:type&id=:id",
+			"https://api.i-meto.com/meting/api?server=:server&type=:type&id=:id&r=:r",
 		],
 	},
 
