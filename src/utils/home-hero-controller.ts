@@ -567,8 +567,13 @@ export function mountHomeHero() {
 		});
 
 		timeline.to({}, { duration: 1 });
-		timeline.to(
+		// 这条 scrub 时间线会被 invalidate()（onRefreshInit / 窗口 resize 都会触发）。
+		// GSAP 的 to 补间在 invalidate 后会把「当前 DOM 值」重新记录为起点：
+		// 若 invalidate 发生在标题已淡出的深滚动状态，起点被记成 autoAlpha 0，
+		// 之后滚回顶部标题永远不可见。因此所有补间一律 fromTo 显式锚定起点。
+		timeline.fromTo(
 			title,
+			{ autoAlpha: 1, yPercent: 0, scale: 1 },
 			{
 				yPercent: -20,
 				scale: 0.58,
@@ -580,8 +585,12 @@ export function mountHomeHero() {
 		);
 		// 右下角 contact 的退场不再整体渐隐，改为字符随风散落，
 		// 由 prepareFlyText() 在字体就绪后将 scatter 时间线挂载到 0.04 位置。
-		timeline.to(
+		timeline.fromTo(
 			tiles.map((tile) => tile.element),
+			{
+				// 起点必须逐片区分：initiallyVisible 的碎片在进度 0 应可见，其余不可见
+				autoAlpha: (index) => (tiles[index].initiallyVisible ? 1 : 0),
+			},
 			{
 				autoAlpha: 0,
 				duration: 0.06,
@@ -620,18 +629,22 @@ export function mountHomeHero() {
 		}
 
 		if (mosaicComplete) {
-			timeline.to(
+			timeline.fromTo(
 				mosaicComplete,
+				{ autoAlpha: 0 },
 				{ autoAlpha: 1, duration: 0.03, ease: "none" },
 				0.72,
 			);
 		}
 
-		timeline.to(
+		// 淡出段只动 autoAlpha：yPercent 已由上一段补间锚定，若这里再显式给
+		// yPercent 起点，进度归零的回滚渲染会按时间序先后渲染两段，后渲染的
+		// 这段把 yPercent 又写回自己的起点，标题会停在 -20% 偏移上。
+		timeline.fromTo(
 			title,
+			{ autoAlpha: 1 },
 			{
 				autoAlpha: 0,
-				yPercent: -28,
 				duration: 0.08,
 				ease: "power2.in",
 			},
@@ -639,8 +652,9 @@ export function mountHomeHero() {
 		);
 
 		if (dialogueRoot) {
-			timeline.to(
+			timeline.fromTo(
 				dialogueRoot,
+				{ autoAlpha: 0, y: 16, scale: 0.96 },
 				{
 					autoAlpha: 1,
 					y: 0,
@@ -652,8 +666,9 @@ export function mountHomeHero() {
 			);
 		}
 
-		timeline.to(
+		timeline.fromTo(
 			mosaic,
+			{ y: 0, scale: 1 },
 			{
 				y: () => getMosaicTransform().y,
 				scale: () => getMosaicTransform().scale,
@@ -662,20 +677,23 @@ export function mountHomeHero() {
 			},
 			0.76,
 		);
-		timeline.to(
+		timeline.fromTo(
 			backdrop,
+			{ autoAlpha: 0 },
 			{ autoAlpha: 1, duration: 0.1, ease: "power2.inOut" },
 			0.87,
 		);
-		timeline.to(
+		timeline.fromTo(
 			mosaic,
+			{ autoAlpha: 1 },
 			{ autoAlpha: 0, duration: 0.07, ease: "power2.in" },
 			0.92,
 		);
 
 		quickActions.forEach((action, index) => {
-			timeline?.to(
+			timeline?.fromTo(
 				action,
+				{ autoAlpha: 0, y: 38, scale: 0.42 },
 				{
 					autoAlpha: 1,
 					y: 0,

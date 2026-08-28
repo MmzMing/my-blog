@@ -100,7 +100,9 @@
 .home-guide-grid {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	grid-template-rows: repeat(2, var(--guide-row-height));
+	/* 行高只作为最小值：标签/分类卡片内容随视口比例压缩时允许撑高，
+	   避免第二排标签胶囊被 overflow: hidden 裁掉 */
+	grid-template-rows: repeat(2, minmax(var(--guide-row-height), auto));
 	gap: var(--guide-gap);
 	min-height: 0;
 }
@@ -493,6 +495,11 @@
 	padding-bottom: 1rem;
 }
 
+/* 标签胶囊的散落姿态带向下的位移与旋转，会超出布局盒被裁切，底部多留余量 */
+.guide-card--tags {
+	padding-bottom: 3rem;
+}
+
 .guide-link-list {
 	display: grid;
 	gap: 0.2rem;
@@ -764,7 +771,7 @@
 
 @media (max-width: 900px) {
 	.home-guide-grid {
-		grid-template-rows: repeat(2, var(--guide-row-height));
+		grid-template-rows: repeat(2, minmax(var(--guide-row-height), auto));
 	}
 
 	.home-data-layer__top-grid {

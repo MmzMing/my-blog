@@ -32,6 +32,12 @@ type SetupContext = {
 	ScrollTrigger: ScrollTriggerPlugin;
 	config: HomeBlindsRuntimeConfig;
 	signal: AbortSignal;
+	/**
+	 * 入场标题的播放状态。setupReveal 比 setupHeadline 先建，但退场 scrub 需要
+	 * 知道「标题是否已入场」才能决定回滚锚定的目标值，故由 initializeHomeBlinds
+	 * 先建好这个共享对象，setupHeadline 在 play() 时置位。
+	 */
+	headlineState: { played: boolean };
 };
 
 /**
@@ -1351,6 +1357,16 @@ function setupReveal(context: SetupContext) {
 			end: "bottom 66.666%",
 			scrub: 0.35,
 			invalidateOnRefresh: true,
+			// 从别的页面深处跳入首页时，标题退场补间的初次渲染就落在终点态，
+			// 之后回滚到退场区间之下时 GSAP 不会再补渲染它的起点，常驻标题
+			// 因此一直隐身；relayout()/fonts.ready 的 reset() 也可能把根节点
+			// 打回隐藏。只要已入场且滚动位于退场区间之下，这里显式把标题锚回
+			// 可见态，退场交给上面的 fromTo 在区间内正常接管。
+			onUpdate: (self) => {
+				if (self.progress < REVEAL_EXIT_START && context.headlineState.played) {
+					gsap.set(headline, { yPercent: 0, autoAlpha: 1 });
+				}
+			},
 		},
 	});
 
@@ -1640,6 +1656,7 @@ function setupHeadline(context: SetupContext) {
 	const play = () => {
 		if (played) return;
 		played = true;
+		context.headlineState.played = true;
 		const { openScale, titleY, stackY, slide } = measure();
 		const span = enterSpan;
 		gsap.set(stack, { y: titleY });
@@ -1807,6 +1824,7 @@ async function initializeHomeBlinds(root: HTMLElement, generation: number) {
 		ScrollTrigger,
 		config,
 		signal: abortController.signal,
+		headlineState: { played: false },
 	};
 
 	/**
