@@ -339,8 +339,17 @@
   --post-hero-share-action-color: var(--primary);
 }
 
+/* 暗色主题下 --primary 为浅色，图标需改用深色才能看清 */
+:root.dark .post-hero__share-action--copy {
+  --post-hero-share-action-icon-color: oklch(0.08 0 0);
+}
+
 .post-hero__share-action--copy.is-copied {
   --post-hero-share-action-color: #22c55e;
+}
+
+:root.dark .post-hero__share-action--copy.is-copied {
+  --post-hero-share-action-icon-color: #fff;
 }
 
 @media (max-width: 768px) {

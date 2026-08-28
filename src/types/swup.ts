@@ -19,6 +19,7 @@ export type SwupHookName =
 	| "visit:start"
 	| "visit:abort"
 	| "visit:end"
+	| "page:preload"
 	| "page:view"
 	| "content:replace"
 	| "content:scroll"
@@ -43,6 +44,8 @@ export interface SwupVisit {
 /** 钩子第二个入参的形状。未列出的钩子没有额外入参。 */
 interface SwupHookArgsMap {
 	"link:click": { el: HTMLAnchorElement; event: Event };
+	/** `page` 由 preload 插件的默认处理器填充；普通 on 处理器执行时已就位 */
+	"page:preload": { url: string; page?: SwupPageData };
 	"page:view": { url: string; title: string };
 	"content:replace": { page: SwupPageData };
 	"history:popstate": { event: PopStateEvent };

@@ -16,6 +16,7 @@ import { ArticleOutlineRailRuntime } from "@/utils/article-outline-controller";
 import { scheduleContentOverflowEnhancements } from "@/utils/content-overflow";
 import { installLazyCollapsibleCodeController } from "@/utils/lazy-collapsible-code-controller";
 import { initPageLoader } from "@/utils/page-loader-controller.js";
+import { installSwupCssPrefetch } from "@/utils/swup-css-prefetch";
 import {
 	definePageIsland,
 	definePersistentIsland,
@@ -40,6 +41,9 @@ export function initLayout(): void {
 
 	// 进度条、回顶、主题校正、侧边栏显隐
 	definePersistentIsland("layout:swup-transition", setupSwupTransitions);
+
+	// hover 预载时顺带预取目标页 CSS，消除按页拆包后 Swup 首访的串行样式表等待
+	definePersistentIsland("layout:swup-css-prefetch", installSwupCssPrefetch);
 
 	// 首屏加载页
 	definePersistentIsland("layout:page-loader", () => {

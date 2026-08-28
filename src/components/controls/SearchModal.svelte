@@ -313,8 +313,10 @@ $effect(() => {
 
 {#if visible}
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+<!-- data-lenis-prevent：首页 Lenis 平滑滚动激活时，弹窗内滚轮交给原生处理 -->
 <div
 	class="search-modal-backdrop"
+	data-lenis-prevent
 	bind:this={modalEl}
 	onclick={handleBackdropClick}
 >

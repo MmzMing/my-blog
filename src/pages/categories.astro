@@ -6,6 +6,7 @@ import PageTitle from "@/components/common/PageTitle.astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { getCategoryTagGroups, getTagGraphData } from "@/utils/content-utils";
+import "@/styles/pages/categories.css";
 
 const categoryGroups = await getCategoryTagGroups();
 const tagGraph = await getTagGraphData();

@@ -3,6 +3,7 @@ import HomeBlinds from "@components/layout/HomeBlinds.astro";
 import HomeDataLayer from "@components/layout/HomeDataLayer.astro";
 import HomeHero from "@components/layout/HomeHero.astro";
 import HomeMobile from "@components/layout/HomeMobile.astro";
+import HomeSmoothScroll from "@components/layout/HomeSmoothScroll.astro";
 import HomeTicker from "@components/layout/HomeTicker.astro";
 import SiteStructuredData from "@/components/seo/SiteStructuredData.astro";
 import { siteConfig } from "@/config";
@@ -13,8 +14,7 @@ import "@/styles/components/home-hero.css";
 import "@/styles/components/home-section.css";
 import "@/styles/components/home-ticker.css";
 import "@/styles/components/home-mobile.css";
-import "@/styles/components/home-blinds.css";
----
+import "@/styles/components/home-blinds.css";---
 
 <MainGridLayout
 	title={siteConfig.title}
@@ -28,5 +28,6 @@ import "@/styles/components/home-blinds.css";
 		<HomeDataLayer />
 		<HomeBlinds />
 		<HomeMobile />
+		<HomeSmoothScroll />
 	</div>
 </MainGridLayout>

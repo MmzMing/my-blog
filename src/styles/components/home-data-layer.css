@@ -275,10 +275,10 @@
 
 .guide-card--motion:hover .guide-card__detail,
 .guide-card--motion:hover .guide-rotator__meta,
-.guide-card--motion:hover .guide-rotator__slide > span:last-child,
+.guide-card--motion:hover .guide-rotator__desc,
 .guide-card--motion:focus-within .guide-card__detail,
 .guide-card--motion:focus-within .guide-rotator__meta,
-.guide-card--motion:focus-within .guide-rotator__slide > span:last-child {
+.guide-card--motion:focus-within .guide-rotator__desc {
 	color: color-mix(in srgb, var(--guide-bg) 72%, transparent);
 }
 
@@ -372,6 +372,63 @@
 	height: 1.45rem;
 }
 
+/* 置顶卡：封面缩略图位于文字左侧，随轮播整体切换 */
+.guide-card--pinned .guide-rotator__slide {
+	flex-direction: row;
+	align-items: center;
+	gap: clamp(0.9rem, 1.5vw, 1.4rem);
+}
+
+.guide-rotator__body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.guide-rotator__cover {
+	position: relative;
+	flex: 0 0 auto;
+	align-self: stretch;
+	width: clamp(7rem, 11vw, 10.5rem);
+	overflow: hidden;
+	border: 2px solid var(--guide-border);
+	border-radius: calc(var(--guide-radius) - 0.15rem);
+}
+
+.guide-rotator__cover img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+/* 最新更新卡：当前文章封面作为整卡背景，随轮播淡入淡出 */
+.guide-card__bg {
+	position: absolute;
+	inset: 0;
+	z-index: -2;
+	pointer-events: none;
+}
+
+.guide-card__bg-item {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	transition: opacity 480ms ease;
+}
+
+.guide-card__bg-item.is-active {
+	opacity: 0.18;
+}
+
+.guide-card__bg-img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+}
+
 .guide-card__topline {
 	display: flex;
 	align-items: center;
@@ -438,7 +495,8 @@
 	white-space: nowrap;
 }
 
-.guide-rotator__slide > span:last-child {
+.guide-rotator__slide > span:last-child,
+.guide-rotator__desc {
 	font-size: 0.84rem;
 	font-weight: 700;
 	line-height: 1.4;
@@ -502,7 +560,10 @@
 
 .guide-link-list {
 	display: grid;
+	/* 均匀分布占满卡片剩余高度，避免底部留白 */
+	flex: 1;
 	gap: 0.2rem;
+	align-content: space-evenly;
 	margin-top: 0.75rem;
 }
 
@@ -512,14 +573,14 @@
 	justify-content: space-between;
 	gap: 0.5rem;
 	color: inherit;
-	font-size: 0.8rem;
+	font-size: 0.9rem;
 	font-weight: 800;
 	line-height: 1.3;
 	text-decoration: none;
 }
 
 .guide-link-list a {
-	padding: 0.2rem 0;
+	padding: 0.5rem 0;
 	transition: color 240ms ease, transform 240ms ease;
 }
 
@@ -534,7 +595,7 @@
 
 .guide-link-list strong {
 	font-family: var(--font-mono, monospace);
-	font-size: 0.72rem;
+	font-size: 0.78rem;
 }
 
 .guide-tag-list {
@@ -840,6 +901,7 @@
 	.guide-card,
 	.guide-card::after,
 	.guide-card__visual img,
+	.guide-card__bg-item,
 	.guide-rotator__slide,
 	.guide-rotator__dots button,
 	.guide-contact__region {

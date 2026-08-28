@@ -35,7 +35,7 @@
   }
 
   a:not(.no-styling) {
-    @apply relative bg-none font-medium text-(--primary) underline decoration-(--link-underline) decoration-1 decoration-dashed underline-offset-4;
+    @apply relative bg-none font-medium text-(--link-color) underline decoration-(--link-color) decoration-1 decoration-dashed underline-offset-4;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
     word-break: break-word;
@@ -44,9 +44,14 @@
     &:active {
       @apply decoration-transparent;
       background: var(--btn-plain-bg-hover);
-      border-bottom: 1px dashed var(--link-hover);
+      border-bottom: 1px dashed var(--link-color);
       text-decoration: none;
     }
+  }
+
+  strong,
+  b {
+    @apply font-bold text-(--strong-color);
   }
 
   code {

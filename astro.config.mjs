@@ -362,8 +362,11 @@ export default defineConfig({
 					warn(warning);
 				},
 			},
-			// CSS 优化
-			cssCodeSplit: false,
+			// CSS 按页拆包：每页只拉取自己需要的样式，首访渲染阻塞 CSS 从全站合并的
+			// ~102KB gz 降到按页体积（已超出 B3 方案 R2 的 100KB 回退线）。
+			// Swup 导航的串行 CSS 等待由 swup-css-prefetch.ts 在 hover 预载阶段消除
+			// （/_astro/* 为 immutable 缓存，预取必命中）。
+			cssCodeSplit: true,
 			cssMinify: "esbuild",
 			assetsInlineLimit: 4096,
 		},

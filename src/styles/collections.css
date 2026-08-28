@@ -198,7 +198,7 @@
   min-height: 2.625rem;
 }
 :root.dark .tools-card-desc {
-  color: oklch(0.55 0 0);
+  color: oklch(0.62 0 0);
 }
 
 /* 底部域名 */

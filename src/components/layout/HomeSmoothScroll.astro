@@ -1,0 +1,23 @@
+---
+/**
+ * 首页平滑滚动（Lenis）的挂载壳，不渲染任何 DOM。
+ *
+ * 把 bindHomeLayer 的注册放在组件脚本里而不是 index.astro 页面脚本里，
+ * 是因为 swup 导航时组件脚本会随新容器重新插入执行（home:hero 等所有
+ * 首页孤岛均如此），而页面级脚本在「其它页面刷新后首次 swup 回首页」
+ * 的场景下不会被重新插入，平滑滚动就丢了。
+ */
+---
+
+<script>
+	import { bindHomeLayer } from "@/utils/home-lifecycle";
+	import {
+		bootHomeSmoothScroll,
+		teardownHomeSmoothScroll,
+	} from "@/utils/home-smooth-scroll";
+
+	bindHomeLayer("smooth-scroll", {
+		boot: bootHomeSmoothScroll,
+		teardown: teardownHomeSmoothScroll,
+	});
+</script>

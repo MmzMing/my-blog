@@ -11,6 +11,8 @@
 @import './layout/category-bar.css';
 
 /* === 组件层 === */
+/* 页面专属样式不在这里引入（guestbook-chat / about-* / pages/*.css / widgets/archive-stats.css），
+   由对应页面自行 import，Astro 会按页拆包，避免全体页面共享一个过大的渲染阻塞 CSS。 */
 @import './components/page-loader.css';
 @import './components/page-title.css';
 @import './components/footer.css';
@@ -22,26 +24,12 @@
 @import './components/floating-lyrics.css';
 @import './components/privacy-modal.css';
 @import './components/live2d-widget.css';
-@import './components/guestbook-chat.css';
 @import './components/article-outline-rail.css';
 @import './components/related-posts.css';
 @import './components/wiki-link-card.css';
-@import './components/about-chat-bubble.css';
-@import './components/about-profile-card.css';
-@import './components/about-social-links.css';
-@import './components/about-tech-stack.css';
-@import './components/about-timeline.css';
 
 /* === 侧边栏组件层 === */
-@import './widgets/archive-stats.css';
 @import './widgets/announcement.css';
-
-/* === 页面层 === */
-@import './pages/categories.css';
-@import './pages/article-list.css';
-@import './pages/archive-panel.css';
-@import './pages/friends.css';
-@import './pages/404.css';
 
 
 @plugin '@tailwindcss/typography';
@@ -85,6 +73,25 @@
 html {
     scroll-behavior: smooth;
     overflow-x: hidden;
+}
+
+/* Lenis 首页平滑滚动启用时（<html> 会挂上 .lenis 类）的配套规则：
+   关掉上面的 CSS 平滑避免双重插值，其余为 Lenis 官方推荐样式 */
+html.lenis,
+html.lenis body {
+    height: auto;
+}
+
+.lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+}
+
+.lenis.lenis-stopped {
+    overflow: clip;
+}
+
+.lenis [data-lenis-prevent] {
+    overscroll-behavior: contain;
 }
 
 /* 极简模式：顶部高光禁用 */

@@ -7,6 +7,7 @@ import MainGridLayout from "@layouts/MainGridLayout.astro";
 import PageTitle from "@/components/common/PageTitle.astro";
 import { siteConfig } from "@/config";
 import { getSortedPostsList } from "@/utils/content-utils";
+import "@/styles/widgets/archive-stats.css";
 
 const sortedPostsList = await getSortedPostsList();
 const title = i18n(I18nKey.archive);

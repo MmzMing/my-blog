@@ -1,4 +1,5 @@
 ---
+import CoverImage from "@components/common/CoverImage.astro";
 import Icon from "@components/common/Icon.astro";
 import DataMetricCard from "@components/features/DataMetricCard.astro";
 import I18nKey from "@i18n/i18nKey";
@@ -9,13 +10,20 @@ import {
 	getSortedPosts,
 	getTagList,
 } from "@/utils/content-utils";
+import { buildCoverImage } from "@/utils/cover-image";
 import { formatDateI18n } from "@/utils/date-utils";
 import {
 	countReadableCharacters,
 	formatCompactNumber,
 } from "@/utils/home-data-layer.js";
 import { getGuidePostSets } from "@/utils/home-guide-grid.js";
-import { getPostUrlBySlug, getTagUrl, url } from "@/utils/url-utils";
+import { processCoverImageSync } from "@/utils/image-utils";
+import {
+	getFileDirFromPath,
+	getPostUrlBySlug,
+	getTagUrl,
+	url,
+} from "@/utils/url-utils";
 
 const posts = await getSortedPosts();
 const categories = await getCategoryList();
@@ -24,8 +32,39 @@ const totalWords = posts.reduce(
 	(sum, post) => sum + countReadableCharacters(post.body || ""),
 	0,
 );
-const { pinned: pinnedPosts, recent: recentPosts } = getGuidePostSets(posts, 4);
-const rotationPosts = pinnedPosts;
+const { pinned: pinnedEntries, recent: recentEntries } = getGuidePostSets(
+	posts,
+	4,
+);
+
+// 与列表页同一套封面管线：构建期优化 + 多格式 srcset + LQIP 占位色。
+// 缩略图最大约 11rem，整卡背景最大约 30rem，widths 按 1x/2x 给档。
+const resolveCover = (
+	post: (typeof posts)[number],
+	widths: number[],
+	sizes: string,
+) =>
+	buildCoverImage({
+		image: processCoverImageSync(post.data.image, post.id),
+		basePath: getFileDirFromPath(post.filePath || ""),
+		widths,
+		sizes,
+	});
+
+const [rotationPosts, recentPosts] = await Promise.all([
+	Promise.all(
+		pinnedEntries.map(async (post) => ({
+			...post,
+			cover: await resolveCover(post, [176, 352], "176px"),
+		})),
+	),
+	Promise.all(
+		recentEntries.map(async (post) => ({
+			...post,
+			cover: await resolveCover(post, [480, 960], "480px"),
+		})),
+	),
+]);
 const articlePills = [
 	{
 		label: i18n(I18nKey.siteStatsPostCount),
@@ -108,12 +147,19 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				<div class="guide-rotator__slides">
 					{rotationPosts.length > 0 ? rotationPosts.map((post, index) => (
 						<article class="guide-rotator__slide" data-guide-slide data-guide-url={getPostUrlBySlug(post.id)} hidden={index !== 0} aria-hidden={index !== 0 ? "true" : undefined}>
-							<span class="guide-rotator__meta">{post.data.category || i18n(I18nKey.uncategorized)} / {formatDateI18n(post.data.published)}</span>
-							<div class="guide-rotator__title-row">
-								<a class="guide-rotator__article-link" href={getPostUrlBySlug(post.id)}><strong>{post.data.title}</strong></a>
-								<button class="guide-card__article-action" type="button" data-guide-next aria-label={i18n(I18nKey.switchPinnedPost)} title={i18n(I18nKey.switchPinnedPost)}><Icon name="material-symbols:arrow-forward-rounded" is:inline /></button>
+							{post.cover && (
+								<div class="guide-rotator__cover" style={post.cover.lqipStyle} aria-hidden="true">
+									<CoverImage cover={post.cover} alt="" loading="lazy" />
+								</div>
+							)}
+							<div class="guide-rotator__body">
+								<span class="guide-rotator__meta">{post.data.category || i18n(I18nKey.uncategorized)} / {formatDateI18n(post.data.published)}</span>
+								<div class="guide-rotator__title-row">
+									<a class="guide-rotator__article-link" href={getPostUrlBySlug(post.id)}><strong>{post.data.title}</strong></a>
+									<button class="guide-card__article-action" type="button" data-guide-next aria-label={i18n(I18nKey.switchPinnedPost)} title={i18n(I18nKey.switchPinnedPost)}><Icon name="material-symbols:arrow-forward-rounded" is:inline /></button>
+								</div>
+								<span class="guide-rotator__desc">{post.data.description || i18n(I18nKey.continueReadingFallback)}</span>
 							</div>
-							<span>{post.data.description || i18n(I18nKey.continueReadingFallback)}</span>
 						</article>
 					)) : <p class="guide-card__detail">{i18n(I18nKey.noPinnedContent)}</p>}
 				</div>
@@ -125,6 +171,15 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			</section>
 
 			<section class="guide-card guide-card--article guide-card--latest" aria-labelledby="guide-latest-title" data-guide-rotator data-guide-axis="horizontal">
+				{recentPosts.some((post) => post.cover) && (
+					<div class="guide-card__bg" aria-hidden="true">
+						{recentPosts.map((post, index) => (
+							<div class:list={["guide-card__bg-item", { "is-active": index === 0 }]} data-guide-bg-item style={post.cover?.lqipStyle}>
+								{post.cover && <CoverImage cover={post.cover} alt="" loading="lazy" class="guide-card__bg-img" />}
+							</div>
+						))}
+					</div>
+				)}
 				<div class="guide-card__article-heading">
 					<h3 id="guide-latest-title">{i18n(I18nKey.latestUpdates)}</h3>
 				</div>
@@ -709,6 +764,11 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		rotators.forEach((rotator) => {
 			const slides = Array.from(rotator.querySelectorAll<HTMLElement>("[data-guide-slide]"));
 			const dots = Array.from(rotator.querySelectorAll<HTMLButtonElement>("[data-guide-dot]"));
+			// 最新更新卡：与 slide 一一对应的整卡背景图，切换时淡入淡出
+			const bgItems = Array.from(rotator.querySelectorAll<HTMLElement>("[data-guide-bg-item]"));
+			const syncBackground = (index: number) => {
+				bgItems.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === index));
+			};
 			if (slides.length === 0) return;
 			let activeIndex = 0;
 			let intervalId: number | undefined;
@@ -729,6 +789,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				currentSlide.getAnimations().forEach((animation) => animation.cancel());
 				nextSlide.getAnimations().forEach((animation) => animation.cancel());
 				activeIndex = resolvedIndex;
+				syncBackground(resolvedIndex);
 				nextSlide.hidden = false;
 				nextSlide.setAttribute("aria-hidden", "false");
 				dots.forEach((dot, index) => dot.setAttribute("aria-current", String(index === activeIndex)));
@@ -747,15 +808,18 @@ const statsShareId = umamiConfig?.shareId ?? "";
 					? [{ transform: "translateY(0)" }, { transform: "translateY(-110%)" }]
 					: [{ transform: "translateX(0)" }, { transform: "translateX(-110%)" }];
 				const options: KeyframeAnimationOptions = { duration: 520, easing: "cubic-bezier(0.65, 0, 0.35, 1)", fill: "both" };
-				const outgoingAnimation = currentSlide.animate(outgoing, options);
+				currentSlide.animate(outgoing, options);
 				nextSlide.animate(incoming, options);
-				outgoingAnimation.finished.catch(() => undefined).then(() => {
+				// 后台标签页会节流 rAF，WAAPI 长时间不推进导致 finished 不落定、
+				// 旧 slide 滞留在原位叠加；用固定超时兜底收敛到终态
+				window.setTimeout(() => {
 					if (currentTransition !== transitionId) return;
 					currentSlide.hidden = true;
 					currentSlide.setAttribute("aria-hidden", "true");
-					currentSlide.style.transform = "";
+					currentSlide.getAnimations().forEach((animation) => animation.cancel());
+					nextSlide.getAnimations().forEach((animation) => animation.cancel());
 					nextSlide.style.transform = "";
-				});
+				}, 540);
 			};
 			const stop = () => {
 				if (intervalId !== undefined) window.clearInterval(intervalId);
