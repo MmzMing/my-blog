@@ -25,7 +25,9 @@ function initTableScrollContainers(): void {
 		".custom-md table:not([data-horizontal-scroll-ready])",
 	);
 	tables.forEach((table) => {
-		if (table.parentElement?.classList.contains("horizontal-scroll-container")) {
+		if (
+			table.parentElement?.classList.contains("horizontal-scroll-container")
+		) {
 			table.dataset.horizontalScrollReady = "true";
 			return;
 		}

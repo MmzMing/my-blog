@@ -12,11 +12,14 @@
  * 由组件 `<script>` 导入，不把逻辑内联进组件。
  */
 
+import { ArticleOutlineRailRuntime } from "@/utils/article-outline-controller";
 import { scheduleContentOverflowEnhancements } from "@/utils/content-overflow";
 import { installLazyCollapsibleCodeController } from "@/utils/lazy-collapsible-code-controller";
-import { ArticleOutlineRailRuntime } from "@/utils/article-outline-controller";
 import { initPageLoader } from "@/utils/page-loader-controller.js";
-import { definePageIsland, definePersistentIsland } from "@/utils/swup-lifecycle";
+import {
+	definePageIsland,
+	definePersistentIsland,
+} from "@/utils/swup-lifecycle";
 import { setupSwupTransitions } from "@/utils/swup-transitions";
 
 /** 加密文章解密后正文才插入，需要补跑一次内容增强 */
