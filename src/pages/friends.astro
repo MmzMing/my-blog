@@ -275,11 +275,14 @@ const description =
         initFriendImagePreview();
       }
 
-      // 预览元素挂在 body（Swup 容器外）跨导航留存，离开本页前清掉残留的可见态
+      // 预览元素挂在 body（Swup 容器外）跨导航留存，离开本页前清掉残留的可见态。
+      // 还要摘掉 img 的 src：隐藏全靠页面级 CSS（friends.css），而它会被 swup 的
+      // head 插件在导航后移除；悬停过一次的 img 若仍带 src，失去样式后会按文档流
+      // 渲染成一张图出现在页脚底部。
       function hideFriendImagePreview(): void {
-        document
-          .querySelector(".friend-image-preview")
-          ?.classList.remove("is-visible");
+        const preview = document.querySelector(".friend-image-preview");
+        preview?.classList.remove("is-visible");
+        preview?.querySelector("img")?.removeAttribute("src");
       }
 
       definePageIsland({
