@@ -15,14 +15,13 @@ export const homeConfig: HomeConfig = {
 	displayName: "MmzMing",
 
 	// 职业/身份标签
-	occupation: "[(伪)全栈工程师[全干工程师] / 技术博主]",
+	occupation: "[全干工程师 / 技术博主]",
 
 	// 个人签名（支持多条，会循环打字+删除效果）
 	bio: ["且视他人之疑目如盏盏鬼火，大胆地去走你的夜路"],
 
 	hero: {
 		backgroundImage: "/assets/images/home/home.avif",
-		backgroundImageMobile: "/assets/images/home/home-mobile.avif",
 		mosaic: {
 			rows: 4,
 			columns: 6,
@@ -48,29 +47,6 @@ export const homeConfig: HomeConfig = {
 			mobileMinViewports: 3.05,
 			interactionHold: 0.06,
 		},
-		quickActions: [
-			{
-				id: "articles",
-				kind: "link",
-				label: "我想查看文章",
-				icon: "material-symbols:article-outline-rounded",
-				href: "/archive/",
-			},
-			{
-				id: "music",
-				kind: "music",
-				label: "我想听歌",
-				icon: "material-symbols:music-note-rounded",
-				fallbackHref: "/music/",
-			},
-			{
-				id: "guestbook",
-				kind: "link",
-				label: "我想留言",
-				icon: "mingcute:comment-line",
-				href: "/guestbook/",
-			},
-		],
 		contact: {
 			platform: "B站",
 			handle: "Mmz明崽",

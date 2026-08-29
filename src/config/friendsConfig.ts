@@ -457,9 +457,9 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 		title: "闪程-猫条的笔记",
-		imgurl: "https://rustfsapi.rainyunrgs.cn/blog/avatar.jpg",
+		imgurl: "https://sblog.cn-nb1.rains3.com/avatar.jpg",
 		desc: "分享技术与生活的小天地~",
-		siteurl: "https://blog.rainyunrgs.cn/",
+		siteurl: "blog.shancheng.cq.cn/",
 		image: "/assets/images/friends/rainyunrgs.webp",
 		tags: ["Blog"],
 		weight: 5,

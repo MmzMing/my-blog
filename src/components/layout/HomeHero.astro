@@ -8,7 +8,6 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 
 const { hero } = homeConfig;
-const mobileBackground = hero.backgroundImageMobile || hero.backgroundImage;
 const dialogueEnabled =
 	hero.dialogue?.enabled !== false && Boolean(hero.dialogue);
 const runtimeConfig = {
@@ -29,7 +28,7 @@ const runtimeConfig = {
 >
 	<HeroMosaic
 		desktopImage={hero.backgroundImage}
-		mobileImage={mobileBackground}
+		mobileImage={hero.backgroundImage}
 		config={hero.mosaic}
 	/>
 

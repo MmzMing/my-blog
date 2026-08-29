@@ -30,7 +30,8 @@ export const coverImageConfig: CoverImageConfig = {
 			"https://www.dmoe.cc/random.php",
 			"https://uapis.cn/api/v1/random/image?category=acg&type=pc",
 		],
-		// API失败时的回退图片路径（以/开头的public目录路径），仅在 enable 为 true 时生效
+		// API失败时的回退图片路径（以/开头的public目录路径），仅在 enable 为 true 时生效。
+		// 只服务于随机封面图，与 siteConfig.defaultOgImage（SEO 结构化数据用的站点默认 OG 图）是两回事
 		fallback: "/assets/images/aut.webp",
 		// 是否显示封面加载动画
 		showLoading: true,

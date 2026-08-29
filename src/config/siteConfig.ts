@@ -124,14 +124,6 @@ export const siteConfig: SiteConfig = {
 	// 示例："Asia/Shanghai", "UTC", 如果为空，则按照构建服务器的时区进行时区转换
 	timezone: "Asia/Shanghai",
 
-	// 上下班时间配置（24小时制），用于首页头像涟漪动效和状态按钮
-	workHours: {
-		start: 9, // 上班时间 9:00
-		end: 18, // 下班时间 18:00
-		// 工作日范围，0=周日 1=周一 ... 6=周六，默认周一到周五
-		workDays: [1, 2, 3, 4, 5, 6],
-	},
-
 	// 提醒框（Admonitions）配置，修改后需要重启开发服务器才能生效
 	// 主题：'github' | 'obsidian' | 'vitepress'，每个主题风格和语法不同，可根据喜好选择
 	rehypeCallouts: {
@@ -150,6 +142,8 @@ export const siteConfig: SiteConfig = {
 	// OpenGraph图片功能,注意开启后要渲染很长时间，不建议本地调试的时候开启
 	generateOgImages: false,
 
+	// 站点默认 OG 图：供 JSON-LD 结构化数据（SiteStructuredData）与无封面文章的结构化图片兜底使用。
+	// 与 coverImageConfig.randomCoverImage.fallback（随机封面图 API 失败的回退）互不相干，两者指向同一张图并非重复配置
 	defaultOgImage: "/assets/images/aut.webp",
 
 	// 页面加载动画配置

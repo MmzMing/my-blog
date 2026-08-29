@@ -122,14 +122,6 @@ export type SiteConfig = {
 		};
 	};
 
-	// 上下班时间配置（24小时制），用于首页头像涟漪动效和状态按钮
-	workHours?: {
-		start: number; // 上班时间，例如 9 表示 9:00
-		end: number; // 下班时间，例如 18 表示 18:00
-		// 工作日范围，0=周日 1=周一 ... 6=周六，默认 [1,2,3,4,5]（周一到周五）
-		workDays?: number[];
-	};
-
 	// 归档统计配置
 	archiveStats?: {
 		annualPostGoal: number; // 年度文章目标
@@ -356,22 +348,6 @@ export type HeroMosaicConfig = {
 	interactionHold: number;
 };
 
-export type HeroQuickAction =
-	| {
-			id: string;
-			kind: "link";
-			label: string;
-			icon: string;
-			href: string;
-	  }
-	| {
-			id: string;
-			kind: "music";
-			label: string;
-			icon: string;
-			fallbackHref: string;
-	  };
-
 export type HeroContactConfig = {
 	platform: string;
 	handle: string;
@@ -409,9 +385,7 @@ export type HomeConfig = {
 	bio?: string | string[];
 	hero: {
 		backgroundImage: string;
-		backgroundImageMobile?: string;
 		mosaic: HeroMosaicConfig;
-		quickActions: HeroQuickAction[];
 		contact?: HeroContactConfig;
 		sticker: HeroStickerConfig;
 		/** galgame 对话框（写死暗黑主题）。配置后替代底部简介气泡 */
