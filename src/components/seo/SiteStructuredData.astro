@@ -1,7 +1,13 @@
 ---
-import { homeConfig, siteConfig } from "@/config";
+import { homeConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+import {
+	buildOrganizationEntity,
+	buildPersonEntity,
+	buildWebSiteEntity,
+	serializeJsonLd,
+} from "@/utils/schema-utils";
 
 interface Props {
 	includeProfilePage?: boolean;
@@ -11,46 +17,13 @@ const { includeProfilePage = false } = Astro.props;
 
 const siteUrl = new URL("/", Astro.site).toString();
 const aboutUrl = new URL("/about/", Astro.site).toString();
-const imageUrl = new URL(siteConfig.defaultOgImage, Astro.site).toString();
-const sameAs = homeConfig.links
-	.filter((link) => /^https?:\/\//i.test(link.url))
-	.map((link) => link.url);
 
 const structuredData = {
 	"@context": "https://schema.org",
 	"@graph": [
-		{
-			"@type": "WebSite",
-			"@id": `${siteUrl}#website`,
-			url: siteUrl,
-			name: siteConfig.title,
-			description: siteConfig.description,
-			inLanguage: siteConfig.lang.replace("_", "-"),
-			publisher: { "@id": `${siteUrl}#organization` },
-		},
-		{
-			"@type": ["Person", "Author"],
-			"@id": `${siteUrl}#person`,
-			name: homeConfig.name,
-			url: aboutUrl,
-			description: siteConfig.description,
-			image: imageUrl,
-			jobTitle: homeConfig.occupation,
-			knowsAbout: siteConfig.keywords,
-			sameAs,
-		},
-		{
-			"@type": "Organization",
-			"@id": `${siteUrl}#organization`,
-			name: siteConfig.title,
-			url: siteUrl,
-			logo: {
-				"@type": "ImageObject",
-				"@id": `${siteUrl}#logo`,
-				url: imageUrl,
-			},
-			sameAs,
-		},
+		buildWebSiteEntity(Astro.site),
+		buildPersonEntity(Astro.site),
+		buildOrganizationEntity(Astro.site),
 		...(includeProfilePage
 			? [
 					{
@@ -70,5 +43,5 @@ const structuredData = {
 <script
 	is:inline
 	type="application/ld+json"
-	set:html={JSON.stringify(structuredData).replace(/</g, "\\u003c")}
+	set:html={serializeJsonLd(structuredData)}
 ></script>

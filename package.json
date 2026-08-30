@@ -75,10 +75,10 @@
 		"remark-math": "^6.0.0",
 		"remark-sectionize": "^2.1.0",
 		"sanitize-html": "^2.17.6",
-		"satori": "^0.26.0",
 		"sharp": "^0.34.5",
 		"stylus": "^0.64.0",
 		"svelte": "^5.55.5",
+		"takumi-js": "^2.13.2",
 		"three": "^0.184.0",
 		"typescript": "^5.9.2",
 		"unist-util-visit": "^5.1.0"

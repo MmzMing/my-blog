@@ -9,8 +9,7 @@ export const announcementConfig: AnnouncementConfig = {
 		{
 			tag: "重构",
 			title: "大版本更新",
-			content:
-				"一口气全面统一博客样式，移除部分冗余导航页面，更专注内容展示。",
+			content: "一口气全面统一博客样式，移除部分冗余导航页面，更专注内容展示。",
 			time: "2026-08-29",
 			sort: 4,
 		},
