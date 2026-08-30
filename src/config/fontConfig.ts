@@ -31,16 +31,6 @@ export const fontConfig = {
 			display: "swap" as const,
 		},
 
-		// Aa综艺圆
-		aazongyiyuan: {
-			id: "aazongyiyuan",
-			name: "Aa综艺圆",
-			src: "/fonts/AaZongYiYuan/AaZongYiYuan-2.woff2",
-			family: "AaZongYiYuan",
-			format: "woff2" as const,
-			display: "swap" as const,
-		},
-
 		// 小米字体 - MiSans Normal
 		"misans-normal": {
 			id: "misans-normal",

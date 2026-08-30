@@ -2,8 +2,9 @@ import type { CollectionEntry } from "astro:content";
 import { getCollection } from "astro:content";
 import * as fs from "node:fs";
 import type { APIContext, GetStaticPaths } from "astro";
-import type { FontLoader, ImagesInput } from "takumi-js";
+import type { ImagesInput } from "takumi-js";
 import { setGlyphCacheMaxBytes } from "takumi-js";
+import { googleFonts } from "takumi-js/helpers";
 import { ImageResponse } from "takumi-js/response";
 import { homeConfig, siteConfig } from "@/config";
 import { defaultFavicons } from "@/constants/icon";
@@ -20,8 +21,12 @@ const OG_HEIGHT = 630;
 const ICON_KEY = "og-icon";
 const AVATAR_KEY = "og-avatar";
 
-const FONT_FAMILY = "AaZongYiYuan";
-const FONT_PATH = "./public/fonts/AaZongYiYuan/AaZongYiYuan-2.ttf";
+// takumi 内置默认字体不含 CJK 字形，中文会渲染成空白方框，因此 OG 渲染需要显式接入中文字体。
+// 用 takumi 官方的 googleFonts 接入 Noto Sans SC（OFL 开源授权）：构建期按 unicode-range
+// 子集化，只下载各篇文章标题实际用到的字形分片（每片 KB 级），无需本地字体文件。
+// 注意 css/分片走 fonts.googleapis.com / fonts.gstatic.com，构建环境需可访问。
+const FONT_FAMILY = "Noto Sans SC";
+const fontCache = new Map<string, Promise<string>>();
 
 // 字形缓存默认 8 MiB，按 takumi 官方说明只够容纳约一千个 CJK 字形，
 // 批量渲染中文标题会不断重栅格化刚被淘汰的字形。必须在首次 render 之前调用。
@@ -108,29 +113,6 @@ function resolveIconSource(): string {
 		) ?? defaultFavicons[0];
 	return fallback.src;
 }
-
-// 惰性描述符：takumi 的 FontRegistry 按 name 去重，整次构建只解析一次 data()。
-// generic 让模板 fontFamily 末尾的 sans-serif 也能兜到这个字体——
-// 构建期没有系统字体，中间那串 -apple-system / Segoe UI 都是解析不到的。
-function buildFontLoaders(): FontLoader[] {
-	if (!fs.existsSync(FONT_PATH)) {
-		console.warn(
-			`[OG] 字体 "${FONT_PATH}" 不存在，将回退到 takumi 内置字体，中文可能显示为空白`,
-		);
-		return [];
-	}
-	return [
-		{
-			name: FONT_FAMILY,
-			weight: 400,
-			style: "normal",
-			generic: "sans-serif",
-			data: () => fs.promises.readFile(FONT_PATH),
-		},
-	];
-}
-
-const ogFonts = buildFontLoaders();
 
 const ogImages: ImagesInput = {
 	cache: "auto",
@@ -352,7 +334,16 @@ export async function GET({
 			format: "png",
 			// BCP-47，交给 takumi 做 CJK 排版决策
 			lang: siteConfig.lang.replace("_", "-"),
-			fonts: ogFonts,
+			fonts: googleFonts({
+				families: [
+					{
+						name: FONT_FAMILY,
+						weight: "100..900",
+						style: "normal",
+					},
+				],
+				cache: fontCache,
+			}),
 			images: ogImages,
 			headers: {
 				"Content-Type": "image/png",
