@@ -714,7 +714,31 @@ export type Live2DModelConfig = {
 		// motions 和 expressions 将从模型 JSON 文件中自动读取
 		clickMessages?: string[]; // 点击时随机显示的文字消息
 		messageDisplayTime?: number; // 文字显示时间（毫秒），默认3000
+		idleMotionGroup?: string; // 待机时循环播放的动作组，默认"Idle"
+		idleIntervalMin?: number; // 待机动作间隔下限（毫秒），默认15000
+		idleIntervalMax?: number; // 待机动作间隔上限（毫秒），默认30000
+		defaultMotionGroup?: string; // 面板未选择时的默认动作组，默认"TapShort"
+		/**
+		 * 鼠标划过模型时眼睛和头部跟随，默认true。
+		 * 关掉就完全不跟随 —— 这个库把「跟随」和「点击命中检测」都挂在
+		 * autoInteract 上，没法只关其中一个（unregisterInteraction 会在每帧
+		 * 渲染时被重新调用，关不住），所以关掉时命中检测也会一并停用。
+		 * 本模型没有 HitAreas，命中检测本来就无效，点击走的是 canvas 兜底。
+		 */
+		followCursor?: boolean;
 	};
+	/**
+	 * 运行时脚本来源。三个依赖都走第三方 CDN，留了覆盖入口方便换自建镜像；
+	 * pixi / pixi-live2d-display 是 npm 包，加载失败会自动回退到 unpkg。
+	 */
+	cdn?: {
+		cubismCore?: string; // Cubism 4 核心，官方只有 cubism.live2d.com 这一个源
+		pixi?: string; // pixi.js
+		live2dDisplay?: string; // pixi-live2d-display
+		scriptTimeout?: number; // 单个脚本超时（毫秒），默认10000
+		useNpmMirror?: boolean; // npm 包失败时回退 unpkg，默认true
+	};
+	loadTimeout?: number; // 整体加载（脚本 + 模型）超时（毫秒），默认45000
 	author?: {
 		name: string; // 作者名字
 		url?: string; // 作者主页或视频链接

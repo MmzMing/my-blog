@@ -85,7 +85,7 @@ export const spineModelConfig: SpineModelConfig = {
 // Live2D 看板娘配置
 export const live2dModelConfig: Live2DModelConfig = {
 	// Live2D 看板娘开关
-	enable: false,
+	enable: true,
 	// 首次访问默认不加载模型，点击入口后再加载
 	defaultVisible: false,
 	// Live2D模型配置
@@ -112,9 +112,30 @@ export const live2dModelConfig: Live2DModelConfig = {
 		height: 285,
 	},
 
-	// 渲染分辨率倍率，默认自动使用 window.devicePixelRatio（上限2）
-	// 在高DPI屏幕上设为2可显著提升清晰度，值越大越耗性能
-	resolution: 3,
+	// 渲染分辨率倍率。不填 = 自适应 min(devicePixelRatio, 2)。
+	// 想强制更锐利可以手动指定（如 resolution: 2），但固定值会覆盖自适应：
+	// 在 1x 屏上设 3 等于用 9 倍填充率渲染同一个 255×285 的画布，白白多烧 GPU。
+	// resolution: 2,
+
+	// 运行时脚本来源。三个依赖都在第三方 CDN，这里留覆盖入口，
+	// 换成自建镜像或国内镜像时只改这几行，不必动组件。
+	cdn: {
+		// Cubism 4 核心官方只有 cubism.live2d.com 一个发布源
+		cubismCore:
+			"https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js",
+		// 版本必须对得上：0.4.0 的 peerDeps 是 @pixi/* ^6，配上面的 pixi 6；
+		// 而 0.5.0-beta 要 pixi ^7，混用会直接报错。@latest 目前指向 0.4.0，
+		// 但写死更保险 —— 哪天 latest 跳到 0.5 就会和 pixi 6 撞车
+		pixi: "https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js",
+		live2dDisplay:
+			"https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js",
+		// 单个脚本超时（毫秒）。超时后 npm 包回退 unpkg，cubismcore 直接判失败
+		scriptTimeout: 10000,
+		useNpmMirror: true,
+	},
+
+	// 整体加载（脚本 + 模型）超时（毫秒）
+	loadTimeout: 45000,
 
 	// 交互配置
 	interactive: {
@@ -138,6 +159,15 @@ export const live2dModelConfig: Live2DModelConfig = {
 		],
 		// 随机显示的文字消息显示时间（毫秒）
 		messageDisplayTime: 3000,
+		// 待机时循环播放的动作组（模型里是"待机"那一条）
+		idleMotionGroup: "Idle",
+		// 待机动作间隔随机区间（毫秒）
+		idleIntervalMin: 15000,
+		idleIntervalMax: 30000,
+		// 动作面板没做选择时，点击模型播放哪一组
+		defaultMotionGroup: "TapShort",
+		// 鼠标划过模型时眼睛和头部跟着转，关掉就完全静止
+		followCursor: true,
 	},
 
 	// 作者信息

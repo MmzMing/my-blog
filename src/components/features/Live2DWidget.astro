@@ -10,39 +10,132 @@ interface Props {
 
 const { config } = Astro.props;
 
-const position = config.position || {
+const position = config.position ?? {
 	corner: "bottom-right" as const,
 	offsetX: 20,
 	offsetY: 20,
 };
-const size = config.size || { width: 280, height: 250 };
+const size = config.size ?? { width: 280, height: 250 };
+const corner = position.corner ?? "bottom-right";
+
+// 运行期配置走 data 属性下发：module script 拿不到服务端变量，
+// 而 define:vars 只对 is:inline 脚本有效
+const runtimeConfig = JSON.stringify({
+	...config,
+	modelPath: url(config.model.path),
+});
 ---
 
 <div
 	id="live2d-widget"
 	class="live2d-widget live2d-initial"
-	data-position={position.corner}
+	data-config={runtimeConfig}
 	style={`
     width: ${size.width}px;
     height: ${size.height}px;
-    ${position.corner?.includes("right") ? "right" : "left"}: ${position.offsetX}px;
-    ${position.corner?.includes("top") ? "top" : "bottom"}: ${position.offsetY}px;
+    ${corner.includes("right") ? "right" : "left"}: ${position.offsetX ?? 20}px;
+    ${corner.includes("top") ? "top" : "bottom"}: ${position.offsetY ?? 20}px;
   `}
 >
-	<canvas id="live2d-canvas" width={size.width} height={size.height}></canvas>
+	<canvas
+		id="live2d-canvas"
+		class="live2d-canvas"
+		width={size.width}
+		height={size.height}
+	></canvas>
 
-	<div class="live2d-toolbar">
-		<button class="live2d-toolbar-btn" id="toolbar-drag" title="移动">
-			<Icon name="material-symbols:drag-indicator" class="text-lg" />
+	<!-- 加载 / 失败态：进度由 live2d-controller 驱动 -->
+	<div class="live2d-loader" id="live2d-loader" hidden>
+		<div class="live2d-loader-ring" id="live2d-loader-bar">
+			<svg viewBox="0 0 48 48" aria-hidden="true">
+				<circle class="live2d-loader-track" cx="24" cy="24" r="20"></circle>
+				<circle class="live2d-loader-value" cx="24" cy="24" r="20"></circle>
+			</svg>
+			<span class="live2d-loader-pct" id="live2d-loader-pct"></span>
+		</div>
+		<p class="live2d-loader-label" id="live2d-loader-label">准备加载</p>
+		<button class="live2d-retry" id="live2d-retry" type="button" hidden>
+			重试
 		</button>
-		<button class="live2d-toolbar-btn" id="toolbar-switch" title="切换动画组">
-			<Icon name="material-symbols:swap-horiz" class="text-lg" />
+	</div>
+
+	<!-- 动作模组面板：分组与动作在模型加载完成后从 definitions 动态生成 -->
+	<div
+		class="live2d-motion-panel"
+		id="live2d-motion-panel"
+		aria-label="动作模组"
+	>
+		<div class="live2d-panel-header">
+			<span class="live2d-panel-title">动作模组</span>
+			<div class="live2d-panel-actions">
+				<button
+					class="live2d-panel-btn"
+					id="live2d-reset-btn"
+					type="button"
+					title="重置"
+					aria-label="重置已开启的动作"
+				>
+					<Icon name="material-symbols:restart-alt" class="text-base" />
+				</button>
+				<button
+					class="live2d-panel-btn"
+					id="live2d-panel-close-btn"
+					type="button"
+					title="关闭"
+					aria-label="关闭动作面板"
+				>
+					<Icon name="material-symbols:close-rounded" class="text-base" />
+				</button>
+			</div>
+		</div>
+		<div class="live2d-panel-body">
+			<div
+				class="live2d-motion-tabs"
+				id="live2d-motion-tabs"
+				role="group"
+				aria-label="动作分组"
+			>
+			</div>
+			<div class="live2d-motion-list" id="live2d-motion-list">
+				<span class="live2d-motion-empty">等待模型加载…</span>
+			</div>
+		</div>
+	</div>
+
+	<div class="live2d-toolbar" role="toolbar" aria-label="看板娘">
+		<button
+			class="live2d-tool-btn"
+			id="live2d-motion-btn"
+			type="button"
+			title="动作模组"
+			aria-label="选择动作模组"
+			aria-expanded="false"
+			aria-controls="live2d-motion-panel"
+		>
+			<Icon name="material-symbols:auto-awesome" class="text-xl" />
 		</button>
-		<button class="live2d-toolbar-btn active" id="toolbar-info" title="作者信息">
-			<Icon name="material-symbols:info" class="text-lg" />
-		</button>
-		<button class="live2d-toolbar-btn" id="toolbar-close" title="关闭">
-			<Icon name="material-symbols:close" class="text-lg" />
+		{
+			config.author && (
+				<button
+					class="live2d-tool-btn active"
+					id="live2d-info-btn"
+					type="button"
+					title="作者信息"
+					aria-label="切换作者信息"
+					aria-pressed="true"
+				>
+					<Icon name="material-symbols:info-outline-rounded" class="text-xl" />
+				</button>
+			)
+		}
+		<button
+			class="live2d-tool-btn"
+			id="live2d-close-btn"
+			type="button"
+			title="关闭"
+			aria-label="关闭看板娘"
+		>
+			<Icon name="material-symbols:close-rounded" class="text-xl" />
 		</button>
 	</div>
 
@@ -51,11 +144,7 @@ const size = config.size || { width: 280, height: 250 };
 			<div class="live2d-author" id="live2d-author">
 				<span>by </span>
 				{config.author.url ? (
-					<a
-						href={config.author.url}
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					<a href={config.author.url} target="_blank" rel="noopener noreferrer">
 						{config.author.name}
 					</a>
 				) : (
@@ -64,11 +153,16 @@ const size = config.size || { width: 280, height: 250 };
 			</div>
 		)
 	}
-
-	<div class="live2d-group-indicator" id="live2d-group-indicator" />
 </div>
 
-<div class="live2d-trigger" id="live2d-trigger" title="显示看板娘">
+<div
+	class="live2d-trigger"
+	id="live2d-trigger"
+	role="button"
+	tabindex="0"
+	title="显示看板娘"
+	aria-label="显示看板娘"
+>
 	<div class="live2d-trigger-inner">
 		<Icon name="fa7-regular:address-card" class="text-lg" />
 		<span class="live2d-trigger-text">看板娘</span>
@@ -77,1003 +171,10 @@ const size = config.size || { width: 280, height: 250 };
 
 <MessageBox />
 
-<script
-	is:inline
-	data-swup-ignore-script
-	define:vars={{ config, modelPathUrl: url(config.model.path) }}
->
-	const STORAGE_KEYS = {
-		visibility: "live2d-visibility-cache",
-		position: "live2d-position-cache",
-	};
-
-	// ============================================================
-	// 全局状态持久化 —— 跨脚本执行、跨页面导航保持状态
-	// ============================================================
-	const GLOBAL_KEY = "__live2dGlobalState";
-
-	function createGlobalState() {
-		return {
-			initialized: false,
-			stateManager: null,
-			app: null,
-			model: null,
-			isResourcesReady: false,
-			isWidgetVisible: false,
-			resourceLoadPromise: null,
-			isDragSetup: false,
-			isInteractionsSetup: false,
-			isTransitioning: false,
-			wasDragging: false,
-			idleTimer: 0,
-			indicatorTimer: 0,
-    canvasElement: null,
-    widgetElement: null,
-    abortController: null,
-  };
-}
-
-	const g = window[GLOBAL_KEY] || createGlobalState();
-	window[GLOBAL_KEY] = g;
-
-	// 统一管理事件监听器，cleanup 时一次性移除
-	let live2dAbortController = g.abortController || new AbortController();
-	if (!g.abortController) g.abortController = live2dAbortController;
-	else live2dAbortController = g.abortController;
-
-	const allMotionGroups = ["Expression", "TapShort", "TapLong", "Other"];
-	let clickMotionGroups = ["Expression", "TapShort"];
-
-	// ============================================================
-	// Live2DStateManager（单例，通过全局状态保持）
-	// ============================================================
-	class Live2DStateManager {
-		constructor() {
-			this.state = "idle";
-			this.loadPromise = null;
-			this.loadError = null;
-			this.retryCount = 0;
-			this.maxRetries = 2;
-			this.visibilityCache = null;
-		}
-
-		static async getInstance() {
-			if (!Live2DStateManager._instance) {
-				Live2DStateManager._instance = new Live2DStateManager();
-				Live2DStateManager._instance.visibilityCache =
-					localStorage.getItem(STORAGE_KEYS.visibility);
-			}
-			return Live2DStateManager._instance;
-		}
-
-		getState() {
-			return this.state;
-		}
-
-		setState(newState) {
-			this.state = newState;
-			if (newState === "error" || newState === "ready") {
-				this.loadError = null;
-			}
-		}
-
-		async ensureLoaded() {
-			if (this.state === "ready") {
-				return true;
-			}
-			if (this.state === "loading" && this.loadPromise) {
-				try {
-					await this.loadPromise;
-					return this.state === "ready";
-				} catch {
-					return false;
-				}
-			}
-			if (this.state === "error" && this.retryCount < this.maxRetries) {
-				this.retryCount++;
-				this.loadError = null;
-			} else if (this.state === "error") {
-				return false;
-			}
-			this.setState("loading");
-			this.loadPromise = this.loadResources()
-				.then(() => {
-					this.setState("ready");
-					return true;
-				})
-				.catch((error) => {
-					this.setState("error");
-					this.loadError = error;
-					return false;
-				});
-			return this.loadPromise;
-		}
-
-		async loadResources() {
-			// cubismcore 和 pixi.js 无依赖关系，并行加载
-			await Promise.all([
-				Live2DStateManager.loadScript(
-					"https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js",
-				),
-				Live2DStateManager.loadScript(
-					"https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js",
-				),
-			]);
-			// pixi-live2d-display 依赖前两者，串行加载
-			await Live2DStateManager.loadScript(
-				"https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js",
-			);
-			if (!window.PIXI || !window.PIXI.live2d) {
-				throw new Error("PIXI or live2d not available");
-			}
-			return true;
-		}
-
-		static loadScript(src) {
-			return new Promise((resolve, reject) => {
-				if (document.querySelector(`script[src="${src}"]`)) {
-					resolve();
-					return;
-				}
-				const s = document.createElement("script");
-				s.src = src;
-				s.crossOrigin = "anonymous";
-				s.onload = resolve;
-				s.onerror = () => reject(new Error(`Failed to load: ${src}`));
-				document.head.appendChild(s);
-			});
-		}
-
-		getCachedVisibility() {
-			return this.visibilityCache;
-		}
-
-		setCachedVisibility(visible) {
-			this.visibilityCache = visible ? "visible" : "hidden";
-			localStorage.setItem(STORAGE_KEYS.visibility, this.visibilityCache);
-		}
-	}
-
-	function shouldHideWidget(cachedVisibility) {
-		const shouldUseHiddenDefault =
-			cachedVisibility == null && config.defaultVisible === false;
-		return cachedVisibility === "hidden" || shouldUseHiddenDefault;
-	}
-
-	function applyHiddenWidgetState() {
-		const widget = document.getElementById("live2d-widget");
-		if (widget) {
-			widget.style.visibility = "hidden";
-			widget.style.pointerEvents = "none";
-		}
-		g.isWidgetVisible = false;
-		updateTriggerVisibility(true);
-	}
-
-	// ============================================================
-	// 资源加载
-	// ============================================================
-	async function ensureResourcesLoaded() {
-		if (g.isResourcesReady) {
-			return true;
-		}
-		if (g.resourceLoadPromise) {
-			return g.resourceLoadPromise;
-		}
-		g.resourceLoadPromise = (async () => {
-			try {
-				g.stateManager = await Live2DStateManager.getInstance();
-				const loaded = await g.stateManager.ensureLoaded();
-				if (loaded && window.PIXI?.live2d?.Live2DModel) {
-					g.isResourcesReady = true;
-					return true;
-				}
-				return false;
-			} catch {
-				g.resourceLoadPromise = null;
-				return false;
-			}
-		})();
-		return g.resourceLoadPromise;
-	}
-
-	// ============================================================
-	// 初始化 Live2D（PIXI + Model）
-	// ============================================================
-	async function initLive2D() {
-		if (!config.model || !config.model.path) {
-			return false;
-		}
-		const resourcesReady = await ensureResourcesLoaded();
-		if (!resourcesReady) {
-			handleLoadError();
-			return false;
-		}
-		try {
-			const canvas = document.getElementById("live2d-canvas");
-			if (!canvas) {
-				return false;
-			}
-			const size = config.size || { width: 280, height: 250 };
-			const resolution =
-				config.resolution || Math.min(window.devicePixelRatio || 1, 2);
-
-			// 清理旧的 PIXI 实例
-			if (g.app) {
-				try {
-					g.app.destroy(true, {
-						children: true,
-						texture: true,
-						baseTexture: true,
-					});
-				} catch {
-					// ignore
-				}
-				g.app = null;
-				g.model = null;
-			}
-
-			g.app = new PIXI.Application({
-				view: canvas,
-				width: size.width,
-				height: size.height,
-				backgroundAlpha: 0,
-				antialias: true,
-				resolution: resolution,
-				autoDensity: true,
-			});
-
-			g.model = await PIXI.live2d.Live2DModel.from(modelPathUrl);
-
-			const scaleX = size.width / g.model.width;
-			const scaleY = size.height / g.model.height;
-			const fitScale = Math.min(scaleX, scaleY);
-			g.model.scale.set(fitScale);
-			g.model.anchor.set(0.5, 0.5);
-			g.model.x = size.width / 2;
-			g.model.y = size.height / 2;
-
-			g.app.stage.addChild(g.model);
-
-			// 记录当前关联的 DOM 元素
-			g.canvasElement = canvas;
-			g.widgetElement = document.getElementById("live2d-widget");
-
-			setupModelInteractions();
-			if (!g.isInteractionsSetup) {
-				setupDOMInteractions();
-			}
-			scheduleIdleAnimation();
-			return true;
-		} catch {
-			handleLoadError();
-			return false;
-		}
-	}
-
-	function handleLoadError() {
-		const widget = document.getElementById("live2d-widget");
-		if (widget) {
-			widget.classList.remove("live2d-initial");
-		}
-	}
-
-	// ============================================================
-	// 交互设置
-	// ============================================================
-  function setupModelInteractions() {
-    if (!g.model) return;
-    g.model.on("hit", () => {
-      if (!g.wasDragging) playRandomMotion();
-      g.wasDragging = false;
-    });
-  }
-
-	function setupDOMInteractions() {
-		if (g.isInteractionsSetup) return;
-		g.isInteractionsSetup = true;
-
-		let currentGroupIndex = 0;
-
-		const canvas = document.getElementById("live2d-canvas");
-    const interactionsSignal = g.abortController?.signal;
-    canvas?.addEventListener("click", () => {
-      if (!g.wasDragging) playRandomMotion();
-      g.wasDragging = false;
-    }, { signal: interactionsSignal });
-
-		const switchBtn = document.getElementById("toolbar-switch");
-		const groupIndicator = document.getElementById("live2d-group-indicator");
-
-		if (switchBtn) {
-			switchBtn.addEventListener("click", (e) => {
-				e.stopPropagation();
-				currentGroupIndex =
-					(currentGroupIndex + 1) % allMotionGroups.length;
-				clickMotionGroups = [allMotionGroups[currentGroupIndex]];
-				if (groupIndicator) {
-					const groupNames = {
-						Expression: "表情",
-						TapShort: "短动画",
-						TapLong: "长动画",
-						Other: "其他",
-					};
-					groupIndicator.textContent =
-						groupNames[allMotionGroups[currentGroupIndex]] ||
-						allMotionGroups[currentGroupIndex];
-					groupIndicator.classList.add("show");
-					clearTimeout(g.indicatorTimer);
-					g.indicatorTimer = setTimeout(
-						() => groupIndicator.classList.remove("show"),
-						1500,
-					);
-				}
-				if (g.model) {
-					try {
-						g.model.motion(clickMotionGroups[0], undefined, 2);
-						g.model.expression();
-					} catch {
-						// ignore
-					}
-				}
-			}, { signal: interactionsSignal });
-		}
-
-		const infoBtn = document.getElementById("toolbar-info");
-		const authorPanel = document.getElementById("live2d-author");
-
-		if (infoBtn && authorPanel) {
-			infoBtn.addEventListener("click", (e) => {
-				e.stopPropagation();
-				authorPanel.classList.toggle("visible");
-				infoBtn.classList.toggle("active");
-			}, { signal: interactionsSignal });
-		}
-
-		const dragBtn = document.getElementById("toolbar-drag");
-		if (dragBtn) {
-			dragBtn.addEventListener("click", (e) => {
-				e.stopPropagation();
-			}, { signal: interactionsSignal });
-		}
-
-		const closeBtn = document.getElementById("toolbar-close");
-		if (closeBtn) {
-			closeBtn.addEventListener("click", (e) => {
-				e.stopPropagation();
-				closeLive2DWidget();
-			}, { signal: interactionsSignal });
-		}
-
-		setupDrag();
-	}
-
-	// ============================================================
-	// 动画与定时器
-	// ============================================================
-	function playRandomMotion() {
-		if (!g.model) return;
-		clearIdleTimer();
-		try {
-			const group =
-				clickMotionGroups[
-					Math.floor(Math.random() * clickMotionGroups.length)
-				];
-			g.model.motion(group, undefined, 2);
-			g.model.expression();
-		} catch {
-			// ignore
-		}
-		showMessage();
-		scheduleIdleAnimation();
-	}
-
-	function clearIdleTimer() {
-		if (g.idleTimer) {
-			clearTimeout(g.idleTimer);
-			g.idleTimer = 0;
-		}
-	}
-
-	function scheduleIdleAnimation() {
-		clearIdleTimer();
-		const delay = 15000 + Math.random() * 15000;
-		g.idleTimer = setTimeout(() => {
-			if (g.model && g.isWidgetVisible) {
-				try {
-					g.model.motion("Idle", 0, 1);
-					g.model.expression();
-				} catch {
-					// ignore
-				}
-			}
-			scheduleIdleAnimation();
-		}, delay);
-	}
-
-	function triggerEntryAnimation() {
-		const widget = document.getElementById("live2d-widget");
-		const author = document.getElementById("live2d-author");
-		if (!widget) return;
-
-		widget.classList.remove("live2d-initial");
-		widget.classList.add("live2d-entering");
-
-		setTimeout(() => {
-			widget.classList.remove("live2d-entering");
-			widget.classList.add("live2d-ready");
-			if (author) {
-				author.classList.add("visible");
-			}
-		}, 600);
-	}
-
-	// ============================================================
-	// 显示 / 隐藏
-	// ============================================================
-	async function closeLive2DWidget() {
-		if (g.isTransitioning) return;
-		g.isTransitioning = true;
-
-		try {
-			const widget = document.getElementById("live2d-widget");
-			if (!widget) return;
-
-			if (window.clearModelMessage) {
-				window.clearModelMessage();
-			}
-
-			const author = document.getElementById("live2d-author");
-			if (author) {
-				author.classList.remove("visible");
-			}
-
-			// Pause rendering to save resources
-			if (g.app?.ticker) {
-				g.app.ticker.stop();
-			}
-			clearIdleTimer();
-
-			// Save current position before hiding
-			const rect = widget.getBoundingClientRect();
-			const positionCache = {
-				left: widget.style.left || rect.left,
-				top: widget.style.top || rect.top,
-			};
-			try {
-				localStorage.setItem(
-					STORAGE_KEYS.position,
-					JSON.stringify(positionCache),
-				);
-			} catch {
-				// ignore storage errors
-			}
-
-			const viewportHeight = window.innerHeight;
-			const distanceToBottom = viewportHeight - rect.bottom;
-
-			widget.style.setProperty("--fall-distance", `${distanceToBottom}px`);
-			widget.classList.add("live2d-falling");
-
-			await sleep(300);
-
-			widget.classList.remove("live2d-falling");
-			widget.classList.add("live2d-exiting");
-
-			await sleep(400);
-
-			widget.style.visibility = "hidden";
-			widget.style.pointerEvents = "none";
-			widget.classList.remove("live2d-exiting");
-			g.isWidgetVisible = false;
-
-			if (g.stateManager) {
-				g.stateManager.setCachedVisibility(false);
-			}
-
-			updateTriggerVisibility(true);
-
-			window.dispatchEvent(
-				new CustomEvent("live2d-visibility-change", {
-					detail: { visible: false },
-				}),
-			);
-		} finally {
-			g.isTransitioning = false;
-		}
-	}
-
-	async function showLive2DWidget() {
-		if (g.isTransitioning) return;
-		g.isTransitioning = true;
-
-		try {
-			const widget = document.getElementById("live2d-widget");
-			if (!widget) return;
-
-			updateTriggerVisibility(false);
-
-			const resourcesReady = await ensureResourcesLoaded();
-			if (!resourcesReady) {
-				updateTriggerVisibility(true);
-				return;
-			}
-
-			const currentCanvas = document.getElementById("live2d-canvas");
-			const canvasValid =
-				currentCanvas && g.app?.renderer?.view === currentCanvas;
-			const modelExists = g.app && g.model && canvasValid;
-
-			if (modelExists) {
-				widget.style.visibility = "";
-				widget.style.pointerEvents = "";
-				widget.style.opacity = "";
-				widget.style.transform = "";
-        widget.classList.remove(
-          "live2d-initial",
-          "live2d-ready",
-          "live2d-exiting",
-          "live2d-falling",
-        );
-        g.isWidgetVisible = true;
-				g.app.ticker?.start();
-				g.app.render();
-				scheduleIdleAnimation();
-				triggerEntryAnimation();
-			} else {
-				if (g.app) {
-					try {
-						g.app.destroy(true, {
-							children: true,
-							texture: true,
-							baseTexture: true,
-						});
-					} catch {
-						// ignore
-					}
-					g.app = null;
-					g.model = null;
-				}
-
-				const initialized = await initLive2D();
-				if (initialized) {
-					widget.style.visibility = "";
-					widget.style.pointerEvents = "";
-					widget.style.opacity = "";
-				widget.style.transform = "";
-          widget.classList.remove(
-            "live2d-initial",
-            "live2d-ready",
-            "live2d-exiting",
-            "live2d-falling",
-          );
-          g.isWidgetVisible = true;
-					triggerEntryAnimation();
-				} else {
-					updateTriggerVisibility(true);
-					return;
-				}
-			}
-
-			if (g.stateManager) {
-				g.stateManager.setCachedVisibility(true);
-			}
-
-			// Restore cached position
-			try {
-				const cachedPosition = localStorage.getItem(
-					STORAGE_KEYS.position,
-				);
-				if (cachedPosition) {
-					const pos = JSON.parse(cachedPosition);
-					if (pos.left) widget.style.left = `${pos.left}px`;
-					if (pos.top) widget.style.top = `${pos.top}px`;
-				}
-			} catch {
-				// ignore
-			}
-
-			window.dispatchEvent(
-				new CustomEvent("live2d-visibility-change", {
-					detail: { visible: true },
-				}),
-			);
-		} finally {
-			g.isTransitioning = false;
-		}
-	}
-
-function updateTriggerVisibility(show) {
-  const trigger = document.getElementById("live2d-trigger");
-  if (!trigger) return;
-  if (show) {
-    trigger.classList.add("visible");
-  } else {
-    trigger.classList.remove("visible");
-  }
-}
-
-function initTrigger() {
-		const trigger = document.getElementById("live2d-trigger");
-		if (!trigger) return;
-
-		trigger.addEventListener("click", () => {
-			showLive2DWidget();
-		}, { signal: g.abortController?.signal });
-
-		const cachedVisibility = g.stateManager?.getCachedVisibility();
-		if (shouldHideWidget(cachedVisibility)) {
-			applyHiddenWidgetState();
-		} else if (cachedVisibility === "visible") {
-			g.isWidgetVisible = true;
-		}
-	}
-
-	window._showLive2DWidget = showLive2DWidget;
-	window._closeLive2DWidget = closeLive2DWidget;
-
-	// ============================================================
-	// 拖拽
-	// ============================================================
-	function setupDrag() {
-		if (g.isDragSetup) return;
-		g.isDragSetup = true;
-
-		const container = document.getElementById("live2d-widget");
-		const dragSignal = g.abortController?.signal;
-		if (!container) return;
-
-		let isDragging = false;
-		let dragStart = { x: 0, y: 0 };
-		let containerStart = { x: 0, y: 0 };
-		let dragMoved = false;
-		const DRAG_THRESHOLD = 5;
-		let animFrameId = 0;
-		let pendingMove = false;
-		let moveTarget = { x: 0, y: 0 };
-		let winWidth = window.innerWidth;
-		let winHeight = window.innerHeight;
-		let containerW = container.offsetWidth;
-		let containerH = container.offsetHeight;
-
-		function rafMove() {
-			if (!pendingMove) return;
-			pendingMove = false;
-			container.style.left = `${moveTarget.x}px`;
-			container.style.top = `${moveTarget.y}px`;
-			container.style.right = "auto";
-			container.style.bottom = "auto";
-		}
-
-		function scheduleMove(x, y) {
-			moveTarget.x = x;
-			moveTarget.y = y;
-			pendingMove = true;
-			if (!animFrameId) {
-				animFrameId = requestAnimationFrame(() => {
-					animFrameId = 0;
-					rafMove();
-				});
-			}
-		}
-
-		container.addEventListener("mousedown", (e) => {
-			if (e.button !== 0) return;
-			isDragging = true;
-			dragMoved = false;
-			dragStart = { x: e.clientX, y: e.clientY };
-			const rect = container.getBoundingClientRect();
-			containerStart = { x: rect.left, y: rect.top };
-			containerW = container.offsetWidth;
-			containerH = container.offsetHeight;
-			container.style.cursor = "grabbing";
-			container.style.willChange = "left, top";
-			e.preventDefault();
-		}, { signal: dragSignal });
-
-		document.addEventListener("mousemove", (e) => {
-			if (!isDragging) return;
-			const dx = e.clientX - dragStart.x;
-			const dy = e.clientY - dragStart.y;
-			if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
-				dragMoved = true;
-			}
-			const clampedX = Math.max(
-				0,
-				Math.min(containerStart.x + dx, winWidth - containerW),
-			);
-			const clampedY = Math.max(
-				0,
-				Math.min(containerStart.y + dy, winHeight - containerH),
-			);
-			scheduleMove(clampedX, clampedY);
-		}, { signal: dragSignal });
-
-		document.addEventListener("mouseup", () => {
-			if (isDragging) {
-				isDragging = false;
-				container.style.willChange = "auto";
-				if (animFrameId) {
-					cancelAnimationFrame(animFrameId);
-					animFrameId = 0;
-				}
-				if (pendingMove) rafMove();
-				if (dragMoved) {
-					g.wasDragging = true;
-				}
-				container.style.cursor = "grab";
-				// Save position after drag
-				try {
-					localStorage.setItem(
-						STORAGE_KEYS.position,
-						JSON.stringify({
-							left: parseInt(container.style.left, 10) || 0,
-							top: parseInt(container.style.top, 10) || 0,
-						}),
-					);
-				} catch {
-					// ignore storage errors
-				}
-			}
-		}, { signal: dragSignal });
-
-  container.style.cursor = "grab";
-
-  window.addEventListener("resize", () => {
-			winWidth = window.innerWidth;
-			winHeight = window.innerHeight;
-			containerW = container.offsetWidth;
-			containerH = container.offsetHeight;
-			const rect = container.getBoundingClientRect();
-			const maxX = winWidth - containerW;
-			const maxY = winHeight - containerH;
-			if (rect.left > maxX) {
-				container.style.left = `${maxX}px`;
-				container.style.right = "auto";
-			}
-			if (rect.top > maxY) {
-				container.style.top = `${maxY}px`;
-				container.style.bottom = "auto";
-			}
-		}, { signal: dragSignal });
-	}
-
-	// ============================================================
-	// 消息气泡
-	// ============================================================
-	function showMessage() {
-		const messages = config.interactive?.clickMessages || [
-			"你好！",
-			"有什么需要帮助的吗？",
-			"今天天气真不错呢！",
-			"要不要一起玩游戏？",
-			"记得按时休息哦！",
-		];
-		const randomMessage =
-			messages[Math.floor(Math.random() * messages.length)];
-		if (window.showModelMessage) {
-			window.showModelMessage(randomMessage, {
-				containerId: "live2d-widget",
-				displayTime: config.interactive?.messageDisplayTime || 3000,
-			});
-		}
-	}
-
-	// ============================================================
-	// 响应式 / 页面可见性 / Swup 事件
-	// ============================================================
-	function handleVisibilityChange() {
-		if (document.hidden) {
-			if (g.app?.ticker && g.isWidgetVisible) {
-				g.app.ticker.stop();
-			}
-			clearIdleTimer();
-		} else {
-			if (g.app?.ticker && g.isWidgetVisible) {
-				g.app.ticker.start();
-				g.app.render();
-				scheduleIdleAnimation();
-			}
-		}
-	}
-
-	// ============================================================
-	// 核心：跨页面状态恢复
-	// ============================================================
-	function restoreDOMState() {
-		const widget = document.getElementById("live2d-widget");
-		const trigger = document.getElementById("live2d-trigger");
-		if (!widget) return;
-
-		const cachedVisibility = g.stateManager?.getCachedVisibility();
-
-		// 恢复可见性
-		if (g.isWidgetVisible && !shouldHideWidget(cachedVisibility)) {
-			widget.style.visibility = "";
-			widget.style.pointerEvents = "";
-			widget.style.opacity = "";
-			widget.style.transform = "";
-      widget.classList.remove(
-        "live2d-initial",
-        "live2d-entering",
-        "live2d-exiting",
-        "live2d-falling",
-      );
-      widget.classList.add("live2d-ready");
-			trigger?.classList.remove("visible");
-
-			// 恢复 PIXI ticker
-			if (g.app?.ticker) {
-				g.app.ticker.start();
-				g.app.render();
-			}
-			scheduleIdleAnimation();
-		} else {
-			widget.style.visibility = "hidden";
-			widget.style.pointerEvents = "none";
-      widget.classList.remove(
-        "live2d-entering",
-        "live2d-ready",
-        "live2d-exiting",
-        "live2d-falling",
-      );
-      trigger?.classList.add("visible");
-			if (g.app?.ticker) {
-				g.app.ticker.stop();
-			}
-			clearIdleTimer();
-		}
-
-		// 恢复位置
-		try {
-			const cachedPosition = localStorage.getItem(STORAGE_KEYS.position);
-			if (cachedPosition) {
-				const pos = JSON.parse(cachedPosition);
-				if (pos.left) widget.style.left = `${pos.left}px`;
-				if (pos.top) widget.style.top = `${pos.top}px`;
-			}
-		} catch {
-			// ignore
-		}
-	}
-
-	/**
-	 * 检测 DOM 是否被替换（Swup 导航时如果容器配置有误可能导致）
-	 */
-	function detectDOMReplacement() {
-		const currentCanvas = document.getElementById("live2d-canvas");
-		if (!currentCanvas) return true;
-		if (g.canvasElement && g.canvasElement !== currentCanvas) return true;
-		return false;
-	}
-
-	/**
-	 * Swup / Astro 页面加载后的状态恢复
-	 */
-	async function handlePageLoad() {
-		// 移动端不加载 Live2D
-		if (window.innerWidth <= 768) return;
-
-		// 如果 DOM 被替换了，需要重新初始化 PIXI
-		if (g.initialized && detectDOMReplacement()) {
-			g.app = null;
-			g.model = null;
-			g.canvasElement = null;
-			g.widgetElement = null;
-			// 重新初始化
-			const cachedVisibility = g.stateManager?.getCachedVisibility();
-			if (!shouldHideWidget(cachedVisibility)) {
-				g.isWidgetVisible = true;
-				const success = await initLive2D();
-				if (success) {
-					restoreDOMState();
-				}
-			} else {
-				restoreDOMState();
-			}
-			return;
-		}
-
-		// DOM 没有被替换，只需恢复样式状态
-		if (g.initialized) {
-			restoreDOMState();
-			return;
-		}
-
-		// 首次初始化（脚本第一次执行）
-		// 用 requestIdleCallback 延后，避免 pixi/live2d 加载与首屏渲染争抢主线程；
-		// 回访用户（缓存可见）此前每页都在此处同步拉取 pixi，改为空闲时初始化。
-		const startInitialize = () => { initialize(); };
-		if (typeof requestIdleCallback === "function") {
-			requestIdleCallback(startInitialize, { timeout: 2000 });
-		} else {
-			setTimeout(startInitialize, 200);
-		}
-	}
-
-	function cleanup() {
-		clearIdleTimer();
-		clearTimeout(g.indicatorTimer);
-		if (g.app) {
-			try {
-				g.app.destroy(true, {
-					children: true,
-					texture: true,
-					baseTexture: true,
-				});
-			} catch {
-				// ignore
-			}
-			g.app = null;
-			g.model = null;
-		}
-		// 移除所有事件监听器
-		if (g.abortController) {
-			g.abortController.abort();
-			g.abortController = null;
-		}
-		g.initialized = false;
-		g.isDragSetup = false;
-		g.isInteractionsSetup = false;
-	}
-
-	// ============================================================
-	// 首次初始化
-	// ============================================================
-	async function initialize() {
-		if (g.initialized) return;
-		// 移动端默认不加载 Live2D（由 CSS 隐藏 widget 和 trigger）
-		if (window.innerWidth <= 768) {
-			g.initialized = true;
-			return;
-		}
-
-		// 创建新的 AbortController 用于管理所有事件监听器
-		g.abortController = new AbortController();
-
-		g.stateManager = await Live2DStateManager.getInstance();
-		initTrigger();
-
-		const cachedVisibility = g.stateManager.getCachedVisibility();
-		if (shouldHideWidget(cachedVisibility)) {
-			applyHiddenWidgetState();
-		} else {
-			g.isWidgetVisible = true;
-			const success = await initLive2D();
-			if (success) {
-				triggerEntryAnimation();
-			}
-		}
-
-		g.initialized = true;
-	}
-
-	// ============================================================
-	// 启动入口
-	// ============================================================
-	const _sig = live2dAbortController.signal;
-
-	if (document.readyState === "loading") {
-		document.addEventListener("DOMContentLoaded", handlePageLoad, { signal: _sig });
-	} else {
-		handlePageLoad();
-	}
-
-	// 页面可见性变化（切换浏览器标签）
-	document.addEventListener("visibilitychange", handleVisibilityChange, { signal: _sig });
-
-	// Swup SPA 导航后恢复状态（核心：跨页面状态保持）。
-	// 本脚本是 is:inline，取不到 @/utils/swup-lifecycle 的导出，只能直接听 DOM 事件。
-	// 只听 astro:page-load 一个：它正是 @swup/astro 挂在 swup 的 page:view 上桥接出来的，
-	// 原先又加了一条 swup:page:view，两者同一时刻触发，等于每次导航都恢复两遍状态
-	document.addEventListener("astro:page-load", handlePageLoad, { signal: _sig });
-
-	// 页面卸载时清理
-	window.addEventListener("beforeunload", cleanup, { signal: _sig });
-
-	function sleep(ms) {
-		return new Promise((resolve) => setTimeout(resolve, ms));
-	}
+<script>
+	import { initLive2DWidget } from "@/utils/live2d-controller";
+
+	const widget = document.getElementById("live2d-widget");
+	const raw = widget?.dataset.config;
+	if (raw) initLive2DWidget(raw);
 </script>
-
-<!-- 样式已迁移至 src/styles/components/live2d-widget.css -->

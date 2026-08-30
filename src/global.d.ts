@@ -22,11 +22,6 @@ declare global {
 		swup?: SwupInstance;
 		/** swup-lifecycle 的运行时状态，只应由该模块读写 */
 		__fireflySwupRuntime?: SwupRuntimeState;
-		live2dModelInitialized?: boolean;
-		// biome-ignore lint/suspicious/noExplicitAny: External library (PIXI live2d)
-		_live2dApp?: any;
-		// biome-ignore lint/suspicious/noExplicitAny: External library (PIXI live2d)
-		_live2dModel?: any;
 		spineModelInitialized?: boolean;
 		__spineAbortController?: AbortController | null;
 		__spineIdleIntervalId?: ReturnType<typeof setInterval> | null;
@@ -44,8 +39,6 @@ declare global {
 		__searchLoadersReady?: boolean;
 		__searchModalMounted?: boolean;
 		__friendImagePreviewReady?: boolean;
-		_showLive2DWidget?: () => void;
-		_closeLive2DWidget?: () => void;
 		// biome-ignore lint/suspicious/noExplicitAny: External library
 		spinePlayerInstance?: any;
 		pagefind: {

@@ -3,8 +3,8 @@
 	"FileReferences": {
 		"Moc": "小爱弥斯.moc3",
 		"Textures": [
-			"小爱弥斯.4096/texture_00.png",
-			"小爱弥斯.4096/texture_01.png"
+			"小爱弥斯.4096/texture_00.webp",
+			"小爱弥斯.4096/texture_01.webp"
 		],
 		"Physics": "小爱弥斯.physics3.json",
 		"DisplayInfo": "小爱弥斯.cdi3.json",

@@ -1,0 +1,102 @@
+/* ============================================
+   看板娘消息气泡（Live2D / Spine 共用的 PioMessageBox）
+   纯线条黑白：2px 描边 + 页面底色 + 硬投影，带一个同风格的描边箭头。
+   位置由 PioMessageBox.astro 计算后写进 left / top，这里只管长相。
+   ============================================ */
+
+.model-message-container {
+	position: fixed;
+	z-index: 1001;
+	pointer-events: none;
+	opacity: 0;
+	transform: translate(-50%, 8px) scale(0.96);
+	transition:
+		opacity 0.22s ease,
+		transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.model-message-container.is-visible {
+	opacity: 1;
+	transform: translate(-50%, 0) scale(1);
+}
+
+.model-message {
+	position: relative;
+	max-width: 240px;
+	min-width: 100px;
+	padding: 9px 14px;
+	border: 2px solid var(--deep-text);
+	border-radius: 12px;
+	background: var(--page-bg);
+	color: var(--deep-text);
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1.5;
+	text-align: center;
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-family: var(--font-sans);
+	box-shadow: 3px 3px 0 color-mix(in oklch, var(--deep-text) 20%, transparent);
+}
+
+/* --- 箭头：一大一小两个三角叠出描边效果 --- */
+
+.model-message-arrow {
+	position: absolute;
+	left: 50%;
+	width: 0;
+	height: 0;
+}
+
+.model-message-arrow::before,
+.model-message-arrow::after {
+	content: "";
+	position: absolute;
+	width: 0;
+	height: 0;
+	border-left: 10px solid transparent;
+	border-right: 10px solid transparent;
+}
+
+.model-message-arrow::after {
+	border-left-width: 8px;
+	border-right-width: 8px;
+}
+
+/* 箭头朝下：气泡在模型上方 */
+.model-message-arrow.is-down {
+	top: 100%;
+	transform: translateX(calc(-50% + var(--arrow-offset, 0px)));
+}
+
+.model-message-arrow.is-down::before {
+	top: 0;
+	left: -10px;
+	border-top: 11px solid var(--deep-text);
+}
+
+.model-message-arrow.is-down::after {
+	top: 0;
+	left: -8px;
+	border-top: 9px solid var(--page-bg);
+}
+
+/* 箭头朝上：气泡在模型下方 */
+.model-message-arrow.is-up {
+	bottom: 100%;
+	transform: translateX(calc(-50% + var(--arrow-offset, 0px)));
+}
+
+.model-message-arrow.is-up::before {
+	top: -11px;
+	left: -10px;
+	border-top: none;
+	border-bottom: 11px solid var(--deep-text);
+}
+
+.model-message-arrow.is-up::after {
+	top: -9px;
+	left: -8px;
+	border-top: none;
+	border-bottom: 9px solid var(--page-bg);
+}
