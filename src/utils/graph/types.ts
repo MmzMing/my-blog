@@ -70,6 +70,9 @@ export type PlaybackState = {
 	position: number;
 };
 
+/** 视图模式：力导向图 / 脑图（四列布局） */
+export type GraphLayoutMode = "graph" | "mindmap";
+
 export type GraphStrings = {
 	loaded: string;
 	failed: string;
@@ -103,4 +106,6 @@ export interface GraphController {
 	resetView(): void;
 	/** 选中节点（传 id）；传 null 取消选中 */
 	select(id: string | null): void;
+	/** 力导向 ⇄ 脑图切换；脑图入场带「节点滑入 + 连线三波描绘」动效 */
+	toggleLayout(): void;
 }

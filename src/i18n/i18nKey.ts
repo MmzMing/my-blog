@@ -428,6 +428,8 @@ enum I18nKey {
 	kgPlay = "kgPlay",
 	kgPause = "kgPause",
 	kgResetView = "kgResetView",
+	kgLayoutMindmap = "kgLayoutMindmap",
+	kgLayoutForce = "kgLayoutForce",
 	kgStats = "kgStats",
 	kgRelations = "kgRelations",
 	kgLoaded = "kgLoaded",

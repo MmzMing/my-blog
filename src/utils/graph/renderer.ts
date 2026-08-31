@@ -7,6 +7,7 @@ import {
 	getCurveControl,
 	TWO_PI,
 } from "./geometry";
+import { mindmapLinkGrow } from "./mindmap";
 import { nodeColor, readTheme, type Scene, TIER_ALPHA } from "./scene";
 import type { FilterState, GraphTier, SceneNode } from "./types";
 
@@ -162,8 +163,12 @@ export function createRenderer(
 					const anchor = scene.selected ?? scene.hovered;
 					return anchor === a || anchor === b;
 				})();
-			// 回放：连线随两端揭示进度一起生长
-			const grow = Math.min(a.reveal, b.reveal);
+			// 连线生长：力导向模式跟随两端揭示进度（回放），
+			// 脑图模式跟随「从左到右三波描绘」播放头
+			const grow =
+				scene.mode === "mindmap"
+					? mindmapLinkGrow(scene.lineProgress, link.kind)
+					: Math.min(a.reveal, b.reveal);
 			if (grow <= 0.01) continue;
 
 			const control = getCurveControl(ax, ay, bx, by, link.index);
@@ -284,13 +289,14 @@ export function createRenderer(
 
 				const focused =
 					node === anchor || (anchor?.neighbors.has(node.data.id) ?? false);
-				// 显示条件：缩放够大 / 被聚焦 / 命中搜索
-				if (
-					transform.k < LABEL_MIN_ZOOM[tier] &&
-					!focused &&
-					!(searching && node.matched)
-				)
-					continue;
+				// 显示条件：缩放够大 / 被聚焦 / 命中搜索。
+				// 脑图模式四列分居、纵向已按带宽均分，分类/标签/文章不依赖缩放
+				// 直接显示（仍走下方占格防重叠）；标题 16px 密堆，放大后再显示
+				const byZoom =
+					scene.mode === "mindmap"
+						? tier !== "heading"
+						: transform.k >= LABEL_MIN_ZOOM[tier];
+				if (!byZoom && !focused && !(searching && node.matched)) continue;
 
 				const isCategory = tier === "category";
 				const base = isCategory

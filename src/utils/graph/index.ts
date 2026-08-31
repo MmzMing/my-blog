@@ -2,7 +2,8 @@ import { type Quadtree, quadtree, select, zoom, zoomIdentity } from "d3";
 import type { KGData } from "@/utils/knowledge-graph-data";
 import { navigateToPage } from "@/utils/navigation-utils";
 import { preloadUrl } from "@/utils/swup-lifecycle";
-import { clamp, type Point } from "./geometry";
+import { clamp, easeOutCubic, type Point } from "./geometry";
+import { computeMindmapLayout, MINDMAP_LINE_PHASES } from "./mindmap";
 import { createPlayback } from "./playback";
 import { createRenderer } from "./renderer";
 import {
@@ -16,6 +17,7 @@ import { createSimulation } from "./simulation";
 import type {
 	GraphController,
 	GraphStrings,
+	GraphTier,
 	KGSelection,
 	KGSelectionGroup,
 	SceneNode,
@@ -25,6 +27,18 @@ const MIN_ZOOM = 0.35;
 const MAX_ZOOM = 6;
 /** 悬停多久后预载目标页 */
 const PRELOAD_DELAY = 400;
+
+/* ── 脑图切换动效时间线（毫秒）── */
+/** 单层节点滑入时长 */
+const MINDMAP_NODE_MS = 700;
+/** 层间错峰：分类 → 标签 → 文章 → 标题 依次起跑 */
+const MINDMAP_TIER_STAGGER = 170;
+/** 连线开始描绘的时刻（与节点滑入部分重叠，衔接更自然） */
+const MINDMAP_LINE_START = 320;
+/** 每一波连线的时长（共三波：分类-标签 → 标签-文章 → 文章-标题） */
+const MINDMAP_LINE_PHASE_MS = 420;
+/** 节点滑入的层序，与 stagger 对应 */
+const MINDMAP_TIER_ORDER: GraphTier[] = ["category", "tag", "post", "heading"];
 
 /**
  * 详情面板的下钻数据：按选中节点的层级给出相邻层列表。
@@ -151,6 +165,12 @@ export function mountKnowledgeGraph(
 	let dragOrigin: Point | null = null;
 	let emptyDown: Point | null = null;
 	let preloadTimer = 0;
+	/** 脑图入场补间：一次性记录起点/终点，RAF 里按时间推进 */
+	let layoutAnim: {
+		t0: number;
+		starts: Map<string, Point>;
+		targets: Map<string, Point>;
+	} | null = null;
 
 	const requestDraw = (): void => {
 		dirty = true;
@@ -232,6 +252,97 @@ export function mountKnowledgeGraph(
 				},
 			}),
 		);
+	};
+
+	/* ── 脑图布局 ── */
+
+	/** 重排脑图；animated=false 时瞬时落位（切筛选后重排 / 减少动画偏好） */
+	const relayoutMindmap = (animated: boolean): void => {
+		const targets = computeMindmapLayout(scene);
+		if (!animated) {
+			layoutAnim = null;
+			for (const [id, target] of targets) {
+				const node = scene.nodeMap.get(id);
+				if (node) {
+					node.x = target.x;
+					node.y = target.y;
+				}
+			}
+			scene.lineProgress = 1;
+			treeStale = true;
+			requestDraw();
+			return;
+		}
+		const starts = new Map<string, Point>();
+		for (const id of targets.keys()) {
+			const node = scene.nodeMap.get(id);
+			if (node) starts.set(id, { x: node.x ?? 0, y: node.y ?? 0 });
+		}
+		layoutAnim = { t0: performance.now(), starts, targets };
+		// 连线整体复位为未描绘，等节点滑入后从左到右逐波生长
+		scene.lineProgress = 0;
+		startLoop();
+	};
+
+	/** RAF 里推进脑图入场：节点按层错峰滑入，连线三波描绘 */
+	const updateLayoutAnim = (now: number): void => {
+		const anim = layoutAnim;
+		if (!anim) return;
+		const elapsed = now - anim.t0;
+		for (const [id, target] of anim.targets) {
+			const node = scene.nodeMap.get(id);
+			const start = anim.starts.get(id);
+			if (!node || !start) continue;
+			const delay =
+				MINDMAP_TIER_ORDER.indexOf(node.tier) * MINDMAP_TIER_STAGGER;
+			const eased = easeOutCubic(
+				clamp((elapsed - delay) / MINDMAP_NODE_MS, 0, 1),
+			);
+			node.x = start.x + (target.x - start.x) * eased;
+			node.y = start.y + (target.y - start.y) * eased;
+		}
+		scene.lineProgress = clamp(
+			(elapsed - MINDMAP_LINE_START) /
+				(MINDMAP_LINE_PHASE_MS * MINDMAP_LINE_PHASES),
+			0,
+			1,
+		);
+		treeStale = true;
+		dirty = true;
+		const totalNodes =
+			(MINDMAP_TIER_ORDER.length - 1) * MINDMAP_TIER_STAGGER + MINDMAP_NODE_MS;
+		const total = Math.max(
+			totalNodes,
+			MINDMAP_LINE_START + MINDMAP_LINE_PHASE_MS * MINDMAP_LINE_PHASES,
+		);
+		if (elapsed >= total) layoutAnim = null;
+	};
+
+	const toggleLayout = (): void => {
+		if (scene.mode === "graph") {
+			scene.mode = "mindmap";
+			// 脑图布局是确定性的：停掉物理，避免把节点拉回力导向位置
+			simulation.sim.stop();
+			for (const node of scene.nodes) {
+				node.fx = null;
+				node.fy = null;
+			}
+			relayoutMindmap(!reducedMotion);
+			// 四列布局按画布全幅计算，重置视图到恒等变换才能完整呈现，
+			// 否则残留力导向模式的缩放平移会让列跑出视野
+			select(canvas).call(zoomBehavior.transform, zoomIdentity);
+		} else {
+			scene.mode = "graph";
+			layoutAnim = null;
+			scene.lineProgress = 1;
+			// 切回力导向：重新点火让节点从四列位置有机流回
+			simulation.reheat(0.3);
+		}
+		root.dispatchEvent(
+			new CustomEvent("kg:layout", { detail: { mode: scene.mode } }),
+		);
+		requestDraw();
+		startLoop();
 	};
 
 	/* ── 缩放 / 平移 ── */
@@ -374,6 +485,11 @@ export function mountKnowledgeGraph(
 		dragNode = node;
 		dragMoved = false;
 		dragOrigin = { x: event.clientX, y: event.clientY };
+		if (scene.mode === "mindmap") {
+			// 脑图布局不走物理：拖拽直接改坐标（见 onPointerMove），不点火
+			setHovered(node, localPoint(event));
+			return;
+		}
 		const p = clientToGraph({ x: event.clientX, y: event.clientY });
 		node.fx = p.x;
 		node.fy = p.y;
@@ -385,8 +501,13 @@ export function mountKnowledgeGraph(
 	const onPointerMove = (event: PointerEvent): void => {
 		if (dragNode) {
 			const p = clientToGraph({ x: event.clientX, y: event.clientY });
-			dragNode.fx = p.x;
-			dragNode.fy = p.y;
+			if (scene.mode === "mindmap") {
+				dragNode.x = p.x;
+				dragNode.y = p.y;
+			} else {
+				dragNode.fx = p.x;
+				dragNode.fy = p.y;
+			}
 			if (
 				dragOrigin &&
 				Math.hypot(event.clientX - dragOrigin.x, event.clientY - dragOrigin.y) >
@@ -427,7 +548,7 @@ export function mountKnowledgeGraph(
 		dragNode = null;
 		dragOrigin = null;
 		canvas.classList.remove("is-dragging");
-		simulation.endDrag();
+		if (scene.mode !== "mindmap") simulation.endDrag();
 		// 单击 = 选中，不再直接导航（四层图里随手一点就跳走是敌对行为）
 		if (!dragMoved) setSelected(scene.selected === node ? null : node);
 		dragMoved = false;
@@ -483,6 +604,7 @@ export function mountKnowledgeGraph(
 			treeStale = true;
 			dirty = true;
 		}
+		if (layoutAnim) updateLayoutAnim(time);
 
 		const alpha = simulation.sim.alpha();
 		if (alpha > simulation.sim.alphaMin()) {
@@ -607,9 +729,14 @@ export function mountKnowledgeGraph(
 			renderer.setFilters(filters);
 			applyFilters(scene, filters);
 			treeStale = true;
-			// 可见集变了要重算连线强度，否则新出现的边没有约束
-			simulation.refreshLinks();
-			simulation.reheat(0.2);
+			if (scene.mode === "mindmap") {
+				// 脑图模式不点火物理：可见集变了直接瞬时重排四列
+				relayoutMindmap(false);
+			} else {
+				// 可见集变了要重算连线强度，否则新出现的边没有约束
+				simulation.refreshLinks();
+				simulation.reheat(0.2);
+			}
 			emitStats();
 			requestDraw();
 			startLoop();
@@ -634,6 +761,9 @@ export function mountKnowledgeGraph(
 		},
 		select(id: string | null) {
 			setSelected(id === null ? null : (scene.nodeMap.get(id) ?? null));
+		},
+		toggleLayout() {
+			toggleLayout();
 		},
 	};
 }

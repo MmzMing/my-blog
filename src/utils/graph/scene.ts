@@ -2,6 +2,7 @@ import type { KGData, KGNode } from "@/utils/knowledge-graph-data";
 import { GOLDEN_ANGLE, getCssVariable } from "./geometry";
 import type {
 	FilterState,
+	GraphLayoutMode,
 	GraphTier,
 	SceneLink,
 	SceneNode,
@@ -54,6 +55,10 @@ export type Scene = {
 	height: number;
 	hovered: SceneNode | null;
 	selected: SceneNode | null;
+	/** 当前视图模式：力导向 / 脑图 */
+	mode: GraphLayoutMode;
+	/** 脑图模式下的连线描绘播放头 0..1（graph 模式忽略，走 reveal） */
+	lineProgress: number;
 };
 
 /** 半径带上文章数权重，让热门标签/大分类更醒目 */
@@ -145,6 +150,8 @@ export function buildScene(data: KGData): Scene {
 		height: 1,
 		hovered: null,
 		selected: null,
+		mode: "graph",
+		lineProgress: 1,
 	};
 }
 

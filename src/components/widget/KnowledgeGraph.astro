@@ -29,6 +29,8 @@ const strings = {
 	posts: `{count} ${i18n(I18nKey.postsCount)}`,
 	sections: i18n(I18nKey.kgSectionsCount),
 	relations: i18n(I18nKey.kgRelations),
+	mindmap: i18n(I18nKey.kgLayoutMindmap),
+	forceLayout: i18n(I18nKey.kgLayoutForce),
 };
 
 // 详情面板的分组渲染顺序：标签 → 文档 → 小标题（与控制器 groups 的产出顺序一致）
@@ -238,6 +240,7 @@ const detailGroups = [
       if (action === "play") ctrl.playback.toggle();
       else if (action === "reset-view") ctrl.resetView();
       else if (action === "deselect") ctrl.select(null);
+      else if (action === "toggle-layout") ctrl.toggleLayout();
     };
 
     const onPlayback = (event: Event) => {
@@ -305,12 +308,25 @@ const detailGroups = [
       panel.hidden = false;
     };
 
+    /** kg:layout → 同步脑图切换按钮的按下态与提示文案 */
+    const onLayout = (event: Event) => {
+      const { mode } = (event as CustomEvent).detail as { mode: "graph" | "mindmap" };
+      const layoutBtn = root.querySelector<HTMLElement>('[data-kg-action="toggle-layout"]');
+      if (!layoutBtn) return;
+      const mindmap = mode === "mindmap";
+      const label = mindmap ? strings.forceLayout : strings.mindmap;
+      layoutBtn.setAttribute("aria-pressed", String(mindmap));
+      layoutBtn.title = label;
+      layoutBtn.setAttribute("aria-label", label);
+    };
+
     root.addEventListener("input", onInput);
     root.addEventListener("change", onInput);
     root.addEventListener("click", onClick);
     root.addEventListener("kg:playback", onPlayback);
     root.addEventListener("kg:stats", onStats);
     root.addEventListener("kg:select", onSelect);
+    root.addEventListener("kg:layout", onLayout);
 
     return () => {
       root.removeEventListener("input", onInput);
@@ -319,6 +335,7 @@ const detailGroups = [
       root.removeEventListener("kg:playback", onPlayback);
       root.removeEventListener("kg:stats", onStats);
       root.removeEventListener("kg:select", onSelect);
+      root.removeEventListener("kg:layout", onLayout);
     };
   }
 

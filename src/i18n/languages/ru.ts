@@ -624,6 +624,8 @@ export const ru: Translation = {
 	[Key.kgPlay]: "Воспроизвести",
 	[Key.kgPause]: "Пауза",
 	[Key.kgResetView]: "Сбросить вид",
+	[Key.kgLayoutMindmap]: "Переключить на минд-карту",
+	[Key.kgLayoutForce]: "Переключить на силовой граф",
 	[Key.kgStats]: "{visible} / {total} узлов · {links} связей",
 	[Key.kgRelations]: "{count} связей",
 	[Key.kgLoaded]: "Граф знаний загружен",

@@ -61,6 +61,12 @@
 	color: var(--navbar-highlight-text);
 }
 
+/* 脑图切换按钮的按下态：主色点亮，提示当前处于脑图模式 */
+.graph-panel__tool[aria-pressed="true"] {
+	color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
 .graph-panel__tool svg {
 	width: 1.125rem;
 	height: 1.125rem;

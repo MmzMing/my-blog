@@ -54,6 +54,24 @@ const statsTemplate = i18n(I18nKey.kgStats);
         <button
           type="button"
           class="graph-panel__tool"
+          data-kg-action="toggle-layout"
+          aria-pressed="false"
+          title={i18n(I18nKey.kgLayoutMindmap)}
+          aria-label={i18n(I18nKey.kgLayoutMindmap)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <path d="M7 12h3.2M10.2 12c2.7 0 2.5-7 6.1-7M10.2 12c2.7 0 2.5 7 6.1 7M10.2 12h6.1" />
+              <circle cx="5" cy="12" r="1.9" />
+              <circle cx="18.3" cy="5" r="1.9" />
+              <circle cx="18.3" cy="12" r="1.9" />
+              <circle cx="18.3" cy="19" r="1.9" />
+            </g>
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="graph-panel__tool"
           data-kg-action="reset-view"
           title={i18n(I18nKey.kgResetView)}
           aria-label={i18n(I18nKey.kgResetView)}

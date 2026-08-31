@@ -627,6 +627,8 @@ export const ja: Translation = {
 	[Key.kgPlay]: "再生",
 	[Key.kgPause]: "一時停止",
 	[Key.kgResetView]: "ビューをリセット",
+	[Key.kgLayoutMindmap]: "マインドマップ表示に切替",
+	[Key.kgLayoutForce]: "フォースレイアウトに切替",
 	[Key.kgStats]: "{visible} / {total} ノード · {links} リンク",
 	[Key.kgRelations]: "{count} 件の関連",
 	[Key.kgLoaded]: "ナレッジグラフを読み込みました",

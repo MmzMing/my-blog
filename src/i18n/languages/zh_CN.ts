@@ -603,6 +603,8 @@ export const zh_CN: Translation = {
 	[Key.kgPlay]: "播放",
 	[Key.kgPause]: "暂停",
 	[Key.kgResetView]: "重置视图",
+	[Key.kgLayoutMindmap]: "切换为脑图布局",
+	[Key.kgLayoutForce]: "切换为力导向布局",
 	[Key.kgStats]: "{visible} / {total} 节点 · {links} 连线",
 	[Key.kgRelations]: "关联 {count} 个节点",
 	[Key.kgLoaded]: "知识图谱已加载",
