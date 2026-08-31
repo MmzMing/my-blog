@@ -634,8 +634,7 @@ export const en: Translation = {
 		"Night lies between one lamp and the next, and that is how they come to see each other.",
 	[Key.sponsorMotto]:
 		"Passion asks for nothing in return, but passion that is seen travels further.",
-	[Key.galleryMotto]:
-		"Only when the shutter falls does time take on a shape.",
+	[Key.galleryMotto]: "Only when the shutter falls does time take on a shape.",
 	[Key.rssMotto]: "No need to chase the tide; let it flow to you on its own.",
 	[Key.postsMotto]:
 		"We write things down so the thoughts we once had are not scattered by the wind.",

@@ -644,7 +644,8 @@ export const ja: Translation = {
 	[Key.sponsorMotto]:
 		"情熱は見返りを求めない。けれど見られた情熱は、遠くまで行ける。",
 	[Key.galleryMotto]: "シャッターが落ちた瞬間、時間ははじめて形を持つ。",
-	[Key.rssMotto]: "潮を追いかけなくていい。向こうから流れてくるのを待てばいい。",
+	[Key.rssMotto]:
+		"潮を追いかけなくていい。向こうから流れてくるのを待てばいい。",
 	[Key.postsMotto]:
 		"書き留めるのは、かつて考えたことが風に散ってしまわないように。",
 	[Key.searchMotto]: "すべての答えは、問いかけ方のなかに隠れている。",
