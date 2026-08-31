@@ -219,13 +219,15 @@ export type NavBarConfig = {
 };
 
 export type HomeBlindsSceneItem = {
-	/** 左侧竖排与顶栏左侧共用的英文标识 */
+	/** 左侧竖排题名的英文标识 */
 	eyebrow: string;
 	title: string;
-	/** 图片内的介绍文案，五幕各有一套版式与动效 */
+	/** 明信片底部的介绍文案 */
 	description: string;
 	image: string;
 	alt: string;
+	/** 明信片右下角的落款日期，如 "2026 / 03 / 14"；留空则不渲染 */
+	date?: string;
 };
 
 /**

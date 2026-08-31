@@ -5,8 +5,6 @@ type ScrollTriggerPlugin = typeof import("gsap/ScrollTrigger")["ScrollTrigger"];
 type ScrollTriggerInstance = ReturnType<ScrollTriggerPlugin["create"]>;
 type GsapTimeline = ReturnType<Gsap["timeline"]>;
 type GsapTween = ReturnType<Gsap["to"]>;
-/** 补间参数表：只作为数据表传给 gsap，不必对齐 gsap 内部类型 */
-type TweenVars = Record<string, unknown>;
 
 type HomeBlindsRuntimeConfig = {
 	reveal: {
@@ -64,404 +62,19 @@ let activeCleanup: (() => void) | null = null;
 let bootGeneration = 0;
 let mediaWatchersBound = false;
 
-/**
- * 五幕介绍层各一套动效，与 CSS 里 [data-scene-variant] 的版式一一对应。
- * transform-origin 一律写在 CSS 中，这里只描述位移与节奏。
- */
-type CaptionMotion = {
-	/** 三层的入场时刻（秒）；缺省即用默认节奏，首幕要等取景框播完故单独给 */
-	veilAt?: number;
-	markAt?: number;
-	charsAt?: number;
-	veilFrom: TweenVars;
-	veilTo: TweenVars;
-	markFrom: TweenVars;
-	markTo: TweenVars;
-	charFrom: TweenVars;
-	charTo: TweenVars;
-};
-
-const CAPTION_VEIL_AT = 0.52;
-const CAPTION_MARK_AT = 0.6;
-const CAPTION_CHARS_AT = 0.64;
-
-const CAPTION_MOTION: Record<string, CaptionMotion> = {
-	// 序幕：取景框四角与快门先走完，右下角简介最后自右侧滑入
-	camera: {
-		veilAt: 1,
-		markAt: 1.08,
-		charsAt: 1.12,
-		veilFrom: { autoAlpha: 0, clipPath: "inset(0% 0% 0% 100%)" },
-		veilTo: {
-			autoAlpha: 1,
-			clipPath: "inset(0% 0% 0% 0%)",
-			duration: 0.58,
-			ease: "power3.inOut",
-		},
-		markFrom: { autoAlpha: 0, scaleX: 0 },
-		markTo: { autoAlpha: 1, scaleX: 1, duration: 0.5, ease: "power3.out" },
-		charFrom: { autoAlpha: 0, x: 20 },
-		charTo: {
-			autoAlpha: 1,
-			x: 0,
-			duration: 0.46,
-			ease: "power3.out",
-			stagger: { each: 0.022, from: "end" },
-		},
-	},
-	// 第二幕：书签自图框上沿垂下，简介逐字落位（大字与落款见 CAPTION_DECOR）
-	bookmark: {
-		veilFrom: { autoAlpha: 0, scaleY: 0 },
-		veilTo: { autoAlpha: 1, scaleY: 1, duration: 0.62, ease: "power3.inOut" },
-		markFrom: { autoAlpha: 0, scaleY: 0 },
-		markTo: { autoAlpha: 1, scaleY: 1, duration: 0.56, ease: "power3.inOut" },
-		charFrom: { autoAlpha: 0, y: -16, rotation: 8 },
-		charTo: {
-			autoAlpha: 1,
-			y: 0,
-			rotation: 0,
-			duration: 0.46,
-			ease: "back.out(1.7)",
-			stagger: 0.032,
-		},
-	},
-	// 第三幕：圆角卡片自右向左展开，文字自末尾往前补齐（签名见 CAPTION_DECOR）
-	card: {
-		veilFrom: { autoAlpha: 0, scaleX: 0 },
-		veilTo: { autoAlpha: 1, scaleX: 1, duration: 0.46, ease: "power4.out" },
-		markFrom: { autoAlpha: 0, scale: 0 },
-		markTo: {
-			autoAlpha: 1,
-			scale: 1,
-			duration: 0.42,
-			ease: "back.out(2.6)",
-		},
-		charFrom: { autoAlpha: 0, x: 14 },
-		charTo: {
-			autoAlpha: 1,
-			x: 0,
-			duration: 0.42,
-			ease: "power2.out",
-			stagger: { each: 0.018, from: "end" },
-		},
-	},
-	// 第四幕：斜切色带横向擦除，文字带模糊推入
-	ribbon: {
-		veilFrom: { autoAlpha: 0, clipPath: "inset(0% 100% 0% 0%)" },
-		veilTo: {
-			autoAlpha: 1,
-			clipPath: "inset(0% 0% 0% 0%)",
-			duration: 0.62,
-			ease: "power4.inOut",
-		},
-		markFrom: { autoAlpha: 0, scaleX: 0 },
-		markTo: { autoAlpha: 1, scaleX: 1, duration: 0.5, ease: "power3.out" },
-		charFrom: { autoAlpha: 0, x: -12, filter: "blur(9px)" },
-		charTo: {
-			autoAlpha: 1,
-			x: 0,
-			filter: "blur(0px)",
-			duration: 0.5,
-			ease: "power2.out",
-			stagger: 0.022,
-		},
-	},
-	// 终幕：双线内框压入，文字按方块感一格格亮起（像素方块群见 CAPTION_DECOR）
-	pixel: {
-		veilFrom: { autoAlpha: 0, scale: 1.06 },
-		veilTo: { autoAlpha: 1, scale: 1, duration: 0.7, ease: "power3.out" },
-		markFrom: { autoAlpha: 0, scaleX: 0 },
-		markTo: { autoAlpha: 1, scaleX: 1, duration: 0.6, ease: "power3.out" },
-		charFrom: { autoAlpha: 0, scale: 0.42 },
-		charTo: {
-			autoAlpha: 1,
-			scale: 1,
-			duration: 0.36,
-			ease: "steps(3)",
-			stagger: { each: 0.026, from: "center" },
-		},
-	},
-};
-
-/**
- * 各幕版式专属的装饰层：取景框 / 书签大字与落款 / 日期签名 / 像素方块。
- * 元素在 collectDecor 里一次性收好，各幕只用到其中一部分，其余为空。
- */
-type SceneDecor = {
-	/** 取景框四角、终幕内框四角 */
-	corners: Element[];
-	ring: Element | null;
-	core: Element | null;
-	flash: Element | null;
-	/** 相机参数行 / 书签落款行 */
-	lines: Element[];
-	leadChars: Element[];
-	marks: Element[];
-	sign: Element | null;
-	signSweep: Element | null;
-	signFlourish: Element | null;
-	signDate: Element | null;
-	signTime: Element | null;
-	pixels: Element[];
-	/** 第四幕的空心大序号 */
-	numeral: Element | null;
-	/** 第四幕右侧的双线 */
-	rules: Element[];
-};
-
-/**
- * 文本行的入场方向按幕分：首幕自左推入（HUD 感），
- * 第二、四幕自上落下（题签感）
- */
-const DECOR_LINE_FROM: Record<string, TweenVars> = {
-	camera: { autoAlpha: 0, x: -14 },
-	bookmark: { autoAlpha: 0, y: -18 },
-	ribbon: { autoAlpha: 0, y: -14 },
-};
-const DECOR_LINE_TO: TweenVars = { autoAlpha: 1, x: 0, y: 0 };
-
-type DecorPlayer = (
-	gsap: Gsap,
-	timeline: GsapTimeline,
-	decor: SceneDecor,
-) => void;
-
-function formatSignatureDate(now: Date) {
-	const month = String(now.getMonth() + 1).padStart(2, "0");
-	const day = String(now.getDate()).padStart(2, "0");
-	return `${now.getFullYear()} / ${month} / ${day}`;
-}
-
-function formatSignatureTime(now: Date) {
-	const hour = String(now.getHours()).padStart(2, "0");
-	const minute = String(now.getMinutes()).padStart(2, "0");
-	return `${hour}:${minute} · LOCAL`;
-}
-
-const CAPTION_DECOR: Record<string, DecorPlayer> = {
-	// 首幕：四角边框依次张开 → 快门圆落位 → 收一下并白闪一帧（快门声那一下）→ 左上参数补齐
-	camera: (_gsap, timeline, decor) => {
-		if (decor.corners.length > 0) {
-			timeline.to(
-				decor.corners,
-				{
-					autoAlpha: 1,
-					scale: 1,
-					duration: 0.42,
-					ease: "power3.out",
-					stagger: 0.05,
-				},
-				0.04,
-			);
-		}
-		if (decor.ring) {
-			timeline
-				.to(
-					decor.ring,
-					{
-						autoAlpha: 1,
-						scale: 1,
-						rotation: 0,
-						duration: 0.62,
-						ease: "power3.out",
-					},
-					0.16,
-				)
-				.to(decor.ring, { scale: 0.9, duration: 0.12, ease: "power2.in" }, 0.72)
-				.to(decor.ring, { scale: 1, duration: 0.36, ease: "power2.out" }, 0.84);
-		}
-		if (decor.core) {
-			timeline.to(
-				decor.core,
-				{ autoAlpha: 1, scale: 1, duration: 0.4, ease: "back.out(2.4)" },
-				0.34,
-			);
-		}
-		if (decor.flash) {
-			timeline
-				.to(decor.flash, { autoAlpha: 0.6, duration: 0.08, ease: "none" }, 0.74)
-				.to(
-					decor.flash,
-					{ autoAlpha: 0, duration: 0.36, ease: "power2.out" },
-					0.82,
-				);
-		}
-		if (decor.lines.length > 0) {
-			timeline.to(
-				decor.lines,
-				{
-					...DECOR_LINE_TO,
-					duration: 0.42,
-					ease: "power2.out",
-					stagger: 0.06,
-				},
-				0.88,
-			);
-		}
-		return;
-	},
-	// 第二幕：大字逐字落位 → 落款行跟上 → 青色印章转正
-	bookmark: (_gsap, timeline, decor) => {
-		if (decor.leadChars.length > 0) {
-			timeline.to(
-				decor.leadChars,
-				{
-					autoAlpha: 1,
-					y: 0,
-					rotation: 0,
-					duration: 0.58,
-					ease: "back.out(1.5)",
-					stagger: 0.055,
-				},
-				0.6,
-			);
-		}
-		if (decor.lines.length > 0) {
-			timeline.to(
-				decor.lines,
-				{
-					...DECOR_LINE_TO,
-					duration: 0.46,
-					ease: "power2.out",
-					stagger: 0.09,
-				},
-				0.9,
-			);
-		}
-		if (decor.marks.length > 0) {
-			timeline.to(
-				decor.marks,
-				{
-					autoAlpha: 1,
-					scale: 1,
-					rotation: 0,
-					duration: 0.5,
-					ease: "back.out(2)",
-					stagger: 0.08,
-				},
-				1,
-			);
-		}
-		return;
-	},
-	// 第三幕：右下角日期签名，手写笔触扫开日期后补一道收笔弧线
-	card: (_gsap, timeline, decor) => {
-		const now = new Date();
-		if (decor.signDate) decor.signDate.textContent = formatSignatureDate(now);
-		if (decor.signTime) decor.signTime.textContent = formatSignatureTime(now);
-		if (decor.sign) {
-			timeline.to(decor.sign, { autoAlpha: 1, duration: 0.2 }, 0.84);
-		}
-		if (decor.signSweep) {
-			timeline.to(
-				decor.signSweep,
-				{ strokeDashoffset: 0, duration: 1.05, ease: "power2.inOut" },
-				0.88,
-			);
-		}
-		if (decor.signFlourish) {
-			timeline.to(
-				decor.signFlourish,
-				{ strokeDashoffset: 0, duration: 0.52, ease: "power2.out" },
-				1.5,
-			);
-		}
-		if (decor.signTime) {
-			timeline.to(
-				decor.signTime,
-				{ autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" },
-				1.7,
-			);
-		}
-		return;
-	},
-	// 第四幕：空心大序号缓推入位 → 右侧双线自上画下 → 竖排标识落下，全程不抢色带的戏
-	ribbon: (_gsap, timeline, decor) => {
-		if (decor.numeral) {
-			timeline.to(
-				decor.numeral,
-				{
-					autoAlpha: 1,
-					scale: 1,
-					x: 0,
-					duration: 0.92,
-					ease: "power3.out",
-				},
-				0.3,
-			);
-		}
-		if (decor.rules.length > 0) {
-			timeline.to(
-				decor.rules,
-				{
-					autoAlpha: 1,
-					scaleY: 1,
-					duration: 0.6,
-					ease: "power3.inOut",
-					stagger: 0.1,
-				},
-				0.46,
-			);
-		}
-		if (decor.lines.length > 0) {
-			timeline.to(
-				decor.lines,
-				{ ...DECOR_LINE_TO, duration: 0.5, ease: "power2.out" },
-				0.82,
-			);
-		}
-		return;
-	},
-	// 终幕：底部像素方块随机亮起，内框四角方块最后压上
-	pixel: (_gsap, timeline, decor) => {
-		if (decor.pixels.length > 0) {
-			timeline.to(
-				decor.pixels,
-				{
-					autoAlpha: 1,
-					scale: 1,
-					duration: 0.34,
-					ease: "power1.out",
-					stagger: { each: 0.008, from: "random" },
-				},
-				0.28,
-			);
-		}
-		if (decor.corners.length > 0) {
-			timeline.to(
-				decor.corners,
-				{
-					autoAlpha: 1,
-					scale: 1,
-					duration: 0.34,
-					ease: "back.out(2.2)",
-					stagger: 0.06,
-				},
-				0.72,
-			);
-		}
-		return;
-	},
-};
-
 /** 一幕之内需要分层显示的所有元素 */
 type SceneRefs = {
 	card: HTMLElement;
 	swing: HTMLElement;
-	variant: string;
-	motion: CaptionMotion;
-	decor: SceneDecor;
-	decorPlay: DecorPlayer | null;
 	railDot: HTMLElement;
 	railEyebrow: HTMLElement;
 	railLine: HTMLElement;
 	railTitle: HTMLElement;
-	headCode: HTMLElement;
-	headTitle: HTMLElement;
-	headCue: HTMLElement;
-	captionVeil: HTMLElement;
-	captionMark: HTMLElement;
+	sticker: HTMLElement;
 	captionChars: HTMLElement[];
+	/** 右下角日期落款：逐字节点与收笔曲线；配置里没写 date 的幕为空/ null */
+	dateChars: HTMLElement[];
+	dateFlourish: Element | null;
 	intro: GsapTimeline | null;
 	active: boolean;
 };
@@ -512,97 +125,26 @@ function bindMediaWatchers() {
 	reducedMotionQuery.addEventListener("change", restart);
 }
 
-/** 装饰层元素一次性收好；各幕只用到其中一部分，用不到的留空 */
-function collectDecor(card: HTMLElement): SceneDecor {
-	const all = (selector: string) => Array.from(card.querySelectorAll(selector));
-	return {
-		corners: all("[data-scene-decor-corner]"),
-		ring: card.querySelector("[data-scene-decor-ring]"),
-		core: card.querySelector("[data-scene-decor-core]"),
-		flash: card.querySelector("[data-scene-decor-flash]"),
-		lines: all("[data-scene-decor-line]"),
-		leadChars: all("[data-scene-decor-lead-char]"),
-		marks: all("[data-scene-decor-mark]"),
-		sign: card.querySelector("[data-scene-decor-sign]"),
-		signSweep: card.querySelector("[data-scene-decor-sign-sweep]"),
-		signFlourish: card.querySelector("[data-scene-decor-sign-flourish]"),
-		signDate: card.querySelector("[data-scene-decor-sign-date]"),
-		signTime: card.querySelector("[data-scene-decor-sign-time]"),
-		pixels: all("[data-scene-decor-pixel]"),
-		numeral: card.querySelector("[data-scene-decor-numeral]"),
-		rules: all("[data-scene-decor-rule]"),
-	};
-}
-
 function collectScene(card: HTMLElement): SceneRefs {
-	const variant = card.dataset.sceneVariant ?? "camera";
 	const caption = selectRequired<HTMLElement>(card, "[data-scene-caption]");
 	return {
 		card,
 		swing: selectRequired<HTMLElement>(card, "[data-scene-swing]"),
-		variant,
-		motion: CAPTION_MOTION[variant] ?? CAPTION_MOTION.camera,
-		decor: collectDecor(card),
-		decorPlay: CAPTION_DECOR[variant] ?? null,
 		railDot: selectRequired<HTMLElement>(card, "[data-scene-rail-dot]"),
 		railEyebrow: selectRequired<HTMLElement>(card, "[data-scene-rail-eyebrow]"),
 		railLine: selectRequired<HTMLElement>(card, "[data-scene-rail-line]"),
 		railTitle: selectRequired<HTMLElement>(card, "[data-scene-rail-title]"),
-		headCode: selectRequired<HTMLElement>(card, "[data-scene-head-code]"),
-		headTitle: selectRequired<HTMLElement>(card, "[data-scene-head-title]"),
-		headCue: selectRequired<HTMLElement>(card, "[data-scene-head-cue]"),
-		captionVeil: selectRequired<HTMLElement>(
-			caption,
-			"[data-scene-caption-veil]",
-		),
-		captionMark: selectRequired<HTMLElement>(
-			caption,
-			"[data-scene-caption-mark]",
-		),
+		sticker: selectRequired<HTMLElement>(card, "[data-scene-sticker]"),
 		captionChars: Array.from(
 			caption.querySelectorAll<HTMLElement>("[data-scene-caption-char]"),
 		),
+		dateChars: Array.from(
+			card.querySelectorAll<HTMLElement>("[data-scene-date-char]"),
+		),
+		dateFlourish: card.querySelector("[data-scene-date-flourish]"),
 		intro: null,
 		active: false,
 	};
-}
-
-/** 装饰层的初始（隐藏）状态：各幕只有自己那部分元素存在，其余分支自然跳过 */
-function hideSceneDecor(gsap: Gsap, scene: SceneRefs) {
-	const decor = scene.decor;
-	if (decor.corners.length > 0) {
-		gsap.set(decor.corners, { autoAlpha: 0, scale: 0.66 });
-	}
-	if (decor.ring) {
-		gsap.set(decor.ring, { autoAlpha: 0, scale: 1.32, rotation: -20 });
-	}
-	if (decor.core) gsap.set(decor.core, { autoAlpha: 0, scale: 0.5 });
-	if (decor.flash) gsap.set(decor.flash, { autoAlpha: 0 });
-	if (decor.lines.length > 0) {
-		gsap.set(
-			decor.lines,
-			DECOR_LINE_FROM[scene.variant] ?? { autoAlpha: 0, y: -14 },
-		);
-	}
-	if (decor.leadChars.length > 0) {
-		gsap.set(decor.leadChars, { autoAlpha: 0, y: -32, rotation: 7 });
-	}
-	if (decor.marks.length > 0) {
-		gsap.set(decor.marks, { autoAlpha: 0, scale: 0, rotation: -32 });
-	}
-	if (decor.sign) gsap.set(decor.sign, { autoAlpha: 0 });
-	if (decor.signSweep) gsap.set(decor.signSweep, { strokeDashoffset: 1 });
-	if (decor.signFlourish) gsap.set(decor.signFlourish, { strokeDashoffset: 1 });
-	if (decor.signTime) gsap.set(decor.signTime, { autoAlpha: 0, y: 6 });
-	if (decor.pixels.length > 0) {
-		gsap.set(decor.pixels, { autoAlpha: 0, scale: 0.34 });
-	}
-	if (decor.numeral) {
-		gsap.set(decor.numeral, { autoAlpha: 0, scale: 1.08, x: -16 });
-	}
-	if (decor.rules.length > 0) {
-		gsap.set(decor.rules, { autoAlpha: 0, scaleY: 0 });
-	}
 }
 
 /** 该幕所有文字与 UI 的初始（隐藏）状态，也是离场后的复位状态 */
@@ -615,17 +157,16 @@ function hideSceneChrome(gsap: Gsap, scene: SceneRefs) {
 		y: -18,
 		clipPath: "inset(0% 0% 100% 0%)",
 	});
-	gsap.set(scene.headCode, { autoAlpha: 0, x: -16 });
-	gsap.set(scene.headTitle, { autoAlpha: 0, y: 10 });
-	gsap.set(scene.headCue, { autoAlpha: 0, x: 16 });
-	gsap.set(scene.captionVeil, scene.motion.veilFrom);
-	gsap.set(scene.captionMark, scene.motion.markFrom);
-	gsap.set(scene.captionChars, scene.motion.charFrom);
-	hideSceneDecor(gsap, scene);
+	gsap.set(scene.sticker, { autoAlpha: 0, scale: 0, rotation: -26 });
+	gsap.set(scene.captionChars, { autoAlpha: 0, y: -10, rotation: 5 });
+	if (scene.dateChars.length > 0) {
+		gsap.set(scene.dateChars, { autoAlpha: 0 });
+	}
+	if (scene.dateFlourish) gsap.set(scene.dateFlourish, { strokeDashoffset: 1 });
 }
 
 /**
- * 分层显示：竖排题名 → 顶栏 → 图内介绍层。
+ * 分层显示：竖排题名 → 左上角序号贴纸 → 底部明信片介绍 → 右下角日期落款。
  * 只在图框收缩到位（阶段已进入 scenes）且该幕居中时调用，
  * 因此文字永远不会与背景收缩动画抢镜。
  */
@@ -635,17 +176,13 @@ function playSceneIntro(gsap: Gsap, scene: SceneRefs) {
 	scene.intro?.kill();
 	hideSceneChrome(gsap, scene);
 
-	// 字幕逐字节点每幕二十余个、五幕上百个，终幕像素方块更是近百个，
-	// will-change 不在 CSS 里常驻：入场期间临时挂上（含代价最高的 filter），播完立刻清成 auto
-	const boosted = [
-		...scene.captionChars,
-		...scene.decor.leadChars,
-		...scene.decor.pixels,
-	];
+	// 字幕与落款逐字节点不在 CSS 里常驻 will-change：
+	// 入场期间临时挂上，播完立刻清成 auto
+	const boosted = [...scene.captionChars, ...scene.dateChars];
 	const timeline = gsap.timeline({
 		onStart: () =>
 			gsap.set(boosted, {
-				willChange: "transform, opacity, filter",
+				willChange: "transform, opacity",
 			}),
 		onComplete: () => gsap.set(boosted, { willChange: "auto" }),
 	});
@@ -678,39 +215,49 @@ function playSceneIntro(gsap: Gsap, scene: SceneRefs) {
 			0.2,
 		)
 		.to(
-			scene.headCode,
-			{ autoAlpha: 1, x: 0, duration: 0.44, ease: "power2.out" },
-			0.16,
-		)
-		.to(
-			scene.headTitle,
-			{ autoAlpha: 1, y: 0, duration: 0.48, ease: "power2.out" },
-			0.24,
-		)
-		.to(
-			scene.headCue,
-			{ autoAlpha: 1, x: 0, duration: 0.44, ease: "power2.out" },
-			0.32,
-		)
-		.to(
-			scene.captionVeil,
-			{ ...scene.motion.veilTo },
-			scene.motion.veilAt ?? CAPTION_VEIL_AT,
-		)
-		.to(
-			scene.captionMark,
-			{ ...scene.motion.markTo },
-			scene.motion.markAt ?? CAPTION_MARK_AT,
+			scene.sticker,
+			{
+				autoAlpha: 1,
+				scale: 1,
+				rotation: -8,
+				duration: 0.5,
+				ease: "back.out(2.4)",
+			},
+			0.42,
 		)
 		.to(
 			scene.captionChars,
-			{ ...scene.motion.charTo },
-			scene.motion.charsAt ?? CAPTION_CHARS_AT,
+			{
+				autoAlpha: 1,
+				y: 0,
+				rotation: 0,
+				duration: 0.42,
+				ease: "back.out(1.6)",
+				stagger: 0.02,
+			},
+			0.55,
 		);
 
-	// 版式专属的装饰层（取景框 / 大字与落款 / 日期签名 / 像素方块）挂在同一条时间线上，
-	// 各自用绝对时刻定位，因此追加顺序无所谓
-	scene.decorPlay?.(gsap, timeline, scene.decor);
+	// 右下角日期落款：日期逐字打字亮起，打完紧跟一条自左往右的快速描线
+	if (scene.dateChars.length > 0) {
+		timeline.to(
+			scene.dateChars,
+			{
+				autoAlpha: 1,
+				duration: 0.06,
+				ease: "none",
+				stagger: 0.05,
+			},
+			0.9,
+		);
+	}
+	if (scene.dateFlourish) {
+		timeline.to(
+			scene.dateFlourish,
+			{ strokeDashoffset: 0, duration: 0.32, ease: "power2.out" },
+			">",
+		);
+	}
 
 	scene.intro = timeline;
 }
@@ -740,11 +287,6 @@ function setupScenes(context: SetupContext) {
 	const portalImage = selectRequired<HTMLImageElement>(
 		portal,
 		"[data-scenes-portal-image]",
-	);
-	// 收缩终点的图框边框：独立一层，不参与缩放也不被 portal 的 clip-path 裁掉
-	const portalEdge = selectRequired<HTMLElement>(
-		root,
-		"[data-scenes-portal-edge]",
 	);
 	const stage = selectRequired<HTMLElement>(root, "[data-blinds-stage]");
 	const stageBackground = selectRequired<HTMLImageElement>(
@@ -796,7 +338,7 @@ function setupScenes(context: SetupContext) {
 	const previousSceneX = Array.from({ length: sceneCount }, () => Number.NaN);
 	const rotationSetters = swings.slice(0, sceneCount).map((swing) =>
 		gsap.quickTo(swing, "rotation", {
-			duration: 0.2,
+			duration: 0.28,
 			ease: "power2.out",
 		}),
 	);
@@ -829,6 +371,9 @@ function setupScenes(context: SetupContext) {
 	let cachedSceneWidth = 0;
 	let cachedSceneHeight = 0;
 	let cachedSceneStep = 0;
+	// 图框中心相对整卡中心的垂直布局偏移（图框在明信片上半部，通常为负）；
+	// 过渡层的收缩终点整体平移这个偏移，才能与首幕图框严丝合缝
+	let cachedPhotoOffsetY = 0;
 	// 过渡层收缩的终点缩放比 = 图框 cover 缩放 / 视口 cover 缩放
 	let cachedPortalScale = 1;
 	/** 把图片按 cover 铺满给定框所需的缩放比 */
@@ -838,10 +383,18 @@ function setupScenes(context: SetupContext) {
 			boxHeight / portalImage.naturalHeight,
 		);
 	const measureScene = () => {
+		const firstCard = cards[0] ?? null;
+		const firstPhoto =
+			firstCard?.querySelector<HTMLElement>("[data-scene-frame]") ?? null;
+		// 量的是卡内 4:3 图框而不是整张明信片；节点未就绪时按旧比例兜底
 		cachedSceneWidth =
-			cards[0]?.offsetWidth || Math.round(window.innerWidth * 0.44);
+			firstPhoto?.offsetWidth || Math.round(window.innerWidth * 0.44);
 		cachedSceneHeight =
-			cards[0]?.offsetHeight || Math.round(window.innerWidth * 0.33);
+			firstPhoto?.offsetHeight || Math.round(window.innerWidth * 0.33);
+		const cardHeight = firstCard?.offsetHeight ?? cachedSceneHeight;
+		cachedPhotoOffsetY = firstPhoto
+			? firstPhoto.offsetTop + cachedSceneHeight / 2 - cardHeight / 2
+			: 0;
 		// 画面放大后横向间距同步拉开：一幕宽度 + 至少 16vw 的留白
 		cachedSceneStep =
 			cachedSceneWidth + Math.max(150, window.innerWidth * 0.16);
@@ -851,7 +404,11 @@ function setupScenes(context: SetupContext) {
 		// 起点 scale=1 精确等于视口 cover，终点等于图框 cover，两端分别与 reveal 层
 		// 背景、首幕图框重合。等比缩放对任意长宽比都成立，无边界条件。
 		// 居中一律要写，自然尺寸没就绪时也得先摆正（此时尺寸走 CSS 的 100vw/100vh 兜底）
-		gsap.set(portalImage, { xPercent: -50, yPercent: -50 });
+		gsap.set(portalImage, {
+			xPercent: -50,
+			yPercent: -50,
+			y: cachedPhotoOffsetY,
+		});
 		if (portalImage.naturalWidth > 0 && portalImage.naturalHeight > 0) {
 			const viewportCover = coverScale(window.innerWidth, window.innerHeight);
 			const frameCover = coverScale(cachedSceneWidth, cachedSceneHeight);
@@ -861,13 +418,6 @@ function setupScenes(context: SetupContext) {
 				height: portalImage.naturalHeight * viewportCover,
 			});
 		}
-		// 边框只按图框布局尺寸定位，全程不参与缩放
-		gsap.set(portalEdge, {
-			xPercent: -50,
-			yPercent: -50,
-			width: cachedSceneWidth,
-			height: cachedSceneHeight,
-		});
 	};
 	measureScene();
 	// 首次测量时图片可能尚未解码，naturalWidth 为 0、上面那个分支会被跳过；
@@ -1063,7 +613,7 @@ function setupScenes(context: SetupContext) {
 			if (Number.isFinite(previousX)) {
 				const deltaX = x - previousX;
 				if (Math.abs(deltaX) > 0.08) {
-					rotationSetters[index](clamp(deltaX * 0.05, -2.6, 2.6));
+					rotationSetters[index](clamp(deltaX * 0.16, -9, 9));
 					moving = true;
 				}
 			}
@@ -1086,10 +636,6 @@ function setupScenes(context: SetupContext) {
 			autoAlpha: phase === "reveal" ? 1 : 0,
 		});
 		gsap.set(portal, { autoAlpha: phase === "shrink" ? 1 : 0 });
-		// 边框的 opacity 归 shrinkTimeline，这里只切 visibility，两处不抢同一属性
-		gsap.set(portalEdge, {
-			visibility: phase === "shrink" ? "visible" : "hidden",
-		});
 	}
 
 	/** 只依赖滚动位置，因此 refresh 之后也能得到正确阶段 */
@@ -1131,7 +677,6 @@ function setupScenes(context: SetupContext) {
 		clipPath: "inset(0px 0px 0px 0px)",
 		autoAlpha: 0,
 	});
-	gsap.set(portalEdge, { opacity: 0, visibility: "hidden" });
 	gsap.set(cards, { autoAlpha: 0 });
 	// 立牌与背景跑马灯的初始姿态：以底边为铰链向后（远离视线）几乎平躺，入场时朝观众立起来
 	gsap.set(stands, {
@@ -1164,7 +709,7 @@ function setupScenes(context: SetupContext) {
 
 	// 全屏背景 → 首幕 4:3 图框，全程不碰布局属性：portal 用 clip-path 把可视窗口
 	// 从满屏收到图框（只触发 paint），内部图片同步做等比 scale（走合成），
-	// 2px 边框在后段淡入，终点与 .home-blinds-scene__frame 完全重合。
+	// 终点与 .home-blinds-scene__frame 完全重合。
 	// 这条时间线开了 invalidateOnRefresh，用 fromTo 显式写出起始值，
 	// 缩放窗口后重新记录的起点才不会被当前已渲染的终点状态污染。
 	shrinkTimeline
@@ -1177,11 +722,11 @@ function setupScenes(context: SetupContext) {
 						0,
 						(window.innerWidth - cachedSceneWidth) / 2,
 					);
-					const insetY = Math.max(
-						0,
-						(window.innerHeight - cachedSceneHeight) / 2,
-					);
-					return `inset(${insetY}px ${insetX}px ${insetY}px ${insetX}px)`;
+					const centerGap = (window.innerHeight - cachedSceneHeight) / 2;
+					// 图框在卡内偏上，收窗终点随之上移，上下 inset 不再对称
+					const insetTop = Math.max(0, centerGap + cachedPhotoOffsetY);
+					const insetBottom = Math.max(0, centerGap - cachedPhotoOffsetY);
+					return `inset(${insetTop}px ${insetX}px ${insetBottom}px ${insetX}px)`;
 				},
 				duration: 1,
 				ease: "power3.inOut",
@@ -1199,17 +744,6 @@ function setupScenes(context: SetupContext) {
 				immediateRender: false,
 			},
 			0,
-		)
-		.fromTo(
-			portalEdge,
-			{ opacity: 0 },
-			{
-				opacity: 1,
-				duration: 0.34,
-				ease: "power2.out",
-				immediateRender: false,
-			},
-			0.66,
 		);
 
 	pinTrigger = ScrollTrigger.create({
@@ -1308,7 +842,6 @@ function setupScenes(context: SetupContext) {
 			...standJumpTargets,
 			portal,
 			portalImage,
-			portalEdge,
 			stageBackground,
 			stageForegroundWindow,
 			stageHeadlineWindow,

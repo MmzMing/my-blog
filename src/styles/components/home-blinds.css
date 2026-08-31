@@ -121,8 +121,7 @@
 
 /* 过渡层：全屏背景收缩成首幕图框。元素尺寸恒为满屏，收缩靠 clip-path 收窗
    （只触发 paint）加内部图片的等比 scale（走合成），不再补间 width / height。
-   起点可视区精确等于「视口 cover」、终点精确等于「图框 cover」，两端交接都不跳变。
-   2px 边框拆到 .home-blinds__portal-edge：clip-path 会把元素自身的边框一并裁掉。 */
+   起点可视区精确等于「视口 cover」、终点精确等于「图框 cover」，两端交接都不跳变。 */
 .home-blinds__portal {
 	z-index: 5;
 	top: 50%;
@@ -134,24 +133,6 @@
 	opacity: 0;
 	visibility: hidden;
 	will-change: clip-path, opacity;
-}
-
-/* 收缩终点的图框边框：尺寸由控制器按图框布局尺寸写入，不参与任何缩放，
-   只在收缩后段淡入，终点与 .home-blinds-scene__frame 的 2px 边框重合。
-   opacity 归 shrinkTimeline、visibility 归 applyPhase，两者不抢同一属性。
-   边框变量定义在 .home-blinds-scenes 上，这里取不到，故显式给同值兜底。 */
-.home-blinds__portal-edge {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	z-index: 6;
-	display: block;
-	box-sizing: border-box;
-	border: 2px solid var(--deep-text);
-	opacity: 0;
-	visibility: hidden;
-	pointer-events: none;
-	will-change: opacity;
 }
 
 /* ============================================
@@ -504,7 +485,7 @@
 	will-change: transform, opacity;
 }
 
-/* 压一层页面底色，保证图框外的题名与顶栏文字仍有对比度 */
+/* 压一层页面底色，保证图框外的题名文字仍有对比度 */
 .home-blinds-scenes__cycle::after {
 	position: absolute;
 	inset: 0;
@@ -549,18 +530,58 @@
 }
 
 /* ============================================
-   单幕三层结构：顶栏 / 4:3 图框 / 进度条
-   顶栏与进度条贴合图框左右边缘；左侧竖排题名单独挂在图框外侧
+   单幕结构：吊线 / 明信片卡（4:3 图框 + 底部介绍）/ 进度条
+   单数幕垂直居中、双数幕挂在视口上 1/3 处，左右错落；
+   左侧竖排题名单独挂在卡外侧
    ============================================ */
 
 /* 几何量定义在整层根节点上：单幕卡片与共用进度条都要读它们。
-   整卡外框即图框，控制器读取其布局尺寸作为过渡层的收缩终点 */
+   过渡层的收缩终点量的是卡内 4:3 图框（[data-scene-frame]），不是整张明信片 */
 .home-blinds-scenes {
-	--home-blinds-scene-width: min(50vw, 66rem, calc((100vh - 14rem) * 4 / 3));
-	--home-blinds-scene-height: calc(var(--home-blinds-scene-width) * 3 / 4);
 	--home-blinds-scene-edge: 2px;
+	/* 明信片四周的厚纸边 */
+	--home-blinds-scene-pad: clamp(1rem, 1.9vw, 1.6rem);
+	--home-blinds-scene-band-height: clamp(4.6rem, 10vh, 6.4rem);
+	--home-blinds-scene-photo-width: min(
+		44vw,
+		52rem,
+		calc(
+			(
+				60vh - var(--home-blinds-scene-pad) * 2 -
+					var(--home-blinds-scene-band-height)
+			) * 4 / 3
+		)
+	);
+	--home-blinds-scene-photo-height: calc(
+		var(--home-blinds-scene-photo-width) * 3 / 4
+	);
+	--home-blinds-scene-width: calc(
+		var(--home-blinds-scene-photo-width) + var(--home-blinds-scene-pad) * 2 +
+			var(--home-blinds-scene-edge) * 2
+	);
+	--home-blinds-scene-height: calc(
+		var(--home-blinds-scene-photo-height) + var(--home-blinds-scene-pad) * 2 +
+			var(--home-blinds-scene-band-height) + var(--home-blinds-scene-edge) * 2
+	);
+	/* 纸面与墨色不随主题翻转：明信片在深浅色底上都是同一张纸 */
+	--home-blinds-postcard-paper: #f9f3e4;
+	--home-blinds-postcard-ink: #4c4536;
+	/* 底部涂鸦的浅铅笔色 */
+	--home-blinds-postcard-pencil: color-mix(
+		in srgb,
+		var(--home-blinds-postcard-ink) 32%,
+		transparent
+	);
 	--home-blinds-scene-rail-gap: clamp(1.1rem, 2.2vw, 2.5rem);
 	--home-blinds-scene-band-gap: 0.55rem;
+	/* 吊线长度 = 视窗顶到卡顶，另加 8rem 余量（超出视口的部分被裁掉），
+	   100vh 与 100dvh 的差值因此不影响接线。
+	   注意：该变量会在双数幕上被覆盖，凡引用它必须在「使用它的元素」上
+	   现算（直接写 calc），不能在此处预先派生新变量——自定义属性在声明
+	   元素上就完成 var() 求值，预先派生的值不会跟随后代的覆盖 */
+	--home-blinds-scene-string-length: calc(
+		50vh - var(--home-blinds-scene-height) / 2 + 8rem
+	);
 }
 
 .home-blinds-scene {
@@ -575,18 +596,57 @@
 	will-change: transform, opacity;
 }
 
+/* 双数幕挂高：垂直中心落在视口上 1/3 处，与单数幕错落 */
+.home-blinds-scene--raised {
+	top: calc(100% / 3);
+	--home-blinds-scene-string-length: calc(
+		100vh / 3 - var(--home-blinds-scene-height) / 2 + 8rem
+	);
+}
+
+/* 吊线：底端接卡顶正中，顶端上探到视窗顶（挂点），多出的余量被视口裁掉；
+   整根线在 swing 内，横移时与卡身一起绕挂点倾斜 */
+.home-blinds-scene__string {
+	position: absolute;
+	top: calc(-1 * var(--home-blinds-scene-string-length));
+	left: 50%;
+	z-index: 0;
+	width: 2px;
+	height: var(--home-blinds-scene-string-length);
+	margin-left: -1px;
+	background: color-mix(in srgb, var(--deep-text) 44%, transparent);
+}
+
 .home-blinds-scene__swing {
 	position: absolute;
 	inset: 0;
+	/* 悬挂卡绕视窗顶部的挂点（吊线顶端）摆动，线与卡整体倾斜 */
+	transform-origin: 50% calc(-1 * var(--home-blinds-scene-string-length));
 	will-change: transform;
 }
 
-.home-blinds-scene__frame {
+/* 明信片纸面：厚纸边 + 底部介绍区 */
+.home-blinds-scene__card {
 	position: absolute;
 	inset: 0;
-	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 	box-sizing: border-box;
+	padding: var(--home-blinds-scene-pad);
 	border: var(--home-blinds-scene-edge) solid var(--deep-text);
+	background: var(--home-blinds-postcard-paper);
+	box-shadow:
+		0 1.1rem 2.4rem rgb(0 0 0 / 0.22),
+		0 0.25rem 0.7rem rgb(0 0 0 / 0.14);
+}
+
+/* 照片不单独描边，边框由明信片纸面承担 */
+.home-blinds-scene__frame {
+	position: relative;
+	flex: none;
+	width: 100%;
+	height: var(--home-blinds-scene-photo-height);
+	overflow: hidden;
 	background: var(--page-bg);
 }
 
@@ -602,85 +662,48 @@
 	-webkit-user-drag: none;
 }
 
-/* ---------- 顶栏：英文标识 / 标题 / 指示词 ---------- */
-
-.home-blinds-scene__head {
+/* 顶部胶带：压住吊线与卡顶的接头，斜贴一条半透明双色纹 */
+.home-blinds-scene__tape {
 	position: absolute;
-	right: 0;
-	bottom: calc(100% + var(--home-blinds-scene-band-gap));
-	left: 0;
+	top: -0.8rem;
+	left: 50%;
+	z-index: 2;
+	width: clamp(3.6rem, 4.8vw, 4.8rem);
+	height: clamp(1.25rem, 1.9vw, 1.6rem);
+	background: repeating-linear-gradient(
+		-45deg,
+		color-mix(in srgb, #00a29b 34%, var(--home-blinds-postcard-paper)) 0
+			0.42rem,
+		color-mix(in srgb, #e26d5a 30%, var(--home-blinds-postcard-paper)) 0.42rem
+			0.84rem
+	);
+	box-shadow: 0 2px 5px rgb(0 0 0 / 0.16);
+	transform: translateX(-50%) rotate(-2.5deg);
+}
+
+/* 左上角序号贴纸：模切感 = 纸色描边圈 + 细墨圈；
+   transform 归控制器写入，这里只给位置与底子 */
+.home-blinds-scene__sticker {
+	position: absolute;
+	top: calc(-0.7 * var(--home-blinds-scene-pad));
+	left: calc(-0.7 * var(--home-blinds-scene-pad));
+	z-index: 3;
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-	align-items: baseline;
-	gap: 1rem;
+	place-items: center;
+	width: clamp(2.3rem, 3vw, 3.1rem);
+	height: clamp(2.3rem, 3vw, 3.1rem);
+	border-radius: 50%;
+	background: #00a29b;
+	color: #fff;
+	font-size: clamp(1.05rem, 1.4vw, 1.4rem);
+	font-weight: 900;
+	box-shadow:
+		0 0 0 0.26rem var(--home-blinds-postcard-paper),
+		0 0 0 calc(0.26rem + 1.5px) var(--home-blinds-postcard-ink),
+		0 0.45rem 1rem rgb(0 0 0 / 0.24);
 }
 
-.home-blinds-scene__head-code,
-.home-blinds-scene__head-title,
-.home-blinds-scene__head-cue {
-	white-space: nowrap;
-}
-
-.home-blinds-scene__head-code {
-	justify-self: start;
-	font-size: 0.62rem;
-	font-weight: 750;
-	letter-spacing: 0.24em;
-	text-transform: uppercase;
-	color: var(--content-meta);
-}
-
-.home-blinds-scene__head-title {
-	justify-self: center;
-	font-size: 0.78rem;
-	font-weight: 700;
-	letter-spacing: 0.2em;
-}
-
-.home-blinds-scene__head-title::before {
-	content: "「";
-	opacity: 0.42;
-}
-
-.home-blinds-scene__head-title::after {
-	content: "」";
-	opacity: 0.42;
-}
-
-.home-blinds-scene__head-cue {
-	justify-self: end;
-	display: inline-flex;
-	align-items: center;
-	gap: 0.45rem;
-	font-size: 0.62rem;
-	font-weight: 750;
-	letter-spacing: 0.24em;
-	text-transform: uppercase;
-}
-
-.home-blinds-scene__head-cue-mark {
-	display: inline-block;
-	font-size: 0.7rem;
-	letter-spacing: 0;
-	animation: home-blinds-cue-nudge 2.2s ease-in-out infinite;
-}
-
-.home-blinds-scene[data-scene-cue="finale"] .home-blinds-scene__head-cue-mark {
-	font-size: 0.52rem;
-	animation: none;
-}
-
-@keyframes home-blinds-cue-nudge {
-	0%,
-	100% {
-		transform: translateX(0);
-	}
-	50% {
-		transform: translateX(0.3rem);
-	}
-}
-
-/* ---------- 共用进度条：整层只有一条，常驻水平中间、贴居中图框下沿 ----------
+/* ---------- 共用进度条：整层只有一条，常驻水平中间、贴居中卡下沿 ----------
    宽度对齐图框，随横移进度连续增减，不做出场动效（显隐由控制器按阶段切换） */
 
 .home-blinds-scenes__meter {
@@ -797,853 +820,99 @@
 }
 
 /* ============================================
-   图片内的介绍层：五幕五套版式（动效由控制器按 variant 分发）
+   明信片底部介绍区：照片说明居中，浅色涂鸦垫在字后，五幕统一版式
    ============================================ */
 
-.home-blinds-scene__caption {
-	--home-blinds-caption-ink: #fff;
-	position: absolute;
-	z-index: 2;
+.home-blinds-scene__band {
+	position: relative;
 	display: flex;
-	color: var(--home-blinds-caption-ink);
+	flex: 1 1 auto;
+	align-items: center;
+	justify-content: center;
+	min-height: 0;
+	margin-top: calc(var(--home-blinds-scene-pad) * 0.72);
+}
+
+/* 手绘涂鸦：横向拉满介绍区，随宽度做少量形变，颜色取浅铅笔色 */
+.home-blinds-scene__doodles {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
 	pointer-events: none;
 }
 
-.home-blinds-scene__caption-veil {
-	position: absolute;
-	z-index: 0;
+.home-blinds-scene__doodle-pencil {
+	stroke: var(--home-blinds-postcard-pencil);
+	stroke-width: 2.4;
+	stroke-linecap: round;
 }
 
-.home-blinds-scene__caption-mark {
-	position: relative;
-	z-index: 1;
-	display: block;
-	flex: none;
-	background: currentcolor;
+.home-blinds-scene__doodle-accent {
+	fill: color-mix(in srgb, #00a29b 52%, transparent);
 }
 
-.home-blinds-scene__caption-text {
+.home-blinds-scene__caption {
 	position: relative;
 	z-index: 1;
 	margin: 0;
+	padding: 0 clamp(2.4rem, 5vw, 4.5rem);
+	text-align: center;
+	color: var(--home-blinds-postcard-ink);
+	font-size: clamp(0.78rem, 1vw, 0.98rem);
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	line-height: 1.7;
 }
 
-/* 五幕字幕合计上百个逐字节点，不在此常驻 will-change（尤其 filter，提升代价最高）：
+/* 逐字节点数量五幕合计上百个，不在此常驻 will-change：
    由 playSceneIntro 在入场期间临时写入、播完清成 auto */
 .home-blinds-scene__caption-char {
 	display: inline-block;
 	white-space: pre;
 }
 
-/* 序幕 camera：右下角简介，等取景框与快门播完后自右侧滑入 */
-.home-blinds-scene[data-scene-variant="camera"] .home-blinds-scene__caption {
-	right: 6%;
-	bottom: 7.5%;
-	max-width: 58%;
+/* 右下角落款日期：日期逐字打字亮起，下方曲线自左往右快速描绘；
+   显隐与描线进度归控制器 */
+.home-blinds-scene__date {
+	position: absolute;
+	right: 0.72rem;
+	bottom: 0.3rem;
+	z-index: 1;
+	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
-	text-align: right;
-}
-
-.home-blinds-scene[data-scene-variant="camera"] .home-blinds-scene__caption-veil {
-	inset: -1.1rem -1.6rem -1.1rem -3.4rem;
-	background: linear-gradient(90deg, rgb(0 0 0 / 0), rgb(0 0 0 / 0.62));
-}
-
-.home-blinds-scene[data-scene-variant="camera"] .home-blinds-scene__caption-mark {
-	width: 3rem;
-	height: 2px;
-	margin-bottom: 0.8rem;
-	transform-origin: 100% 50%;
-}
-
-.home-blinds-scene[data-scene-variant="camera"] .home-blinds-scene__caption-text {
-	font-size: 0.86rem;
-	font-weight: 600;
-	letter-spacing: 0.17em;
-	line-height: 1.95;
-}
-
-/* 取景框层：四角边框 + 中央快门圆 + 左上参数 + 一帧白闪。
-   位移与显隐全部由控制器写入，这里只给几何与颜色 */
-.home-blinds-scene__viewfinder {
-	--home-blinds-viewfinder-ring: calc(var(--home-blinds-scene-width) * 0.23);
-	--home-blinds-viewfinder-core: calc(var(--home-blinds-viewfinder-ring) * 0.4);
-	position: absolute;
-	inset: 0;
-	/* 压在 caption（z-index: 2）之上：四角边框不被右下角简介的暗底吃掉，
-	   白闪也就能盖住整帧；闪完 opacity 归 0，不影响简介 */
-	z-index: 3;
-	color: rgb(255 255 255 / 0.88);
+	gap: 0.14rem;
+	color: color-mix(in srgb, var(--home-blinds-postcard-ink) 82%, transparent);
+	transform: rotate(-1.6deg);
 	pointer-events: none;
 }
 
-/* 四角 L 形边框：只留两条边，外侧拐角再压一个实心小方块 */
-.home-blinds-scene__viewfinder-corner {
-	position: absolute;
-	box-sizing: border-box;
-	width: 2.5rem;
-	height: 2.5rem;
-	border: 2px solid currentcolor;
-	filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
-}
-
-.home-blinds-scene__viewfinder-corner::before {
-	position: absolute;
-	display: block;
-	width: 0.34rem;
-	height: 0.34rem;
-	content: "";
-	background: currentcolor;
-}
-
-.home-blinds-scene__viewfinder-corner[data-viewfinder-corner="tl"] {
-	top: 5.5%;
-	left: 4%;
-	border-right: 0;
-	border-bottom: 0;
-}
-
-.home-blinds-scene__viewfinder-corner[data-viewfinder-corner="tl"]::before {
-	top: -0.17rem;
-	left: -0.17rem;
-}
-
-.home-blinds-scene__viewfinder-corner[data-viewfinder-corner="tr"] {
-	top: 5.5%;
-	right: 4%;
-	border-bottom: 0;
-	border-left: 0;
-}
-
-.home-blinds-scene__viewfinder-corner[data-viewfinder-corner="tr"]::before {
-	top: -0.17rem;
-	right: -0.17rem;
-}
-
-.home-blinds-scene__viewfinder-corner[data-viewfinder-corner="bl"] {
-	bottom: 5.5%;
-	left: 4%;
-	border-top: 0;
-	border-right: 0;
-}
-
-.home-blinds-scene__viewfinder-corner[data-viewfinder-corner="bl"]::before {
-	bottom: -0.17rem;
-	left: -0.17rem;
-}
-
-.home-blinds-scene__viewfinder-corner[data-viewfinder-corner="br"] {
-	right: 4%;
-	bottom: 5.5%;
-	border-top: 0;
-	border-left: 0;
-}
-
-.home-blinds-scene__viewfinder-corner[data-viewfinder-corner="br"]::before {
-	right: -0.17rem;
-	bottom: -0.17rem;
-}
-
-/* 快门圆：圆环 + 四向短刻度（刻度用两段背景画，中间留空，不遮画面中心） */
-.home-blinds-scene__viewfinder-ring {
-	position: absolute;
-	top: calc(50% - var(--home-blinds-viewfinder-ring) / 2);
-	left: calc(50% - var(--home-blinds-viewfinder-ring) / 2);
-	box-sizing: border-box;
-	width: var(--home-blinds-viewfinder-ring);
-	height: var(--home-blinds-viewfinder-ring);
-	border: 2px solid currentcolor;
-	border-radius: 50%;
-	transform-origin: 50% 50%;
-}
-
-.home-blinds-scene__viewfinder-ring::before,
-.home-blinds-scene__viewfinder-ring::after {
-	position: absolute;
-	display: block;
-	content: "";
-	background-image: linear-gradient(currentcolor, currentcolor),
-		linear-gradient(currentcolor, currentcolor);
-	background-repeat: no-repeat;
-}
-
-.home-blinds-scene__viewfinder-ring::before {
-	top: calc(50% - 1px);
-	right: -15%;
-	left: -15%;
-	height: 2px;
-	background-size: 11% 100%;
-	background-position: 0 0, 100% 0;
-}
-
-.home-blinds-scene__viewfinder-ring::after {
-	top: -15%;
-	bottom: -15%;
-	left: calc(50% - 1px);
-	width: 2px;
-	background-size: 100% 11%;
-	background-position: 0 0, 0 100%;
-}
-
-/* 圆心：虚线内圈 + 实心对焦点 */
-.home-blinds-scene__viewfinder-core {
-	position: absolute;
-	top: calc(50% - var(--home-blinds-viewfinder-core) / 2);
-	left: calc(50% - var(--home-blinds-viewfinder-core) / 2);
-	box-sizing: border-box;
-	width: var(--home-blinds-viewfinder-core);
-	height: var(--home-blinds-viewfinder-core);
-	border: 2px dashed color-mix(in srgb, currentcolor 55%, transparent);
-	border-radius: 50%;
-	transform-origin: 50% 50%;
-}
-
-.home-blinds-scene__viewfinder-core::after {
-	position: absolute;
-	top: calc(50% - 0.17rem);
-	left: calc(50% - 0.17rem);
-	display: block;
-	width: 0.34rem;
-	height: 0.34rem;
-	content: "";
-	border-radius: 50%;
-	background: currentcolor;
-}
-
-/* 左上角参数行 */
-.home-blinds-scene__viewfinder-params {
-	position: absolute;
-	top: 12%;
-	left: 8.5%;
-	display: flex;
-	flex-direction: column;
-	gap: 0.36rem;
-	text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
-}
-
-.home-blinds-scene__viewfinder-param {
+.home-blinds-scene__date-text {
 	line-height: 1;
-	font-size: 0.6rem;
-	font-weight: 750;
-	letter-spacing: 0.2em;
-	text-transform: uppercase;
+	font-size: 0.86rem;
+	font-style: italic;
+	font-weight: 800;
+	letter-spacing: 0.06em;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 
-/* 首行前的合焦指示灯：青色方块常态闪烁 */
-.home-blinds-scene__viewfinder-param:first-child {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.44rem;
+.home-blinds-scene__date-char {
+	display: inline-block;
+	white-space: pre;
 }
 
-.home-blinds-scene__viewfinder-param:first-child::before {
+.home-blinds-scene__date-art {
 	display: block;
-	width: 0.4rem;
-	height: 0.4rem;
-	content: "";
-	background: #00a29b;
-	animation: home-blinds-viewfinder-blink 1.4s steps(1, end) infinite;
-}
-
-@keyframes home-blinds-viewfinder-blink {
-	0%,
-	54% {
-		opacity: 1;
-	}
-	55%,
-	100% {
-		opacity: 0.16;
-	}
-}
-
-/* 快门白闪：整帧一闪，opacity 由控制器补间 */
-.home-blinds-scene__viewfinder-flash {
-	position: absolute;
-	inset: 0;
-	background: #fff;
-}
-
-/* ---------- 第三幕右下角签名：日期由手写笔触扫开，参考页脚签名的遮罩画法 ---------- */
-
-.home-blinds-scene__sign {
-	position: absolute;
-	right: 6.5%;
-	bottom: 7%;
-	z-index: 3;
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: 0.2rem;
-	color: #fff;
-	filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.5));
-	pointer-events: none;
-}
-
-.home-blinds-scene__sign-art {
-	display: block;
-	width: clamp(8rem, 15vw, 13rem);
+	width: clamp(5.6rem, 8vw, 7.6rem);
 	height: auto;
 }
 
-.home-blinds-scene__sign-date {
-	fill: currentcolor;
-	font-size: 26px;
-	font-weight: 800;
-}
-
 /* pathLength=1，故 1 1 即「整条实线 + 等长空白」，偏移从 1 收到 0 就是画出来 */
-.home-blinds-scene__sign-sweep,
-.home-blinds-scene__sign-flourish {
+.home-blinds-scene__date-flourish {
 	stroke-dasharray: 1 1;
 	stroke-dashoffset: 1;
-}
-
-.home-blinds-scene__sign-time {
-	line-height: 1;
-	font-size: 0.58rem;
-	font-weight: 700;
-	letter-spacing: 0.24em;
-	font-variant-numeric: tabular-nums;
-}
-
-/* ---------- 第二幕 bookmark：右侧书签题签 ----------
-   caption 为 row-reverse，故 DOM 顺序（竖线 → 简介 → 大字 → 落款）
-   在画面上正好自右向左排开，与「从右往左：垂直线条 / 简介 / 大字」一致 */
-.home-blinds-scene[data-scene-variant="bookmark"] .home-blinds-scene__caption {
-	top: 0;
-	right: 7%;
-	bottom: 0;
-	flex-direction: row-reverse;
-	align-items: flex-start;
-	gap: 1.15rem;
-	padding-top: 8%;
-}
-
-/* 书签本体：自图框上沿垂下，底端切出 V 形缺口 */
-.home-blinds-scene[data-scene-variant="bookmark"] .home-blinds-scene__caption-veil {
-	inset: 0 -2.2rem auto -2.6rem;
-	height: 78%;
-	background: linear-gradient(180deg, rgb(0 0 0 / 0.66), rgb(0 0 0 / 0.04));
-	clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 1.5rem), 0 100%);
-	transform-origin: 50% 0;
-}
-
-/* 最右侧垂直线条：自上而下画出，两端带空心方块刻度 */
-.home-blinds-scene[data-scene-variant="bookmark"] .home-blinds-scene__caption-mark {
-	width: 2px;
-	height: 68%;
-	transform-origin: 50% 0;
-}
-
-.home-blinds-scene[data-scene-variant="bookmark"]
-	.home-blinds-scene__caption-mark::before,
-.home-blinds-scene[data-scene-variant="bookmark"]
-	.home-blinds-scene__caption-mark::after {
-	position: absolute;
-	left: calc(50% - 0.24rem);
-	display: block;
-	box-sizing: border-box;
-	width: 0.48rem;
-	height: 0.48rem;
-	content: "";
-	border: 2px solid currentcolor;
-	background: transparent;
-}
-
-.home-blinds-scene[data-scene-variant="bookmark"]
-	.home-blinds-scene__caption-mark::before {
-	top: 0;
-}
-
-.home-blinds-scene[data-scene-variant="bookmark"]
-	.home-blinds-scene__caption-mark::after {
-	bottom: 0;
-}
-
-.home-blinds-scene[data-scene-variant="bookmark"] .home-blinds-scene__caption-text {
-	writing-mode: vertical-rl;
-	max-height: 64%;
-	font-size: 0.82rem;
-	font-weight: 600;
-	letter-spacing: 0.22em;
-	line-height: 2.2;
-}
-
-/* 大字：每行 2 字竖排，行与行自右向左排布（vertical-rl 下块级子元素即为列） */
-.home-blinds-scene__lead {
-	position: relative;
-	z-index: 1;
-	margin-top: 1.5%;
-	writing-mode: vertical-rl;
-	font-size: clamp(1.9rem, 3.5vw, 3.6rem);
-	font-weight: 900;
-	letter-spacing: 0.04em;
-	line-height: 1.1;
-	text-shadow: 0 2px 12px rgb(0 0 0 / 0.38);
-}
-
-.home-blinds-scene__lead-line {
-	display: block;
-}
-
-.home-blinds-scene__lead-char {
-	display: inline-block;
-	transform-origin: 50% 0;
-}
-
-/* 落款列：编号 / 拉丁标识 / 青色印章，参赛题签的署名位 */
-.home-blinds-scene__credit {
-	position: relative;
-	z-index: 1;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 0.85rem;
-	margin-top: 4%;
-	color: rgb(255 255 255 / 0.82);
-}
-
-.home-blinds-scene__credit-line {
-	writing-mode: vertical-rl;
-	font-size: 0.58rem;
-	font-weight: 750;
-	letter-spacing: 0.26em;
-	text-transform: uppercase;
-	white-space: nowrap;
-	font-variant-numeric: tabular-nums;
-}
-
-.home-blinds-scene__credit-line--latin {
-	color: rgb(255 255 255 / 0.6);
-}
-
-.home-blinds-scene__credit-seal {
-	flex: none;
-	width: 1.05rem;
-	height: 1.05rem;
-	background: #00a29b;
-	transform-origin: 50% 50%;
-}
-
-/* 第三幕 card：右上圆角卡片，半透明纯色底、无描边，字号比其余幕大一档 */
-.home-blinds-scene[data-scene-variant="card"] .home-blinds-scene__caption {
-	--home-blinds-caption-ink: #101010;
-	top: 7.5%;
-	right: 6.5%;
-	max-width: 54%;
-	flex-direction: row;
-	align-items: flex-start;
-	gap: 0.72rem;
-	padding: 1.15rem 1.4rem;
-}
-
-.home-blinds-scene[data-scene-variant="card"] .home-blinds-scene__caption-veil {
-	inset: 0;
-	border-radius: 1.15rem;
-	background: rgb(255 255 255 / 0.84);
-	transform-origin: 100% 50%;
-}
-
-.home-blinds-scene[data-scene-variant="card"] .home-blinds-scene__caption-mark {
-	width: 0.42rem;
-	height: 0.42rem;
-	margin-top: 0.52rem;
-	border-radius: 50%;
-}
-
-.home-blinds-scene[data-scene-variant="card"] .home-blinds-scene__caption-text {
-	font-size: 0.98rem;
-	font-weight: 650;
-	letter-spacing: 0.1em;
-	line-height: 1.9;
-}
-
-:root.dark
-	.home-blinds-scene[data-scene-variant="card"]
-	.home-blinds-scene__caption {
-	--home-blinds-caption-ink: #f2f2f2;
-}
-
-:root.dark
-	.home-blinds-scene[data-scene-variant="card"]
-	.home-blinds-scene__caption-veil {
-	background: rgb(10 10 10 / 0.86);
-}
-
-/* 第四幕：左侧斜切色带，文字带模糊推入 */
-.home-blinds-scene[data-scene-variant="ribbon"] .home-blinds-scene__caption {
-	bottom: 19%;
-	left: 0;
-	max-width: 76%;
-	flex-direction: row;
-	align-items: center;
-	gap: 0.95rem;
-	padding: 1rem 1.8rem 1rem 6%;
-}
-
-.home-blinds-scene[data-scene-variant="ribbon"] .home-blinds-scene__caption-veil {
-	inset: 0 -2.8rem 0 -3.2rem;
-	background: rgb(0 0 0 / 0.74);
-	transform: skewX(-9deg);
-}
-
-.home-blinds-scene[data-scene-variant="ribbon"] .home-blinds-scene__caption-mark {
-	width: 2.2rem;
-	height: 1.5px;
-	transform-origin: 0 50%;
-}
-
-/* 第四幕的静物式点缀层：空心大序号 + 右侧双线与竖排标识。
-   一律压在色带之下（DOM 在 caption 之前、同为 z-index: 2），只做版面不抢戏 */
-.home-blinds-scene__accent {
-	position: absolute;
-	inset: 0;
-	z-index: 2;
-	color: #fff;
-	pointer-events: none;
-}
-
-/* 空心大序号：只留描边，当左上角的版面重心 */
-.home-blinds-scene__accent-numeral {
-	position: absolute;
-	top: 7%;
-	left: 6%;
-	line-height: 0.86;
-	font-size: clamp(3.4rem, 7.6vw, 6.8rem);
-	font-weight: 900;
-	letter-spacing: 0.02em;
-	font-variant-numeric: tabular-nums;
-	color: transparent;
-	-webkit-text-stroke: 2px rgb(255 255 255 / 0.44);
-	filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.4));
-	transform-origin: 0 50%;
-}
-
-/* 右侧落款：自右向左＝长线 / 短线 / 竖排拉丁标识 */
-.home-blinds-scene__accent-edge {
-	position: absolute;
-	top: 9%;
-	right: 5.5%;
-	bottom: 9%;
-	display: flex;
-	flex-direction: row-reverse;
-	align-items: flex-start;
-	gap: 0.34rem;
-}
-
-.home-blinds-scene__accent-rule {
-	flex: none;
-	width: 2px;
-	background: rgb(255 255 255 / 0.72);
-	transform-origin: 50% 0;
-}
-
-.home-blinds-scene__accent-rule[data-accent-rule="long"] {
-	height: 62%;
-}
-
-.home-blinds-scene__accent-rule[data-accent-rule="short"] {
-	height: 26%;
-	background: rgb(255 255 255 / 0.4);
-}
-
-.home-blinds-scene__accent-label {
-	max-height: 62%;
-	margin-right: 0.45rem;
-	writing-mode: vertical-rl;
-	font-size: 0.58rem;
-	font-weight: 750;
-	letter-spacing: 0.28em;
-	text-transform: uppercase;
-	white-space: nowrap;
-	color: rgb(255 255 255 / 0.82);
-	text-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
-}
-
-.home-blinds-scene[data-scene-variant="ribbon"] .home-blinds-scene__caption-text {
-	font-size: 0.84rem;
-	font-weight: 600;
-	letter-spacing: 0.16em;
-	line-height: 1.9;
-}
-
-/* ---------- 终幕 pixel：双线内框 + 四角实心方块 + 底部像素方块群 ----------
-   边框参考图片自身的双线做法：主线用 border，外侧第二道用 outline 拉开间距 */
-.home-blinds-scene[data-scene-variant="pixel"] .home-blinds-scene__caption {
-	inset: 0;
-	flex-direction: column;
-	align-items: center;
-	justify-content: flex-end;
-	padding: 0 12% 2.8rem;
-	text-align: center;
-}
-
-/* 只留双线内框，不压任何遮罩：画面本身完整露出 */
-.home-blinds-scene[data-scene-variant="pixel"] .home-blinds-scene__caption-veil {
-	inset: 1.25rem;
-	box-sizing: border-box;
-	border: 2px solid rgb(255 255 255 / 0.72);
-	outline: 2px solid rgb(255 255 255 / 0.3);
-	outline-offset: 0.3rem;
-	background: transparent;
-}
-
-.home-blinds-scene[data-scene-variant="pixel"] .home-blinds-scene__caption-mark {
-	width: 2.6rem;
-	height: 2px;
-	margin-bottom: 0.95rem;
-	transform-origin: 50% 50%;
-}
-
-/* 遮罩去掉后靠字影保证可读性 */
-.home-blinds-scene[data-scene-variant="pixel"] .home-blinds-scene__caption-text {
-	font-size: 0.82rem;
-	font-weight: 600;
-	letter-spacing: 0.3em;
-	line-height: 2;
-	text-shadow: 0 1px 6px rgb(0 0 0 / 0.6), 0 0 1.4rem rgb(0 0 0 / 0.4);
-}
-
-.home-blinds-scene[data-scene-variant="pixel"] .home-blinds-scene__caption-mark {
-	box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
-}
-
-/* 内框四角的实心方块：压在双线边框的拐角上 */
-.home-blinds-scene__pixel-corners {
-	position: absolute;
-	inset: 1.25rem;
-	z-index: 1;
-}
-
-.home-blinds-scene__pixel-corner {
-	position: absolute;
-	width: 0.62rem;
-	height: 0.62rem;
-	background: #fff;
-	box-shadow: 0 0 0 2px rgb(0 0 0 / 0.24);
-}
-
-.home-blinds-scene__pixel-corner[data-pixel-corner="tl"] {
-	top: -0.31rem;
-	left: -0.31rem;
-}
-
-.home-blinds-scene__pixel-corner[data-pixel-corner="tr"] {
-	top: -0.31rem;
-	right: -0.31rem;
-}
-
-.home-blinds-scene__pixel-corner[data-pixel-corner="bl"] {
-	bottom: -0.31rem;
-	left: -0.31rem;
-}
-
-.home-blinds-scene__pixel-corner[data-pixel-corner="br"] {
-	bottom: -0.31rem;
-	right: -0.31rem;
-}
-
-/* 像素方块群：散落在整幅画面上的不规则方块，不做网格也不压遮罩。
-   位置与边长由组件按块写在 style 上，这里只管四种形态 */
-.home-blinds-scene__pixels {
-	position: absolute;
-	inset: 0;
-	z-index: 1;
-	pointer-events: none;
-}
-
-.home-blinds-scene__pixel {
-	position: absolute;
-	aspect-ratio: 1;
-	transform-origin: 50% 50%;
-}
-
-/* 柔白色块：带一个偏移的淡影，做出参考图里那种错层叠印感 */
-.home-blinds-scene__pixel[data-pixel-kind="panel"] {
-	background: rgb(255 255 255 / 0.4);
-	box-shadow: 0.34rem 0.34rem 0 rgb(255 255 255 / 0.13);
-}
-
-.home-blinds-scene__pixel[data-pixel-kind="dot"] {
-	background: rgb(255 255 255 / 0.78);
-}
-
-.home-blinds-scene__pixel[data-pixel-kind="outline"] {
-	box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.52);
-}
-
-/* ---------- 终幕悬停故障动效 ----------
-   整层 track 是 pointer-events: none，故单独把终幕图框放开以接住 hover；
-   wheel 事件仍会冒泡到 viewport，横移手感不变。
-   故障层是同一张图的一条横带，被错位推开；底图只做抖动与滤镜尖峰
-   （不透明图片吃不到 drop-shadow 的错色，所以错位交给故障层做）。 */
-.home-blinds-scene[data-scene-variant="pixel"] .home-blinds-scene__frame {
-	pointer-events: auto;
-}
-
-.home-blinds-scene__glitch {
-	position: absolute;
-	inset: 0;
-	z-index: 1;
-	display: block;
-	background-image: var(--home-blinds-glitch-image);
-	background-position: center;
-	background-size: cover;
-	opacity: 0;
-	pointer-events: none;
-}
-
-.home-blinds-scene[data-scene-variant="pixel"]
-	.home-blinds-scene__frame:hover
-	.home-blinds-scene__glitch {
-	animation: home-blinds-glitch-band 0.9s steps(1, end) infinite;
-}
-
-.home-blinds-scene[data-scene-variant="pixel"]
-	.home-blinds-scene__frame:hover
-	.home-blinds-scene__image {
-	animation: home-blinds-glitch-shift 0.9s steps(1, end) infinite;
-}
-
-/* 方块跟着抖：用 filter 的 opacity() 而不是 opacity 属性，
-   免得和控制器写在行内的 autoAlpha 抢同一个属性 */
-.home-blinds-scene[data-scene-variant="pixel"]
-	.home-blinds-scene__frame:hover
-	.home-blinds-scene__pixel {
-	animation: home-blinds-glitch-pixel 0.9s steps(1, end) infinite;
-}
-
-.home-blinds-scene__pixel:nth-child(3n) {
-	animation-delay: 0.12s;
-}
-
-.home-blinds-scene__pixel:nth-child(4n + 1) {
-	animation-delay: 0.26s;
-}
-
-@keyframes home-blinds-glitch-band {
-	0%,
-	100% {
-		opacity: 0;
-		clip-path: inset(42% 0 54% 0);
-		transform: translateX(0);
-	}
-	6% {
-		opacity: 1;
-		clip-path: inset(27% 0 66% 0);
-		transform: translateX(-2.4%);
-	}
-	12% {
-		opacity: 1;
-		clip-path: inset(56% 0 37% 0);
-		transform: translateX(1.8%);
-	}
-	17% {
-		opacity: 0;
-	}
-	46% {
-		opacity: 1;
-		clip-path: inset(11% 0 82% 0);
-		transform: translateX(2.6%);
-	}
-	52% {
-		opacity: 1;
-		clip-path: inset(70% 0 21% 0);
-		transform: translateX(-1.6%);
-	}
-	57% {
-		opacity: 0;
-	}
-}
-
-/* 底图轻微放大 1%：横向抖动时不会在图框边缘漏出底色 */
-@keyframes home-blinds-glitch-shift {
-	0%,
-	100% {
-		transform: scale(1.01) translateX(0);
-		filter: none;
-	}
-	6% {
-		transform: scale(1.01) translateX(-0.5%);
-		filter: saturate(1.5) contrast(1.12) hue-rotate(-8deg);
-	}
-	12% {
-		transform: scale(1.01) translateX(0.4%);
-		filter: saturate(0.72) contrast(1.2) hue-rotate(10deg);
-	}
-	17% {
-		transform: scale(1.01) translateX(0);
-		filter: none;
-	}
-	46% {
-		transform: scale(1.01) translateX(0.3%);
-		filter: contrast(1.18) saturate(1.35);
-	}
-	52% {
-		transform: scale(1.01) translateX(-0.25%);
-		filter: none;
-	}
-}
-
-@keyframes home-blinds-glitch-pixel {
-	0%,
-	100% {
-		filter: none;
-	}
-	8% {
-		filter: opacity(0.24);
-	}
-	14% {
-		filter: none;
-	}
-	48% {
-		filter: opacity(0.55);
-	}
-	54% {
-		filter: none;
-	}
-}
-
-/* 空心方块 + 对角叉，参考图里的像素占位标记 */
-.home-blinds-scene__pixel[data-pixel-kind="cross"] {
-	box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.52);
-	background-image: linear-gradient(
-			45deg,
-			transparent calc(50% - 1px),
-			rgb(255 255 255 / 0.46) calc(50% - 1px) calc(50% + 1px),
-			transparent calc(50% + 1px)
-		),
-		linear-gradient(
-			-45deg,
-			transparent calc(50% - 1px),
-			rgb(255 255 255 / 0.46) calc(50% - 1px) calc(50% + 1px),
-			transparent calc(50% + 1px)
-		);
-}
-
-/* 稀疏几格换成带对角叉的空心方块，贴近参考图里的像素占位标记 */
-.home-blinds-scene__pixel:nth-child(7n + 2) {
-	background: transparent;
-	background-image: linear-gradient(
-			45deg,
-			transparent 45%,
-			rgb(255 255 255 / 0.3) 45% 55%,
-			transparent 55%
-		),
-		linear-gradient(
-			-45deg,
-			transparent 45%,
-			rgb(255 255 255 / 0.3) 45% 55%,
-			transparent 55%
-		);
-	box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.3);
-}
-
-.home-blinds-scene__pixel:nth-child(11n + 5) {
-	background: rgb(255 255 255 / 0.34);
 }
 
 /* ---------- 底部立牌（保持原有皮影戏效果） ---------- */
