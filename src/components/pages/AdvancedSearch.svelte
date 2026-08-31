@@ -114,17 +114,21 @@ const handleInput = () => {
 <div class="card-base px-6 py-6 md:px-9 md:py-6 mb-4 rounded-(--radius-large)">
     <!-- Title Section -->
     <div class="mb-4">
+        <!-- 结构与 PageTitle.astro 保持一致：SVG 双层标题 + 右侧渐变线 + 引号介绍 -->
         <div class="page-title page-title--stacked">
             <div class="page-title__body">
                 <span class="page-title__eyebrow">Search</span>
-                <h1 class="page-title__text">{title}</h1>
+                <h1 class="page-title__text">
+                    <span class="page-title__measure" aria-hidden="true">{title}</span>
+                    <svg class="page-title__svg" aria-hidden="true" focusable="false">
+                        <text class="page-title__ink" x="0" y="0" dominant-baseline="text-before-edge">{title}</text>
+                        <text class="page-title__solid" x="0" y="0" dominant-baseline="text-before-edge">{title}</text>
+                    </svg>
+                    <span class="sr-only">{title}</span>
+                </h1>
+                <p class="page-title__desc">{i18n(I18nKey.searchMotto)}</p>
             </div>
         </div>
-        {#if description}
-            <p class="text-base text-50 leading-relaxed mt-3">
-                {description}
-            </p>
-        {/if}
     </div>
 
     <!-- Search Bar -->

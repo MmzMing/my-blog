@@ -10,7 +10,9 @@ import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import QRCode from "qrcode";
+import PostHeaderNav from "@/components/misc/PostHeaderNav.astro";
 import "@/styles/components/post-hero.css";
+import "@/styles/components/post-header-nav.css";
 import { getSortedPosts } from "@utils/content-utils";
 import {
 	getCategoryUrl,
@@ -236,6 +238,8 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
   <!-- Layer 1: Title + meta -->
   <div class="post-hero rounded-(--radius-large) mb-2 onload-animation">
     <div class="post-hero__content">
+      <PostHeaderNav category={entry.data.category || undefined} />
+
       <h1
         data-pagefind-body
         data-pagefind-weight="10"

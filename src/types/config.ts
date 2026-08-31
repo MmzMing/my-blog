@@ -83,9 +83,6 @@ export type SiteConfig = {
 		collections: boolean; // 收藏API页面开关
 	};
 
-	// 分类导航栏开关
-	categoryBar?: boolean;
-
 	// 分页配置
 	pagination: {
 		postsPerPage: number; // 每页显示的文章数量

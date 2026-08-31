@@ -171,9 +171,6 @@ export const siteConfig: SiteConfig = {
 		collections: true,
 	},
 
-	// 分类导航栏开关，在首页和归档页顶部显示分类快捷导航
-	categoryBar: true,
-
 	// 分页配置
 	pagination: {
 		// 每页显示的文章数量

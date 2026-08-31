@@ -13,7 +13,7 @@ if (!siteConfig.pages.collections) {
 
 const title = collectionsApiConfig.title || i18n(I18nKey.collections);
 const description =
-	collectionsApiConfig.description || i18n(I18nKey.collectionsDescription);
+	collectionsApiConfig.description || i18n(I18nKey.collectionsMotto);
 
 // 按 category 分组，过滤掉禁用的项和空分组
 const enabledGroups = collectionsApiConfig.apis
@@ -36,7 +36,12 @@ const enabledApisCount = enabledGroups.reduce(
     <div class="card-base z-10 px-9 py-6 relative w-full">
       <!-- 页面标题 -->
       <div class="mb-8">
-        <PageTitle title={title} variant="stacked" />
+        <PageTitle
+          title={title}
+          eyebrow="Collections"
+          description={i18n(I18nKey.collectionsMotto)}
+          variant="stacked"
+        />
       </div>
 
       <!-- 手风琴分类列表 -->

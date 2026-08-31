@@ -8,7 +8,6 @@
 @import './layout/navbar-new.css';
 @import './layout/nav-menu-panel.css';
 @import './layout/dropdown-menu.css';
-@import './layout/category-bar.css';
 
 /* === 组件层 === */
 /* 页面专属样式不在这里引入（guestbook-chat / about-* / pages/*.css / widgets/archive-stats.css），

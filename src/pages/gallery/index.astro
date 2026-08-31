@@ -14,7 +14,7 @@ if (!siteConfig.pages.gallery) {
 }
 
 const title = i18n(I18nKey.gallery);
-const description = i18n(I18nKey.galleryDescription);
+const description = i18n(I18nKey.galleryMotto);
 
 const albums = await Promise.all(
 	galleryConfig.albums.map(async (album) => {
@@ -35,7 +35,12 @@ const galleryTabs = [
   <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32">
     <div class="card-base z-10 px-9 py-6 relative w-full">
       <div class="mb-8">
-        <PageTitle title={title} variant="stacked" />
+        <PageTitle
+          title={title}
+          eyebrow="Gallery"
+          description={i18n(I18nKey.galleryMotto)}
+          variant="stacked"
+        />
       </div>
 
       {albums.length > 0 ? (

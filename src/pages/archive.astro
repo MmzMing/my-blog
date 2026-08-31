@@ -11,7 +11,7 @@ import "@/styles/widgets/archive-stats.css";
 
 const sortedPostsList = await getSortedPostsList();
 const title = i18n(I18nKey.archive);
-const description = i18n(I18nKey.archiveDescription);
+const description = i18n(I18nKey.archiveMotto);
 const archiveStatsConfig = siteConfig.archiveStats;
 const timezone = siteConfig.timezone ?? "UTC";
 const yearMonthFormatter = new Intl.DateTimeFormat("en-US", {
@@ -53,6 +53,8 @@ const archivePostSummaries = sortedPostsList.map((post) => ({
       <div class="mb-6">
         <PageTitle
           title={title}
+          eyebrow="Archive"
+          description={i18n(I18nKey.archiveMotto)}
           variant="stacked"
         />
       </div>

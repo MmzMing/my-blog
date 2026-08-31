@@ -132,7 +132,7 @@ const [pinnedPosts, regularPosts] = await Promise.all([
 	),
 ]);
 const baseTitle = i18n(I18nKey.postList);
-const baseDescription = i18n(I18nKey.listDescription);
+const baseDescription = i18n(I18nKey.postsMotto);
 const pageStatus = i18n(I18nKey.paginationStatus)
 	.replace("{current}", String(resolvedPage))
 	.replace("{total}", String(totalPages));
@@ -153,7 +153,12 @@ const umamiPageviews = {
 <MainGridLayout title={title} description={description} hasOwnH1={true}>
 	<section class="article-list-page z-10 px-4 py-6 md:px-9 relative w-full">
 		<header class="article-list-page__header">
-			<PageTitle title={baseTitle} variant="stacked" />
+			<PageTitle
+				title={baseTitle}
+				eyebrow="Posts"
+				description={i18n(I18nKey.postsMotto)}
+				variant="stacked"
+			/>
 		</header>
 
 		<ArticleList

@@ -49,7 +49,6 @@ body:has(.graph-page) {
    隐藏它们会让用户在全屏页里无处可去（音乐页隐藏是因为要做沉浸式 3D）。 */
 html:has(.graph-page) #left-sidebar-dynamic,
 html:has(.graph-page) #right-sidebar-dynamic,
-html:has(.graph-page) #category-bar-wrapper,
 html:has(.graph-page) #progress-bar,
 html:has(.graph-page) .footer,
 html:has(.graph-page) #live2d-widget,

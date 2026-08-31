@@ -1,0 +1,218 @@
+/* 文章标题上一层的导航行 — PostHeaderNav.astro
+   左返回、右分类下拉。纯黑白：只用 --deep-text / --content-meta /
+   --line-divider / --float-panel-bg，不引主色。悬停走前景背景反色，
+   亮暗主题各自成立（--deep-text 与 --float-panel-bg 天然互为反色）。 */
+
+.post-nav {
+	display: flex;
+	gap: 0.75rem;
+	align-items: center;
+	justify-content: space-between;
+	/* 两侧各留一道缝，别真的贴到卡片边上 —— 想更宽/更窄就调这一个值 */
+	--post-nav-edge-gap: 0.75rem;
+	/* 反向外扩抵掉 hero 的左右内边距（只抵到留缝为止），让两颗按钮比正文更靠外。
+	   父级是 align-items:center 的列 flex，得靠 align-self 才撑满宽度 */
+	align-self: stretch;
+	margin-inline: calc(
+		(var(--post-hero-inline-pad, 1.25rem) - var(--post-nav-edge-gap)) * -1
+	);
+	margin-bottom: 1rem;
+	/* post-hero__content 是居中布局，这一行要自己拉回左对齐 */
+	text-align: start;
+}
+
+/* 返回键与下拉触发键共用胶囊外形 */
+.post-nav__back,
+.post-nav__trigger {
+	display: inline-flex;
+	gap: 0.375rem;
+	align-items: center;
+	max-width: 100%;
+	min-width: 0;
+	padding: 0.375rem 0.75rem;
+	border: 1px solid var(--line-divider);
+	/* 方块圆角，不是胶囊 */
+	border-radius: var(--radius-medium, 0.5rem);
+	background: transparent;
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+	font-weight: 600;
+	line-height: 1.25;
+	white-space: nowrap;
+	cursor: pointer;
+	transition:
+		background-color 160ms ease-out,
+		border-color 160ms ease-out,
+		color 160ms ease-out;
+}
+
+/* 反色态：亮色主题黑底白字，暗色主题自动反过来。
+   注意不能用 --card-bg —— 它两个主题下都是 transparent */
+.post-nav__back:hover,
+.post-nav__trigger:hover,
+.post-nav__category.is-open .post-nav__trigger {
+	border-color: var(--deep-text);
+	background: var(--deep-text);
+	color: var(--float-panel-bg);
+}
+
+.post-nav__back:focus-visible,
+.post-nav__trigger:focus-visible {
+	outline: 2px solid var(--deep-text);
+	outline-offset: 2px;
+}
+
+.post-nav__icon {
+	width: 1rem;
+	height: 1rem;
+	flex: none;
+	fill: currentColor;
+}
+
+.post-nav__arrow {
+	transition: rotate 200ms ease-out;
+}
+
+.post-nav__category.is-open .post-nav__arrow {
+	rotate: 180deg;
+}
+
+/* ===== 分类下拉 ===== */
+
+.post-nav__category {
+	position: relative;
+	min-width: 0;
+}
+
+.post-nav__current {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* 同顶部导航栏下拉（dropdown-menu.css 的 .dropdown-content-wrapper）：
+   1.5px --deep-text 实边框 + 纯背景 + 不要阴影 + 边框外一个 45° 小角 */
+.post-nav__menu {
+	width: max-content;
+	min-width: 100%;
+	max-width: min(18rem, calc(100vw - 2.5rem));
+	position: absolute;
+	z-index: 40;
+	/* 比原来多让 0.25rem，给小角留出高度 */
+	top: calc(100% + 0.6rem);
+	right: 0;
+	padding: 0.5rem;
+	border: 1.5px solid var(--deep-text);
+	border-radius: 0.75rem;
+	background: var(--float-panel-bg);
+	box-shadow: none;
+	color: var(--deep-text);
+	/* 收起态：visibility 参与过渡（离散属性，淡出走完才切 hidden），
+	   顺带把菜单项从焦点顺序里摘掉，不用额外管 inert */
+	visibility: hidden;
+	opacity: 0;
+	transform: translateY(-0.5rem);
+	transition:
+		opacity 200ms ease-out,
+		transform 200ms ease-out,
+		visibility 200ms;
+}
+
+/* 小角靠右对齐到触发键下方（菜单是右对齐的）。自带背景盖住菜单自身的上边框，
+   接缝看不出来 —— 和导航栏那颗角一个做法 */
+.post-nav__menu::before {
+	width: 0.75rem;
+	height: 0.75rem;
+	position: absolute;
+	top: -0.45rem;
+	right: 1.25rem;
+	border-top: 1.5px solid var(--deep-text);
+	border-left: 1.5px solid var(--deep-text);
+	background: var(--float-panel-bg);
+	content: "";
+	rotate: 45deg;
+}
+
+/* 分类多时在内层滚，外层不能开 overflow，否则小角被裁掉 */
+.post-nav__menu-scroll {
+	max-height: 17rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.post-nav__category.is-open .post-nav__menu {
+	visibility: visible;
+	opacity: 1;
+	transform: none;
+}
+
+.post-nav__item {
+	display: flex;
+	gap: 0.625rem;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.375rem 0.625rem;
+	border-radius: var(--radius-small, 0.375rem);
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+	text-decoration: none;
+	transition: background-color 140ms ease-out;
+}
+
+.post-nav__item:hover {
+	background: var(--btn-plain-bg-hover);
+}
+
+.post-nav__item:focus-visible {
+	outline: 2px solid var(--deep-text);
+	outline-offset: -2px;
+}
+
+/* 当前分类：同样用反色，和触发键的选中态呼应 */
+.post-nav__item.is-active {
+	background: var(--deep-text);
+	color: var(--float-panel-bg);
+	font-weight: 700;
+}
+
+.post-nav__item-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.post-nav__item-count {
+	flex: none;
+	color: var(--content-meta);
+	font-size: 0.6875rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.post-nav__item.is-active .post-nav__item-count {
+	color: inherit;
+	opacity: 0.72;
+}
+
+@media (max-width: 768px) {
+	.post-nav {
+		margin-bottom: 0.75rem;
+	}
+
+	/* 窄屏给分类名留够省略空间，别把返回键挤没 */
+	.post-nav__current {
+		max-width: 7.5rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.post-nav__back,
+	.post-nav__trigger,
+	.post-nav__arrow,
+	.post-nav__menu,
+	.post-nav__item {
+		transition: none;
+	}
+}

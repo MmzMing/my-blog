@@ -15,7 +15,7 @@ if (!siteConfig.pages.sponsor) {
 
 const title = sponsorConfig.title || i18n(I18nKey.sponsorTitle);
 const description =
-	sponsorConfig.description || i18n(I18nKey.sponsorDescription);
+	sponsorConfig.description || i18n(I18nKey.sponsorMotto);
 const enabledMethods = sponsorConfig.methods.filter((method) => method.enabled);
 const sponsors = sponsorConfig.sponsors || [];
 const showSponsorsList = sponsorConfig.showSponsorsList !== false;
@@ -43,7 +43,12 @@ const formattedSponsorTotal = new Intl.NumberFormat("zh-CN", {
     <div class="card-base z-10 px-9 py-6 relative w-full">
       <!-- 页面标题和描述 -->
       <div class="mb-8">
-        <PageTitle title={title} variant="stacked" />
+        <PageTitle
+          title={title}
+          eyebrow="Sponsor"
+          description={i18n(I18nKey.sponsorMotto)}
+          variant="stacked"
+        />
         {sponsorConfig.usage && (
           <div class="mb-8 p-4 rounded-lg bg-(--primary)/8 dark:bg-(--btn-regular-bg) border border-(--primary)/30 dark:border-none backdrop-blur-xs shadow-xs usage-info-box">
             <div class="flex items-start gap-2">

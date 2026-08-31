@@ -4,16 +4,20 @@
 }
 
 .post-hero__content {
+  /* 左右内边距抽成变量：标题上方的导航行要靠它反向外扩贴到两边
+     （post-header-nav.css），避免两处各写一份数字 */
+  --post-hero-inline-pad: 1.25rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 1.25rem 1.25rem 0.5rem;
+  padding: var(--post-hero-inline-pad) var(--post-hero-inline-pad) 0.5rem;
 }
 
 @media (min-width: 768px) {
   .post-hero__content {
-    padding: 2rem 2rem 0.75rem;
+    --post-hero-inline-pad: 2rem;
+    padding: var(--post-hero-inline-pad) var(--post-hero-inline-pad) 0.75rem;
   }
 }
 

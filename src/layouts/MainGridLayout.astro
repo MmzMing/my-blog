@@ -5,7 +5,6 @@ import ArticleOutlineRail from "@components/layout/ArticleOutlineRail.astro";
 import Footer from "@components/layout/Footer.astro";
 import Navbar from "@components/layout/Navbar.astro";
 import NavMenuPanel from "@components/layout/NavMenuPanel.astro";
-import CategoryBar from "@/components/layout/CategoryBar.astro";
 
 import {
 	live2dModelConfig,
@@ -61,7 +60,6 @@ const {
 } = Astro.props;
 
 const isPostPage = !!postSlug;
-const shouldRenderCategoryBar = !!siteConfig.categoryBar;
 const navbarWidthFull = siteConfig.navbar.widthFull ?? false;
 
 const navLinks = navBarConfig.links.map((item) => {
@@ -95,7 +93,6 @@ const navLinks = navBarConfig.links.map((item) => {
 
 			<main id="swup-container" class="transition-swup-main" data-current-post-category={postCategory || ""}>
 				{isPostPage && <ArticleOutlineRail />}
-				{shouldRenderCategoryBar && <div id="category-bar-wrapper"><CategoryBar title={title} postSlug={postSlug} postCategory={postCategory} /></div>}
 				{/* 页面组件有自己的 H1 时不再输出布局兜底标题，确保每页只有一个 H1。 */}
 				{!isPostPage && !hasOwnH1 && <h1 class="sr-only">{title}</h1>}
 

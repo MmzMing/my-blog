@@ -69,7 +69,6 @@ body:has(.music-visualizer-page) {
 
 html:has(.music-visualizer-page) #left-sidebar-dynamic,
 html:has(.music-visualizer-page) #right-sidebar-dynamic,
-html:has(.music-visualizer-page) #category-bar-wrapper,
 html:has(.music-visualizer-page) #floating-dock,
 html:has(.music-visualizer-page) #live2d-widget,
 html:has(.music-visualizer-page) #spine-model-container,

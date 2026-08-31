@@ -3,21 +3,29 @@ import Icon from "@/components/common/Icon.astro";
 
 interface Props {
 	title: string;
-	icon?: string;
+	/** 标题上方的英文小标题 */
 	eyebrow?: string;
+	/** 标题下方的介绍，渲染时自动加弯引号 */
+	description?: string;
+	icon?: string;
 	variant?: "compact" | "stacked";
 	class?: string;
 }
 
 const {
 	title,
-	icon,
 	eyebrow,
+	description,
+	icon,
 	variant = "compact",
 	class: className,
 } = Astro.props;
 ---
 
+{/* 标题用 SVG <text> 双层绘制：描边层跑 stroke-dashoffset 做签写动效，
+    实心层随后淡入。SVG 无法按文字内容自动定宽，所以用一个同字号的隐藏
+    span 撑出盒子、SVG 绝对定位铺满，右侧渐变线才能紧接文字末尾。
+    可见层全部 aria-hidden，读屏只念 sr-only 那一份，避免重复播报 */}
 <div class:list={["page-title", `page-title--${variant}`, className]}>
 	{variant === "compact" && icon && (
 		<span class="page-title__icon" aria-hidden="true">
@@ -26,6 +34,23 @@ const {
 	)}
 	<div class="page-title__body">
 		{eyebrow && <span class="page-title__eyebrow">{eyebrow}</span>}
-		<h1 class="page-title__text">{title}</h1>
+
+		<h1 class="page-title__text">
+			<span class="page-title__measure" aria-hidden="true" data-pagefind-ignore>{title}</span>
+			<svg
+				class="page-title__svg"
+				aria-hidden="true"
+				focusable="false"
+				data-pagefind-ignore
+			>
+				<text class="page-title__ink" x="0" y="0" dominant-baseline="text-before-edge">{title}</text>
+				<text class="page-title__solid" x="0" y="0" dominant-baseline="text-before-edge">{title}</text>
+			</svg>
+			<span class="sr-only">{title}</span>
+		</h1>
+
+		{description && (
+			<p class="page-title__desc">{description}</p>
+		)}
 	</div>
 </div>

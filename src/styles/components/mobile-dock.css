@@ -15,6 +15,9 @@
 		--mobile-dock-motion: cubic-bezier(0.22, 1, 0.36, 1);
 		--mobile-dock-content-top-padding: 0.75rem;
 		--mobile-dock-surface: #e7e7e7;
+		/* 左侧留白，别贴到视窗边上 —— 胶囊态和展开卡片共用，
+		   想让 dock 更长/更短就调这一个值 */
+		--mobile-dock-inset-left: 2rem;
 		position: fixed;
 		right: var(--mobile-dock-edge);
 		bottom: var(--mobile-dock-bottom);
@@ -22,7 +25,12 @@
 		display: flex;
 		flex-direction: column-reverse;
 		align-items: stretch;
-		width: min(calc(100vw - 1.5rem), 28rem);
+		/* 铺满可用宽度。原来的 28rem 上限会让 dock 在 472px 以上的视窗里右贴边、
+		   左边空出一大段。左侧取留白与安全区的较大值，横屏有刘海也不会被挤偏 */
+		width: calc(
+			100vw - var(--mobile-dock-edge) -
+				max(var(--mobile-dock-inset-left), env(safe-area-inset-left, 0px))
+		);
 		max-width: calc(100vw - 1.5rem);
 		max-height: 70dvh;
 		color: var(--deep-text);
@@ -54,6 +62,7 @@
 		border-radius: 50%;
 	}
 
+	/* 宽度沿用基础规则（铺满 - 左右留白），这里只定形状 */
 	.mobile-dock[data-shape="pill"] {
 		border-radius: 1.825rem;
 	}

@@ -8,10 +8,6 @@
 	margin-left: calc(50% - 50vw);
 }
 
-html:has(.guestbook-page) #category-bar-wrapper {
-	display: none;
-}
-
 .guestbook-page .guestbook-chat {
 	width: min(100%, var(--guestbook-chat-max-width));
 	height: 100%;

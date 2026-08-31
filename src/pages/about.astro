@@ -9,7 +9,6 @@ import "@/styles/components/about-profile-card.css";
 import "@/styles/components/about-social-links.css";
 import "@/styles/components/about-tech-stack.css";
 import "@/styles/components/about-timeline.css";
-import { homeConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
@@ -22,11 +21,16 @@ if (!aboutPost) {
 const { Content } = await render(aboutPost);
 ---
 
-<MainGridLayout title={i18n(I18nKey.about)} description={i18n(I18nKey.aboutDescription).replace("{name}", homeConfig.name)} hasOwnH1={true}>
+<MainGridLayout title={i18n(I18nKey.about)} description={i18n(I18nKey.aboutMotto)} hasOwnH1={true}>
 	<SiteStructuredData slot="head" includeProfilePage={true} />
 	<div class="about-page card-base z-10 px-4 py-6 md:px-9 relative w-full">
 		<div class="mb-6">
-			<PageTitle title={i18n(I18nKey.about)} variant="stacked" />
+			<PageTitle
+				title={i18n(I18nKey.about)}
+				eyebrow="About"
+				description={i18n(I18nKey.aboutMotto)}
+				variant="stacked"
+			/>
 		</div>
 		<Markdown class="mb-6 markdown-content onload-animation">
 			<Content />
