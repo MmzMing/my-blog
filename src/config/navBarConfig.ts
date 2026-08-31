@@ -15,11 +15,11 @@ import { siteConfig } from "./siteConfig";
  * - 先依次构建各导航项，再统一组装到 links 数组
  */
 const buildNavBarConfig = (): NavBarConfig => {
-	// 1. 构建文章下拉菜单
+	// 1. 构建文章下拉菜单（子项顺序：文档 → 归档 → 图谱）
 	const postsNav: NavBarLink = {
 		...LinkPresets[LinkPreset.NavPosts],
 		activePathPrefixes: ["/posts/"],
-		children: [LinkPreset.Archive, LinkPreset.Categories, LinkPreset.PostList],
+		children: [LinkPreset.PostList, LinkPreset.Archive, LinkPreset.Categories],
 	};
 
 	// 2. 构建联系我下拉菜单

@@ -1,10 +1,16 @@
-import { type CollectionEntry, getCollection } from "astro:content";
+import { type CollectionEntry, getCollection, render } from "astro:content";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { buildTagGraphData, type TagGraphData } from "@utils/tag-graph-data";
+import {
+	buildKnowledgeGraphData,
+	type KGData,
+} from "@utils/knowledge-graph-data";
 import { getCategoryUrl, getPostUrlBySlug, getTagUrl } from "@utils/url-utils";
+import type { MarkdownHeading } from "astro";
+import { siteConfig } from "@/config";
 
 let cachedPosts: CollectionEntry<"posts">[] | null = null;
+let cachedHeadings: Map<string, MarkdownHeading[]> | null = null;
 
 async function getAllPosts(): Promise<CollectionEntry<"posts">[]> {
 	if (cachedPosts) return cachedPosts;
@@ -86,24 +92,68 @@ export async function getTagList(): Promise<Tag[]> {
 	return keys.map((key) => ({ name: key, count: countMap[key] }));
 }
 
-export async function getTagGraphData(): Promise<TagGraphData> {
-	const allBlogPosts = await getAllPosts();
-	const graph = buildTagGraphData(
-		allBlogPosts.map((post) => ({
+/**
+ * 提取全部文章的标题，按 collection id 索引。
+ *
+ * 必须走 `render(entry)` 而不是正则扫 `entry.body`：slug 由 rehype-slug 在同一条
+ * rehype 链上生成，只有这样锚点才和文章页 DOM 里的 id 逐字一致。自己用
+ * github-slugger 复算会在去重后缀（`-1`/`-2`）、标题内 inline code、KaTeX 上漂移，
+ * 产出跳不到位置的深链。
+ *
+ * 串行而非 Promise.all —— render 会跑完整 markdown 链（KaTeX / mermaid /
+ * plantuml / expressive-code），并发会把子进程打满。
+ */
+export async function getAllPostHeadings(): Promise<
+	Map<string, MarkdownHeading[]>
+> {
+	if (cachedHeadings) return cachedHeadings;
+
+	const posts = await getAllPosts();
+	const startedAt = performance.now();
+	const headingMap = new Map<string, MarkdownHeading[]>();
+
+	for (const post of posts) {
+		const { headings } = await render(post);
+		headingMap.set(post.id, headings);
+	}
+
+	// 构建期一次性日志：render() 走全 markdown 链，耗时需要可观测
+	console.info(
+		`[knowledge-graph] 提取 ${posts.length} 篇文章标题耗时 ${Math.round(
+			performance.now() - startedAt,
+		)}ms`,
+	);
+
+	cachedHeadings = headingMap;
+	return headingMap;
+}
+
+/** 四层知识图谱数据：分类 → 标签 → 文章 → H2 小标题 */
+export async function getKnowledgeGraphData(): Promise<KGData> {
+	const posts = await getAllPosts();
+	const headingMap = await getAllPostHeadings();
+
+	return buildKnowledgeGraphData(
+		posts.map((post) => ({
+			id: post.id,
 			title: post.data.title,
 			url: getPostUrlBySlug(post.id),
 			published: post.data.published,
+			category: post.data.category,
 			tags: post.data.tags,
+			headings: (headingMap.get(post.id) ?? []).map((heading) => ({
+				depth: heading.depth,
+				slug: heading.slug,
+				text: heading.text,
+			})),
 		})),
+		{
+			uncategorizedName: i18n(I18nKey.uncategorized),
+			categoryUrl: getCategoryUrl,
+			tagUrl: getTagUrl,
+			siteStartDate: siteConfig.siteStartDate,
+		},
 	);
-
-	return {
-		...graph,
-		nodes: graph.nodes.map((node) => ({
-			...node,
-			url: getTagUrl(node.name),
-		})),
-	};
 }
 
 export type Category = {

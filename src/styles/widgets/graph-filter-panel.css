@@ -1,0 +1,346 @@
+/* 右上角悬浮控制面板：顶部固定一层（标题 + 工具 + 统计），主体是工具导航页
+   （collections.css tools-accordion）同款堆叠手风琴。分区折叠用 data-open +
+   grid-template-rows 过渡（合成层友好，零 height 测量），交互由
+   KnowledgeGraph.astro 单点委托。 */
+
+.graph-panel {
+	width: var(--kg-panel-width, 19rem);
+	max-height: calc(100% - var(--kg-top-inset, 4.75rem) - 6rem);
+	display: flex;
+	flex-direction: column;
+	position: absolute;
+	z-index: 28;
+	top: var(--kg-top-inset, 4.75rem);
+	right: 1rem;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-large, 0.75rem);
+	background: color-mix(in srgb, var(--float-panel-bg) 94%, transparent);
+	box-shadow: 0 0.5rem 1.75rem rgb(0 0 0 / 0.12);
+	backdrop-filter: blur(10px);
+}
+
+/* ===== 顶部固定层：标题 + 工具 + 统计，随 body 滚动保持可见 ===== */
+
+.graph-panel__top {
+	border-bottom: 1px solid var(--line-divider);
+}
+
+.graph-panel__head {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.625rem 0.75rem;
+}
+
+.graph-panel__title {
+	color: var(--deep-text);
+	font-size: 0.875rem;
+	font-weight: 800;
+}
+
+.graph-panel__tools {
+	display: flex;
+	gap: 0.125rem;
+	align-items: center;
+}
+
+.graph-panel__tool {
+	width: 1.5rem;
+	height: 1.5rem;
+	display: grid;
+	flex: none;
+	place-items: center;
+	border-radius: var(--radius-small, 0.375rem);
+	color: var(--content-meta);
+	transition: background-color 160ms ease-out;
+}
+
+.graph-panel__tool:hover {
+	background: var(--navbar-highlight-bg);
+	color: var(--navbar-highlight-text);
+}
+
+.graph-panel__tool svg {
+	width: 1.125rem;
+	height: 1.125rem;
+	fill: currentColor;
+}
+
+.graph-panel__stats {
+	padding: 0 0.75rem 0.5rem;
+	color: var(--content-meta);
+	font-size: 0.6875rem;
+	font-variant-numeric: tabular-nums;
+}
+
+/* ===== 堆叠手风琴：四层分区，间以细横线分隔（同工具导航页） ===== */
+
+.graph-panel__body {
+	overflow-y: auto;
+	padding: 0 0.75rem 0.375rem;
+	overscroll-behavior: contain;
+}
+
+.graph-accordion + .graph-accordion {
+	border-top: 1px solid var(--line-divider);
+}
+
+.graph-accordion__head {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	width: 100%;
+	padding: 0.625rem 0;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	text-align: start;
+}
+
+.graph-accordion__head:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+	border-radius: var(--radius-small, 0.375rem);
+}
+
+/* 左侧胶囊竖条：悬停时轻微伸长（同 tools-accordion-title-wrap::before） */
+.graph-accordion__bar {
+	width: 4px;
+	align-self: stretch;
+	flex: none;
+	border-radius: 999px;
+	background: var(--primary);
+	transition: transform 180ms ease;
+}
+
+.graph-accordion__head:hover .graph-accordion__bar,
+.graph-accordion__head:focus-visible .graph-accordion__bar {
+	transform: scaleY(1.12);
+}
+
+.graph-accordion__title {
+	flex: 1;
+	overflow: hidden;
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.graph-accordion__arrow {
+	width: 1rem;
+	height: 1rem;
+	flex: none;
+	fill: var(--content-meta);
+	transition: rotate 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.graph-accordion__head:hover .graph-accordion__arrow {
+	fill: var(--deep-text);
+}
+
+.graph-accordion[data-open] .graph-accordion__arrow {
+	rotate: 180deg;
+}
+
+/* 展开/收起：grid-template-rows 过渡（同 tools-accordion-body） */
+.graph-accordion__body {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.graph-accordion[data-open] .graph-accordion__body {
+	grid-template-rows: 1fr;
+}
+
+.graph-accordion__inner {
+	overflow: hidden;
+	min-height: 0;
+}
+
+/* padding 落在 inner 的子层：inner 自身带 padding 时 0fr 折叠不干净 */
+.graph-panel__fields {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 0.125rem 0 0.75rem;
+}
+
+/* ===== 分区内容 ===== */
+
+/* 筛选 / 分类选项改网格排布 */
+.graph-panel__grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.3125rem;
+}
+
+.graph-panel__search input {
+	width: 100%;
+	padding: 0.375rem 0.5rem;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-small, 0.375rem);
+	background: transparent;
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+}
+
+.graph-panel__search input::placeholder {
+	color: var(--content-meta);
+}
+
+.graph-panel__range {
+	display: flex;
+	gap: 0.4375rem;
+	align-items: center;
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+	cursor: pointer;
+}
+
+.graph-panel__range input[type="range"] {
+	flex: 1;
+	min-width: 0;
+	accent-color: var(--primary);
+}
+
+.graph-panel__range output {
+	min-width: 1.25rem;
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+}
+
+/* 勾选项做成按钮芯片：整体黑白配色，选中态才上色。
+   原生 checkbox 视觉隐藏但保留在焦点顺序里，状态切换仍走它 */
+.graph-panel__check {
+	position: relative;
+	display: flex;
+	gap: 0.4375rem;
+	align-items: center;
+	padding: 0.3125rem 0.5rem;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-small, 0.375rem);
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+	cursor: pointer;
+	transition:
+		border-color 160ms ease-out,
+		background-color 160ms ease-out;
+}
+
+.graph-panel__check:hover {
+	background: var(--btn-regular-bg-hover);
+}
+
+.graph-panel__check input[type="checkbox"] {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.graph-panel__check:has(input:checked) {
+	border-color: var(--graph-chip-checked);
+	background: color-mix(in srgb, var(--graph-chip-checked) 9%, transparent);
+}
+
+.graph-panel__check:has(input:focus-visible) {
+	box-shadow: 0 0 0 2px
+		color-mix(in srgb, var(--graph-chip-checked) 55%, transparent);
+}
+
+.graph-panel__check-label {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.graph-panel__count {
+	color: var(--content-meta);
+	font-size: 0.6875rem;
+	font-variant-numeric: tabular-nums;
+}
+
+/* 分类色点：与画布节点同一套 token，保证图例与图形一致 */
+.graph-panel__dot {
+	width: 0.5rem;
+	height: 0.5rem;
+	flex: none;
+	border-radius: 50%;
+	background: var(--graph-panel-accent, var(--tag-graph-muted));
+}
+
+.graph-panel__check[data-color-index="0"] { --graph-panel-accent: var(--tag-graph-node-1); }
+.graph-panel__check[data-color-index="1"] { --graph-panel-accent: var(--tag-graph-node-2); }
+.graph-panel__check[data-color-index="2"] { --graph-panel-accent: var(--tag-graph-node-3); }
+.graph-panel__check[data-color-index="3"] { --graph-panel-accent: var(--tag-graph-node-4); }
+.graph-panel__check[data-color-index="4"] { --graph-panel-accent: var(--tag-graph-node-5); }
+.graph-panel__check[data-color-index="5"] { --graph-panel-accent: var(--tag-graph-node-6); }
+.graph-panel__check[data-color-index="6"] { --graph-panel-accent: var(--tag-graph-node-7); }
+.graph-panel__check[data-color-index="7"] { --graph-panel-accent: var(--tag-graph-node-8); }
+
+/* 动画分区的播放/暂停按钮 */
+.graph-panel__play {
+	display: flex;
+	gap: 0.4375rem;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	padding: 0.4375rem 0.5rem;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-small, 0.375rem);
+	background: transparent;
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+	font-weight: 700;
+	cursor: pointer;
+	transition:
+		border-color 160ms ease-out,
+		background-color 160ms ease-out;
+}
+
+.graph-panel__play:hover {
+	background: var(--btn-regular-bg-hover);
+}
+
+.graph-panel__play svg {
+	width: 1rem;
+	height: 1rem;
+	flex: none;
+	fill: currentColor;
+}
+
+/* 移动端：定位交给底部抽屉容器（knowledge-graph.css）统一堆叠，
+   这里只保留尺寸约束。min-height:0 让面板被容器压缩时 body 内部滚动 */
+@media (max-width: 768px) {
+	.graph-panel {
+		position: static;
+		width: auto;
+		max-height: 55dvh;
+		min-height: 0;
+		flex: 0 1 auto;
+	}
+
+	.graph-panel__body {
+		max-height: none;
+		min-height: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.graph-panel__tool,
+	.graph-accordion__bar,
+	.graph-accordion__arrow,
+	.graph-accordion__body,
+	.graph-panel__check,
+	.graph-panel__play {
+		transition: none;
+	}
+}

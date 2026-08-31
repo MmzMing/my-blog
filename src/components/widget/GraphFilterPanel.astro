@@ -1,0 +1,192 @@
+---
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { KGMeta } from "@/utils/knowledge-graph-data";
+
+interface Props {
+	meta: KGMeta;
+}
+
+const { meta } = Astro.props;
+
+// 层级开关：标题层默认关 —— 179 个节点一上来就铺开会糊成一片
+const tiers = [
+	{
+		key: "category",
+		label: i18n(I18nKey.kgTierCategory),
+		count: meta.counts.category,
+		on: true,
+	},
+	{
+		key: "tag",
+		label: i18n(I18nKey.kgTierTag),
+		count: meta.counts.tag,
+		on: true,
+	},
+	{
+		key: "post",
+		label: i18n(I18nKey.kgTierPost),
+		count: meta.counts.post,
+		on: true,
+	},
+	{
+		key: "heading",
+		label: i18n(I18nKey.kgTierHeading),
+		count: meta.counts.heading,
+		on: false,
+	},
+];
+
+const maxPosts = Math.max(1, ...meta.categories.map((c) => c.postCount));
+const statsTemplate = i18n(I18nKey.kgStats);
+---
+
+{/* 悬浮在右上角。顶部固定一层（标题 + 工具 + 统计），主体按工具导航页
+    （collections.css tools-accordion）的堆叠手风琴拆成四层：筛选 / 分类选择 /
+    外观 / 动画。分区 data-open + grid-template-rows 过渡展开，交互由
+    KnowledgeGraph.astro 单点委托。控件全部构建期渲染，交互只切属性，零 DOM 创建
+    —— 与 CategoryExplorer.astro:100 记录的既有模式一致 */}
+<aside class="graph-panel" data-kg-panel aria-label={i18n(I18nKey.kgPanelTitle)}>
+  <div class="graph-panel__top">
+    <header class="graph-panel__head">
+      <h2 class="graph-panel__title">{i18n(I18nKey.kgPanelTitle)}</h2>
+      <div class="graph-panel__tools">
+        <button
+          type="button"
+          class="graph-panel__tool"
+          data-kg-action="reset-view"
+          title={i18n(I18nKey.kgResetView)}
+          aria-label={i18n(I18nKey.kgResetView)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+        </button>
+      </div>
+    </header>
+    <p class="graph-panel__stats" data-kg-stats data-template={statsTemplate}></p>
+  </div>
+
+  <div class="graph-panel__body">
+    {/* 筛选：搜索 + 层级网格，最少文章数压底 */}
+    <section class="graph-accordion" data-kg-accordion data-open>
+      <button
+        type="button"
+        class="graph-accordion__head"
+        data-kg-accordion-toggle
+        aria-expanded="true"
+      >
+        <span class="graph-accordion__bar" aria-hidden="true"></span>
+        <span class="graph-accordion__title">{i18n(I18nKey.kgSectionFilters)}</span>
+        <svg class="graph-accordion__arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="graph-accordion__body">
+        {/* padding 只能落在 inner 的子层：inner 自身带 padding 时 0fr 折叠不干净 */}
+        <div class="graph-accordion__inner">
+          <div class="graph-panel__fields">
+            <label class="graph-panel__search">
+              <input type="search" data-kg-filter="query" placeholder={i18n(I18nKey.kgSearch)} />
+            </label>
+            <div class="graph-panel__grid">
+              {tiers.map((tier) => (
+                <label class="graph-panel__check">
+                  <input type="checkbox" data-kg-tier={tier.key} checked={tier.on} />
+                  <span class="graph-panel__check-label">{tier.label}</span>
+                  <span class="graph-panel__count">{tier.count}</span>
+                </label>
+              ))}
+            </div>
+            <label class="graph-panel__range">
+              <span>{i18n(I18nKey.kgMinPosts)}</span>
+              <input type="range" data-kg-filter="minPosts" min="1" max={maxPosts} value="1" step="1" />
+              <output data-kg-out="minPosts">1</output>
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* 分类选择：带色点的分类勾选，图例与画布节点同色 */}
+    <section class="graph-accordion" data-kg-accordion data-open>
+      <button
+        type="button"
+        class="graph-accordion__head"
+        data-kg-accordion-toggle
+        aria-expanded="true"
+      >
+        <span class="graph-accordion__bar" aria-hidden="true"></span>
+        <span class="graph-accordion__title">{i18n(I18nKey.kgSectionGroups)}</span>
+        <svg class="graph-accordion__arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="graph-accordion__body">
+        <div class="graph-accordion__inner">
+          <div class="graph-panel__fields">
+            <div class="graph-panel__grid">
+              {meta.categories.map((category) => (
+                <label class="graph-panel__check" data-color-index={category.colorIndex}>
+                  <input type="checkbox" data-kg-category={category.id} checked />
+                  <span class="graph-panel__dot" aria-hidden="true"></span>
+                  <span class="graph-panel__check-label">{category.name}</span>
+                  <span class="graph-panel__count">{category.postCount}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* 外观：共现连线与粒子开关 */}
+    <section class="graph-accordion" data-kg-accordion>
+      <button
+        type="button"
+        class="graph-accordion__head"
+        data-kg-accordion-toggle
+        aria-expanded="false"
+      >
+        <span class="graph-accordion__bar" aria-hidden="true"></span>
+        <span class="graph-accordion__title">{i18n(I18nKey.kgSectionAppearance)}</span>
+        <svg class="graph-accordion__arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="graph-accordion__body">
+        <div class="graph-accordion__inner">
+          <div class="graph-panel__fields">
+            <div class="graph-panel__grid">
+              <label class="graph-panel__check">
+                <input type="checkbox" data-kg-filter="cooccurrence" />
+                <span class="graph-panel__check-label">{i18n(I18nKey.kgShowCooccurrence)}</span>
+              </label>
+              <label class="graph-panel__check">
+                <input type="checkbox" data-kg-filter="particles" checked />
+                <span class="graph-panel__check-label">{i18n(I18nKey.kgParticles)}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* 动画：播放/暂停（原视窗底部传输条移入面板） */}
+    <section class="graph-accordion" data-kg-accordion>
+      <button
+        type="button"
+        class="graph-accordion__head"
+        data-kg-accordion-toggle
+        aria-expanded="false"
+      >
+        <span class="graph-accordion__bar" aria-hidden="true"></span>
+        <span class="graph-accordion__title">{i18n(I18nKey.kgSectionAnimation)}</span>
+        <svg class="graph-accordion__arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="graph-accordion__body">
+        <div class="graph-accordion__inner">
+          <div class="graph-panel__fields">
+            <button type="button" class="graph-panel__play" data-kg-action="play" aria-label={i18n(I18nKey.kgPlay)}>
+              <svg class="graph-panel__play-icon" data-kg-icon="play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              <svg class="graph-panel__play-icon" data-kg-icon="pause" viewBox="0 0 24 24" aria-hidden="true" style="display: none;"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+              <span data-kg-play-label>{i18n(I18nKey.kgPlay)}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</aside>

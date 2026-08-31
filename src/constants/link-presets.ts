@@ -59,7 +59,7 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
 		icon: "material-symbols:bar-chart",
 	},
 	[LinkPreset.Categories]: {
-		name: "标签图谱",
+		name: "图谱",
 		url: "/categories/",
 		icon: "material-symbols:hub-outline",
 	},

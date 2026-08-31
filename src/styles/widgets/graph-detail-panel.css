@@ -1,0 +1,154 @@
+/* 左侧节点详情弹窗：kg:select 事件驱动显隐与内容填充。
+   顶部固定层（层级徽标 + 关闭 + 名称）用分割线与分组列表明显隔开；
+   分组复用右侧控制面板的堆叠手风琴类名（graph-accordion，定义在
+   graph-filter-panel.css，与本文件同页引入），胶囊竖条、折叠过渡、
+   分割线全部同款，折叠交互走 KnowledgeGraph.astro 既有的单点委托。 */
+
+.graph-detail {
+	width: min(22rem, calc(100% - 2rem));
+	max-height: calc(100% - var(--kg-top-inset, 4.75rem) - 6rem);
+	display: flex;
+	flex-direction: column;
+	position: absolute;
+	z-index: 28;
+	top: var(--kg-top-inset, 4.75rem);
+	left: 1rem;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-large, 0.75rem);
+	background: color-mix(in srgb, var(--float-panel-bg) 94%, transparent);
+	box-shadow: 0 0.5rem 1.75rem rgb(0 0 0 / 0.12);
+	backdrop-filter: blur(10px);
+}
+
+.graph-detail[hidden] {
+	display: none;
+}
+
+/* ===== 顶部固定层：层级徽标 + 关闭按钮 + 节点名称 ===== */
+
+.graph-detail__top {
+	padding: 0.5rem 0.875rem 0.625rem;
+	border-bottom: 1px solid var(--line-divider);
+}
+
+.graph-detail__head {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.graph-detail__tier {
+	color: var(--content-meta);
+	font-size: 0.6875rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.graph-detail__close {
+	width: 1.5rem;
+	height: 1.5rem;
+	display: grid;
+	flex: none;
+	place-items: center;
+	border: none;
+	border-radius: var(--radius-small, 0.375rem);
+	background: transparent;
+	color: var(--content-meta);
+	cursor: pointer;
+	transition: background-color 160ms ease-out;
+}
+
+.graph-detail__close:hover {
+	background: var(--navbar-highlight-bg);
+	color: var(--navbar-highlight-text);
+}
+
+.graph-detail__close svg {
+	width: 1.125rem;
+	height: 1.125rem;
+	fill: currentColor;
+}
+
+/* 名称即链接：双击节点跳转的语义在面板里收敛成一次点击 */
+.graph-detail__title {
+	display: block;
+	margin-top: 0.125rem;
+	color: var(--deep-text);
+	text-decoration: none;
+}
+
+.graph-detail__title:hover strong,
+.graph-detail__title:focus-visible strong {
+	text-decoration: underline;
+}
+
+.graph-detail__title strong {
+	overflow-wrap: anywhere;
+	font-size: 0.9375rem;
+	font-weight: 800;
+	line-height: 1.4;
+}
+
+/* ===== 分组列表：外壳与滚动，手风琴外观见 graph-filter-panel.css ===== */
+
+.graph-detail__body {
+	overflow-y: auto;
+	/* 手风琴 head 自身是 0 横向 padding，横向留白落在这层（同 graph-panel__body）。
+	   min-height:0 让面板在抽屉容器里被压缩时列表内部滚动 */
+	min-height: 0;
+	padding: 0 0.875rem 0.375rem;
+	overscroll-behavior: contain;
+}
+
+.graph-detail__section[hidden] {
+	display: none;
+}
+
+.graph-detail__count {
+	color: var(--content-meta);
+	font-size: 0.6875rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.graph-detail__list {
+	margin: 0;
+	padding: 0.125rem 0 0.625rem;
+	list-style: none;
+}
+
+.graph-detail__list li + li {
+	margin-top: 0.1875rem;
+}
+
+.graph-detail__list a {
+	color: var(--content-meta);
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	text-decoration: none;
+}
+
+.graph-detail__list a:hover,
+.graph-detail__list a:focus-visible {
+	color: var(--deep-text);
+	text-decoration: underline;
+}
+
+/* 移动端：定位交给底部抽屉容器（knowledge-graph.css）统一堆叠，
+   与控制面板上下排列，互不覆盖 */
+@media (max-width: 768px) {
+	.graph-detail {
+		position: static;
+		width: auto;
+		max-height: 45dvh;
+		min-height: 0;
+		flex: 0 1 auto;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.graph-detail__close {
+		transition: none;
+	}
+}

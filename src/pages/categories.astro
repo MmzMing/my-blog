@@ -1,34 +1,60 @@
 ---
-import CategoryExplorer from "@components/widget/CategoryExplorer.astro";
-import TagGraph from "@components/widget/TagGraph.astro";
+import KnowledgeGraph from "@components/widget/KnowledgeGraph.astro";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import PageTitle from "@/components/common/PageTitle.astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
-import { getCategoryTagGroups, getTagGraphData } from "@/utils/content-utils";
+import { getKnowledgeGraphData, getTagList } from "@/utils/content-utils";
+import { getTagUrl, url } from "@/utils/url-utils";
 import "@/styles/pages/categories.css";
+import "@/styles/widgets/knowledge-graph.css";
+import "@/styles/widgets/graph-filter-panel.css";
+import "@/styles/widgets/graph-detail-panel.css";
 
-const categoryGroups = await getCategoryTagGroups();
-const tagGraph = await getTagGraphData();
+// 只取 meta（约 400 字节）内联；节点与边走 /api/knowledge-graph.json
+const { meta } = await getKnowledgeGraphData();
+// SEO 兜底清单用：标签只有 name/count，URL 在模板里现拼
+const tags = await getTagList();
+
 const title = i18n(I18nKey.tagGraphPageTitle);
 const description = i18n(I18nKey.tagGraphPageDescription);
+
+// 带筛选查询参数的 URL 会产生无限可索引组合，照 archive.astro 的既有写法收口
+const robots = Astro.url.search ? "noindex,follow" : undefined;
 ---
 
-<MainGridLayout title={title} description={description} hasOwnH1={true}>
-  <div class="categories-page card-base z-10 px-4 py-6 md:px-9 relative w-full">
-    <div class="categories-page__header">
-      <PageTitle
-        title={title}
-        variant="stacked"
-      />
-    </div>
+<MainGridLayout title={title} description={description} hasOwnH1={true} robots={robots}>
+  <Fragment slot="head">
+    {/* 解析 HTML 时就并发拉图数据，抵消独立端点多出的那次往返 */}
+    <link rel="prefetch" href={url("/api/knowledge-graph.json")} as="fetch" crossorigin="anonymous" />
+  </Fragment>
 
-    <section class="categories-page__graph" aria-label="标签关系图谱">
-      <TagGraph graph={tagGraph} />
-    </section>
+  {/* 全屏页没有可见标题，仍要保证每页恰好一个 H1 */}
+  <h1 class="sr-only">{title}</h1>
 
-    <section class="categories-page__folders" aria-label={i18n(I18nKey.categoryExplorerAria)}>
-      <CategoryExplorer groups={categoryGroups} />
-    </section>
+  {/* SEO / 读屏 / 无 JS 兜底：全站分类与标签的精简内链清单。
+      画布与详情面板都是纯 JS，不执行 JS 的爬虫（百度/头条）只能靠这一节
+      拿到枢纽页内链；文章本体由 sitemap / 归档页 / 列表页覆盖，这里不重复。
+      视觉隐藏用 sr-only（clip 而非 display:none），链接仍可被提取 */}
+  <nav class="sr-only" aria-label={title}>
+    <h2>{i18n(I18nKey.categories)}</h2>
+    <ul>
+      {meta.categories.map((category) => (
+        <li>
+          <a href={category.url}>{category.name}</a>（{category.postCount}）
+        </li>
+      ))}
+    </ul>
+    <h2>{i18n(I18nKey.tags)}</h2>
+    <ul>
+      {tags.map((tag) => (
+        <li>
+          <a href={getTagUrl(tag.name)}>#{tag.name}</a>（{tag.count}）
+        </li>
+      ))}
+    </ul>
+  </nav>
+
+  <div class="graph-page">
+    <KnowledgeGraph meta={meta} />
   </div>
 </MainGridLayout>

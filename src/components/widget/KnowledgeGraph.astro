@@ -1,0 +1,326 @@
+---
+import GraphFilterPanel from "@components/widget/GraphFilterPanel.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { KGMeta } from "@/utils/knowledge-graph-data";
+
+interface Props {
+	meta: KGMeta;
+}
+
+const { meta } = Astro.props;
+
+const accessibleLabel = i18n(I18nKey.tagGraphAccessible)
+	.replace("{tags}", String(meta.counts.tag))
+	.replace("{links}", String(meta.counts.post));
+
+// 控制器是纯 util，不该 import i18n；文案由组件侧注入
+const strings = {
+	loaded: i18n(I18nKey.kgLoaded),
+	failed: i18n(I18nKey.tagGraphFailed),
+	play: i18n(I18nKey.kgPlay),
+	pause: i18n(I18nKey.kgPause),
+	tier: {
+		category: i18n(I18nKey.kgTierCategory),
+		tag: i18n(I18nKey.kgTierTag),
+		post: i18n(I18nKey.kgTierPost),
+		heading: i18n(I18nKey.kgTierHeading),
+	},
+	posts: `{count} ${i18n(I18nKey.postsCount)}`,
+	sections: i18n(I18nKey.kgSectionsCount),
+	relations: i18n(I18nKey.kgRelations),
+};
+
+// 详情面板的分组渲染顺序：标签 → 文档 → 小标题（与控制器 groups 的产出顺序一致）
+const detailGroups = [
+	{ tier: "tag", label: i18n(I18nKey.kgTierTag) },
+	{ tier: "post", label: i18n(I18nKey.kgTierPost) },
+	{ tier: "heading", label: i18n(I18nKey.kgTierHeading) },
+] as const;
+---
+
+<div
+  class="knowledge-graph"
+  id="knowledge-graph"
+  data-kg-root
+  data-kg-strings={JSON.stringify(strings)}
+>
+  <div
+    class="knowledge-graph__surface"
+    data-kg-surface
+    data-state={meta.counts.post === 0 ? "empty" : "idle"}
+  >
+    <canvas
+      class="knowledge-graph__canvas"
+      data-kg-canvas
+      role="application"
+      tabindex="0"
+      aria-label={accessibleLabel}
+    ></canvas>
+
+    <p class="knowledge-graph__status" data-kg-status aria-live="polite" role="status">
+      {meta.counts.post === 0 ? i18n(I18nKey.tagGraphEmpty) : i18n(I18nKey.tagGraphPreparing)}
+    </p>
+
+    <div class="knowledge-graph__tooltip" data-kg-tooltip role="tooltip" aria-hidden="true" hidden>
+      <strong data-kg-tip-title></strong>
+      <span data-kg-tip-meta></span>
+    </div>
+
+    {/* 播放/暂停控件在面板的「动画」分区里（GraphFilterPanel.astro） */}
+  </div>
+
+  {/* 底部抽屉容器：桌面端 display:contents 零影响（两面板各自 absolute 分居
+      左右）；移动端切换为 flex 列堆叠，两卡片上下排列永不重叠 */}
+  <div class="knowledge-graph__drawers">
+  {/* 选中节点的详情弹窗：默认隐藏，由控制器的 kg:select 事件驱动填充。
+      顶部固定层（层级 + 关闭 + 名称）与分组列表以分割线隔开；三个分组直接
+      复用右侧控制面板的 graph-accordion 类名与折叠委托，交互零新增监听。
+      空分组整节隐藏 */}
+  <aside class="graph-detail" data-kg-detail hidden aria-label={i18n(I18nKey.kgDetailTitle)}>
+    <div class="graph-detail__top">
+      <header class="graph-detail__head">
+        <p class="graph-detail__tier" data-kg-detail-tier></p>
+        <button
+          type="button"
+          class="graph-detail__close"
+          data-kg-action="deselect"
+          aria-label={i18n(I18nKey.close)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </header>
+      <a class="graph-detail__title" data-kg-detail-link>
+        <strong data-kg-detail-name></strong>
+      </a>
+    </div>
+    <div class="graph-detail__body">
+      {detailGroups.map((group) => (
+        <section
+          class="graph-accordion graph-detail__section"
+          data-kg-accordion
+          data-open
+          data-kg-detail-group={group.tier}
+          hidden
+        >
+          <button
+            type="button"
+            class="graph-accordion__head"
+            data-kg-accordion-toggle
+            aria-expanded="true"
+          >
+            <span class="graph-accordion__bar" aria-hidden="true"></span>
+            <span class="graph-accordion__title">{group.label}</span>
+            <span class="graph-detail__count" data-kg-detail-count></span>
+            <svg class="graph-accordion__arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+          <div class="graph-accordion__body">
+            <div class="graph-accordion__inner">
+              <ul class="graph-detail__list" data-kg-detail-list></ul>
+            </div>
+          </div>
+        </section>
+      ))}
+    </div>
+  </aside>
+
+  <GraphFilterPanel meta={meta} />
+  </div>
+</div>
+
+<script>
+  import type {
+    GraphController,
+    GraphTier,
+    KGSelection,
+  } from "@/utils/graph/types";
+  import { definePageIsland } from "@/utils/swup-lifecycle";
+  import { url } from "@/utils/url-utils";
+
+  let controller: GraphController | null = null;
+  let cleanup: (() => void) | null = null;
+  let version = 0;
+
+  function teardown() {
+    version++;
+    cleanup?.();
+    cleanup = null;
+    controller?.destroy();
+    controller = null;
+  }
+
+  async function init() {
+    teardown();
+    const root = document.getElementById("knowledge-graph");
+    if (!root) return;
+    const surface = root.querySelector<HTMLElement>("[data-kg-surface]");
+    const status = root.querySelector<HTMLElement>("[data-kg-status]");
+    if (!surface || surface.dataset.state === "empty") return;
+
+    const current = version;
+    const strings = JSON.parse(root.dataset.kgStrings || "{}");
+    surface.dataset.state = "loading";
+
+    try {
+      // 控制器与数据并发拉取，两个请求不串行
+      const [{ mountKnowledgeGraph }, graph] = await Promise.all([
+        import("@/utils/graph"),
+        fetch(url("/api/knowledge-graph.json")).then((r) => {
+          if (!r.ok) throw new Error(`graph fetch failed: ${r.status}`);
+          return r.json();
+        }),
+      ]);
+      if (current !== version || !root.isConnected) return;
+
+      controller = mountKnowledgeGraph(root, graph, strings);
+      cleanup = wireControls(root, controller);
+      // 入场自动播放发生在挂载期间，早于监听器接线，手动同步一次图标
+      root.dispatchEvent(
+        new CustomEvent("kg:playback", { detail: controller.playback.getState() }),
+      );
+    } catch (error) {
+      if (current !== version || !root.isConnected) return;
+      surface.dataset.state = "error";
+      if (status) status.textContent = strings.failed ?? "";
+      console.error("Failed to load the knowledge graph", error);
+    }
+  }
+
+  /** 单一委托监听覆盖面板（手风琴分区、筛选控件、播放按钮）的全部交互（CLAUDE.md 4.6） */
+  function wireControls(root: HTMLElement, ctrl: GraphController): () => void {
+    const playBtn = root.querySelector<HTMLElement>('[data-kg-action="play"]');
+    const playIcon = root.querySelector<HTMLElement>('[data-kg-icon="play"]');
+    const pauseIcon = root.querySelector<HTMLElement>('[data-kg-icon="pause"]');
+    const stats = root.querySelector<HTMLElement>("[data-kg-stats]");
+    const statsTpl = stats?.dataset.template ?? "";
+    const strings = JSON.parse(root.dataset.kgStrings || "{}");
+
+    const onInput = (event: Event) => {
+      const el = event.target as HTMLElement & { value?: string; checked?: boolean };
+      const d = el.dataset;
+
+      if (d.kgTier) {
+        const tiers = { ...ctrl.getFilters().tiers, [d.kgTier]: Boolean(el.checked) };
+        ctrl.patchFilters({ tiers });
+      } else if (d.kgCategory) {
+        const categories = new Set(ctrl.getFilters().categories);
+        if (el.checked) categories.add(d.kgCategory);
+        else categories.delete(d.kgCategory);
+        ctrl.patchFilters({ categories });
+      } else if (d.kgFilter === "query") {
+        ctrl.patchFilters({ query: el.value ?? "" });
+      } else if (d.kgFilter === "minPosts") {
+        ctrl.patchFilters({ minPosts: Number(el.value) });
+        const out = root.querySelector<HTMLElement>('[data-kg-out="minPosts"]');
+        if (out) out.textContent = el.value ?? "";
+      } else if (d.kgFilter === "cooccurrence") {
+        ctrl.patchFilters({ showCooccurrence: Boolean(el.checked) });
+      } else if (d.kgFilter === "particles") {
+        ctrl.patchFilters({ particles: Boolean(el.checked) });
+      }
+    };
+
+    const onClick = (event: Event) => {
+      const el = event.target as HTMLElement;
+      // 手风琴分区：与 collections 页同款，只切 data-open，展开动画走 CSS
+      const accordionToggle = el.closest?.<HTMLElement>("[data-kg-accordion-toggle]");
+      if (accordionToggle) {
+        const section = accordionToggle.closest<HTMLElement>("[data-kg-accordion]");
+        if (section) {
+          const open = section.toggleAttribute("data-open");
+          accordionToggle.setAttribute("aria-expanded", String(open));
+        }
+        return;
+      }
+      const target = el.closest?.<HTMLElement>("[data-kg-action]");
+      if (!target) return;
+      const action = target.dataset.kgAction;
+      if (action === "play") ctrl.playback.toggle();
+      else if (action === "reset-view") ctrl.resetView();
+      else if (action === "deselect") ctrl.select(null);
+    };
+
+    const onPlayback = (event: Event) => {
+      const state = (event as CustomEvent).detail as { playing: boolean };
+      // svg 上放不了 hidden 属性（Astro 类型不收），用 display 切换两个图标
+      if (playIcon) playIcon.style.display = state.playing ? "none" : "";
+      if (pauseIcon) pauseIcon.style.display = state.playing ? "" : "none";
+      const playLabel = root.querySelector<HTMLElement>("[data-kg-play-label]");
+      if (playLabel) playLabel.textContent = state.playing ? strings.pause : strings.play;
+      playBtn?.setAttribute(
+        "aria-label",
+        state.playing ? strings.pause : strings.play,
+      );
+    };
+
+    const onStats = (event: Event) => {
+      const d = (event as CustomEvent).detail as { visible: number; total: number; links: number };
+      if (stats) {
+        stats.textContent = statsTpl
+          .replace("{visible}", String(d.visible))
+          .replace("{total}", String(d.total))
+          .replace("{links}", String(d.links));
+      }
+    };
+
+    /** kg:select → 填充左侧详情弹窗：层级徽标 + 名称链接 + 按层分组列表 */
+    const onSelect = (event: Event) => {
+      const detail = (event as CustomEvent).detail as KGSelection | null;
+      const panel = root.querySelector<HTMLElement>("[data-kg-detail]");
+      if (!panel) return;
+      if (!detail) {
+        panel.hidden = true;
+        return;
+      }
+      const name = panel.querySelector<HTMLElement>("[data-kg-detail-name]");
+      const tier = panel.querySelector<HTMLElement>("[data-kg-detail-tier]");
+      const link = panel.querySelector<HTMLAnchorElement>("[data-kg-detail-link]");
+      if (name) name.textContent = detail.node.name;
+      if (tier) tier.textContent = strings.tier[detail.node.tier];
+      if (link) link.href = detail.node.url;
+      for (const section of panel.querySelectorAll<HTMLElement>(
+        "[data-kg-detail-group]",
+      )) {
+        const groupTier = section.dataset.kgDetailGroup as GraphTier;
+        const group = detail.groups.find((g) => g.tier === groupTier);
+        const list = section.querySelector<HTMLUListElement>("[data-kg-detail-list]");
+        const count = section.querySelector<HTMLElement>("[data-kg-detail-count]");
+        if (!group || group.items.length === 0 || !list) {
+          section.hidden = true;
+          continue;
+        }
+        section.hidden = false;
+        if (count) count.textContent = String(group.items.length);
+        list.replaceChildren(
+          ...group.items.map((item) => {
+            const li = document.createElement("li");
+            const a = document.createElement("a");
+            a.href = item.url;
+            a.textContent = item.name;
+            li.append(a);
+            return li;
+          }),
+        );
+      }
+      panel.hidden = false;
+    };
+
+    root.addEventListener("input", onInput);
+    root.addEventListener("change", onInput);
+    root.addEventListener("click", onClick);
+    root.addEventListener("kg:playback", onPlayback);
+    root.addEventListener("kg:stats", onStats);
+    root.addEventListener("kg:select", onSelect);
+
+    return () => {
+      root.removeEventListener("input", onInput);
+      root.removeEventListener("change", onInput);
+      root.removeEventListener("click", onClick);
+      root.removeEventListener("kg:playback", onPlayback);
+      root.removeEventListener("kg:stats", onStats);
+      root.removeEventListener("kg:select", onSelect);
+    };
+  }
+
+  definePageIsland({ name: "knowledge-graph", mount: init, unmount: teardown });
+</script>

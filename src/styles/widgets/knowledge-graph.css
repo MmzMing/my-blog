@@ -1,0 +1,130 @@
+/* 全屏知识图谱画布与 tooltip（样式源自旧标签图谱页，类名改为 BEM）。 */
+
+.knowledge-graph {
+	width: 100%;
+	height: 100%;
+	position: relative;
+	isolation: isolate;
+}
+
+.knowledge-graph__surface {
+	width: 100%;
+	height: 100%;
+	position: relative;
+	background: var(--page-bg);
+	overflow: hidden;
+}
+
+.knowledge-graph__canvas {
+	width: 100%;
+	height: 100%;
+	display: block;
+	cursor: grab;
+	outline: none;
+	/* 移动端双指缩放交给 d3-zoom，不让浏览器接管 */
+	touch-action: none;
+}
+
+.knowledge-graph__canvas.is-node-hovered {
+	cursor: pointer;
+}
+
+.knowledge-graph__canvas.is-dragging {
+	cursor: grabbing;
+}
+
+.knowledge-graph__canvas:focus-visible {
+	box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.knowledge-graph__status {
+	max-width: calc(100% - 2rem);
+	position: absolute;
+	z-index: 10;
+	top: 50%;
+	left: 50%;
+	color: var(--tag-graph-muted);
+	font-size: 0.875rem;
+	line-height: 1.5;
+	text-align: center;
+	transform: translate(-50%, -50%);
+	transition: opacity 180ms ease-out;
+	pointer-events: none;
+}
+
+.knowledge-graph__surface[data-state="ready"] .knowledge-graph__status {
+	opacity: 0;
+}
+
+.knowledge-graph__tooltip {
+	max-width: min(17rem, calc(100% - 1rem));
+	position: absolute;
+	z-index: 20;
+	padding: 0.625rem 0.75rem;
+	border: 1px solid var(--tag-graph-tooltip-border);
+	border-radius: var(--radius-medium);
+	background: var(--tag-graph-tooltip-bg);
+	box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 0.24);
+	color: var(--tag-graph-tooltip-text);
+	line-height: 1.4;
+	pointer-events: none;
+}
+
+.knowledge-graph__tooltip[hidden] {
+	display: none;
+}
+
+.knowledge-graph__tooltip strong,
+.knowledge-graph__tooltip span {
+	display: block;
+	letter-spacing: 0;
+}
+
+.knowledge-graph__tooltip strong {
+	overflow-wrap: anywhere;
+	font-size: 0.875rem;
+	font-weight: 800;
+}
+
+.knowledge-graph__tooltip span {
+	margin-top: 0.1875rem;
+	color: color-mix(in srgb, var(--tag-graph-tooltip-text) 72%, transparent);
+	font-size: 0.75rem;
+}
+
+/* 底部抽屉容器：桌面端两面板各自 absolute 分居左右，容器自身无盒；
+   移动端切成 flex 列，详情卡与控制卡上下堆叠，从布局上杜绝互相覆盖。
+   容器 pointer-events:none + 子面板 auto —— gap 空白点击穿透到画布，
+   「点空白取消选中」在两卡之间的缝隙依然有效 */
+.knowledge-graph__drawers {
+	display: contents;
+}
+
+@media (max-width: 768px) {
+	.knowledge-graph__drawers {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		position: absolute;
+		left: 0.75rem;
+		right: 0.75rem;
+		/* 只让开右下角的 dock 气泡（3.65rem 高、贴底 max(0.5rem, 安全区)），
+		   再留 0.5rem 呼吸缝。旧值把 dock 高度重复叠加，凭空多出一段空白 */
+		bottom: calc(
+			max(0.5rem, env(safe-area-inset-bottom, 0px)) + 3.65rem + 0.5rem
+		);
+		max-height: 72dvh;
+		z-index: 28;
+		pointer-events: none;
+	}
+
+	.knowledge-graph__drawers > * {
+		pointer-events: auto;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.knowledge-graph__status {
+		transition: none;
+	}
+}
