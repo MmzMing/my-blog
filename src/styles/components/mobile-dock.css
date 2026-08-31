@@ -15,9 +15,9 @@
 		--mobile-dock-motion: cubic-bezier(0.22, 1, 0.36, 1);
 		--mobile-dock-content-top-padding: 0.75rem;
 		--mobile-dock-surface: #e7e7e7;
-		/* 左侧留白，别贴到视窗边上 —— 胶囊态和展开卡片共用，
-		   想让 dock 更长/更短就调这一个值 */
-		--mobile-dock-inset-left: 2rem;
+		/* 左侧留白与右侧 edge 同值，保证 dock 左右对称 —— 胶囊态和展开卡片共用，
+		   想让 dock 更长/更短就同时调这一个值和 --mobile-dock-edge */
+		--mobile-dock-inset-left: 0.75rem;
 		position: fixed;
 		right: var(--mobile-dock-edge);
 		bottom: var(--mobile-dock-bottom);
