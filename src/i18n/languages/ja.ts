@@ -263,6 +263,7 @@ export const ja: Translation = {
 	[Key.qqGroup]: "QQグループ",
 	[Key.navPosts]: "記事",
 	[Key.navMy]: "その他",
+	[Key.navLinks]: "リンク",
 	// ===== 通用操作 =====
 	[Key.close]: "閉じる",
 	[Key.expand]: "展開",

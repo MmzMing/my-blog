@@ -264,6 +264,7 @@ export const ru: Translation = {
 	[Key.qqGroup]: "QQ Группа",
 	[Key.navPosts]: "Статьи",
 	[Key.navMy]: "Другое",
+	[Key.navLinks]: "Навигация",
 	// ===== 通用操作 =====
 	[Key.close]: "Закрыть",
 	[Key.expand]: "Развернуть",

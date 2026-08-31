@@ -16,11 +16,26 @@ import { siteConfig } from "./siteConfig";
  */
 const buildNavBarConfig = (): NavBarConfig => {
 	// 1. 构建文章下拉菜单（子项顺序：文档 → 归档 → 图谱）
-	const postsNav: NavBarLink = {
-		...LinkPresets[LinkPreset.NavPosts],
-		activePathPrefixes: ["/posts/"],
-		children: [LinkPreset.PostList, LinkPreset.Archive, LinkPreset.Categories],
-	};
+	const postsChildren: (NavBarLink | LinkPreset)[] = [];
+	if (siteConfig.pages.postList) {
+		postsChildren.push(LinkPreset.PostList);
+	}
+	if (siteConfig.pages.archive) {
+		postsChildren.push(LinkPreset.Archive);
+	}
+	if (siteConfig.pages.categories) {
+		postsChildren.push(LinkPreset.Categories);
+	}
+
+	// 子项全部关闭时不渲染空的下拉菜单
+	const postsNav: NavBarLink | null =
+		postsChildren.length > 0
+			? {
+					...LinkPresets[LinkPreset.NavPosts],
+					activePathPrefixes: ["/posts/"],
+					children: postsChildren,
+				}
+			: null;
 
 	// 2. 构建联系我下拉菜单
 	const contactChildren: (NavBarLink | LinkPreset)[] = [];
@@ -47,22 +62,41 @@ const buildNavBarConfig = (): NavBarConfig => {
 	if (siteConfig.pages.sponsor) {
 		myChildren.push(LinkPreset.Sponsor);
 	}
-	myChildren.push(LinkPreset.Music);
-	myChildren.push(LinkPreset.About);
+	if (siteConfig.pages.music) {
+		myChildren.push(LinkPreset.Music);
+	}
+	if (siteConfig.pages.about) {
+		myChildren.push(LinkPreset.About);
+	}
 
-	const myNav: NavBarLink = {
-		...LinkPresets[LinkPreset.NavMy],
-		children: myChildren,
+	// 子项全部关闭时不渲染空的下拉菜单
+	const myNav: NavBarLink | null =
+		myChildren.length > 0
+			? {
+					...LinkPresets[LinkPreset.NavMy],
+					children: myChildren,
+				}
+			: null;
+
+	// 4. 构建导航下拉菜单（子项顺序：个人主站 → 工具导航）
+	// 个人主站是外链、不随页面开关变化，因此下拉至少有一项，无需判空
+	const linksChildren: (NavBarLink | LinkPreset)[] = [LinkPreset.Feibichi];
+	if (siteConfig.pages.collections) {
+		linksChildren.push(LinkPreset.Collections);
+	}
+
+	const linksNav: NavBarLink = {
+		...LinkPresets[LinkPreset.NavLinks],
+		children: linksChildren,
 	};
 
-	// 4. 统一组装导航栏链接（顺序：主页 → 个人主站 → 工具导航 → 文章 → 联系我 → 我的）
+	// 5. 统一组装导航栏链接（顺序：主页 → 导航 → 文章 → 联系我 → 我的）
 	const links: (NavBarLink | LinkPreset)[] = [
 		LinkPreset.Home,
-		LinkPreset.Feibichi,
-		...(siteConfig.pages.collections ? [LinkPreset.Collections] : []),
-		postsNav,
+		linksNav,
+		...(postsNav ? [postsNav] : []),
 		...(contactNav ? [contactNav] : []),
-		myNav,
+		...(myNav ? [myNav] : []),
 	];
 
 	return { links };

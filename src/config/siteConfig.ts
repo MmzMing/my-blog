@@ -169,6 +169,16 @@ export const siteConfig: SiteConfig = {
 		gallery: false,
 		// 收藏API页面开关
 		collections: true,
+		// 音乐可视化页面开关
+		music: true,
+		// 文档页面开关（/list/ 文章列表，导航栏「文章」下拉里显示为「文档」）
+		postList: true,
+		// 归档页面开关
+		archive: true,
+		// 关于页面开关
+		about: true,
+		// 图谱页面开关（/categories/，导航栏显示为「图谱」）
+		categories: true,
 	},
 
 	// 分页配置

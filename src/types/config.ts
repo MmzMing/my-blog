@@ -81,6 +81,11 @@ export type SiteConfig = {
 		guestbook: boolean; // 留言板页面开关
 		gallery: boolean; // 相册页面开关
 		collections: boolean; // 收藏API页面开关
+		music: boolean; // 音乐可视化页面开关
+		postList: boolean; // 文档页面开关（/list/ 文章列表）
+		archive: boolean; // 归档页面开关
+		about: boolean; // 关于页面开关
+		categories: boolean; // 图谱页面开关（/categories/，导航栏显示为「图谱」）
 	};
 
 	// 分页配置
@@ -196,6 +201,7 @@ export enum LinkPreset {
 	NavPosts = 16,
 	NavMy = 17,
 	Music = 18,
+	NavLinks = 19,
 }
 
 export type NavBarLink = {

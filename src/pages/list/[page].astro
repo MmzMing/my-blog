@@ -18,6 +18,11 @@ export const getStaticPaths = (async () => {
 	}));
 }) satisfies GetStaticPaths;
 
+// 页面开关：关闭时重定向到 404（对 /list/2/ 等分页同样生效）
+if (!siteConfig.pages.postList) {
+	return Astro.redirect("/404/");
+}
+
 const currentPage = Number.parseInt(Astro.params.page || "", 10);
 ---
 

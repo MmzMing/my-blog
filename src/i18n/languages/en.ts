@@ -262,6 +262,7 @@ export const en: Translation = {
 	[Key.qqGroup]: "QQ Group",
 	[Key.navPosts]: "Posts",
 	[Key.navMy]: "Others",
+	[Key.navLinks]: "Links",
 	// ===== 通用操作 =====
 	[Key.close]: "Close",
 	[Key.expand]: "Expand",

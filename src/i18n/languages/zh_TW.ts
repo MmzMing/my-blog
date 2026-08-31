@@ -259,6 +259,7 @@ export const zh_TW: Translation = {
 	[Key.qqGroup]: "QQ群",
 	[Key.navPosts]: "文章",
 	[Key.navMy]: "其他",
+	[Key.navLinks]: "導航",
 	// ===== 通用操作 =====
 	[Key.close]: "關閉",
 	[Key.expand]: "展開",

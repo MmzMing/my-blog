@@ -248,6 +248,7 @@ enum I18nKey {
 	qqGroup = "qqGroup",
 	navPosts = "navPosts",
 	navMy = "navMy",
+	navLinks = "navLinks",
 
 	// ===== 通用操作 =====
 	close = "close",

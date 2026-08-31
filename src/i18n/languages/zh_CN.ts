@@ -257,6 +257,7 @@ export const zh_CN: Translation = {
 	[Key.qqGroup]: "QQ群",
 	[Key.navPosts]: "文章",
 	[Key.navMy]: "其他",
+	[Key.navLinks]: "导航",
 
 	// ===== 通用操作 =====
 	[Key.close]: "关闭",

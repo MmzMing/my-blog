@@ -4,6 +4,7 @@ import ChangelogGraph from "@components/about/ChangelogGraph.astro";
 import Markdown from "@components/common/Markdown.astro";
 import PageTitle from "@/components/common/PageTitle.astro";
 import SiteStructuredData from "@/components/seo/SiteStructuredData.astro";
+import { siteConfig } from "@/config";
 import "@/styles/components/about-chat-bubble.css";
 import "@/styles/components/about-profile-card.css";
 import "@/styles/components/about-social-links.css";
@@ -12,6 +13,11 @@ import "@/styles/components/about-timeline.css";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
+
+// 页面开关：关闭时重定向到 404（与 friends / sponsor 等页面保持一致）
+if (!siteConfig.pages.about) {
+	return Astro.redirect("/404/");
+}
 
 const aboutPost = await getEntry("spec", "about");
 if (!aboutPost) {

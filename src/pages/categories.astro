@@ -1,6 +1,7 @@
 ---
 import KnowledgeGraph from "@components/widget/KnowledgeGraph.astro";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { getKnowledgeGraphData, getTagList } from "@/utils/content-utils";
@@ -9,6 +10,11 @@ import "@/styles/pages/categories.css";
 import "@/styles/widgets/knowledge-graph.css";
 import "@/styles/widgets/graph-filter-panel.css";
 import "@/styles/widgets/graph-detail-panel.css";
+
+// 页面开关：关闭时重定向到 404（与 archive / music 等页面保持一致）
+if (!siteConfig.pages.categories) {
+	return Astro.redirect("/404/");
+}
 
 // 只取 meta（约 400 字节）内联；节点与边走 /api/knowledge-graph.json
 const { meta } = await getKnowledgeGraphData();

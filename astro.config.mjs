@@ -195,6 +195,10 @@ export default defineConfig({
 				if (pathname === "/search/") {
 					return false;
 				}
+				// 文档列表页及其分页（/list/、/list/2/ …）
+				if (pathname.startsWith("/list/") && !siteConfig.pages.postList) {
+					return false;
+				}
 				if (pathname === "/friends/" && !siteConfig.pages.friends) {
 					return false;
 				}
@@ -204,14 +208,26 @@ export default defineConfig({
 				if (pathname === "/guestbook/" && !siteConfig.pages.guestbook) {
 					return false;
 				}
-				if (pathname === "/bangumi/" && !siteConfig.pages.bangumi) {
-					return false;
-				}
 				if (pathname === "/gallery/" && !siteConfig.pages.gallery) {
 					return false;
 				}
+				if (pathname === "/music/" && !siteConfig.pages.music) {
+					return false;
+				}
+				if (pathname === "/archive/" && !siteConfig.pages.archive) {
+					return false;
+				}
+				if (pathname === "/about/" && !siteConfig.pages.about) {
+					return false;
+				}
+				if (pathname === "/categories/" && !siteConfig.pages.categories) {
+					return false;
+				}
+				if (pathname === "/collections/" && !siteConfig.pages.collections) {
+					return false;
+				}
 
-				return true;
+			return true;
 			},
 			serialize: (item) => {
 				const pathname = new URL(item.url).pathname;

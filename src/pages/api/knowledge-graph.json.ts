@@ -1,3 +1,4 @@
+import { siteConfig } from "@/config";
 import { getKnowledgeGraphData } from "@/utils/content-utils";
 
 /**
@@ -12,6 +13,11 @@ import { getKnowledgeGraphData } from "@/utils/content-utils";
  * 极小 meta（约 400 字节）服务端渲染，画布数据到了再补。
  */
 export async function GET(): Promise<Response> {
+	// 图谱页面关闭时，其专属数据端点同样不可访问
+	if (!siteConfig.pages.categories) {
+		return new Response("Not Found", { status: 404 });
+	}
+
 	const graph = await getKnowledgeGraphData();
 
 	return new Response(JSON.stringify(graph), {

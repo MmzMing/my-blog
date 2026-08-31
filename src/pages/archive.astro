@@ -9,6 +9,10 @@ import { siteConfig } from "@/config";
 import { getSortedPostsList } from "@/utils/content-utils";
 import "@/styles/widgets/archive-stats.css";
 
+if (!siteConfig.pages.archive) {
+	return Astro.redirect("/404/");
+}
+
 const sortedPostsList = await getSortedPostsList();
 const title = i18n(I18nKey.archive);
 const description = i18n(I18nKey.archiveMotto);

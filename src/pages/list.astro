@@ -1,5 +1,11 @@
 ---
 import ArticleListPage from "@/components/pages/article-list/ArticleListPage.astro";
+import { siteConfig } from "@/config";
+
+// 页面开关：关闭时重定向到 404（与 archive / categories 等页面保持一致）
+if (!siteConfig.pages.postList) {
+	return Astro.redirect("/404/");
+}
 ---
 
 <ArticleListPage />
