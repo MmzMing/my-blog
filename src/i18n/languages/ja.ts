@@ -629,6 +629,8 @@ export const ja: Translation = {
 	[Key.kgResetView]: "ビューをリセット",
 	[Key.kgLayoutMindmap]: "マインドマップ表示に切替",
 	[Key.kgLayoutForce]: "フォースレイアウトに切替",
+	[Key.kgCollapsePanel]: "設定パネルをたたむ",
+	[Key.kgExpandPanel]: "設定パネルを開く",
 	[Key.kgStats]: "{visible} / {total} ノード · {links} リンク",
 	[Key.kgRelations]: "{count} 件の関連",
 	[Key.kgLoaded]: "ナレッジグラフを読み込みました",

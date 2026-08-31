@@ -620,6 +620,8 @@ export const en: Translation = {
 	[Key.kgResetView]: "Reset view",
 	[Key.kgLayoutMindmap]: "Switch to mind map layout",
 	[Key.kgLayoutForce]: "Switch to force layout",
+	[Key.kgCollapsePanel]: "Collapse controls",
+	[Key.kgExpandPanel]: "Expand controls",
 	[Key.kgStats]: "{visible} / {total} nodes · {links} links",
 	[Key.kgRelations]: "{count} connections",
 	[Key.kgLoaded]: "Knowledge graph loaded",

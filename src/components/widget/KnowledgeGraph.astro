@@ -241,6 +241,7 @@ const detailGroups = [
       else if (action === "reset-view") ctrl.resetView();
       else if (action === "deselect") ctrl.select(null);
       else if (action === "toggle-layout") ctrl.toggleLayout();
+      else if (action === "toggle-panel") togglePanel(root);
     };
 
     const onPlayback = (event: Event) => {
@@ -337,6 +338,25 @@ const detailGroups = [
       root.removeEventListener("kg:select", onSelect);
       root.removeEventListener("kg:layout", onLayout);
     };
+  }
+
+  /**
+   * 控制面板 ⇄ 伸缩小球。状态只是根节点上的一个属性，滑出/滑入全交给 CSS
+   * （graph-filter-panel.css）。两个按钮文案是固定的（面板里那个只负责收，
+   * 小球只负责展），所以这里只同步 aria-expanded 与焦点。
+   */
+  function togglePanel(root: HTMLElement): void {
+    const collapsed = root.toggleAttribute("data-kg-panel-collapsed");
+    const collapseBtn = root.querySelector<HTMLElement>(
+      '[data-kg-panel] [data-kg-action="toggle-panel"]',
+    );
+    const handle = root.querySelector<HTMLElement>("[data-kg-panel-handle]");
+    collapseBtn?.setAttribute("aria-expanded", String(!collapsed));
+    handle?.setAttribute("aria-expanded", String(!collapsed));
+    // 刚点过的那个按钮马上要被 visibility/display 收掉，焦点得交接给对面。
+    // 隔一帧再 focus：此刻目标还带着旧的 visibility:hidden，直接调用会被忽略
+    const next = collapsed ? handle : collapseBtn;
+    requestAnimationFrame(() => next?.focus({ preventScroll: true }));
   }
 
   definePageIsland({ name: "knowledge-graph", mount: init, unmount: teardown });

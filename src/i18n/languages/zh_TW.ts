@@ -608,6 +608,8 @@ export const zh_TW: Translation = {
 	[Key.kgResetView]: "重設視圖",
 	[Key.kgLayoutMindmap]: "切換為腦圖版面",
 	[Key.kgLayoutForce]: "切換為力導向版面",
+	[Key.kgCollapsePanel]: "收起控制面板",
+	[Key.kgExpandPanel]: "展開控制面板",
 	[Key.kgStats]: "{visible} / {total} 節點 · {links} 連線",
 	[Key.kgRelations]: "關聯 {count} 個節點",
 	[Key.kgLoaded]: "知識圖譜已載入",

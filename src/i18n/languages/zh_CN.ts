@@ -605,6 +605,8 @@ export const zh_CN: Translation = {
 	[Key.kgResetView]: "重置视图",
 	[Key.kgLayoutMindmap]: "切换为脑图布局",
 	[Key.kgLayoutForce]: "切换为力导向布局",
+	[Key.kgCollapsePanel]: "收起控制面板",
+	[Key.kgExpandPanel]: "展开控制面板",
 	[Key.kgStats]: "{visible} / {total} 节点 · {links} 连线",
 	[Key.kgRelations]: "关联 {count} 个节点",
 	[Key.kgLoaded]: "知识图谱已加载",

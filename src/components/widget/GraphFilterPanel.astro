@@ -46,7 +46,12 @@ const statsTemplate = i18n(I18nKey.kgStats);
     外观 / 动画。分区 data-open + grid-template-rows 过渡展开，交互由
     KnowledgeGraph.astro 单点委托。控件全部构建期渲染，交互只切属性，零 DOM 创建
     —— 与 CategoryExplorer.astro:100 记录的既有模式一致 */}
-<aside class="graph-panel" data-kg-panel aria-label={i18n(I18nKey.kgPanelTitle)}>
+<aside
+  class="graph-panel"
+  id="graph-panel"
+  data-kg-panel
+  aria-label={i18n(I18nKey.kgPanelTitle)}
+>
   <div class="graph-panel__top">
     <header class="graph-panel__head">
       <h2 class="graph-panel__title">{i18n(I18nKey.kgPanelTitle)}</h2>
@@ -77,6 +82,18 @@ const statsTemplate = i18n(I18nKey.kgStats);
           aria-label={i18n(I18nKey.kgResetView)}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+        </button>
+        <button
+          type="button"
+          class="graph-panel__tool"
+          data-kg-action="toggle-panel"
+          title={i18n(I18nKey.kgCollapsePanel)}
+          aria-label={i18n(I18nKey.kgCollapsePanel)}
+          aria-expanded="true"
+          aria-controls="graph-panel"
+        >
+          {/* 双箭头指向右侧：收起方向与面板滑出方向一致 */}
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.6 17.6 10.2 13 5.6 8.4 7 7l6 6-6 6zm7.4 0 4.6-4.6L13 8.4 14.4 7l6 6-6 6z"/></svg>
         </button>
       </div>
     </header>
@@ -208,3 +225,26 @@ const statsTemplate = i18n(I18nKey.kgStats);
     </section>
   </div>
 </aside>
+
+{/* 收起后的伸缩小球：桌面端半嵌在视窗右缘（悬停整颗滑出，同看板娘的伸缩把手），
+    移动端 fixed 到右下角、避开 mobile-dock 气泡。点击与面板头部的收起键共用
+    data-kg-action="toggle-panel"，走 KnowledgeGraph.astro 的单点委托 */}
+<button
+  type="button"
+  class="graph-panel-handle"
+  data-kg-panel-handle
+  data-kg-action="toggle-panel"
+  title={i18n(I18nKey.kgExpandPanel)}
+  aria-label={i18n(I18nKey.kgExpandPanel)}
+  aria-expanded="false"
+  aria-controls="graph-panel"
+>
+  <svg class="graph-panel-handle__icon" viewBox="0 0 24 24" aria-hidden="true">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9M4 12h5M13 12h7" />
+      <circle cx="15" cy="7" r="1.8" />
+      <circle cx="9" cy="17" r="1.8" />
+      <circle cx="11" cy="12" r="1.8" />
+    </g>
+  </svg>
+</button>

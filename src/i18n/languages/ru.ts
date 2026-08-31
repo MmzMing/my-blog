@@ -626,6 +626,8 @@ export const ru: Translation = {
 	[Key.kgResetView]: "Сбросить вид",
 	[Key.kgLayoutMindmap]: "Переключить на минд-карту",
 	[Key.kgLayoutForce]: "Переключить на силовой граф",
+	[Key.kgCollapsePanel]: "Свернуть панель",
+	[Key.kgExpandPanel]: "Развернуть панель",
 	[Key.kgStats]: "{visible} / {total} узлов · {links} связей",
 	[Key.kgRelations]: "{count} связей",
 	[Key.kgLoaded]: "Граф знаний загружен",

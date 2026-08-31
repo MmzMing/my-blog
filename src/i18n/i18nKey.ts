@@ -430,6 +430,8 @@ enum I18nKey {
 	kgResetView = "kgResetView",
 	kgLayoutMindmap = "kgLayoutMindmap",
 	kgLayoutForce = "kgLayoutForce",
+	kgCollapsePanel = "kgCollapsePanel",
+	kgExpandPanel = "kgExpandPanel",
 	kgStats = "kgStats",
 	kgRelations = "kgRelations",
 	kgLoaded = "kgLoaded",

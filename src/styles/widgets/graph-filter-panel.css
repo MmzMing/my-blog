@@ -17,6 +17,19 @@
 	background: color-mix(in srgb, var(--float-panel-bg) 94%, transparent);
 	box-shadow: 0 0.5rem 1.75rem rgb(0 0 0 / 0.12);
 	backdrop-filter: blur(10px);
+	transition:
+		transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 200ms ease-out,
+		visibility 320ms;
+}
+
+/* 收起态：整块向右滑出视窗。visibility 参与过渡（离散属性，滑完才切 hidden），
+   顺带把面板从焦点顺序和读屏树里摘掉，不用额外 JS 管 inert */
+.knowledge-graph[data-kg-panel-collapsed] .graph-panel {
+	visibility: hidden;
+	opacity: 0;
+	transform: translateX(calc(100% + 1.5rem));
+	pointer-events: none;
 }
 
 /* ===== 顶部固定层：标题 + 工具 + 统计，随 body 滚动保持可见 ===== */
@@ -323,6 +336,63 @@
 	fill: currentColor;
 }
 
+/* ===== 收起后的伸缩小球 =====
+   桌面端半嵌在视窗右缘（.graph-page 的 overflow:hidden 负责裁掉溢出的那一小块），
+   悬停/聚焦整颗滑出，同看板娘那种伸缩把手。展开态用 visibility 收掉，
+   小球不占焦点顺序也不进读屏树 */
+
+.graph-panel-handle {
+	width: 2.75rem;
+	height: 2.75rem;
+	position: absolute;
+	z-index: 29;
+	top: 50%;
+	right: 0;
+	display: grid;
+	place-items: center;
+	border: 1px solid var(--line-divider);
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--float-panel-bg) 94%, transparent);
+	box-shadow: 0 0.35rem 1.25rem rgb(0 0 0 / 0.16);
+	backdrop-filter: blur(10px);
+	color: var(--content-meta);
+	cursor: pointer;
+	visibility: hidden;
+	opacity: 0;
+	/* 面板在场时缩回右缘外；-50% 是垂直居中位移，不能丢 */
+	transform: translate(60%, -50%) scale(0.6);
+	transition:
+		transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 200ms ease-out,
+		visibility 320ms,
+		color 160ms ease-out,
+		background-color 160ms ease-out;
+}
+
+/* 25% 的探出量刚好让 1.125rem 的图标完整留在可见半边内 */
+.knowledge-graph[data-kg-panel-collapsed] .graph-panel-handle {
+	visibility: visible;
+	opacity: 1;
+	transform: translate(25%, -50%);
+}
+
+.knowledge-graph[data-kg-panel-collapsed] .graph-panel-handle:hover,
+.knowledge-graph[data-kg-panel-collapsed] .graph-panel-handle:focus-visible {
+	transform: translate(0, -50%);
+	background: var(--float-panel-bg);
+	color: var(--primary);
+}
+
+.graph-panel-handle:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.graph-panel-handle__icon {
+	width: 1.125rem;
+	height: 1.125rem;
+}
+
 /* 移动端：定位交给底部抽屉容器（knowledge-graph.css）统一堆叠，
    这里只保留尺寸约束。min-height:0 让面板被容器压缩时 body 内部滚动 */
 @media (max-width: 768px) {
@@ -338,6 +408,33 @@
 		max-height: none;
 		min-height: 0;
 	}
+
+	/* 抽屉是 flex 列，收起必须真正让位（transform 会留一段空档），
+	   详情卡才能落到底部 */
+	.knowledge-graph[data-kg-panel-collapsed] .graph-panel {
+		display: none;
+	}
+
+	/* 右下角，垫在 mobile-dock 气泡（3.65rem 贴底）上方一格。
+	   fixed 让它脱离抽屉的 flex 流，也不被 .graph-page 的 overflow 裁切 */
+	.graph-panel-handle {
+		width: 2.875rem;
+		height: 2.875rem;
+		position: fixed;
+		top: auto;
+		right: max(0.75rem, env(safe-area-inset-right, 0px));
+		bottom: calc(
+			max(0.5rem, env(safe-area-inset-bottom, 0px)) + 3.65rem + 0.5rem
+		);
+		transform: translateY(40%) scale(0.6);
+	}
+
+	/* 移动端不做贴边探出：右下角是完整一颗，悬停态与静止态同位 */
+	.knowledge-graph[data-kg-panel-collapsed] .graph-panel-handle,
+	.knowledge-graph[data-kg-panel-collapsed] .graph-panel-handle:hover,
+	.knowledge-graph[data-kg-panel-collapsed] .graph-panel-handle:focus-visible {
+		transform: none;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -346,7 +443,9 @@
 	.graph-accordion__arrow,
 	.graph-accordion__body,
 	.graph-panel__check,
-	.graph-panel__play {
+	.graph-panel__play,
+	.graph-panel,
+	.graph-panel-handle {
 		transition: none;
 	}
 }

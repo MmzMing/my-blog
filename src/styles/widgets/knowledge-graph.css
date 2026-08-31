@@ -121,6 +121,15 @@
 	.knowledge-graph__drawers > * {
 		pointer-events: auto;
 	}
+
+	/* 控制面板收起后，右下角多了一颗 2.875rem 的伸缩小球（graph-filter-panel.css）：
+	   详情卡再往上让一格，避免压在小球下面 */
+	.knowledge-graph[data-kg-panel-collapsed] .knowledge-graph__drawers {
+		bottom: calc(
+			max(0.5rem, env(safe-area-inset-bottom, 0px)) + 3.65rem + 0.5rem +
+				2.875rem + 0.5rem
+		);
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
