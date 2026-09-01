@@ -60,7 +60,7 @@ export const zh_TW: Translation = {
 	[Key.comments]: "評論",
 	[Key.friends]: "友鏈",
 	[Key.friendsDescription]:
-		"瀏覽本站收錄的友鏈，發現其他獨立部落格和網站；也可了解友鏈申請方式，與站長互相訪問交流。",
+		"友情連結頁面，收錄本站長期關注的獨立部落格、個人網站與同好站點，歡迎交換連結，發現更多值得閱讀的內容。",
 	[Key.guestbook]: "留言",
 	[Key.guestbookDescription]:
 		"在留言板留下想法、建議和交流內容，與其他訪客互動；請遵守社群規則，共同維護友善的討論環境。",
@@ -111,7 +111,7 @@ export const zh_TW: Translation = {
 	// RSS頁面
 	[Key.rss]: "RSS 訂閱",
 	[Key.rssDescription]:
-		"透過 RSS 訂閱本站最新文章更新，將內容推送到常用閱讀器，方便集中閱讀並持續關注網站動態。",
+		"透過 RSS 訂閱本站，第一時間收到全部最新文章更新，無需手動造訪網站即可持續關注內容動態，支援任何主流 RSS 閱讀器。",
 	[Key.rssLink]: "RSS 鏈接",
 	[Key.rssCopyToReader]: "複製鏈接到你的 RSS 閱讀器",
 	[Key.rssCopyLink]: "複製鏈接",
@@ -432,12 +432,12 @@ export const zh_TW: Translation = {
 	[Key.categoryExplorerViewPosts]: "查看分類文章",
 	[Key.categoryExplorerAria]: "分類與標籤瀏覽",
 	[Key.listDescription]:
-		"以卡片列表依發布時間瀏覽本站文章，支援分頁存取，快速找到想讀的內容。",
+		"以卡片列表依發布時間瀏覽本站全部文章，支援置頂展示與分頁存取歷史內容，快速找到感興趣的文章。",
 	[Key.noDescriptionFallback]: "暫無文章簡介，點擊查看完整內容。",
 	[Key.searchDescription]:
 		"使用站內搜尋查找已發布文章和相關內容，輸入關鍵字即可快速定位主題、標題與正文中的資訊。",
 	[Key.aboutDescription]:
-		"了解本站作者、內容方向、技術堆疊與聯絡方式，並查看網站的更新記錄、維護資訊和持續演進的內容規劃。",
+		"了解本站作者、內容方向、技術堆疊與聯絡方式，查看網站的更新記錄、維護資訊和持續演進的內容規劃，以及關於學習、開發與生活的更多思考。",
 	[Key.aboutChangelogTitle]: "更新日誌",
 	[Key.aboutChangelogRecentLimit]: "僅顯示最近 {count} 則更新",
 	[Key.aboutChangelogPagesLabel]: "涉及頁面",

@@ -436,12 +436,12 @@ export const ja: Translation = {
 	[Key.categoryExplorerViewPosts]: "記事を見る",
 	[Key.categoryExplorerAria]: "カテゴリとタグのブラウザ",
 	[Key.listDescription]:
-		"公開日の新しい順にカード形式で記事を閲覧できます。ページ送りで過去の記事にも直接アクセスできます。",
+		"公開日の新しい順にカード形式でブログの全記事を閲覧できます。ページ送りで過去の記事にも直接アクセスでき、読みたい記事をすばやく見つけられます。",
 	[Key.noDescriptionFallback]: "概要がありません。クリックして全文を読む。",
 	[Key.searchDescription]:
 		"サイト内検索で公開済みの記事と関連内容を探せます。キーワードからテーマ、タイトル、本文中の情報をすばやく見つけられます。",
 	[Key.aboutDescription]:
-		"サイトの作者、発信内容、技術スタック、連絡先を紹介します。更新履歴や運営情報、今後の方向性も確認できます。",
+		"サイトの作者、発信内容、技術スタック、連絡先を紹介します。更新履歴や運営情報に加え、学習・開発・生活についての考えも継続的に公開しています。",
 	[Key.aboutChangelogTitle]: "更新履歴",
 	[Key.aboutChangelogRecentLimit]: "最新 {count} 件の更新のみを表示しています",
 	[Key.aboutChangelogPagesLabel]: "関連ページ",

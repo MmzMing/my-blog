@@ -14,7 +14,7 @@ if (!siteConfig.pages.gallery) {
 }
 
 const title = i18n(I18nKey.gallery);
-const description = i18n(I18nKey.galleryMotto);
+const description = i18n(I18nKey.galleryDescription);
 
 const albums = await Promise.all(
 	galleryConfig.albums.map(async (album) => {

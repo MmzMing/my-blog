@@ -132,7 +132,7 @@ const [pinnedPosts, regularPosts] = await Promise.all([
 	),
 ]);
 const baseTitle = i18n(I18nKey.postList);
-const baseDescription = i18n(I18nKey.postsMotto);
+const baseDescription = i18n(I18nKey.listDescription);
 const pageStatus = i18n(I18nKey.paginationStatus)
 	.replace("{current}", String(resolvedPage))
 	.replace("{total}", String(totalPages));

@@ -15,7 +15,7 @@ if (!siteConfig.pages.archive) {
 
 const sortedPostsList = await getSortedPostsList();
 const title = i18n(I18nKey.archive);
-const description = i18n(I18nKey.archiveMotto);
+const description = i18n(I18nKey.archiveDescription);
 const archiveStatsConfig = siteConfig.archiveStats;
 const timezone = siteConfig.timezone ?? "UTC";
 const yearMonthFormatter = new Intl.DateTimeFormat("en-US", {
