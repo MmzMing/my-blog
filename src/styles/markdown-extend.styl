@@ -321,11 +321,11 @@ a.card-github.fetch-error
       transform: translateY(-1px)
 
 // 深色模式下的 Mermaid 样式
+// 暗色配色由构建期渲染的 dark SVG 内嵌（rehype-mermaid 的 DARK_THEME_ROLES 对齐站点灰阶），
+// 此处不再对 svg 施加 brightness/contrast 滤镜：滤镜只作用于页内容器，全屏克隆不经过它，
+// 会造成页内与放大后颜色不一致
 .dark .mermaid-diagram-container
   background: var(--card-bg)
-
-  svg
-    filter: brightness(0.9) contrast(1.1)
 
 // 响应式设计
 @media (max-width: 768px)

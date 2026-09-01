@@ -52,6 +52,12 @@
 }
 
 .dock-drawer { z-index: 70; }
+
+/* 目录抽屉：标题固定，列表限高滚动（.toc-scroll-container 提供滚动） */
+.dock-drawer-toc .dock-toc-scroll {
+	max-height: min(52vh, 30rem);
+	overscroll-behavior: contain;
+}
 .dock-drawer-title {
 	display: flex;
 	align-items: center;

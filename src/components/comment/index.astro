@@ -38,13 +38,20 @@ let commentService: string = commentConfig?.type || "none";
 {
   commentService !== "none" && (
     <div id="post-comments" class="card-base p-8 mb-6 relative overflow-hidden">
-      <!-- 评论区标题 -->
-      <div class="relative z-10 mb-6">
-        <div class="flex items-center gap-3 mb-2">
-          <div class="w-1 h-6 bg-linear-to-b from-(--primary) to-transparent rounded-full"></div>
+      <!-- 评论区标题：左青色胶囊竖条+标题（同工具导航手风琴标题的竖条），右侧政策入口（复用页脚的隐私政策弹窗）；
+           pl/pr-4 = 内容区 pl-2 + Waline 面板自带 8px 外边距，保证左右边缘对齐编辑框 -->
+      <div class="relative z-10 flex items-center justify-between gap-3 mb-6 pl-4 pr-4">
+        <div class="flex items-center gap-3">
+          <span class="h-6 w-[5px] shrink-0 rounded-full bg-[#00a29b]" aria-hidden="true"></span>
           <h3 class="text-xl font-bold text-(--btn-content)">{i18n(Key.commentSection)}</h3>
         </div>
-        <p class="text-sm text-(--content-meta) ml-4">{i18n(Key.commentSubtitle)}</p>
+        <button
+          class="text-sm text-(--content-meta) transition-colors hover:text-(--primary)"
+          onclick="window.openPrivacyModal && window.openPrivacyModal()"
+          type="button"
+        >
+          {i18n(Key.privacyPolicy)}
+        </button>
       </div>
       <!-- 评论内容区域 -->
       <div class="relative z-10 pl-2 pr-2">

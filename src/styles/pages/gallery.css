@@ -14,7 +14,7 @@
 }
 
 :root.dark .gallery-tabs-pill {
-	border-color: #fff;
+	border-color: #2e2e2e;
 }
 
 .gallery-tabs-indicator {
@@ -31,7 +31,7 @@
 }
 
 :root.dark .gallery-tabs-indicator {
-	background: #fff;
+	background: #282828;
 }
 
 .gallery-tab-btn {
@@ -58,7 +58,7 @@
 }
 
 :root.dark .gallery-tab-btn--active {
-	color: #000;
+	color: #dadada;
 }
 
 .gallery-tab-btn--inactive {
@@ -70,7 +70,7 @@
 }
 
 :root.dark .gallery-tab-btn--inactive {
-	color: #fff;
+	color: #b3b3b3;
 }
 
 @media (max-width: 640px) {
@@ -102,7 +102,7 @@
 }
 
 :root.dark .album-card {
-	background: #f5f5f5;
+	background: #161616;
 	box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
 }
 
@@ -122,7 +122,7 @@
 
 :root.dark .album-card::before,
 :root.dark .album-card::after {
-	background: #f5f5f5;
+	background: #161616;
 }
 
 .album-card:hover::before {
@@ -230,7 +230,7 @@
 }
 
 :root.dark .album-card-title {
-	color: #444;
+	color: #dadada;
 }
 
 .album-card-meta {
@@ -248,7 +248,7 @@
 }
 
 :root.dark .album-card-meta {
-	color: #555;
+	color: #b3b3b3;
 }
 
 .album-card-meta > span {

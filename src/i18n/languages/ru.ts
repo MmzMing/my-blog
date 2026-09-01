@@ -97,6 +97,8 @@ export const ru: Translation = {
 	// Пагинация
 	[Key.paginationPrev]: "Предыдущая",
 	[Key.paginationNext]: "Следующая",
+	[Key.prevPost]: "Предыдущая статья",
+	[Key.nextPost]: "Следующая статья",
 	[Key.paginationPage]: "Страница",
 	[Key.paginationOf]: "из",
 	[Key.paginationStatus]: "Страница {current} из {total}",

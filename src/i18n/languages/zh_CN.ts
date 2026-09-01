@@ -96,6 +96,8 @@ export const zh_CN: Translation = {
 	// 分页
 	[Key.paginationPrev]: "上一页",
 	[Key.paginationNext]: "下一页",
+	[Key.prevPost]: "上一篇",
+	[Key.nextPost]: "下一篇",
 	[Key.paginationPage]: "第",
 	[Key.paginationOf]: "页，共",
 	[Key.paginationStatus]: "第 {current} 页，共 {total} 页",

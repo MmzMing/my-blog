@@ -22,6 +22,8 @@ const SUMMARY_EDGE_GUTTER = 64;
 const SCROLL_SETTLE_DELAY = 140;
 const BAR_CHARGE_DURATION = 260;
 const BAR_CHARGE_STEP = 14;
+/* 滚动钳制：栏底边最多到正文卡底部再往上这段距离，越过后随文档滚走，不再悬浮在评论区 */
+const RAIL_BOTTOM_GAP = 24;
 
 function clamp(value: number, minimum: number, maximum: number): number {
 	return Math.min(Math.max(value, minimum), maximum);
@@ -71,6 +73,12 @@ export class ArticleOutlineRailController {
 	private isScrolling = false;
 	private articleStart = 0;
 	private articleEnd = 0;
+	/* 停靠冻结：栏底边触到正文卡底后，阅读跟踪锁死在那一刻的有效位置，
+	   之后图片/字体加载导致布局变化也不再切换标题/进度，直到往回滚脱离停靠 */
+	private clampLimit = Number.NaN;
+	private dockScrollY: number | null = null;
+	private railBaseTop = 0;
+	private appliedRailTop: number | null = null;
 	private railHeight = 0;
 	private lastProgressPercent = -1;
 	private animationFrame: number | null = null;
@@ -105,6 +113,8 @@ export class ArticleOutlineRailController {
 
 		this.root.hidden = false;
 		this.cachePositions();
+		const rootTop = Number.parseFloat(getComputedStyle(this.root).top);
+		this.railBaseTop = Number.isNaN(rootTop) ? 0 : rootTop;
 		this.renderMinimap();
 		this.cacheRailGeometry();
 		this.renderBrowseList();
@@ -129,6 +139,9 @@ export class ArticleOutlineRailController {
 		this.abortController.abort();
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
+		this.root.style.top = "";
+		this.appliedRailTop = null;
+		this.dockScrollY = null;
 		if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
 		if (this.measureFrame !== null) cancelAnimationFrame(this.measureFrame);
 		if (this.collapseTimer) clearTimeout(this.collapseTimer);
@@ -375,6 +388,8 @@ export class ArticleOutlineRailController {
 	private update(): void {
 		if (!this.headings.length) return;
 
+		this.clampLimit = this.measureClampLimit();
+		this.syncVerticalClamp();
 		const progress = this.getProgress();
 		this.syncReadingProgress(progress);
 
@@ -386,6 +401,49 @@ export class ArticleOutlineRailController {
 			}
 		}
 		this.syncActiveRailBar(this.headings[nextActiveIndex]);
+	}
+
+	/* 每次滚动实时测正文卡（含 License/相关文章）底部，避免初始化时布局未稳导致的钳制点漂移 */
+	private measureClampLimit(): number {
+		const anchor =
+			document.querySelector<HTMLElement>("#post-container") ?? this.article;
+		if (!anchor || !this.railHeight) return Number.NaN;
+		return (
+			anchor.getBoundingClientRect().bottom +
+			window.scrollY -
+			this.railHeight -
+			RAIL_BOTTOM_GAP -
+			this.railBaseTop
+		);
+	}
+
+	private syncVerticalClamp(): void {
+		const limit = this.clampLimit;
+		if (Number.isNaN(limit)) return;
+
+		/* 栏底边不许越过正文卡底：正常时停在 CSS 的 top，越过后随文章末尾一起滚走 */
+		const maxTop = limit + this.railBaseTop - window.scrollY;
+		const nextTop = Math.min(this.railBaseTop, maxTop);
+		if (nextTop === this.appliedRailTop) return;
+
+		this.appliedRailTop = nextTop;
+		this.root.style.top = `${nextTop}px`;
+	}
+
+	/* 钳制生效后跟踪一并冻结：当前章节/进度/刻度停在停靠那一刻。
+	   limit 非正（文章短到钳制永不触发）时直接用真实滚动位置。 */
+	private getEffectiveScrollY(): number {
+		const limit = this.clampLimit;
+		if (Number.isNaN(limit) || limit <= 0) {
+			this.dockScrollY = null;
+			return window.scrollY;
+		}
+		if (window.scrollY <= limit) {
+			this.dockScrollY = null;
+			return window.scrollY;
+		}
+		if (this.dockScrollY === null) this.dockScrollY = limit;
+		return this.dockScrollY;
 	}
 
 	private syncReadingProgress(progress: number): void {
@@ -405,7 +463,7 @@ export class ArticleOutlineRailController {
 		const centers = this.railBarCentersByHeading[activeHeading.index];
 		if (!bars?.length || !centers?.length) return;
 
-		const readingPosition = window.scrollY + READING_OFFSET;
+		const readingPosition = this.getEffectiveScrollY() + READING_OFFSET;
 		const sectionProgress = clamp(
 			(readingPosition - activeHeading.absoluteTop) /
 				Math.max(1, activeHeading.sectionEnd - activeHeading.absoluteTop),
@@ -444,19 +502,20 @@ export class ArticleOutlineRailController {
 	}
 
 	private getProgress(): number {
+		const effectiveScrollY = this.getEffectiveScrollY();
 		const end = this.articleEnd - window.innerHeight + READING_OFFSET;
 		if (end <= this.articleStart) {
-			return window.scrollY + READING_OFFSET >= this.articleStart ? 1 : 0;
+			return effectiveScrollY + READING_OFFSET >= this.articleStart ? 1 : 0;
 		}
 		return clamp(
-			(window.scrollY - this.articleStart) / (end - this.articleStart),
+			(effectiveScrollY - this.articleStart) / (end - this.articleStart),
 			0,
 			1,
 		);
 	}
 
 	private getActiveIndex(): number {
-		const readingPosition = window.scrollY + READING_OFFSET;
+		const readingPosition = this.getEffectiveScrollY() + READING_OFFSET;
 		let lower = 0;
 		let upper = this.headings.length - 1;
 		let result = 0;

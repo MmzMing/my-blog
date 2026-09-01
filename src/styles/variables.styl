@@ -154,54 +154,58 @@
 :root:not(.dark) body.card-follow-theme-hue
   --card-bg: transparent
 
-/* 暗色主题：纯黑底 + 白前景，所有色块去饱和 */
+/* 暗色主题：Obsidian 式中性灰阶 + 深黑页面锚点，全站暗色一律取值于此外，禁止散点硬编码：
+   页面锚点 #101010（最深层：页面背景/代码块背景），页脚固定 #171717
+   表面层级全部高于页面：chrome #161616（导航栏/浮动面板/卡片面）→ base-05 #212121（悬停面）→ base-20 #282828（激活/深抬升面）
+   描边 base-25 #2e2e2e、base-30 #333333、base-35 #3f3f3f
+   文字 base-100 #dadada（正文）、base-70 #b3b3b3（次级）、base-60 #999999（弱化） */
 :root.dark
-  --primary: oklch(0.85 0 0)
-  --page-bg: oklch(0.08 0 0)
+  --primary: #dadada
+  --page-bg: #101010
   --card-bg: transparent
   --card-bg-transparent: transparent
-  --article-surface-bg: #131313
+  --article-surface-bg: #161616
 
-  --deep-text: oklch(0.90 0 0)
-  --title-active: oklch(0.70 0 0)
+  --deep-text: #dadada
+  --title-active: #b3b3b3
 
-  --btn-content: oklch(0.85 0 0)
+  --btn-content: #dadada
   --btn-regular-bg: transparent
-  --btn-regular-bg-hover: oklch(0.18 0 0)
-  --btn-regular-bg-active: oklch(0.22 0 0)
+  --btn-regular-bg-hover: #212121
+  --btn-regular-bg-active: #282828
 
-  --btn-plain-bg-hover: oklch(0.18 0 0)
-  --btn-plain-bg-active: oklch(0.22 0 0)
+  --btn-plain-bg-hover: #212121
+  --btn-plain-bg-active: #282828
 
-  --btn-card-bg-hover: oklch(0.16 0 0)
-  --btn-card-bg-active: oklch(0.20 0 0)
+  --btn-card-bg-hover: #212121
+  --btn-card-bg-active: #282828
 
-  --line-divider: oklch(0.25 0 0)
-  --line-color: oklch(0.25 0 0)
-  --meta-divider: oklch(0.35 0 0)
-  --content-meta: oklch(0.65 0 0)
+  --line-divider: #2e2e2e
+  --line-color: #2e2e2e
+  --meta-divider: #3f3f3f
+  --content-meta: #999999
   --article-pinned-accent: oklch(0.72 0.16 25)
   --article-title-marker: oklch(0.78 0.15 190)
   --article-category-lightness: 0.75
   --article-category-chroma: 0.13
 
-  --inline-code-bg: oklch(0.28 0 0)
-  --inline-code-color: oklch(0.95 0 0)
-  --strong-color: oklch(1 0 0)
-  --selection-bg: oklch(0.30 0 0)
-  --codeblock-bg: #131313
-  --codeblock-topbar-bg: #131313
-  --codeblock-border: #242424
+  --inline-code-bg: #333333
+  --inline-code-color: #dadada
+  --strong-color: #dadada
+  --selection-bg: #333333
+  --codeblock-bg: #101010
+  --codeblock-topbar-bg: #101010
+  --codeblock-border: #2e2e2e
 
-  --license-block-bg: oklch(0.12 0 0)
+  --license-block-bg: #161616
 
-  --link-underline: oklch(0.30 0 0)
-  --link-hover: oklch(0.65 0 0)
-  --link-active: oklch(0.80 0 0)
+  --link-underline: #333333
+  --link-hover: #999999
+  --link-active: #dadada
   --link-color: oklch(0.80 0.12 210)
 
-  --float-panel-bg: oklch(0.10 0 0)
-  --navbar-bg: #0A0A0A
+  --float-panel-bg: #161616
+  --navbar-bg: #161616
   --navbar-highlight-bg: #FFFFFF
   --navbar-highlight-text: #000000
 
@@ -212,28 +216,28 @@
   --display-light-icon: 0
   --display-dark-icon: 1
 
-  --admonitions-color-tip: oklch(0.75 0 0)
-  --admonitions-color-note: oklch(0.75 0 0)
-  --admonitions-color-important: oklch(0.75 0 0)
-  --admonitions-color-warning: oklch(0.75 0 0)
-  --admonitions-color-caution: oklch(0.85 0 0)
+  --admonitions-color-tip: #b3b3b3
+  --admonitions-color-note: #b3b3b3
+  --admonitions-color-important: #b3b3b3
+  --admonitions-color-warning: #b3b3b3
+  --admonitions-color-caution: #dadada
 
   --guestbook-panel: transparent
   --guestbook-surface: transparent
-  --guestbook-editor-bg: #2D2D2D
-  --guestbook-editor-text: #FFFFFF
-  --guestbook-editor-muted: #B8B8B8
+  --guestbook-editor-bg: #282828
+  --guestbook-editor-text: #dadada
+  --guestbook-editor-muted: #b3b3b3
   --guestbook-editor-line: #555555
-  --guestbook-editor-hover: #262626
-  --guestbook-focus: #D6D6D6
+  --guestbook-editor-hover: #232323
+  --guestbook-focus: #dadada
   --guestbook-send-bg: #FFFFFF
-  --guestbook-send-text: #111111
+  --guestbook-send-text: #101010
   --guestbook-link: #22C55E
   --guestbook-overlay: rgb(0 0 0 / 0.72)
-  --guestbook-bubble: #262626
-  --guestbook-bubble-text: #FFFFFF
+  --guestbook-bubble: #282828
+  --guestbook-bubble-text: #dadada
   --guestbook-admin-bubble: #FFFFFF
-  --guestbook-admin-text: #111111
+  --guestbook-admin-text: #101010
   --guestbook-muted: var(--content-meta)
   --guestbook-line: var(--line-divider)
   --guestbook-danger: var(--admonitions-color-caution)
@@ -241,17 +245,17 @@
   --guestbook-waiting: #E5484D
 
   --toc-badge-bg: transparent
-  --toc-btn-hover: oklch(0.18 0 0)
-  --toc-btn-active: oklch(0.22 0 0)
-  --toc-item-active: oklch(0.85 0 0)
+  --toc-btn-hover: #212121
+  --toc-btn-active: #282828
+  --toc-item-active: #dadada
 
-  --color-selection-bar: linear-gradient(to right, oklch(0.85 0 0), oklch(0.55 0 0), oklch(0.25 0 0))
+  --color-selection-bar: linear-gradient(to right, #dadada, #999999, #333333)
 
-  --tag-graph-surface: #17181c
-  --tag-graph-text: #f4f4f5
-  --tag-graph-muted: #d4d4d8
-  --tag-graph-tooltip-bg: rgba(9, 9, 11, 0.94)
-  --tag-graph-tooltip-text: #fafafa
+  --tag-graph-surface: #161616
+  --tag-graph-text: #dadada
+  --tag-graph-muted: #b3b3b3
+  --tag-graph-tooltip-bg: rgba(22, 22, 22, 0.94)
+  --tag-graph-tooltip-text: #dadada
   --tag-graph-tooltip-border: rgba(255, 255, 255, 0.18)
   --tag-graph-node-1: #e25552
   --tag-graph-node-2: #5c91c2

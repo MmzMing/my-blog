@@ -98,7 +98,9 @@
     color: var(--btn-content) !important;
     background-color: var(--btn-regular-bg) !important;
     border-color: var(--line-color) !important;
-    opacity: var(--opacity-80) !important;
+    transition:
+      opacity var(--duration-normal) var(--ease-standard),
+      background-color var(--duration-normal) var(--ease-standard) !important;
 
     &:hover {
       background-color: var(--btn-regular-bg-hover) !important;
@@ -108,27 +110,62 @@
       background-color: var(--btn-regular-bg-active) !important;
     }
   }
-}
 
-/* 修复亮色主题下代码块展开遮罩渐变颜色错误的问题 */
-/* 插件默认只支持 html.dark / data-theme="light" 等检测，本项目使用 :root.dark */
-/* 必须放在 .expressive-code 外部，否则嵌套在 .expressive-code 内时，生成的选择器会变成
-   .expressive-code :root:not(.dark) .ec-collapse__gradient，这是无效的（:root 不能是后代） */
-:root:not(.dark) .ec-collapse__gradient {
-  background: linear-gradient(
-    to bottom,
-    transparent 5%,
-    var(--ec-collapse-bg-color, var(--code-background, #ffffffd3)) 100%
-  ) !important;
-}
+  /* 收起态：截断从外层容器移到 pre 自身（插件把带边框的 frame 包在被裁切的
+     容器里，overflow 会把 pre 的底部边框一起裁掉，看起来像断开）。
+     pre 自己裁切后底部边框始终可见，再在其下追加一层独立的 "•••" 指示层，
+     不遮挡任何内容；悬停时 "•••" 原地变为「查看更多」，点击由下方透明的
+     toggle 按钮承接。 */
+  .ec-collapse--collapsed .ec-collapse__content {
+    max-height: none !important;
+    overflow: visible !important;
+  }
 
-/* 暗色主题下代码块展开遮罩渐变颜色 */
-:root.dark .ec-collapse__gradient {
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    var(--ec-collapse-bg-color, var(--code-background, #000000da)) 100%
-  ) !important;
+  .ec-collapse--collapsed .ec-collapse__gradient {
+    display: none;
+  }
+
+  /* 12 行整数倍截断（行高 1.5rem），避免出现被切一半的残行；
+     下角改直角让左右边框垂直延伸，与下方指示层的边框连续（层自身负责底部圆角） */
+  .ec-collapse--collapsed .frame pre {
+    max-height: calc(12 * 1.5rem);
+    overflow: hidden;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .ec-collapse--collapsed .frame::after {
+    content: "•••";
+    display: block;
+    height: 2.75rem;
+    text-align: center;
+    color: var(--code-block-accent);
+    font-size: 1rem;
+    line-height: 2.75rem;
+    letter-spacing: 0.5rem;
+    text-indent: 0.5rem;
+    border: 1px solid var(--codeblock-border);
+    border-top: none;
+    border-radius: 0 0 0.75rem 0.75rem;
+    transition: color var(--duration-normal) var(--ease-standard);
+  }
+
+  /* 悬停时 "•••" 原地变为「查看更多」 */
+  .ec-collapse--collapsed:hover .frame::after {
+    content: "查看更多";
+    font-size: 0.8rem;
+    letter-spacing: 0.15rem;
+    text-indent: 0.15rem;
+  }
+
+  .ec-collapse--collapsed .ec-collapse__toggle {
+    opacity: 0;
+  }
+
+  /* 键盘聚焦时显示按钮本体（胶囊样式），鼠标路径走 "•••" → 「查看更多」 */
+  .ec-collapse--collapsed .ec-collapse__toggle:focus-visible {
+    opacity: 1;
+  }
 }
 
 /* Tab 代码块（rehype-code-group）：保留插件结构，仅适配本站主题变量。 */

@@ -5,7 +5,7 @@
 }
 
 :root.dark .site-footer {
-	background: color-mix(in oklch, var(--page-bg) 92%, var(--deep-text));
+	background: #171717;
 }
 
 .site-footer__inner {

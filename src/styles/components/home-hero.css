@@ -36,6 +36,12 @@ html:has(.home-hero) #top-row {
 	pointer-events: none;
 }
 
+/* 暗色下 hero 舞台跟随主题页面色：oklch(0.075) 接近纯黑，与正文区页面色会出现明显断层；
+   绑定 --page-bg 后，overlay / shadow / 对话气泡等派生色自动同步 */
+:root.dark .home-hero {
+	--home-hero-surface: var(--page-bg);
+}
+
 .home-hero__visual,
 .home-hero__backdrop,
 .home-hero__shade,

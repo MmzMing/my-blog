@@ -492,7 +492,7 @@ $effect(() => {
 	}
 
 	:root.dark .search-input-wrapper {
-		background: #27272a;
+		background: #282828;
 	}
 
 	.search-canvas {
@@ -529,7 +529,7 @@ $effect(() => {
 	}
 
 	:root.dark .search-input {
-		color: #fff;
+		color: #dadada;
 	}
 
 	.search-input.text-transparent {
@@ -566,13 +566,13 @@ $effect(() => {
 	}
 
 	:root.dark .search-submit-btn {
-		background: #171717;
-		color: #a3a3a3;
+		background: #1c1c1c;
+		color: #b3b3b3;
 	}
 
 	:root.dark .search-submit-btn:disabled {
-		background: #27272a;
-		color: #525252;
+		background: #282828;
+		color: #555555;
 	}
 
 	.search-placeholder {
@@ -610,7 +610,7 @@ $effect(() => {
 	}
 
 	:root.dark .search-results {
-		background: #171717;
+		background: #161616;
 		box-shadow:
 			0 8px 32px -4px rgba(0, 0, 0, 0.5),
 			0 2px 8px rgba(0, 0, 0, 0.3);
@@ -643,7 +643,7 @@ $effect(() => {
 	}
 
 	:root.dark .search-result-title {
-		color: #e5e5e5;
+		color: #dadada;
 	}
 
 	.search-result-item:hover .search-result-title {
@@ -668,7 +668,7 @@ $effect(() => {
 	}
 
 	:root.dark .search-result-excerpt {
-		color: #a3a3a3;
+		color: #b3b3b3;
 	}
 
 	.search-result-excerpt :global(mark) {

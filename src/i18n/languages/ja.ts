@@ -97,6 +97,8 @@ export const ja: Translation = {
 	// ページネーション
 	[Key.paginationPrev]: "前へ",
 	[Key.paginationNext]: "次へ",
+	[Key.prevPost]: "前の記事",
+	[Key.nextPost]: "次の記事",
 	[Key.paginationPage]: "",
 	[Key.paginationOf]: "ページ、全",
 	[Key.paginationStatus]: "{current} / {total} ページ",

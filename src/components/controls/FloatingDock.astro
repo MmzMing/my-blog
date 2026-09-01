@@ -52,6 +52,12 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			<span class="dock-btn-label">{i18n(I18nKey.calendar)}</span>
 		</button>
 
+		<!-- 目录入口：仅文章详情且宽屏（≥96rem）已有右侧大纲栏时隐藏，见 updatePathDependent -->
+		<button class="dock-btn dock-btn-toc hide" id="dock-toc-btn" aria-label={i18n(I18nKey.tableOfContents)} aria-hidden="true" tabindex="-1" type="button" data-tooltip={i18n(I18nKey.tableOfContents)}>
+			<span class="dock-btn-icon"><Icon name="material-symbols:format-list-bulleted" class="text-3xl" /></span>
+			<span class="dock-btn-label">{i18n(I18nKey.tableOfContents)}</span>
+		</button>
+
 		{spineModelConfig?.enable && (
 			<button class="dock-btn" id="dock-spine-btn" aria-label={i18n(I18nKey.spineModel)} type="button" data-active="true" data-tooltip={i18n(I18nKey.spineModel)}>
 				<span class="dock-btn-icon"><Icon name="material-symbols:image-outline" class="text-3xl" /></span>
@@ -117,6 +123,16 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 	<CalendarWidget id="desktop-calendar-widget" />
 </div>
 
+<div class="dock-drawer dock-drawer-toc dock-drawer-closed" id="dock-drawer-toc">
+	<div class="dock-drawer-title">
+		<Icon name="material-symbols:format-list-bulleted" class="dock-drawer-title-icon" />
+		<span>{i18n(I18nKey.tableOfContents)}</span>
+	</div>
+	<div class="dock-toc-scroll toc-scroll-container">
+		<div id="dock-drawer-toc-content" class="toc-content"></div>
+	</div>
+</div>
+
 <!-- 样式已迁移至 src/styles/components/floating-dock.css -->
 
 <script>
@@ -136,8 +152,31 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			"dock-music-btn": "dock-drawer-music",
 			"dock-calendar-btn": "dock-drawer-calendar",
 			"dock-announcement-btn": "dock-drawer-announcement",
+			"dock-toc-btn": "dock-drawer-toc",
 		};
 		let preserveCalendarDrawerOnNavigation = false;
+		/* 目录抽屉：首次打开懒建 TOC，导航后销毁重建（标题集合随页面变化） */
+		let dockTocManager: { cleanup: () => void } | null = null;
+
+		async function ensureDockToc() {
+			const tocContent = document.getElementById("dock-drawer-toc-content");
+			if (!tocContent) return;
+			dockTocManager?.cleanup();
+			dockTocManager = null;
+			try {
+				const { TOCManager } = await import("@/utils/toc-utils");
+				const manager = new TOCManager({
+					contentId: "dock-drawer-toc-content",
+					indicatorId: "dock-drawer-toc-indicator",
+					maxLevel: 3,
+					scrollOffset: 80,
+				});
+				manager.init();
+				dockTocManager = manager;
+			} catch {
+				tocContent.textContent = i18n(I18nKey.tocEmpty);
+			}
+		}
 
 		function closeAllDrawers() {
 			document.querySelectorAll(".dock-drawer").forEach((drawer) => drawer.classList.add("dock-drawer-closed"));
@@ -162,6 +201,7 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 				if (!isOpen) {
 					drawer.classList.remove("dock-drawer-closed");
 					if (drawerId === "dock-drawer-calendar") window.dispatchEvent(new Event("calendar:open"));
+					if (drawerId === "dock-drawer-toc") void ensureDockToc();
 				}
 			}, { signal: dockSignal });
 		});
@@ -278,6 +318,11 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 
 			setButtonVisibility("dock-announcement-btn", isHome);
 			setButtonVisibility("dock-comment-btn", (isPost || isFriends) && hasComment);
+			/* 目录按钮：文章详情且宽屏（≥96rem）已有大纲栏时隐藏 */
+			const tocDrawerOpen = !document.getElementById("dock-drawer-toc")?.classList.contains("dock-drawer-closed");
+			const showToc = isPost && !window.matchMedia("(min-width: 96rem)").matches;
+			setButtonVisibility("dock-toc-btn", showToc);
+			if (!showToc && tocDrawerOpen) closeAllDrawers();
 			if (!isHome && document.getElementById("dock-drawer-announcement") && !document.getElementById("dock-drawer-announcement")?.classList.contains("dock-drawer-closed")) {
 				closeAllDrawers();
 			}
@@ -286,6 +331,8 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		updateScrollDependent();
 		updatePathDependent();
 		window.addEventListener("scroll", updateScrollDependent, { passive: true, signal: dockSignal });
+		// 跨过 96rem 断点时目录按钮显隐/抽屉状态需要重算
+		window.addEventListener("resize", updatePathDependent, { passive: true, signal: dockSignal });
 		// 只在导航后收抽屉、重算路径相关按钮；首次加载的初始态由上面两行直接调用负责
 		onNavigation(() => {
 			if (preserveCalendarDrawerOnNavigation) {
@@ -296,6 +343,8 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			} else {
 				closeAllDrawers();
 			}
+			dockTocManager?.cleanup();
+			dockTocManager = null;
 			updatePathDependent();
 			updateScrollDependent();
 		}, { signal: dockSignal });

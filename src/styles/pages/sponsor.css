@@ -16,7 +16,7 @@
 }
 
 :root.dark .sponsor-qr-card__outer {
-	border-color: #e5e5e5;
+	border-color: #2e2e2e;
 }
 
 .sponsor-qr-card {
@@ -40,7 +40,7 @@
 }
 
 :root.dark .sponsor-qr-card__title {
-	color: var(--neutral-100, #f3f4f6);
+	color: #dadada;
 }
 
 /* 第二层：选择支付方式 */
@@ -52,7 +52,7 @@
 }
 
 :root.dark .sponsor-qr-card__subtitle {
-	color: var(--neutral-400, #9ca3af);
+	color: #b3b3b3;
 }
 
 /* 第三层：Tabs 导航 */
@@ -71,7 +71,7 @@
 }
 
 :root.dark .sponsor-qr-card__tabs-pill {
-	border-color: #fff;
+	border-color: #2e2e2e;
 }
 
 .sponsor-qr-card__tabs-indicator {
@@ -88,7 +88,7 @@
 }
 
 :root.dark .sponsor-qr-card__tabs-indicator {
-	background: #fff;
+	background: #282828;
 }
 
 .sponsor-qr-card__tab-btn {
@@ -116,7 +116,7 @@
 }
 
 :root.dark .sponsor-qr-card__tab-btn--active {
-	color: #000;
+	color: #dadada;
 }
 
 /* 未激活态：黑色文字 */
@@ -129,7 +129,7 @@
 }
 
 :root.dark .sponsor-qr-card__tab-btn--inactive {
-	color: #fff;
+	color: #b3b3b3;
 }
 
 /* 第四层：二维码图片 */
@@ -238,7 +238,7 @@
 }
 
 :root.dark .sponsor-row {
-	border-color: #e5e5e5;
+	border-color: #2e2e2e;
 }
 
 .sponsor-row:hover {
@@ -293,7 +293,7 @@
 }
 
 :root.dark .sponsor-name {
-	color: var(--neutral-100, #f3f4f6);
+	color: #dadada;
 }
 
 .sponsor-date {
@@ -303,7 +303,7 @@
 }
 
 :root.dark .sponsor-date {
-	color: var(--neutral-500, #6b7280);
+	color: #666666;
 }
 
 .sponsor-amount {

@@ -128,7 +128,7 @@
 }
 
 :root.dark .changelog-wire-label {
-	background: #17181c;
+	background: #161616;
 }
 
 @keyframes changelog-dash {
@@ -178,7 +178,7 @@
 }
 
 :root.dark .changelog-card__inner {
-	background: #17181c;
+	background: #161616;
 }
 
 .changelog-card__inner:hover {
@@ -507,7 +507,7 @@ a.changelog-card__page-chip:hover {
 }
 
 :root.dark .changelog-dialog__related-btn {
-	background: #17181c;
+	background: #161616;
 }
 
 .changelog-dialog__related-btn:hover {

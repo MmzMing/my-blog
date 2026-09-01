@@ -672,34 +672,44 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
   </script>
 
   <div
-    class="flex flex-col md:flex-row justify-between mb-4 gap-4 overflow-hidden w-full"
+    class="post-pager-row flex flex-col md:flex-row justify-between mb-4 gap-4 overflow-hidden w-full"
   >
+    <!-- 上一篇：左卡，大图标垂直撑满两层文字（标签+文章名），背景与相关文章卡一致 -->
     <a
-      href={entry.data.nextSlug ? getPostUrlBySlug(entry.data.nextSlug) : url("/")}
-      class="w-full font-bold overflow-hidden active:scale-95"
+      href={entry.data.prevSlug ? getPostUrlBySlug(entry.data.prevSlug) : url("/")}
+      class="w-full overflow-hidden active:scale-95"
     >
-      <div class="btn-card rounded-2xl w-full h-15 max-w-full px-4 flex items-center justify-start! gap-4">
+      <div class="rounded-2xl w-full h-20 max-w-full px-5 flex items-center gap-4 bg-(--article-surface-bg) transition-colors duration-150 hover:bg-(--btn-card-bg-hover)">
         <Icon
           name="material-symbols:chevron-left-rounded"
-          class="text-[2rem] text-(--primary)"
+          class="text-[2.75rem] text-(--primary) shrink-0"
+          aria-hidden="true"
         />
-        <div class="overflow-hidden transition text-ellipsis whitespace-nowrap max-w-[calc(100%-3rem)] text-black/75 dark:text-white/75">
-          {entry.data.nextTitle || i18n(I18nKey.home)}
+        <div class="flex flex-col justify-center gap-0.5 overflow-hidden min-w-0">
+          <span class="text-xs text-(--content-meta)">{i18n(I18nKey.prevPost)}</span>
+          <span class="font-bold truncate">
+            {entry.data.prevTitle || i18n(I18nKey.home)}
+          </span>
         </div>
       </div>
     </a>
 
+    <!-- 下一篇：右卡，镜像布局 -->
     <a
-      href={entry.data.prevSlug ? getPostUrlBySlug(entry.data.prevSlug) : url("/")}
-      class="w-full font-bold overflow-hidden active:scale-95"
+      href={entry.data.nextSlug ? getPostUrlBySlug(entry.data.nextSlug) : url("/")}
+      class="w-full overflow-hidden active:scale-95"
     >
-      <div class="btn-card rounded-2xl w-full h-15 max-w-full px-4 flex items-center justify-end! gap-4">
-        <div class="overflow-hidden transition text-ellipsis whitespace-nowrap max-w-[calc(100%-3rem)] text-black/75 dark:text-white/75">
-          {entry.data.prevTitle || i18n(I18nKey.home)}
+      <div class="rounded-2xl w-full h-20 max-w-full px-5 flex items-center justify-end gap-4 bg-(--article-surface-bg) transition-colors duration-150 hover:bg-(--btn-card-bg-hover)">
+        <div class="flex flex-col justify-center items-end gap-0.5 overflow-hidden min-w-0 text-right">
+          <span class="text-xs text-(--content-meta)">{i18n(I18nKey.nextPost)}</span>
+          <span class="font-bold truncate">
+            {entry.data.nextTitle || i18n(I18nKey.home)}
+          </span>
         </div>
         <Icon
           name="material-symbols:chevron-right-rounded"
-          class="text-[2rem] text-(--primary)"
+          class="text-[2.75rem] text-(--primary) shrink-0"
+          aria-hidden="true"
         />
       </div>
     </a>
