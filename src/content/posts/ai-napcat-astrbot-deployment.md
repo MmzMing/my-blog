@@ -569,7 +569,7 @@ docker compose up -d      # 重启容器（数据不会丢失）
 
 ## 十一、参考资料
 
-- [AstrBot GitHub](https://github.com/Soulter/AstrBot) — AstrBot 官方仓库
+- [AstrBot GitHub](https://github.com/AstrBotDevs/AstrBot) — AstrBot 官方仓库
 - [NapCat GitHub](https://github.com/NapNeko/NapCatQQ) — NapCat 官方仓库
 - [AstrBot 文档](https://astrbot.app) — 官方文档站点
 - [女娲 Skill](https://github.com/alchaincyf/nuwa-skill) — 人格蒸馏 Skill，提取任何人思维方式

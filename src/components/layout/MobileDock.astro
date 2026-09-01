@@ -71,22 +71,22 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 				{siteConfig.navbar.logo?.type === "icon" ? (
 					<Icon name={siteConfig.navbar.logo.value || "material-symbols:home-pin-outline"} is:inline />
 				) : siteConfig.navbar.logo?.type === "image" && logoImg ? (
-					logoImg.format === "svg" ? (
-						<img src={logoImg.src} alt="" />
-					) : (
-						<Picture
-							src={logoImg}
-							alt=""
-							formats={getImageFormats()}
-							fallbackFormat={getFallbackFormat()}
-							widths={[28, 56]}
-							loading="eager"
-						/>
-					)
-				) : siteConfig.navbar.logo?.type === "image" ? (
-					<img src={url(siteConfig.navbar.logo.value)} alt="" />
-				) : siteConfig.navbar.logo?.type === "url" ? (
-					<img src={siteConfig.navbar.logo.value} alt="" />
+				logoImg.format === "svg" ? (
+					<img src={logoImg.src} alt={siteConfig.navbar.logo.alt || siteTitle} />
+				) : (
+					<Picture
+						src={logoImg}
+						alt={siteConfig.navbar.logo.alt || siteTitle}
+						formats={getImageFormats()}
+						fallbackFormat={getFallbackFormat()}
+						widths={[28, 56]}
+						loading="eager"
+					/>
+				)
+			) : siteConfig.navbar.logo?.type === "image" ? (
+				<img src={url(siteConfig.navbar.logo.value)} alt={siteConfig.navbar.logo.alt || siteTitle} />
+			) : siteConfig.navbar.logo?.type === "url" ? (
+				<img src={siteConfig.navbar.logo.value} alt={siteConfig.navbar.logo.alt || siteTitle} />
 				) : (
 					<Icon name="material-symbols:home-pin-outline" is:inline />
 				)}

@@ -5,6 +5,13 @@ import { siteConfig } from "@/config";
 import { getSortedPosts } from "@/utils/content-utils";
 
 export const getStaticPaths = (async () => {
+	// 页面关闭时不生成任何分页路径。
+	// 若在此仍返回路径，静态构建会为每页产出 meta-refresh 跳转存根页，
+	// 关闭的页面应彻底不存在，而不是靠 sitemap 过滤和存根页 noindex 兜底
+	if (!siteConfig.pages.postList) {
+		return [];
+	}
+
 	const posts = await getSortedPosts();
 	const regularPostCount = posts.filter((entry) => !entry.data.pinned).length;
 	const postsPerPage = Math.max(

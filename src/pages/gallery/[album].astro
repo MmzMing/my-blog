@@ -15,6 +15,12 @@ if (!siteConfig.pages.gallery) {
 }
 
 export function getStaticPaths() {
+	// 页面关闭时不生成任何相册详情页。
+	// 若在此仍返回路径，静态构建会为每个相册产出 meta-refresh 跳转存根页，
+	// 这些 URL 会绕过 sitemap 里对 /gallery/ 的精确匹配过滤
+	if (!siteConfig.pages.gallery) {
+		return [];
+	}
 	return galleryConfig.albums.map((album) => ({
 		params: { album: album.id },
 	}));
