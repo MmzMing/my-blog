@@ -35,97 +35,80 @@ Cloudflare D1 基于 SQLite，Umami 仅支持 PostgreSQL，无法兼容。
 
 ---
 
-## 二、第一步：创建 Neon 数据库
+## 二、部署步骤
 
-1. 访问 [neon.tech](https://neon.tech/) 注册
-2. **Create Project**：
-   - **Project name**：`umami`
-   - **Region**：`Singapore` 或 `Tokyo`
-   - **Postgres version**：默认 17
-3. 进入 **Dashboard → Connection String → 选择 Prisma → 进入 .env 复制**
-4. 复制 `DATABASE_URL` 连接字符串
+1、拉仓库
+2、vercel部署
+3、vercel打通neon，更改域名，重新部署
+4、登录Umami更改密码，调整地址，开通网址
+5、复制配置项到config
 
-![Neon 项目 Dashboard，复制 Prisma 连接字符串作为 DATABASE_URL](./image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-20260512042258.webp)
-
----
-
-## 三、第二步：Fork Umami 仓库
+### 1、Fork Umami 仓库
 
 访问 [github.com/umami-software/umami](https://github.com/umami-software/umami)，点击 **Fork**，保持默认设置。
+### 2、vercel部署
 
----
+![选择你需要部署的项目](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284330408.webp)
 
-## 四、第三步：确认 Prisma 7 适配
+![直接部署](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284423095.webp)
 
-Umami 最新版使用 **Prisma 7**，`url` 和 `directUrl` 不再支持在 `schema.prisma` 中配置，已移至 `prisma.config.ts`。Umami 项目根目录已自带 `prisma.config.ts`：
+![第一次部署因为没有配置数据库所有会失败，进去项目开始下一步](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284505310.webp)
 
-```typescript
-import 'dotenv/config';
-import { defineConfig, env } from 'prisma/config';
+### 3、vercel打通neon，更改域名，重新部署
 
-export default defineConfig({
-  datasource: {
-    url: env('DATABASE_URL'),
-  },
-});
-```
+![选择数据库，添加数据库](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284565232.webp)
 
-无需手动修改，只需确认 Fork 出来的版本中存在该文件。
+![选择美国，其他国内访问都比较慢](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284571647.webp)
 
----
+![随便编写一个名字](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284584552.webp)
 
-## 五、第四步：部署到 Vercel
+![勾选，还有注意下方这个环境变量名字，别填写错了，确认后会跳转到数据库页面，需要调回来继续下一步](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284594753.webp)
 
-1. 访问 [vercel.com](https://vercel.com/)，GitHub 登录
-2. **Add New → Project**，找到 Fork 的 `umami` 仓库，**Import**
-3. 配置保持默认
-4. **Environment Variables** 添加：
+![更改域名](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284607211.webp)
 
-| Name | Value |
-|---|---|
-| `DATABASE_URL` | Neon 中复制的 Prisma 连接字符串 |
+> [!CAUTION] 注意
+> 这里需要到你的域名DNS配置CNAME，我这里已经配置好了，等下这里会提示报错信息，你直接按照他要求做就行
 
-5. 点击 **Deploy**，等待 2-3 分钟，得到访问地址 `umami-xxxx.vercel.app`
+Vercel 会报错。去 Cloudflare DNS 添加记录：
 
----
-
-## 六、第五步：首次登录和安全设置
-
-1. 访问部署地址，默认凭据：用户名 `admin`，密码 `umami`
-2. **立即修改密码**：Settings → Profile
-3. 添加博客网站：主页 → Websites → Add website → 填写 Name 和 Domain
-4. 进入网站看板 → 右上角 **Edit** → 复制 **Website ID**
-
----
-
-## 七、第六步：绑定自定义域名
-
-> Vercel 的 `.vercel.app` 域名在国内可能被墙，绑定自定义域名解决。
-
-1. Vercel 项目 → Settings → Domains → 添加域名（如 `stats.yourdomain.com`）
-2. Vercel 会报错。去 Cloudflare DNS 添加记录：
-
-| Type  | Name    | Target                 | Proxy status |
-| ----- | ------- | ---------------------- | ------------ |
-| CNAME | `stats` | `cname.vercel-dns.com` | **关闭（灰色云朵）** |
+| Type  | Name     | Target   | Proxy status |
+| ----- | -------- | -------- | ------------ |
+| CNAME | 你需要更改的地方 | 你需要更改的地方 | **关闭（灰色云朵）** |
 
 > ⚠️ Proxy 必须关闭。Vercel 自带 CDN，开 Cloudflare Proxy 会冲突导致 SSL 问题。
 
-3. 等待域名验证通过，Vercel 自动配置 SSL 证书
-4. Vercel 显示黄色警告时点进去授权，Cloudflare 的 Target 会被自动更新
-5. 验证成功
+等待域名验证通过，Vercel 自动配置 SSL 证书
 
----
+Vercel 显示黄色警告时点进去授权，Cloudflare 的 Target 会被自动更新
 
-## 八、第七步：配置博客接入 Umami
+验证成功
 
-### 1、通用接入方式
 
-在网站 `<head>` 中添加：
+![others-umami-vercel-neon-deployment-1788284781433.webp](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284781433.webp)
 
-```html
-<script async src="https://你的Umami域名/script.js" data-website-id="你的 Website ID"></script>
-```
+> [!CAUTION] 注意
+> 这里重新部署一般都会正常，等待 2-3 分钟，需要注意的是你选择的是否你的域名，如果不正常则是你前面步骤有问题
+
+### 4、登录Umami更改密码，调整地址，开通网址
+
+- 访问你的域名
+- 默认凭据：用户名 `admin`，密码 `umami`
+
+![第一时间更改密码](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284959445.webp)
+
+![新增网站，用于给访客看](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284965643.webp)
+
+![拉到下方分享那块，按图片按需勾选](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788284973740.webp)
+
+> [!CAUTION] 注意
+> 保存后复制生成的分享链接，格式：`https://stats.yourdomain.com/share/xxxxxxxxx`
+> xxxxxxxxx相当于你的shareid
+> 还有复制你的跟踪代码 data-website-id="xxxxxxxxxxxxxxxxxxx"
+
+### 5、复制配置项到config
+
+
+复制你的跟踪代码 data-website-id="xxxxxxxxxxxxxxxxxxx"
 
 可选参数：
 
@@ -135,39 +118,22 @@ export default defineConfig({
 | `data-do-not-track="true"` | 尊重浏览器 DNT 设置 |
 | `data-domains="example.com"` | 仅在指定域名下追踪 |
 
-### 2、本项目接入方式
-
 本博客已内置 Umami 组件，修改 `src/config/siteConfig.ts`：
 
-```typescript
-analytics: {
-    umamiAnalytics: {
-        websiteId: "你的 Website ID",
-        shareId: "你的 Share ID",   // 用于拉取公开统计，见第八步
-        scriptUrl: "https://你的Umami域名/script.js",
-        trackOutboundLinks: true,
-        collectWebVitals: false,
-    },
-},
-```
+- 上方链接的shareid
+- 上方复制的data-website-id
 
-组件 `src/components/analytics/UmamiAnalytics.astro` 负责注入脚本并自动追踪出站链接点击。
+![更新到你的博客上的config里面](image/others-umami-vercel-neon-deployment.assets/others-umami-vercel-neon-deployment-1788285213235.webp)
+
+
+### 6、完结撒花
 
 ---
 
-## 九、第八步：开启 Share URL（用于公开访问 UV/PV）
+## 三、本项目获取 UV/PV 的实现原理
 
 > 通过 Umami 的 Share API，无需服务端鉴权即可在博客首页展示访问数据。
 
-### 1、开启 Share URL
-
-1. 登录 Umami 后台 → 你的网站 → 右上角 **Edit**
-2. 找到 **Share URL** 选项
-3. 勾选要公开的内容（推荐只勾选 **Traffic → Overview**）
-4. 保存后复制生成的分享链接，格式：`https://stats.yourdomain.com/share/xxxxxxxxx`
-5. 链接末尾的字符串即为 **Share ID**，填入 `siteConfig.ts` 的 `shareId` 字段
-
-### 2、本项目获取 UV/PV 的实现
 
 实现位于 `src/components/layout/HomeDataLayer.astro`，核心流程：
 
@@ -205,47 +171,20 @@ const data = await statsRes.json();
 
 > 不需要在本项目后端配置 Umami 的 API Token。Share URL 是 Umami 提供的公开访问入口，前端可直接调用。
 
-### 3、直接重定向到分享页
-
-如果只需要跳转到 Umami 公开面板，可在博客路由中直接重定向到 `https://stats.yourdomain.com/share/{shareId}`。
 
 ---
 
-## 十、第九步：设置数据自动清理
+## 四、设置数据自动清理
 
 Umami 后台 → Settings → Websites → 你的网站 → **Data retention**，建议设为 **1 年**，避免超出 Neon 0.5 GB 免费额度。
 
 ---
 
-## 十一、更新 Umami 版本
+## 五、更新 Umami 版本
 
 进入 Fork 的 GitHub 仓库 → **Sync fork → Update branch**，Vercel 自动检测变更并重新部署。
 
 ---
 
-## 十二、常见问题
-
-| 问题 | 解决方案 |
-|---|---|
-| `P1012: The datasource property url is no longer supported` | Prisma 7 破坏性变更，确认 `prisma.config.ts` 已配置 `url`，`schema.prisma` 中不能有 `url`/`directUrl` |
-| 国内访问 `.vercel.app` 慢/打不开 | 绑定自定义域名，Cloudflare DNS 关闭 Proxy |
-| SSL 警告 `sslmode "prefer" is treated as alias for "verify-full"` | 将 `sslmode=require` 改为 `sslmode=verify-full`，不影响功能 |
-| 首页 UV/PV 显示 `--` | 检查 `shareId` 是否正确、Share URL 是否开启、Umami 域名是否可访问 |
-| 公开统计面板样式与别人不同 | Umami 不同版本分享页样式不同，无配置项可切换 |
-
----
-
-## 十三、保存清单
-
-| 项目 | 存放位置 |
-|---|---|
-| Neon 数据库密码 | Neon Dashboard → Settings → Database |
-| Neon 连接字符串 | Neon Dashboard → Connection Details |
-| Umami 管理员账号 | Umami 后台 → Settings → Profile |
-| Website ID | Umami 后台 → Edit Website |
-| Share ID | Umami 后台 → Edit Website → Share URL |
-| Umami 公开数据分享链接 | Umami 后台 → Edit Website → Share URL |
-| Vercel 项目地址 | Vercel Dashboard |
-| Umami 自定义域名 | Vercel → Settings → Domains |
-
-> ⚠️ 数据库密码和管理员密码不要提交到 GitHub 或公开分享。`Website ID` 和 `Share ID` 可公开，前者已在页面 HTML 中暴露，后者是 Umami 设计的公开访问凭据。
+> [!NOTE] 提示
+> 如果这篇文章对你有帮助，欢迎点赞收藏。有问题欢迎评论区交流。

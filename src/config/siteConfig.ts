@@ -195,8 +195,8 @@ export const siteConfig: SiteConfig = {
 		microsoftClarityId: "",
 		// Umami 统计配置
 		umamiAnalytics: {
-			websiteId: "5907656e-d254-4c9e-ad73-5ce40bf184bb",
-			shareId: "uAfsjwbIKgVPjxtc",
+			websiteId: "d47eea8b-7ad5-472b-a838-c873ba859c4f",
+			shareId: "HZrqqAfVdx1UEVNm",
 			scriptUrl: "https://stats.mmzhiku.xyz/script.js",
 			// 使用 Umami 的 PV 展示文章详情、列表与网格浏览量；启用时优先于评论系统统计
 			pageviews: {
