@@ -51,13 +51,15 @@ const current =
 const backHref = toHref(currentValue);
 ---
 
-{/* 标题上一层的导航行：左返回、右分类下拉。下拉项是真 <a>，跳转与悬停预载
-    都交给 Swup，脚本只管开合与键盘（CLAUDE.md 4.6） */}
+{/* 标题上一层的导航行：返回键 + 斜杠 + 分类下拉，整行靠左。下拉项是真 <a>，
+    跳转与悬停预载都交给 Swup，脚本只管开合与键盘（CLAUDE.md 4.6） */}
 <nav class="post-nav" data-post-nav aria-label={i18n(I18nKey.postNavCategory)}>
   <a class="post-nav__back" href={backHref} data-post-nav-back>
     <svg class="post-nav__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/></svg>
     <span>{i18n(I18nKey.postNavBack)}</span>
   </a>
+
+  <span class="post-nav__divider" aria-hidden="true">/</span>
 
   <div class="post-nav__category" data-post-nav-dropdown>
     <button
@@ -125,11 +127,19 @@ const backHref = toHref(currentValue);
       trigger.setAttribute("aria-expanded", String(open));
     };
 
+    // 悬停设备靠进出分类区开合（菜单也是容器的子节点，移到菜单上不会收起）；
+    // 触屏没有悬停，退回点击开合
+    const canHover = window.matchMedia("(hover: hover)").matches;
+    const onDropdownEnter = () => setOpen(true);
+    const onDropdownLeave = () => setOpen(false);
+
     const onNavClick = (event: MouseEvent) => {
       const el = event.target as HTMLElement;
       if (el.closest("[data-post-nav-trigger]")) {
         event.preventDefault();
-        setOpen(!dropdown.classList.contains("is-open"));
+        // 悬停设备上菜单已随悬停打开，点击只兜底确保打开（键盘 Enter 也走
+        // 这里），不反向收起，免得和悬停态打架
+        setOpen(canHover ? true : !dropdown.classList.contains("is-open"));
         return;
       }
       // 菜单项是真链接，只收起菜单，跳转让 Swup 接手
@@ -177,11 +187,19 @@ const backHref = toHref(currentValue);
     nav.addEventListener("click", onNavClick);
     nav.addEventListener("keydown", onNavKeydown);
     document.addEventListener("click", onDocClick);
+    if (canHover) {
+      dropdown.addEventListener("mouseenter", onDropdownEnter);
+      dropdown.addEventListener("mouseleave", onDropdownLeave);
+    }
 
     cleanup = () => {
       nav.removeEventListener("click", onNavClick);
       nav.removeEventListener("keydown", onNavKeydown);
       document.removeEventListener("click", onDocClick);
+      if (canHover) {
+        dropdown.removeEventListener("mouseenter", onDropdownEnter);
+        dropdown.removeEventListener("mouseleave", onDropdownLeave);
+      }
     };
   }
 

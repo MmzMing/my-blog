@@ -3,11 +3,14 @@ import { Picture } from "astro:assets";
 import * as path from "node:path";
 import Icon from "@components/common/Icon.astro";
 import type { ImageMetadata } from "astro";
+import DropdownItem from "@/components/common/DropdownItem.astro";
 import { navBarConfig, siteConfig } from "@/config";
 import { LinkPresets } from "@/constants/link-presets";
+import type { NavBarLink } from "@/types/config";
 import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
 import { url } from "@/utils/url-utils";
 import DropdownMenu from "./DropdownMenu.astro";
+import NavbarProfileCard from "./NavbarProfileCard.astro";
 
 const navbarTitle = siteConfig.navbar.title || siteConfig.title;
 void siteConfig.navbar.widthFull;
@@ -16,6 +19,22 @@ let links = navBarConfig.links.map((item) => {
 	if (typeof item === "number") return LinkPresets[item];
 	return item;
 });
+
+// 共享下拉面板的内容页：带子菜单的导航项各占一页，
+// 页序号与触发器容器上的 data-dropdown-index 配对
+interface NavbarDropdownPage {
+	index: number;
+	children: NavBarLink[];
+}
+
+const dropdownPages: NavbarDropdownPage[] = links
+	.map((link, index) => ({
+		index,
+		children: (link.children ?? [])
+			.map((child) => (typeof child === "number" ? LinkPresets[child] : child))
+			.filter((child): child is NavBarLink => child !== null),
+	}))
+	.filter((page) => page.children.length > 0);
 
 const logoValue = siteConfig.navbar.logo?.value || "";
 const isLocalSrcLogo =
@@ -79,7 +98,46 @@ if (isLocalSrcLogo) {
 					<span class="navbar-moving-icon__glyph navbar-moving-icon__glyph--current" data-navbar-icon-current></span>
 					<span class="navbar-moving-icon__glyph navbar-moving-icon__glyph--next" data-navbar-icon-next></span>
 				</span>
-				{links.map((l) => <DropdownMenu link={l} />)}
+				{links.map((l, i) => <DropdownMenu link={l} index={i} />)}
+
+				<!-- 共享下拉面板：悬停跟随导航项左右滑动，内容页交叉淡换 -->
+				{dropdownPages.length > 0 && (
+					<div class="navbar-dropdown-panel" data-navbar-dropdown-panel>
+						<span class="navbar-dropdown-arrow" aria-hidden="true"></span>
+						<div class="navbar-dropdown-box">
+							{dropdownPages.map((page) => (
+								<div class="navbar-dropdown-page" data-dropdown-page={page.index}>
+									{page.children.map((child, childIndex) => {
+										const isLast = childIndex === page.children.length - 1;
+										return child.action ? (
+											<button
+												type="button"
+												class={`dropdown-item action-item flex transition whitespace-nowrap items-center justify-start! w-full btn-plain scale-animation h-9 px-3 font-medium active:scale-95 ${isLast ? "" : "mb-0.5"}`}
+												data-action={child.action}
+											>
+												{child.icon && <Icon name={child.icon} is:inline class="text-[1.2rem] mr-3 navbar-icon" />}
+												<span>{child.name}</span>
+											</button>
+										) : (
+											<DropdownItem
+												href={child.external ? child.url : url(child.url)}
+												target={child.external ? "_blank" : undefined}
+												isLast={isLast}
+												class="dropdown-item"
+											>
+												{child.icon && <Icon name={child.icon} is:inline class="text-[1.2rem] mr-3 navbar-icon" />}
+												<span>{child.name}</span>
+												{child.external && (
+													<Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="text-[0.7rem] text-black/25 dark:text-white/25 ml-auto" />
+												)}
+											</DropdownItem>
+										);
+									})}
+								</div>
+							))}
+						</div>
+					</div>
+				)}
 			</div>
 		</div>
 
@@ -93,6 +151,10 @@ if (isLocalSrcLogo) {
 				<Icon name="material-symbols:menu-rounded" is:inline class="text-[1.2rem]"></Icon>
 			</button>
 		</div>
+
+		<!-- Logo 资料卡面板：hover/焦点展开（桌面）、底部半屏卡片（移动），
+		     挂在 segments 下，避开左段滚动收缩态 overflow:hidden 对面板的裁剪 -->
+		<NavbarProfileCard />
 	</div>
 </div>
 
@@ -100,6 +162,10 @@ if (isLocalSrcLogo) {
 
 <script>
 import { requestSearchModalToggle } from "@/utils/search-modal-controller";
+import {
+	repositionNavbarDropdown,
+	syncNavbarDropdownOnHover,
+} from "@/utils/navbar-dropdown-controller";
 import {
 	definePageIsland,
 	definePersistentIsland,
@@ -406,14 +472,18 @@ function initHoverSlider(animateActiveChange = false) {
 			: { rect: null, markup: '' };
 
 		navItems.forEach((item) => {
-			// 收集所有可匹配的路径：自身、子菜单和配置声明的额外前缀。
+			// 收集所有可匹配的路径：自身、共享面板里的子菜单页和配置声明的额外前缀。
 			const hrefs: string[] = [];
 			const selfLink = item.querySelector(':scope > a') as HTMLAnchorElement | null;
 			if (selfLink) {
 				const href = selfLink.getAttribute('href');
 				if (href) hrefs.push(href);
 			}
-			item.querySelectorAll('.dropdown-item[href]').forEach((el) => {
+			const pageIndex = item.dataset.dropdownIndex;
+			const page = pageIndex !== undefined
+				? document.querySelector(`[data-navbar-dropdown-panel] [data-dropdown-page="${pageIndex}"]`)
+				: null;
+			page?.querySelectorAll('.dropdown-item[href]').forEach((el) => {
 				const a = el as HTMLAnchorElement;
 				const href = a.getAttribute('href');
 				if (href) hrefs.push(href);
@@ -450,7 +520,10 @@ function initHoverSlider(animateActiveChange = false) {
 	}
 
 	navItems.forEach((item) => {
-		const handler = () => moveHighlight(_navContainer, _hoverBorder, item);
+		const handler = () => {
+			moveHighlight(_navContainer, _hoverBorder, item);
+			syncNavbarDropdownOnHover(item);
+		};
 		item.addEventListener('mouseenter', handler);
 		_hoverSliderMouseEnterHandlers.push([item, handler]);
 	});
@@ -458,6 +531,8 @@ function initHoverSlider(animateActiveChange = false) {
 	_navContainer.addEventListener('mouseleave', () => {
 		const activeItem = _navContainer.querySelector('.nav-item-active') as HTMLElement | null;
 		moveHighlight(_navContainer, _hoverBorder, activeItem);
+		// 面板是导航行的子节点，悬停进面板不会触发 mouseleave；只有真正离开才收起
+		syncNavbarDropdownOnHover(null);
 	}, { signal: _hoverSliderAbortController.signal });
 
 	_navContainer.addEventListener('mouseenter', () => {
@@ -475,6 +550,7 @@ function initHoverSlider(animateActiveChange = false) {
 			const parts = getNavbarIconParts(_navContainer);
 			const template = getNavbarIconTemplate(activeItem);
 			if (parts && template) setNavbarIconBox(_navContainer, parts.layer, template);
+			repositionNavbarDropdown();
 		});
 	}
 

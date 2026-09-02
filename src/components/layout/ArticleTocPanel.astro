@@ -1,0 +1,147 @@
+---
+import Icon from "@components/common/Icon.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+
+const outlineLabel = i18n(I18nKey.tableOfContents);
+const readingProgressLabel = i18n(I18nKey.readingProgress);
+const accordionAutoLabel = i18n(I18nKey.tocAccordionAuto);
+const expandAllLabel = i18n(I18nKey.tocExpandAll);
+const collapseAllLabel = i18n(I18nKey.tocCollapseAll);
+const mindMapLabel = i18n(I18nKey.tocMindMap);
+const mindMapZoomInLabel = i18n(I18nKey.tocMindMapZoomIn);
+const mindMapZoomOutLabel = i18n(I18nKey.tocMindMapZoomOut);
+const mindMapResetLabel = i18n(I18nKey.tocMindMapReset);
+const mindMapFullscreenLabel = i18n(I18nKey.tocMindMapFullscreen);
+const closeLabel = i18n(I18nKey.close);
+---
+
+<aside
+	class="article-toc-panel is-pending"
+	id="article-toc-panel"
+	aria-label={outlineLabel}
+>
+	<div class="article-toc-panel__toolbar">
+		<button
+			type="button"
+			class="article-toc-panel__tool-btn"
+			data-toc-auto-btn
+			aria-pressed="true"
+			data-tooltip={accordionAutoLabel}
+			aria-label={accordionAutoLabel}
+		>
+			<Icon name="mingcute:list-collapse-line" class="h-4 w-4" />
+		</button>
+		<button
+			type="button"
+			class="article-toc-panel__tool-btn"
+			data-toc-toggle-all-btn
+			aria-pressed="false"
+			data-tooltip={expandAllLabel}
+			aria-label={expandAllLabel}
+			data-toc-expand-label={expandAllLabel}
+			data-toc-collapse-label={collapseAllLabel}
+		>
+			<Icon
+				name="mdi:unfold-more-horizontal"
+				class="article-toc-panel__tool-icon is-expand h-4 w-4"
+			/>
+			<Icon
+				name="mdi:unfold-less-horizontal"
+				class="article-toc-panel__tool-icon is-collapse h-4 w-4"
+			/>
+		</button>
+		<button
+			type="button"
+			class="article-toc-panel__tool-btn"
+			data-toc-mindmap-btn
+			data-tooltip={mindMapLabel}
+			aria-label={mindMapLabel}
+		>
+			<Icon name="ri:node-tree" class="h-4 w-4" />
+		</button>
+		<span
+			class="article-toc-panel__progress"
+			role="progressbar"
+			aria-label={readingProgressLabel}
+			aria-valuemin="0"
+			aria-valuemax="100"
+			aria-valuenow="0"
+			data-toc-progress
+		>
+			<span class="article-toc-panel__progress-label" data-toc-progress-label>0%</span>
+		</span>
+	</div>
+
+	<nav class="article-toc-panel__tree" aria-label={outlineLabel} data-toc-tree>
+		<svg class="article-toc-panel__lines" data-toc-lines aria-hidden="true" focusable="false"></svg>
+	</nav>
+
+	<dialog class="article-toc-mindmap" data-toc-mindmap aria-label={mindMapLabel}>
+		<div class="article-toc-mindmap__overlay" data-toc-mindmap-close></div>
+		<div class="article-toc-mindmap__panel">
+			<header class="article-toc-mindmap__header">
+				<span class="article-toc-mindmap__heading">{mindMapLabel}</span>
+				<div class="article-toc-mindmap__tools">
+					<button
+						type="button"
+						class="article-toc-mindmap__tool-btn"
+						data-toc-mindmap-zoom-out
+						data-tooltip={mindMapZoomOutLabel}
+						aria-label={mindMapZoomOutLabel}
+					>
+						<Icon name="mdi:zoom-out" class="h-4 w-4" />
+					</button>
+					<button
+						type="button"
+						class="article-toc-mindmap__tool-btn"
+						data-toc-mindmap-zoom-in
+						data-tooltip={mindMapZoomInLabel}
+						aria-label={mindMapZoomInLabel}
+					>
+						<Icon name="mdi:zoom-in" class="h-4 w-4" />
+					</button>
+					<button
+						type="button"
+						class="article-toc-mindmap__tool-btn"
+						data-toc-mindmap-reset
+						data-tooltip={mindMapResetLabel}
+						aria-label={mindMapResetLabel}
+					>
+						<Icon name="mdi:restore" class="h-4 w-4" />
+					</button>
+					<button
+						type="button"
+						class="article-toc-mindmap__tool-btn"
+						data-toc-mindmap-fullscreen
+						data-tooltip={mindMapFullscreenLabel}
+						aria-label={mindMapFullscreenLabel}
+					>
+						<Icon
+							name="mdi:fullscreen"
+							class="article-toc-mindmap__fs-icon is-enter h-4 w-4"
+						/>
+						<Icon
+							name="mdi:fullscreen-exit"
+							class="article-toc-mindmap__fs-icon is-exit h-4 w-4"
+						/>
+					</button>
+					<button
+						type="button"
+						class="article-toc-mindmap__tool-btn"
+						data-toc-mindmap-close
+						aria-label={closeLabel}
+					>
+						<Icon name="material-symbols:close-rounded" class="h-4 w-4" />
+					</button>
+				</div>
+			</header>
+			<div class="article-toc-mindmap__canvas" data-toc-mindmap-canvas>
+				<svg class="article-toc-mindmap__lines" data-toc-mindmap-lines aria-hidden="true" focusable="false"></svg>
+				<div class="article-toc-mindmap__mount" data-toc-mindmap-tree></div>
+			</div>
+		</div>
+	</dialog>
+</aside>
+
+<!-- 样式见 src/styles/components/article-toc-panel.css；控制器由 layout-init.ts 安装 -->

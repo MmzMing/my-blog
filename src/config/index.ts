@@ -3,9 +3,9 @@
 
 // 类型导出
 export type {
+	AnniversaryItem,
 	AnnouncementConfig,
 	AnnouncementItem,
-	BirthdayItem,
 	CalendarConfig,
 	CollectionApiGroup,
 	CollectionApiItem,

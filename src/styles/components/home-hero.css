@@ -9,7 +9,7 @@ html:has(.home-hero) #top-row {
 }
 
 .home-hero {
-	--home-hero-ink: var(--guestbook-bubble-text);
+	--home-hero-ink: oklch(1 0 0);
 	--home-hero-surface: oklch(0.075 0 0);
 	--home-hero-border: color-mix(in oklch, var(--home-hero-ink) 32%, transparent);
 	--home-hero-border-soft: color-mix(in oklch, var(--home-hero-ink) 20%, transparent);
@@ -36,11 +36,9 @@ html:has(.home-hero) #top-row {
 	pointer-events: none;
 }
 
-/* 暗色下 hero 舞台跟随主题页面色：oklch(0.075) 接近纯黑，与正文区页面色会出现明显断层；
-   绑定 --page-bg 后，overlay / shadow / 对话气泡等派生色自动同步 */
-:root.dark .home-hero {
-	--home-hero-surface: var(--page-bg);
-}
+/* hero 固定使用自身的近黑舞台（oklch(0.075)）+ 纯白墨水字，不随主题切换：
+   亮色页面里它是全屏对比区，暗色下与页面底色仅差 #0d0d0d→#101010 一档，肉眼无断层；
+   绑定 --page-bg 的旧方案反而把 ink 褪成浅灰、叠 72% 蒙版后整体发灰，已废弃 */
 
 .home-hero__visual,
 .home-hero__backdrop,

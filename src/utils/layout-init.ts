@@ -12,7 +12,7 @@
  * 由组件 `<script>` 导入，不把逻辑内联进组件。
  */
 
-import { ArticleOutlineRailRuntime } from "@/utils/article-outline-controller";
+import { ArticleTocPanelRuntime } from "@/utils/article-toc-panel-controller";
 import { scheduleContentOverflowEnhancements } from "@/utils/content-overflow";
 import { installLazyCollapsibleCodeController } from "@/utils/lazy-collapsible-code-controller";
 import { initPageLoader } from "@/utils/page-loader-controller.js";
@@ -33,10 +33,10 @@ export function initLayout(): void {
 		installLazyCollapsibleCodeController,
 	);
 
-	// 文章右侧大纲轨道：运行时内部已按页面级孤岛登记，这里只负责创建它
-	definePersistentIsland("layout:article-outline-rail", () => {
-		window.__articleOutlineRailRuntime = new ArticleOutlineRailRuntime();
-		window.__articleOutlineRailRuntime.start();
+	// 文章右侧大纲面板：运行时内部已按页面级孤岛登记，这里只负责创建它
+	definePersistentIsland("layout:article-toc-panel", () => {
+		window.__articleTocPanelRuntime = new ArticleTocPanelRuntime();
+		window.__articleTocPanelRuntime.start();
 	});
 
 	// 进度条、回顶、主题校正、侧边栏显隐

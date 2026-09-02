@@ -1,5 +1,5 @@
 import type { SwupInstance, SwupRuntimeState } from "@/types/swup";
-import type { ArticleOutlineRailRuntime } from "@/utils/article-outline-controller";
+import type { ArticleTocPanelRuntime } from "@/utils/article-toc-panel-controller";
 
 declare global {
 	interface Document {
@@ -35,7 +35,7 @@ declare global {
 		openPrivacyModal?: () => void;
 		/** 由 UserAgreementModal 挂上，供 Footer 的 inline onclick 调用 */
 		openUserAgreementModal?: () => void;
-		__articleOutlineRailRuntime?: ArticleOutlineRailRuntime;
+		__articleTocPanelRuntime?: ArticleTocPanelRuntime;
 		__searchLoadersReady?: boolean;
 		__searchModalMounted?: boolean;
 		__friendImagePreviewReady?: boolean;

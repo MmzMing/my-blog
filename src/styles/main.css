@@ -8,6 +8,7 @@
 @import './layout/navbar-new.css';
 @import './layout/nav-menu-panel.css';
 @import './layout/dropdown-menu.css';
+@import './layout/navbar-profile-card.css';
 
 /* === 组件层 === */
 /* 页面专属样式不在这里引入（guestbook-chat / about-* / pages/*.css / widgets/archive-stats.css），
@@ -18,13 +19,12 @@
 @import './components/image-pixel-reveal.css';
 @import './components/floating-dock.css';
 @import './components/mobile-dock.css';
-@import './components/calendar-widget.css';
 @import './components/music-player.css';
 @import './components/floating-lyrics.css';
 @import './components/privacy-modal.css';
 @import './components/live2d-widget.css';
 @import './components/model-message.css';
-@import './components/article-outline-rail.css';
+@import './components/article-toc-panel.css';
 @import './components/related-posts.css';
 @import './components/wiki-link-card.css';
 

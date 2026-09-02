@@ -1,6 +1,6 @@
 /* ============================================
-   下拉菜单 — 来自 DropdownMenu.astro
-   桌面端导航下拉面板
+   导航下拉 — 来自 Navbar.astro / DropdownMenu.astro
+   桌面端共享下拉面板（悬停跟随滑动） + Logo 悬停下拉
    ============================================ */
 
 .dropdown-container {
@@ -72,67 +72,103 @@
 	visibility: hidden;
 }
 
-.dropdown-menu {
-	position: absolute;
-	top: 100%;
-	left: 0;
-	/* 与导航栏拉开距离，保留悬停过渡区防止菜单收起 */
-	padding-top: 1.25rem;
-	opacity: 0;
-	visibility: hidden;
-	pointer-events: none;
-	transition: opacity 0.2s ease-out, visibility 0.2s ease-out, transform 0.2s ease-out;
-	transform: translateY(-8px);
-	z-index: 50;
-}
-
-.dropdown-container:hover .dropdown-menu,
-.dropdown-container:focus-within .dropdown-menu,
-.dropdown-container.is-dropdown-open .dropdown-menu {
-	opacity: 1;
-	visibility: visible;
-	pointer-events: auto;
-	transform: translateY(0);
-}
-
+/* 钉住态（键盘打开）与悬停一致，箭头翻转 */
 .dropdown-container:hover .dropdown-arrow,
 .dropdown-container:focus-within .dropdown-arrow,
 .dropdown-container.is-dropdown-open .dropdown-arrow {
 	rotate: 180deg;
 }
 
-.navbar-nav .dropdown-content-wrapper {
-	position: relative;
-	min-width: 12rem;
-	border-radius: 0.75rem;
-	padding: 0.5rem;
-	border: 1.5px solid var(--deep-text);
-	background: var(--float-panel-bg);
-	box-shadow: none;
-	color: var(--deep-text);
+/* ── 共享下拉面板：整条导航只有一个，悬停跟随导航项左右滑动 ── */
+.navbar-dropdown-panel {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	/* 与导航栏拉开距离，保留悬停过渡区防止面板收起 */
+	padding-top: 1.25rem;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateY(-8px);
+	transition:
+		opacity 0.2s ease-out,
+		visibility 0.2s ease-out,
+		transform 0.2s ease-out,
+		left 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+	z-index: 50;
 }
 
-.navbar-nav .dropdown-content-wrapper::before {
+.navbar-dropdown-panel.is-open {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateY(0);
+}
+
+/* 箱体：面板的可见部分，宽高由控制器按激活内容页设定并做过渡 */
+.navbar-dropdown-box {
+	position: relative;
+	box-sizing: content-box;
+	border: 1.5px solid var(--deep-text);
+	border-radius: 0.75rem;
+	background: var(--float-panel-bg);
+	color: var(--deep-text);
+	overflow: hidden;
+	transition:
+		width 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+		height 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 指向箭头挂在面板上（箱体 overflow:hidden 会裁掉），与面板同节奏滑动。
+   top 里补回 1.5px 箱体上边框厚度：箭头需与箱体外沿保持和旧实现
+   （相对 padding box 定位）一致的穿透深度，否则边框开口比箭头底边宽，视觉上断开 */
+.navbar-dropdown-arrow {
 	position: absolute;
-	top: -0.45rem;
+	top: calc(1.25rem - 0.45rem + 1.5px);
 	left: 1.75rem;
+	z-index: 1;
 	width: 0.75rem;
 	height: 0.75rem;
 	border-top: 1.5px solid var(--deep-text);
 	border-left: 1.5px solid var(--deep-text);
 	background: var(--float-panel-bg);
-	content: "";
 	transform: rotate(45deg);
+	transition: left 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 内容页：绝对定位堆叠，仅激活页可见，切换时新旧页交叉淡换 */
+.navbar-dropdown-page {
+	position: absolute;
+	top: 0;
+	left: 0;
+	box-sizing: border-box;
+	width: max-content;
+	min-width: 12rem;
+	padding: 0.5rem;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+}
+
+.navbar-dropdown-page.is-active {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
 }
 
 /* 禁用 dropdown item 的 expand-animation 背景，悬停高亮由灰色背景接管 */
 .dropdown-content-wrapper .dropdown-item::before,
 .dropdown-content-wrapper .dropdown-item:hover::before,
-.dropdown-content-wrapper .dropdown-item:active::before {
+.dropdown-content-wrapper .dropdown-item:active::before,
+.navbar-dropdown-page .dropdown-item::before,
+.navbar-dropdown-page .dropdown-item:hover::before,
+.navbar-dropdown-page .dropdown-item:active::before {
 	background-color: transparent !important;
 }
 
-.dropdown-content-wrapper .dropdown-item:active {
+.dropdown-content-wrapper .dropdown-item:active,
+.navbar-dropdown-page .dropdown-item:active {
 	background-color: color-mix(in oklch, var(--deep-text) 12%, transparent);
 }
 
@@ -146,5 +182,14 @@
 @media (max-width: 768px) {
 	.dropdown-container {
 		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.navbar-dropdown-panel,
+	.navbar-dropdown-box,
+	.navbar-dropdown-arrow,
+	.navbar-dropdown-page {
+		transition-duration: 0.01ms;
 	}
 }

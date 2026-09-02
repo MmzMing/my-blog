@@ -1,0 +1,583 @@
+/* ============================================
+   导航 Logo 资料卡 — 来自 NavbarProfileCard.astro
+   桌面端：hover/focus 展开的左右双栏面板（is-open 类由控制器驱动）；
+   移动端：同一元素变为底部半屏卡片 + 遮罩。
+   面板位于 #top-row（z-80）层叠上下文内，整体高于移动坞（z-74）。
+   ============================================ */
+
+.navbar-profile-dropdown {
+	display: none;
+}
+
+.profile-card {
+	display: flex;
+	gap: 1.25rem;
+	padding: 1rem 1.25rem;
+	border: 1.5px solid var(--deep-text);
+	border-radius: 0.75rem;
+	background: var(--float-panel-bg);
+	color: var(--deep-text);
+}
+
+/* 指向 logo 的箭头（移动端卡片隐藏） */
+.profile-card::before {
+	position: absolute;
+	top: -0.45rem;
+	left: 1rem;
+	width: 0.75rem;
+	height: 0.75rem;
+	border-top: 1.5px solid var(--deep-text);
+	border-left: 1.5px solid var(--deep-text);
+	background: var(--float-panel-bg);
+	content: "";
+	transform: rotate(45deg);
+}
+
+/* ── 左栏：身份 / 个人网站 / 社交 / 热力图 ── */
+.profile-card__left {
+	display: flex;
+	flex-direction: column;
+	gap: 0.8rem;
+	width: 18.5rem;
+	flex-shrink: 0;
+}
+
+.profile-card__identity {
+	display: flex;
+	align-items: center;
+	gap: 0.8rem;
+	text-decoration: none;
+	color: inherit;
+	border-radius: 0.75rem;
+}
+
+.profile-card__avatar {
+	display: inline-flex;
+	width: 3.25rem;
+	height: 3.25rem;
+	flex-shrink: 0;
+	overflow: hidden;
+	border-radius: 9999px;
+	border: 1.5px solid color-mix(in oklch, var(--deep-text) 25%, transparent);
+}
+
+.profile-card__avatar-img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.profile-card__avatar-fallback {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	font-size: 1.2rem;
+	font-weight: 700;
+}
+
+.profile-card__identity-text {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	min-width: 0;
+}
+
+.profile-card__name {
+	font-size: 0.95rem;
+	font-weight: 700;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	transition: color 0.15s ease;
+}
+
+.profile-card__occupation {
+	font-size: 0.66rem;
+	opacity: 0.6;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.profile-card__identity:hover .profile-card__name {
+	color: var(--primary);
+}
+
+/* 站点名以纯文字并列，点击选中后在右侧展示对应站点（无悬停预览） */
+.profile-card__sites {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.7rem;
+	margin-left: auto;
+}
+
+.profile-card__site-btn {
+	display: inline-flex;
+	align-items: center;
+	padding: 0;
+	font-size: 0.78rem;
+	font-weight: 600;
+	font-family: inherit;
+	color: inherit;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	transition: color 0.15s ease;
+}
+
+.profile-card__site-btn:hover {
+	color: var(--primary);
+}
+
+.profile-card__site-btn[aria-pressed="true"] {
+	color: var(--primary);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+/* 社交图标与个人网站按钮同行，站点按钮靠右 */
+.profile-card__socials {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+}
+
+.profile-card__social-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.9rem;
+	height: 1.9rem;
+	color: inherit;
+	text-decoration: none;
+	border: 1px solid color-mix(in oklch, var(--deep-text) 22%, transparent);
+	border-radius: 9999px;
+	font-size: 0.95rem;
+	transition:
+		border-color 0.15s ease,
+		background-color 0.15s ease,
+		color 0.15s ease;
+}
+
+.profile-card__social-btn:hover {
+	border-color: var(--primary);
+	color: var(--primary);
+	background: color-mix(in oklch, var(--primary) 10%, transparent);
+}
+
+/* ── 热力图：12 列（月）× 4 行（月内 7 天切块） ── */
+.profile-card__heatmap {
+	display: grid;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	gap: 0.28rem;
+}
+
+.profile-card__heat-col {
+	display: flex;
+	flex-direction: column;
+	gap: 0.28rem;
+	min-width: 0;
+}
+
+.profile-card__heat-month {
+	font-size: 0.55rem;
+	line-height: 1;
+	text-align: center;
+	opacity: 0.55;
+	font-variant-numeric: tabular-nums;
+}
+
+.profile-card__heat-cell {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 1;
+	padding: 0;
+	border: none;
+	border-radius: 0.2rem;
+	background: color-mix(in oklch, var(--deep-text) 10%, transparent);
+	cursor: pointer;
+	transition:
+		background-color 0.15s ease,
+		outline-color 0.15s ease,
+		opacity 0.15s ease;
+	outline: 1.5px solid transparent;
+	outline-offset: 1px;
+}
+
+.profile-card__heat-cell.is-level-1 {
+	background: color-mix(in oklch, var(--primary) 35%, transparent);
+}
+
+.profile-card__heat-cell.is-level-2 {
+	background: color-mix(in oklch, var(--primary) 60%, transparent);
+}
+
+.profile-card__heat-cell.is-level-3 {
+	background: color-mix(in oklch, var(--primary) 90%, transparent);
+}
+
+.profile-card__heat-cell.is-current {
+	outline-color: color-mix(in oklch, var(--deep-text) 55%, transparent);
+}
+
+.profile-card__heat-cell.is-selected {
+	outline-color: var(--deep-text);
+}
+
+.profile-card__heat-cell:hover {
+	opacity: 0.75;
+}
+
+/* 方块悬浮提示：build 期写入周标签，数据到达后追加篇数 */
+.profile-card__heat-cell::after {
+	position: absolute;
+	bottom: calc(100% + 0.45rem);
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 0.15rem 0.4rem;
+	font-size: 0.62rem;
+	line-height: 1.3;
+	white-space: nowrap;
+	color: var(--page-bg);
+	background: var(--deep-text);
+	border-radius: 0.3rem;
+	content: attr(data-tooltip);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.15s ease;
+	z-index: 5;
+}
+
+.profile-card__heat-cell:hover::after,
+.profile-card__heat-cell:focus-visible::after {
+	opacity: 1;
+}
+
+/* ── 右栏：三态信息区 ── */
+.profile-card__right {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	flex: 1;
+	min-width: 11.5rem;
+}
+
+.profile-card__pane {
+	display: flex;
+	flex-direction: column;
+	gap: 0.7rem;
+	/* 单个可见 pane 撑满右栏，posts 态下列表吃掉剩余高度，不留底部空白 */
+	flex: 1;
+	min-height: 0;
+}
+
+.profile-card__pane[hidden] {
+	display: none;
+}
+
+.profile-card__countdowns {
+	display: flex;
+	flex-direction: column;
+	gap: 0.45rem;
+	padding-bottom: 0.7rem;
+	border-bottom: 1px solid color-mix(in oklch, var(--deep-text) 14%, transparent);
+}
+
+.profile-card__countdown {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.5rem;
+}
+
+.profile-card__countdown span {
+	font-size: 0.68rem;
+	opacity: 0.6;
+}
+
+.profile-card__countdown strong {
+	font-size: 0.88rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.profile-card__event {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
+.profile-card__event-main {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+.profile-card__event-title {
+	font-size: 0.82rem;
+	font-weight: 700;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.profile-card__event-date {
+	font-size: 0.66rem;
+	opacity: 0.6;
+	white-space: nowrap;
+}
+
+.profile-card__progress-row {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.profile-card__progress {
+	display: block;
+	flex: 1;
+	height: 0.38rem;
+	overflow: hidden;
+	border-radius: 999px;
+	background: color-mix(in oklch, var(--deep-text) 13%, transparent);
+}
+
+.profile-card__progress > span {
+	display: block;
+	width: 0;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--primary);
+	transition: width 240ms ease;
+}
+
+.profile-card__remaining {
+	font-size: 0.66rem;
+	opacity: 0.65;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+/* site 态：个人网站大按钮（无边框，构建期按列表渲染，控制器切换显隐） */
+.profile-card__site-cta {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	padding: 0.85rem 1rem;
+	color: inherit;
+	text-decoration: none;
+	border-radius: 0.75rem;
+	background: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	transition:
+		background-color 0.15s ease,
+		color 0.15s ease;
+}
+
+.profile-card__site-cta:hover {
+	background: var(--deep-text);
+	color: var(--page-bg);
+}
+
+.profile-card__site-cta[hidden] {
+	display: none;
+}
+
+.profile-card__site-cta-icon {
+	font-size: 1.35rem;
+}
+
+.profile-card__site-cta-name {
+	flex: 1;
+	font-size: 0.95rem;
+	font-weight: 700;
+}
+
+.profile-card__site-cta-arrow {
+	font-size: 0.8rem;
+	opacity: 0.6;
+}
+
+/* posts 态：某周文章列表 */
+.profile-card__posts-title {
+	font-size: 0.72rem;
+	opacity: 0.65;
+}
+
+/* posts 态：某周文章列表（自身不滚动，滚动统一交给右栏 pane / 移动端卡片） */
+.profile-card__post-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.profile-card__post-link {
+	padding: 0.4rem 0.5rem;
+	font-size: 0.78rem;
+	font-weight: 500;
+	color: inherit;
+	text-decoration: none;
+	border-radius: 0.45rem;
+	transition:
+		background-color 0.15s ease,
+		color 0.15s ease;
+}
+
+.profile-card__post-link:hover {
+	background: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	color: var(--primary);
+}
+
+/* ── 数据加载中：骨架脉冲 ── */
+.profile-card[aria-busy="true"] .profile-card__heat-cell,
+.profile-card[aria-busy="true"] .profile-card__event-title {
+	animation: profile-card-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes profile-card-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
+}
+
+/* ── 桌面端：导航左段下方的双栏面板 ── */
+@media (min-width: 1024px) {
+	.navbar-profile-dropdown {
+		display: block;
+		position: absolute;
+		top: 100%;
+		left: 0;
+		/* 与导航栏拉开距离，保留悬停过渡区防止面板收起 */
+		padding-top: 1.25rem;
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		transform: translateY(-8px);
+		transition:
+			opacity 0.2s ease-out,
+			visibility 0.2s ease-out,
+			transform 0.2s ease-out;
+		z-index: 50;
+	}
+
+	.navbar-profile-dropdown.is-open {
+		opacity: 1;
+		visibility: visible;
+		pointer-events: auto;
+		transform: translateY(0);
+	}
+
+	.navbar-profile-mask {
+		display: none;
+	}
+
+	.profile-card {
+		position: relative;
+		min-width: 33.5rem;
+		max-width: min(38rem, calc(100vw - 2rem));
+	}
+
+	/* 卡片高度锚定左栏：右栏脱离文档流铺满卡高，内容超高在栏内滚动，
+	   状态切换不会引起卡片高度跳动 */
+	.profile-card__right {
+		position: relative;
+	}
+
+	.profile-card__pane {
+		position: absolute;
+		inset: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
+		overscroll-behavior: contain;
+		scrollbar-width: thin;
+	}
+
+	/* 滚动收缩后左段右移成球，面板改为对齐球体左缘（球宽 2.25rem） */
+	#navbar.scrolled .navbar-profile-dropdown {
+		left: calc(var(--navbar-compact-left, 0px) - 2.25rem);
+	}
+}
+
+/* ── 移动端：底部半屏卡片 + 遮罩 ── */
+@media (max-width: 1023.98px) {
+	.navbar-profile-dropdown {
+		display: block;
+		position: fixed;
+		inset: 0;
+		z-index: 90;
+		opacity: 1;
+		visibility: hidden;
+		pointer-events: none;
+		transition: visibility 0s linear 0.3s;
+	}
+
+	.navbar-profile-dropdown.is-open {
+		visibility: visible;
+		pointer-events: auto;
+		transition-delay: 0s;
+	}
+
+	.navbar-profile-mask {
+		display: block;
+		position: absolute;
+		inset: 0;
+		background: rgb(0 0 0 / 45%);
+		opacity: 0;
+		transition: opacity 0.25s ease-out;
+	}
+
+	.navbar-profile-dropdown.is-open .navbar-profile-mask {
+		opacity: 1;
+	}
+
+	.profile-card {
+		position: absolute;
+		left: 0.75rem;
+		right: 0.75rem;
+		bottom: 0.75rem;
+		flex-direction: column;
+		gap: 1rem;
+		min-width: 0;
+		max-width: none;
+		max-height: min(85vh, 44rem);
+		overflow-y: auto;
+		border-radius: 1rem;
+		transform: translateY(calc(100% + 1rem));
+		transition: transform 0.3s cubic-bezier(0.32, 0.72, 0.29, 1);
+	}
+
+	.profile-card::before {
+		display: none;
+	}
+
+	.navbar-profile-dropdown.is-open .profile-card {
+		transform: translateY(0);
+	}
+
+	.profile-card__left {
+		width: auto;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.navbar-profile-dropdown,
+	.navbar-profile-mask,
+	.profile-card,
+	.profile-card__progress > span,
+	.profile-card__heat-cell {
+		transition-duration: 0.01ms;
+	}
+
+	.profile-card[aria-busy="true"] .profile-card__heat-cell,
+	.profile-card[aria-busy="true"] .profile-card__event-title {
+		animation: none;
+	}
+}

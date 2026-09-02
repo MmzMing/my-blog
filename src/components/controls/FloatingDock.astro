@@ -1,6 +1,5 @@
 ---
 import Icon from "@components/common/Icon.astro";
-import CalendarWidget from "@/components/controls/CalendarWidget.astro";
 /**
  * 极简悬浮坞 — 替代原 FloatingControls。
  * 桌面端工具默认常驻显示，重组件通过图标按钮打开抽屉。
@@ -45,11 +44,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			</span>
 			<span class="dock-btn-label dock-theme-label-light">{i18n(I18nKey.switchToDark)}</span>
 			<span class="dock-btn-label dock-theme-label-dark hidden">{i18n(I18nKey.switchToLight)}</span>
-		</button>
-
-		<button class="dock-btn" id="dock-calendar-btn" aria-label={i18n(I18nKey.calendar)} type="button" data-tooltip={i18n(I18nKey.calendar)}>
-			<span class="dock-btn-icon"><Icon name="material-symbols:calendar-month-rounded" class="text-3xl" /></span>
-			<span class="dock-btn-label">{i18n(I18nKey.calendar)}</span>
 		</button>
 
 		<!-- 目录入口：仅文章详情且宽屏（≥96rem）已有右侧大纲栏时隐藏，见 updatePathDependent -->
@@ -119,10 +113,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 	</div>
 )}
 
-<div class="dock-drawer dock-drawer-calendar dock-drawer-closed" id="dock-drawer-calendar">
-	<CalendarWidget id="desktop-calendar-widget" />
-</div>
-
 <div class="dock-drawer dock-drawer-toc dock-drawer-closed" id="dock-drawer-toc">
 	<div class="dock-drawer-title">
 		<Icon name="material-symbols:format-list-bulleted" class="dock-drawer-title-icon" />
@@ -150,11 +140,9 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 
 		const drawers: Record<string, string> = {
 			"dock-music-btn": "dock-drawer-music",
-			"dock-calendar-btn": "dock-drawer-calendar",
 			"dock-announcement-btn": "dock-drawer-announcement",
 			"dock-toc-btn": "dock-drawer-toc",
 		};
-		let preserveCalendarDrawerOnNavigation = false;
 		/* 目录抽屉：首次打开懒建 TOC，导航后销毁重建（标题集合随页面变化） */
 		let dockTocManager: { cleanup: () => void } | null = null;
 
@@ -200,7 +188,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 				closeAllDrawers();
 				if (!isOpen) {
 					drawer.classList.remove("dock-drawer-closed");
-					if (drawerId === "dock-drawer-calendar") window.dispatchEvent(new Event("calendar:open"));
 					if (drawerId === "dock-drawer-toc") void ensureDockToc();
 				}
 			}, { signal: dockSignal });
@@ -209,9 +196,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		document.addEventListener("click", (event) => {
 			const target = event.target;
 			if (!(target instanceof Node)) return;
-			if (target instanceof Element && target.closest("[data-calendar-post-link]")) {
-				preserveCalendarDrawerOnNavigation = true;
-			}
 			const isInDrawer = document.querySelector(".dock-drawer:not(.dock-drawer-closed)")?.contains(target);
 			if (!isInDrawer && !dock.contains(target)) closeAllDrawers();
 		}, { signal: dockSignal });
@@ -335,14 +319,7 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		window.addEventListener("resize", updatePathDependent, { passive: true, signal: dockSignal });
 		// 只在导航后收抽屉、重算路径相关按钮；首次加载的初始态由上面两行直接调用负责
 		onNavigation(() => {
-			if (preserveCalendarDrawerOnNavigation) {
-				preserveCalendarDrawerOnNavigation = false;
-				closeAllDrawers();
-				document.getElementById("dock-drawer-calendar")?.classList.remove("dock-drawer-closed");
-				window.dispatchEvent(new Event("calendar:open"));
-			} else {
-				closeAllDrawers();
-			}
+			closeAllDrawers();
 			dockTocManager?.cleanup();
 			dockTocManager = null;
 			updatePathDependent();

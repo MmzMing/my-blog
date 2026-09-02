@@ -13,6 +13,14 @@ enum I18nKey {
 	tableOfContents = "tableOfContents",
 	readingProgress = "readingProgress",
 	tocEmpty = "tocEmpty",
+	tocAccordionAuto = "tocAccordionAuto",
+	tocExpandAll = "tocExpandAll",
+	tocCollapseAll = "tocCollapseAll",
+	tocMindMap = "tocMindMap",
+	tocMindMapZoomIn = "tocMindMapZoomIn",
+	tocMindMapZoomOut = "tocMindMapZoomOut",
+	tocMindMapReset = "tocMindMapReset",
+	tocMindMapFullscreen = "tocMindMapFullscreen",
 	music = "music",
 
 	// 公告栏
@@ -155,27 +163,6 @@ enum I18nKey {
 	footerLastUpdate = "footerLastUpdate",
 	today = "today",
 
-	// 日历组件
-	calendarSunday = "calendarSunday",
-	calendarMonday = "calendarMonday",
-	calendarTuesday = "calendarTuesday",
-	calendarWednesday = "calendarWednesday",
-	calendarThursday = "calendarThursday",
-	calendarFriday = "calendarFriday",
-	calendarSaturday = "calendarSaturday",
-	calendarJanuary = "calendarJanuary",
-	calendarFebruary = "calendarFebruary",
-	calendarMarch = "calendarMarch",
-	calendarApril = "calendarApril",
-	calendarMay = "calendarMay",
-	calendarJune = "calendarJune",
-	calendarJuly = "calendarJuly",
-	calendarAugust = "calendarAugust",
-	calendarSeptember = "calendarSeptember",
-	calendarOctober = "calendarOctober",
-	calendarNovember = "calendarNovember",
-	calendarDecember = "calendarDecember",
-
 	shareArticle = "shareArticle",
 	scanToShare = "scanToShare",
 	shareQQ = "shareQQ",
@@ -231,23 +218,18 @@ enum I18nKey {
 	archiveStatsUnavailable = "archiveStatsUnavailable",
 	archiveStatsGoal = "archiveStatsGoal",
 
-	// 日历工具卡片
-	calendar = "calendar",
-	calendarToday = "calendarToday",
-	calendarPost = "calendarPost",
-	calendarPublished = "calendarPublished",
-	calendarSwitch = "calendarSwitch",
-	calendarLoading = "calendarLoading",
-	calendarNextHoliday = "calendarNextHoliday",
-	calendarNextBirthday = "calendarNextBirthday",
+	// 日历工具卡片（导航 Logo 资料卡）
+	calendarWeekRemaining = "calendarWeekRemaining",
 	calendarMonthRemaining = "calendarMonthRemaining",
 	calendarYearRemaining = "calendarYearRemaining",
 	calendarDataUnavailable = "calendarDataUnavailable",
 	calendarNoHoliday = "calendarNoHoliday",
-	calendarNoBirthday = "calendarNoBirthday",
-	calendarNoPosts = "calendarNoPosts",
+	profileMonthWeek = "profileMonthWeek",
+	profilePostCount = "profilePostCount",
+	profilePersonalSites = "profilePersonalSites",
+	otherSites = "otherSites",
+	profileHeatmap = "profileHeatmap",
 
-	feibichi = "feibichi",
 	contactMe = "contactMe",
 	qqGroup = "qqGroup",
 	navPosts = "navPosts",
@@ -402,8 +384,6 @@ enum I18nKey {
 
 	// ===== 日历工具卡片 =====
 	dayShort = "dayShort",
-	prevMonth = "prevMonth",
-	nextMonth = "nextMonth",
 
 	// ===== 弹窗 / 杂项 =====
 	pageLoading = "pageLoading",

@@ -1,16 +1,20 @@
 /* 文章标题上一层的导航行 — PostHeaderNav.astro
-   左返回、右分类下拉。纯黑白：只用 --deep-text / --content-meta /
-   --line-divider / --float-panel-bg，不引主色。悬停走前景背景反色，
-   亮暗主题各自成立（--deep-text 与 --float-panel-bg 天然互为反色）。 */
+   返回键 + 斜杠 + 分类下拉靠左排成一行，素面无框。悬停/展开只染青色
+   （--article-title-marker，色相与标题标记、图谱勾选芯片一致），
+   亮暗主题各取 variables.styl 里配好的一档。 */
 
 .post-nav {
 	display: flex;
-	gap: 0.75rem;
+	/* 间距对齐标题下分类/标签行的斜杠节奏 */
+	gap: 0.5rem;
 	align-items: center;
-	justify-content: space-between;
+	/* 返回键、斜杠、触发键的字号/行高统一在这一处定（全部继承）：
+	   盒子等高，垂直居中后底部自然齐平 */
+	font-size: 0.8125rem;
+	line-height: 1.25;
 	/* 两侧各留一道缝，别真的贴到卡片边上 —— 想更宽/更窄就调这一个值 */
 	--post-nav-edge-gap: 0.75rem;
-	/* 反向外扩抵掉 hero 的左右内边距（只抵到留缝为止），让两颗按钮比正文更靠外。
+	/* 反向外扩抵掉 hero 的左右内边距（只抵到留缝为止），让这一行比正文更靠外。
 	   父级是 align-items:center 的列 flex，得靠 align-self 才撑满宽度 */
 	align-self: stretch;
 	margin-inline: calc(
@@ -21,7 +25,7 @@
 	text-align: start;
 }
 
-/* 返回键与下拉触发键共用胶囊外形 */
+/* 返回键与下拉触发键：素文字排版，不加框、不铺底；字号/行高随 .post-nav */
 .post-nav__back,
 .post-nav__trigger {
 	display: inline-flex;
@@ -29,37 +33,33 @@
 	align-items: center;
 	max-width: 100%;
 	min-width: 0;
-	padding: 0.375rem 0.75rem;
-	border: 1px solid var(--line-divider);
-	/* 方块圆角，不是胶囊 */
-	border-radius: var(--radius-medium, 0.5rem);
+	padding: 0;
 	background: transparent;
 	color: var(--deep-text);
-	font-size: 0.8125rem;
 	font-weight: 600;
-	line-height: 1.25;
 	white-space: nowrap;
 	cursor: pointer;
-	transition:
-		background-color 160ms ease-out,
-		border-color 160ms ease-out,
-		color 160ms ease-out;
+	transition: color 160ms ease-out;
 }
 
-/* 反色态：亮色主题黑底白字，暗色主题自动反过来。
-   注意不能用 --card-bg —— 它两个主题下都是 transparent */
+/* 悬停/展开：只染青色（图标 fill: currentColor 跟着一起变） */
 .post-nav__back:hover,
 .post-nav__trigger:hover,
 .post-nav__category.is-open .post-nav__trigger {
-	border-color: var(--deep-text);
-	background: var(--deep-text);
-	color: var(--float-panel-bg);
+	color: var(--article-title-marker);
 }
 
 .post-nav__back:focus-visible,
 .post-nav__trigger:focus-visible {
 	outline: 2px solid var(--deep-text);
 	outline-offset: 2px;
+}
+
+/* 斜杠分隔：字号随 .post-nav 与两侧文字等大同高，随行内文字灰、不可选中 */
+.post-nav__divider {
+	color: var(--content-meta);
+	font-weight: 400;
+	user-select: none;
 }
 
 .post-nav__icon {
@@ -84,6 +84,17 @@
 	min-width: 0;
 }
 
+/* 触发键与菜单之间留了 0.6rem 空隙，悬停移过去会掉出去 —— 用一道透明桥接住
+   （同 post-hero__share-menu::after 的做法） */
+.post-nav__category::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	height: 0.6rem;
+}
+
 .post-nav__current {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -100,7 +111,7 @@
 	z-index: 40;
 	/* 比原来多让 0.25rem，给小角留出高度 */
 	top: calc(100% + 0.6rem);
-	right: 0;
+	left: 0;
 	padding: 0.5rem;
 	border: 1.5px solid var(--deep-text);
 	border-radius: 0.75rem;
@@ -118,14 +129,14 @@
 		visibility 200ms;
 }
 
-/* 小角靠右对齐到触发键下方（菜单是右对齐的）。自带背景盖住菜单自身的上边框，
+/* 小角靠左对齐到触发键下方（菜单是左对齐的）。自带背景盖住菜单自身的上边框，
    接缝看不出来 —— 和导航栏那颗角一个做法 */
 .post-nav__menu::before {
 	width: 0.75rem;
 	height: 0.75rem;
 	position: absolute;
 	top: -0.45rem;
-	right: 1.25rem;
+	left: 1.25rem;
 	border-top: 1.5px solid var(--deep-text);
 	border-left: 1.5px solid var(--deep-text);
 	background: var(--float-panel-bg);

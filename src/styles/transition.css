@@ -73,16 +73,16 @@ html.is-rendering .transition-swup-main {
     animation: blur-fade-in 280ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* 页内 fixed 元素（首页被 ScrollTrigger pin 的 hero、文章页大纲 rail）在容器
+/* 页内 fixed 元素（首页被 ScrollTrigger pin 的 hero、文章页右侧大纲面板）在容器
    出现非 none 的 transform 时会改以容器为 containing block，过渡瞬间跳位/飞出。
    因此仅在进出这些页面（DOM 含对应标记）时退化为纯 opacity 过渡，其余页面保留位移 */
 html.is-leaving:has(.home-hero) .transition-swup-main,
-html.is-leaving:has(.article-outline-rail) .transition-swup-main {
+html.is-leaving:has(.article-toc-panel) .transition-swup-main {
     animation-name: fade-out-only;
 }
 
 html.is-rendering:has(.home-hero) .transition-swup-main,
-html.is-rendering:has(.article-outline-rail) .transition-swup-main {
+html.is-rendering:has(.article-toc-panel) .transition-swup-main {
     animation-name: fade-in-only;
 }
 
@@ -92,8 +92,8 @@ html.is-rendering:has(.article-outline-rail) .transition-swup-main {
     html.is-rendering .transition-swup-main,
     html.is-leaving:has(.home-hero) .transition-swup-main,
     html.is-rendering:has(.home-hero) .transition-swup-main,
-    html.is-leaving:has(.article-outline-rail) .transition-swup-main,
-    html.is-rendering:has(.article-outline-rail) .transition-swup-main {
+    html.is-leaving:has(.article-toc-panel) .transition-swup-main,
+    html.is-rendering:has(.article-toc-panel) .transition-swup-main {
         animation: none;
     }
 }

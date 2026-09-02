@@ -3,8 +3,21 @@ import {
 	LinkPreset,
 	type NavBarConfig,
 	type NavBarLink,
+	type PersonalSite,
 } from "../types/config";
 import { siteConfig } from "./siteConfig";
+
+// Logo 下拉资料卡里的「个人网站」列表（图标 + 名字 + 地址）
+// 原先挂在 LinkPreset.Feibichi 的「个人主站」外链收编为第一项，该预设已删除。
+// name 是站长自维护的站点名（展示在右侧 CTA 上，明文即可）；左侧切换按钮的
+// 文案是固定的 i18n 文案（I18nKey.otherSites），不从这里取
+const personalSites: PersonalSite[] = [
+	{
+		name: "个人主站",
+		url: "https://www.mmzhiku.xyz/",
+		icon: "material-symbols:link",
+	},
+];
 
 /**
  * 构建导航栏链接配置
@@ -78,28 +91,23 @@ const buildNavBarConfig = (): NavBarConfig => {
 				}
 			: null;
 
-	// 4. 构建导航下拉菜单（子项顺序：个人主站 → 工具导航）
-	// 个人主站是外链、不随页面开关变化，因此下拉至少有一项，无需判空
-	const linksChildren: (NavBarLink | LinkPreset)[] = [LinkPreset.Feibichi];
-	if (siteConfig.pages.collections) {
-		linksChildren.push(LinkPreset.Collections);
-	}
+	// 4. 导航：原「导航」下拉拆分后的一级项，直接指向工具导航页，页面开关控制显隐
+	//    （下拉里的另一项「个人主站」是外链，移到了 Navbar 左段 Logo 的悬停下拉）
+	//    文案沿用 I18nKey.navLinks 的既有翻译，不用 collections 的「工具导航」文案
+	const linksNav: NavBarLink | null = siteConfig.pages.collections
+		? LinkPresets[LinkPreset.NavLinks]
+		: null;
 
-	const linksNav: NavBarLink = {
-		...LinkPresets[LinkPreset.NavLinks],
-		children: linksChildren,
-	};
-
-	// 5. 统一组装导航栏链接（顺序：主页 → 导航 → 文章 → 联系我 → 我的）
+	// 5. 统一组装导航栏链接（顺序：主页 → 导航 → 文章 → 联系我 → 其他）
 	const links: (NavBarLink | LinkPreset)[] = [
 		LinkPreset.Home,
-		linksNav,
+		...(linksNav ? [linksNav] : []),
 		...(postsNav ? [postsNav] : []),
 		...(contactNav ? [contactNav] : []),
 		...(myNav ? [myNav] : []),
 	];
 
-	return { links };
+	return { links, personalSites };
 };
 
 export const navBarConfig: NavBarConfig = buildNavBarConfig();

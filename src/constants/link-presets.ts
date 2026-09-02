@@ -68,12 +68,6 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
 		url: "/tags/",
 		icon: "material-symbols:label",
 	},
-	[LinkPreset.Feibichi]: {
-		name: i18n(I18nKey.feibichi),
-		url: "https://www.mmzhiku.xyz/",
-		icon: "material-symbols:link",
-		external: true,
-	},
 	[LinkPreset.ContactMe]: {
 		name: i18n(I18nKey.contactMe),
 		url: "/contact/",

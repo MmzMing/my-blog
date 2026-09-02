@@ -31,7 +31,7 @@ import { url } from "@/utils/url-utils";
     整个 document（不只是容器内），不加这个属性的话每次导航都会把整段重新执行一遍 ——
     下面第 409 行的 window.__spineAbortController 会被无守卫地换成新的，
     旧的 resize / popstate 监听从此再也 abort 不到，按访问次数累积。
-    同为容器外常驻内联脚本的 Live2DWidget / MusicManager / CalendarManager 都带着这个属性 */}
+    同为容器外常驻内联脚本的 Live2DWidget / MusicManager 都带着这个属性 */}
 <script is:inline data-swup-ignore-script define:vars={{ spineModelConfig, modelPath: url(spineModelConfig.model.path), atlasPath: url(spineModelConfig.model.path.replace(".json", ".atlas")), cssPath: url("/pio/static/spine-player.min.css"), jsPath: url("/pio/static/spine-player.min.js") }}>
   // 动态加载 Spine CSS（带本地备用）
   function loadSpineCSS() {

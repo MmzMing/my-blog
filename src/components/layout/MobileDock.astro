@@ -3,7 +3,6 @@ import { Picture } from "astro:assets";
 import * as path from "node:path";
 import Icon from "@components/common/Icon.astro";
 import type { ImageMetadata } from "astro";
-import CalendarWidget from "@/components/controls/CalendarWidget.astro";
 import {
 	announcementConfig,
 	navBarConfig,
@@ -247,10 +246,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 					</section>
 				)}
 
-				<section class="mobile-dock__view mobile-dock__calendar-view" data-dock-view="calendar" data-title={i18n(I18nKey.calendar)} hidden>
-					<CalendarWidget id="mobile-calendar-widget" />
-				</section>
-
 				{showAnnouncement && (
 					<section id="mobile-dock-announcement-view" class="mobile-dock__view" data-dock-view="announcement" data-title={announcementConfig.title || i18n(I18nKey.announcement)} hidden>
 						<div class="mobile-dock__announcement-list">
@@ -317,10 +312,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 					<Icon name="material-symbols:dark-mode-outline-rounded" is:inline class="mobile-dock__theme-dark is-hidden" />
 					<span>{i18n(I18nKey.theme)}</span>
 				</button>
-				<button type="button" data-view-target="calendar" aria-label={i18n(I18nKey.calendar)}>
-					<Icon name="material-symbols:calendar-month-rounded" is:inline />
-					<span>{i18n(I18nKey.calendar)}</span>
-				</button>
 				{showMusic && (
 					<button type="button" data-view-target="music" aria-label={i18n(I18nKey.music)}>
 						<Icon name="material-symbols:music-note-rounded" is:inline />
@@ -372,7 +363,7 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 	import { onNavigation, preloadUrl } from "@/utils/swup-lifecycle";
 
 	type DockShape = "pill" | "bubble" | "card";
-	type DockView = "menu" | "music" | "calendar" | "announcement" | "tags" | "toc";
+	type DockView = "menu" | "music" | "announcement" | "tags" | "toc";
 	type MusicState = ReturnType<
 		NonNullable<Window["__fireflyMusic"]>["getState"]
 	>;
@@ -424,7 +415,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 
 		let shape: DockShape = "pill";
 		let activeView: DockView = "menu";
-		let preserveCalendarViewOnNavigation = false;
 		let musicState: MusicState | null = null;
 		let displayedLyric = "";
 		let playlistSignature = "";
@@ -521,7 +511,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			contextButton.setAttribute("aria-label", activeView === "menu" ? siteTitle : i18n(I18nKey.menu));
 
 			if (activeView === "music") void ensureMusicReady();
-			if (activeView === "calendar") window.dispatchEvent(new Event("calendar:open"));
 			if (activeView === "toc") void initializeTOC();
 			target.scrollTop = 0;
 		}
@@ -842,9 +831,7 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 				window.dispatchEvent(new CustomEvent(action));
 				closeCard();
 			}
-			if (target.closest("[data-calendar-post-link]")) {
-				preserveCalendarViewOnNavigation = true;
-			} else if (target.closest("[data-dock-navigation]")) {
+			if (target.closest("[data-dock-navigation]")) {
 				closeCard();
 			}
 			if (target.closest("#mobile-dock-toc-content a")) window.setTimeout(closeCard, 0);
@@ -942,10 +929,7 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			mobileTOCManager = null;
 			lastScrollY = window.scrollY;
 			setKeyboardOpen(false);
-			if (preserveCalendarViewOnNavigation) {
-				preserveCalendarViewOnNavigation = false;
-				openCard("calendar");
-			} else if (shape === "card") {
+			if (shape === "card") {
 				closeCard();
 			} else {
 				setShape("pill");

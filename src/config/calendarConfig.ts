@@ -58,19 +58,12 @@ export const calendarConfig: CalendarConfig = {
 		},
 	],
 
-	// 生日 / 纪念日 — 按年重复
-	birthdays: [
-		{
-			name: "我的生日",
-			date: { type: "solar", month: 7, day: 10 },
-			icon: "material-symbols:cake",
-			note: "又长大一岁",
-		},
-		{
-			name: "建站日",
-			date: { type: "solar", month: 5, day: 7 },
-			icon: "material-symbols:rocket-launch",
-			note: "MmzMing的博客上线纪念日",
-		},
-	],
+	// 建站纪念日 — Logo 资料卡右侧进度条展示
+	// 支持公历或农历（农历需 type: "lunar"，构建期自动换算为当年公历日期）
+	siteAnniversary: {
+		name: "建站日",
+		date: { type: "solar", month: 5, day: 7 },
+		icon: "material-symbols:rocket-launch",
+		note: "MmzMing的博客上线纪念日",
+	},
 };

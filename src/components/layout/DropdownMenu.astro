@@ -1,46 +1,31 @@
 ---
 import Icon from "@components/common/Icon.astro";
-import DropdownItem from "@/components/common/DropdownItem.astro";
-import { LinkPresets } from "@/constants/link-presets";
-import { LinkPreset, type NavBarLink } from "@/types/config";
+import type { NavBarLink } from "@/types/config";
 import { url } from "@/utils/url-utils";
 
 interface Props {
 	link: NavBarLink;
+	/** 在导航栏中的序号，与共享下拉面板的内容页（data-dropdown-page）配对 */
+	index: number;
 	class?: string;
 }
 
-const { link, class: className } = Astro.props;
+const { link, index, class: className } = Astro.props;
 
 // 检查 link 是否存在
 if (!link) {
 	return null;
 }
 
-// 转换子菜单中的LinkPreset为NavBarLink
-const processedLink = {
-	...link,
-	children: link.children
-		?.map((child: NavBarLink | LinkPreset): NavBarLink | null => {
-			if (typeof child === "number") {
-				// 检查 LinkPreset 是否存在于 LinkPresets 中
-				if (child in LinkPresets) {
-					return LinkPresets[child as LinkPreset];
-				}
-				return null;
-			}
-			return child;
-		})
-		.filter((child): child is NavBarLink => child !== null),
-};
-
-const hasChildren = processedLink.children && processedLink.children.length > 0;
+// 子菜单内容页由 Navbar.astro 集中渲染进共享面板，这里只输出触发器
+const hasChildren = !!link.children && link.children.length > 0;
 ---
 
 <div
 	class:list={["dropdown-container", className]}
 	data-dropdown
-	data-active-path-prefixes={processedLink.activePathPrefixes?.join(" ")}
+	data-dropdown-index={index}
+	data-active-path-prefixes={link.activePathPrefixes?.join(" ")}
 >
 	{hasChildren ? (
 		<button
@@ -50,60 +35,30 @@ const hasChildren = processedLink.children && processedLink.children.length > 0;
 			data-dropdown-trigger
 		>
 			<div class="flex items-center gap-1.5">
-				{processedLink.icon && (
+				{link.icon && (
 					<span class="navbar-trigger-icon" data-navbar-icon-template aria-hidden="true">
-						<Icon name={processedLink.icon} is:inline class="text-[1.05rem]" />
+						<Icon name={link.icon} is:inline class="text-[1.05rem]" />
 					</span>
 				)}
-				{processedLink.name}
+				{link.name}
 			</div>
 			<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline class="text-[1.1rem] transition-transform duration-200 dropdown-arrow absolute right-2.5 top-1/2 -translate-y-1/2" />
 		</button>
-		<div class="dropdown-menu" data-dropdown-menu>
-			<div class="dropdown-content-wrapper">
-				{processedLink.children?.map((child, index) => {
-					const isLast = index === (processedLink.children?.length || 0) - 1;
-					return child.action ? (
-						<button
-							type="button"
-							class={`dropdown-item action-item flex transition whitespace-nowrap items-center justify-start! w-full btn-plain scale-animation h-9 px-3 font-medium active:scale-95 ${isLast ? "" : "mb-0.5"}`}
-							data-action={child.action}
-						>
-							{child.icon && <Icon name={child.icon} is:inline class="text-[1.2rem] mr-3 navbar-icon" />}
-							<span>{child.name}</span>
-						</button>
-					) : (
-						<DropdownItem
-							href={child.external ? child.url : url(child.url)}
-							target={child.external ? "_blank" : undefined}
-							isLast={isLast}
-							class="dropdown-item"
-						>
-							{child.icon && <Icon name={child.icon} is:inline class="text-[1.2rem] mr-3 navbar-icon" />}
-							<span>{child.name}</span>
-							{child.external && (
-								<Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="text-[0.7rem] text-black/25 dark:text-white/25 ml-auto" />
-							)}
-						</DropdownItem>
-					);
-				})}
-			</div>
-		</div>
 	) : (
 		<a
-			aria-label={processedLink.name}
-			href={processedLink.external ? processedLink.url : url(processedLink.url)}
-			target={processedLink.external ? "_blank" : null}
+			aria-label={link.name}
+			href={link.external ? link.url : url(link.url)}
+			target={link.external ? "_blank" : null}
 			class="btn-plain scale-animation rounded-lg h-9 font-bold px-3 active:scale-95"
 		>
 			<div class="flex items-center gap-1.5">
-				{processedLink.icon && (
+				{link.icon && (
 					<span class="navbar-trigger-icon" data-navbar-icon-template aria-hidden="true">
-						<Icon name={processedLink.icon} is:inline class="text-[1.05rem]" />
+						<Icon name={link.icon} is:inline class="text-[1.05rem]" />
 					</span>
 				)}
-				{processedLink.name}
-				{processedLink.external && <Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="text-[0.8rem] transition -translate-y-px ml-1 text-black/20 dark:text-white/20" />}
+				{link.name}
+				{link.external && <Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="text-[0.8rem] transition -translate-y-px ml-1 text-black/20 dark:text-white/20" />}
 			</div>
 		</a>
 	)}
@@ -112,117 +67,10 @@ const hasChildren = processedLink.children && processedLink.children.length > 0;
 <!-- 样式已迁移至 src/styles/layout/dropdown-menu.css -->
 
 <script>
-	import {
-		definePersistentIsland,
-		onNavigation,
-	} from "@/utils/swup-lifecycle";
+	import { initNavbarDropdownDelegation } from "@/utils/navbar-dropdown-controller";
+	import { definePersistentIsland } from "@/utils/swup-lifecycle";
 
-	function getDropdownParts(dropdown: Element) {
-		const trigger = dropdown.querySelector("[data-dropdown-trigger]");
-		const menu = dropdown.querySelector("[data-dropdown-menu]");
-		return { trigger, menu };
-	}
-
-	function toggleDropdown(dropdown: Element, trigger: Element, menu: Element) {
-		const isOpen = trigger.getAttribute('aria-expanded') === 'true';
-		if (isOpen) {
-			closeDropdown(dropdown, trigger, menu);
-		} else {
-			openDropdown(dropdown, trigger, menu);
-		}
-	}
-	
-	function openDropdown(dropdown: Element, trigger: Element, menu: Element) {
-		trigger.setAttribute('aria-expanded', 'true');
-		dropdown.classList.add("is-dropdown-open");
-		menu.classList.remove('opacity-0', 'invisible', 'pointer-events-none', 'translate-y-[-8px]');
-		menu.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-y-0');
-	}
-	
-	function closeDropdown(dropdown: Element, trigger: Element, menu: Element) {
-		trigger.setAttribute('aria-expanded', 'false');
-		dropdown.classList.remove("is-dropdown-open");
-		menu.classList.add('opacity-0', 'invisible', 'pointer-events-none', 'translate-y-[-8px]');
-		menu.classList.remove('opacity-100', 'visible', 'pointer-events-auto', 'translate-y-0');
-	}
-
-	function closeAllDropdowns(options: { blurActive?: boolean } = {}) {
-		document.querySelectorAll("[data-dropdown]").forEach((dropdown) => {
-			const { trigger, menu } = getDropdownParts(dropdown);
-			if (trigger && menu) closeDropdown(dropdown, trigger, menu);
-		});
-
-		if (options.blurActive) {
-			const active = document.activeElement as HTMLElement | null;
-			if (active?.closest?.("[data-dropdown]")) active.blur();
-		}
-	}
-
-	function initDropdownMenus() {
-		if ((window as any).__navbarDropdownInitialized) return;
-		(window as any).__navbarDropdownInitialized = true;
-
-		document.addEventListener("keydown", (e: KeyboardEvent) => {
-			const target = e.target as HTMLElement | null;
-			const trigger = target?.closest?.("[data-dropdown-trigger]");
-			const item = target?.closest?.(".dropdown-item");
-			const dropdown = (trigger || item)?.closest?.("[data-dropdown]");
-			if (!dropdown) return;
-
-			const { trigger: dropdownTrigger, menu } = getDropdownParts(dropdown);
-			if (!dropdownTrigger || !menu) return;
-
-			const items = Array.from(dropdown.querySelectorAll(".dropdown-item")) as HTMLElement[];
-
-			if (trigger && (e.key === "Enter" || e.key === " ")) {
-				e.preventDefault();
-				toggleDropdown(dropdown, dropdownTrigger, menu);
-			} else if (trigger && e.key === "ArrowDown") {
-				e.preventDefault();
-				openDropdown(dropdown, dropdownTrigger, menu);
-				items[0]?.focus();
-			} else if (item && e.key === "ArrowDown") {
-				e.preventDefault();
-				const index = items.indexOf(item as HTMLElement);
-				items[(index + 1) % items.length]?.focus();
-			} else if (item && e.key === "ArrowUp") {
-				e.preventDefault();
-				const index = items.indexOf(item as HTMLElement);
-				items[(index - 1 + items.length) % items.length]?.focus();
-			} else if (e.key === "Escape") {
-				closeDropdown(dropdown, dropdownTrigger, menu);
-				(dropdownTrigger as HTMLElement).focus();
-			}
-		});
-
-		document.addEventListener("click", (e) => {
-			const target = e.target as HTMLElement;
-			const actionBtn = target.closest("[data-action]");
-			const clickedItem = target.closest(".dropdown-item");
-
-			if (actionBtn) {
-				const action = actionBtn.getAttribute("data-action");
-				if (action) window.dispatchEvent(new CustomEvent(action));
-			}
-
-			if (clickedItem) {
-				const dropdown = clickedItem.closest("[data-dropdown]");
-				if (dropdown) {
-					const { trigger, menu } = getDropdownParts(dropdown);
-					if (trigger && menu) closeDropdown(dropdown, trigger, menu);
-				}
-				(document.activeElement as HTMLElement | null)?.blur?.();
-				return;
-			}
-
-			if (!target.closest("[data-dropdown]")) closeAllDropdowns();
-		});
-
-		// 导航后收起菜单。首次加载本就是收起状态，不需要跑
-		onNavigation(() => closeAllDropdowns({ blurActive: true }));
-		window.addEventListener("pageshow", () => closeAllDropdowns({ blurActive: true }));
-	}
-
-	// 菜单在 Swup 容器之外，事件全部委托在 document 上，只需注册一次
-	definePersistentIsland("dropdown-menu", initDropdownMenus);
+	// 点击/键盘委托在 document 上，导航栏常驻只需注册一次；
+	// 悬停跟随逻辑在 Navbar.astro 的 hover-slider 岛里调用同一控制器
+	definePersistentIsland("dropdown-menu", initNavbarDropdownDelegation);
 </script>

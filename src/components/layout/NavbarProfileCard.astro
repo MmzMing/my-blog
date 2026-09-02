@@ -1,0 +1,266 @@
+---
+import { Picture } from "astro:assets";
+import * as path from "node:path";
+import Icon from "@components/common/Icon.astro";
+import type { ImageMetadata } from "astro";
+import {
+	calendarConfig,
+	footerConfig,
+	homeConfig,
+	navBarConfig,
+	siteConfig,
+} from "@/config";
+import { LinkPresets } from "@/constants/link-presets";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import { LinkPreset } from "@/types/config";
+import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
+import { resolveYearlyDate } from "@/utils/lunar-utils";
+import { url } from "@/utils/url-utils";
+
+const aboutLink = LinkPresets[LinkPreset.About];
+const displayName = homeConfig.displayName || homeConfig.name;
+const locale = siteConfig.lang.replace("_", "-");
+
+// 头像解析：src 目录（自动优化）/ public（/ 开头）/ 远程 URL，与 Navbar logo 同一套约定
+const avatarValue = homeConfig.avatar || "";
+let avatarImg: ImageMetadata | null = null;
+if (
+	avatarValue &&
+	!avatarValue.startsWith("/") &&
+	!avatarValue.startsWith("http")
+) {
+	const files = import.meta.glob<ImageMetadata>(
+		"../../**/*.{png,jpg,jpeg,webp,avif,gif,svg}",
+		{ import: "default" },
+	);
+	const normalizedPath = path
+		.normalize(path.join("../../", avatarValue))
+		.replace(/\\/g, "/");
+	const file = files[normalizedPath];
+	if (file) avatarImg = await file();
+}
+
+// 建站日事件序列：构建期展开前后三年内联进面板，客户端据此算周期进度，无运行时请求
+const currentYear = new Date().getFullYear();
+const anniversaryOccurrences = [currentYear - 1, currentYear, currentYear + 1]
+	.map((year) => resolveYearlyDate(calendarConfig.siteAnniversary.date, year))
+	.filter((date): date is string => date !== null)
+	.sort((a, b) => a.localeCompare(b));
+
+// 热力图构建期静态渲染：48 个方块 + 月份表头 + 周标签，
+// 数据到达后控制器只补计数色阶与 tooltip，不再重建 DOM
+const monthFormatter = new Intl.DateTimeFormat(locale, { month: "long" });
+const formatWeekLabel = (month: number, week: number): string =>
+	i18n(I18nKey.profileMonthWeek)
+		.replace("{month}", monthFormatter.format(new Date(2000, month, 1)))
+		.replace("{week}", String(week + 1));
+
+const profileConfig = JSON.stringify({
+	api: {
+		holidays: url("/api/holidays.json"),
+		posts: url("/api/allPostMeta.json"),
+	},
+	postBaseUrl: url("/posts/"),
+	locale,
+	anniversary: {
+		name: calendarConfig.siteAnniversary.name,
+		occurrences: anniversaryOccurrences,
+	},
+	labels: {
+		weekFormat: i18n(I18nKey.profileMonthWeek),
+		postCount: i18n(I18nKey.profilePostCount),
+		days: i18n(I18nKey.dayShort),
+		unavailable: i18n(I18nKey.calendarDataUnavailable),
+		noHoliday: i18n(I18nKey.calendarNoHoliday),
+	},
+});
+---
+
+<div class="navbar-profile-dropdown" data-navbar-profile-panel>
+	<div class="navbar-profile-mask" data-profile-mask aria-hidden="true"></div>
+	<div class="profile-card" data-profile-card aria-busy="true" data-profile-config={profileConfig}>
+		<!-- 左栏：身份 + 个人网站 + 社交 + 文章热力图 -->
+		<div class="profile-card__left">
+			<a class="profile-card__identity" href={url(aboutLink.url)} aria-label={aboutLink.name}>
+				<span class="profile-card__avatar" aria-hidden="true">
+					{avatarImg ? (
+						avatarImg.format === "svg" ? (
+							<img src={avatarImg.src} alt="" class="profile-card__avatar-img" loading="lazy" decoding="async" />
+						) : (
+							<Picture
+								src={avatarImg}
+								alt=""
+								class="profile-card__avatar-img"
+								formats={getImageFormats()}
+								fallbackFormat={getFallbackFormat()}
+								widths={[96, 192]}
+								loading="lazy"
+							/>
+						)
+					) : avatarValue ? (
+						<img
+							src={avatarValue.startsWith("/") ? url(avatarValue) : avatarValue}
+							alt=""
+							class="profile-card__avatar-img"
+							loading="lazy"
+							decoding="async"
+						/>
+					) : (
+						<span class="profile-card__avatar-fallback">{displayName.slice(0, 1)}</span>
+					)}
+				</span>
+				<span class="profile-card__identity-text">
+					<strong class="profile-card__name">{displayName}</strong>
+					{homeConfig.occupation && <span class="profile-card__occupation">{homeConfig.occupation}</span>}
+				</span>
+			</a>
+
+			<div class="profile-card__socials">
+				{footerConfig.socialLinks.map((social) => {
+					const isDirect = social.href.startsWith("mailto:") || social.href.startsWith("tel:");
+					return (
+						<a
+							class="profile-card__social-btn"
+							href={social.href}
+							target={isDirect ? undefined : "_blank"}
+							rel={isDirect ? undefined : "noopener noreferrer"}
+							aria-label={social.label}
+							title={social.label}
+						>
+							<Icon name={social.icon} is:inline />
+						</a>
+					);
+				})}
+
+				{navBarConfig.personalSites.length > 0 && (
+					<div class="profile-card__sites" data-profile-sites role="group" aria-label={i18n(I18nKey.profilePersonalSites)}>
+						{navBarConfig.personalSites.map((_, index) => (
+							<button
+								type="button"
+								class="profile-card__site-btn"
+								data-profile-site-trigger={String(index)}
+								aria-pressed="false"
+							>
+								<span>{i18n(I18nKey.otherSites)}</span>
+							</button>
+						))}
+					</div>
+				)}
+			</div>
+
+			<div class="profile-card__heatmap" data-profile-heatmap role="group" aria-label={i18n(I18nKey.profileHeatmap)}>
+				{Array.from({ length: 12 }, (_, month) => (
+					<div class="profile-card__heat-col">
+						<span class="profile-card__heat-month" aria-hidden="true">{month + 1}</span>
+						{Array.from({ length: 4 }, (_, week) => {
+							const label = formatWeekLabel(month, week);
+							return (
+								<button
+									type="button"
+									class="profile-card__heat-cell"
+									data-profile-cell={`${month}-${week}`}
+									data-tooltip={label}
+									aria-label={label}
+									aria-pressed="false"
+								/>
+							);
+						})}
+					</div>
+				))}
+			</div>
+		</div>
+
+		<!-- 右栏：default / site / posts 三态，控制器切换 -->
+		<div class="profile-card__right">
+			<div class="profile-card__pane" data-profile-pane="default">
+				<div class="profile-card__countdowns">
+					<div class="profile-card__countdown">
+						<span>{i18n(I18nKey.calendarWeekRemaining)}</span>
+						<strong data-profile-days="week">--</strong>
+					</div>
+					<div class="profile-card__countdown">
+						<span>{i18n(I18nKey.calendarMonthRemaining)}</span>
+						<strong data-profile-days="month">--</strong>
+					</div>
+					<div class="profile-card__countdown">
+						<span>{i18n(I18nKey.calendarYearRemaining)}</span>
+						<strong data-profile-days="year">--</strong>
+					</div>
+				</div>
+
+				<article class="profile-card__event" data-profile-event="holiday">
+					<div class="profile-card__event-main">
+						<strong class="profile-card__event-title" data-profile-event-title>--</strong>
+						<span class="profile-card__event-date" data-profile-event-date></span>
+					</div>
+					<div class="profile-card__progress-row">
+						<span
+							class="profile-card__progress"
+							role="progressbar"
+							aria-valuemin="0"
+							aria-valuemax="100"
+							aria-valuenow="0"
+							data-profile-event-progress
+						>
+							<span data-profile-event-progress-fill></span>
+						</span>
+						<span class="profile-card__remaining" data-profile-event-remaining>--</span>
+					</div>
+				</article>
+
+				<article class="profile-card__event" data-profile-event="anniversary">
+					<div class="profile-card__event-main">
+						<strong class="profile-card__event-title" data-profile-event-title>--</strong>
+						<span class="profile-card__event-date" data-profile-event-date></span>
+					</div>
+					<div class="profile-card__progress-row">
+						<span
+							class="profile-card__progress"
+							role="progressbar"
+							aria-valuemin="0"
+							aria-valuemax="100"
+							aria-valuenow="0"
+							data-profile-event-progress
+						>
+							<span data-profile-event-progress-fill></span>
+						</span>
+						<span class="profile-card__remaining" data-profile-event-remaining>--</span>
+					</div>
+				</article>
+			</div>
+
+			<div class="profile-card__pane" data-profile-pane="site" hidden>
+				{navBarConfig.personalSites.map((site, index) => (
+					<a
+						class="profile-card__site-cta"
+						href={site.url}
+						target="_blank"
+						rel="noopener noreferrer"
+						data-profile-site-cta={String(index)}
+						hidden
+					>
+						<Icon name={site.icon} is:inline class="profile-card__site-cta-icon" />
+						<span class="profile-card__site-cta-name">{site.name}</span>
+						<Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="profile-card__site-cta-arrow" />
+					</a>
+				))}
+			</div>
+
+			<div class="profile-card__pane" data-profile-pane="posts" hidden>
+				<p class="profile-card__posts-title" data-profile-posts-title></p>
+				<div class="profile-card__post-list" data-profile-post-list></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- 样式见 src/styles/layout/navbar-profile-card.css -->
+
+<script>
+	import { initNavbarProfileCard } from "@/utils/navbar-profile-controller";
+	import { definePersistentIsland } from "@/utils/swup-lifecycle";
+
+	// 面板在 Swup 容器之外，常驻只需初始化一次
+	definePersistentIsland("navbar-profile-card", initNavbarProfileCard);
+</script>

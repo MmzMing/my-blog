@@ -195,7 +195,6 @@ export enum LinkPreset {
 	Categories = 10,
 	Tags = 11,
 	PostList = 12,
-	Feibichi = 13,
 	ContactMe = 14,
 	QQGroup = 15,
 	NavPosts = 16,
@@ -214,8 +213,16 @@ export type NavBarLink = {
 	children?: (NavBarLink | LinkPreset)[]; // 支持子菜单，可以是NavBarLink或LinkPreset
 };
 
+export type PersonalSite = {
+	name: string; // 站点名称
+	url: string; // 站点地址（外链原样使用，不走 url()）
+	icon: string; // 图标（iconify 名）
+};
+
 export type NavBarConfig = {
 	links: (NavBarLink | LinkPreset)[];
+	// Logo 下拉资料卡里的「个人网站」列表：左侧渲染按钮组，hover 时右侧切换成对应站点大按钮
+	personalSites: PersonalSite[];
 };
 
 export type HomeBlindsSceneItem = {
@@ -982,9 +989,9 @@ export type HolidayItem = {
 	note?: string; // 备注
 };
 
-// 生日 / 纪念日项（按年重复，公历或农历）
-export type BirthdayItem = {
-	name: string; // 人物名或事件名
+// 建站纪念日项（按年重复，公历或农历）
+export type AnniversaryItem = {
+	name: string; // 事件名
 	date: SolarOrLunarDate;
 	icon?: string;
 	note?: string;
@@ -1003,6 +1010,6 @@ export type CalendarConfig = {
 	// 内置补充节日（如农历节、节气、个性化节日）
 	builtinHolidays: HolidayItem[];
 
-	// 生日 / 纪念日
-	birthdays: BirthdayItem[];
+	// 建站纪念日（Logo 资料卡右侧进度条展示）
+	siteAnniversary: AnniversaryItem;
 };
