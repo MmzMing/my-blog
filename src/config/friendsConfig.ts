@@ -487,6 +487,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "vemiyの小站",
+		imgurl: "https://www.vemiy.com/img/avatar.webp",
+		desc: "One more day.",
+		siteurl: "https://www.vemiy.com/",
+		image: "/assets/images/friends/vemiy.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
