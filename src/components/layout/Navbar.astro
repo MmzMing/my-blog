@@ -4,8 +4,10 @@ import * as path from "node:path";
 import Icon from "@components/common/Icon.astro";
 import type { ImageMetadata } from "astro";
 import DropdownItem from "@/components/common/DropdownItem.astro";
-import { navBarConfig, siteConfig } from "@/config";
+import { announcementConfig, navBarConfig, siteConfig } from "@/config";
 import { LinkPresets } from "@/constants/link-presets";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
 import type { NavBarLink } from "@/types/config";
 import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
 import { url } from "@/utils/url-utils";
@@ -141,11 +143,19 @@ if (isLocalSrcLogo) {
 			</div>
 		</div>
 
-		<!-- 右段：搜索 + 快捷键（滚动收缩成球），移动端追加菜单按钮 -->
+		<!-- 右段：工具按钮（悬停浮出工具面板，窄屏亦可用）+ 菜单按钮（窄屏），
+		     滚动收缩成球 -->
 		<div class="navbar-seg navbar-seg--right">
-			<button aria-label="Search" name="Search" class="btn-plain h-9 nav-search-btn" id="nav-search-btn">
-				<span class="nav-search-btn__shortcut" data-shortcut>⌘ K</span>
-				<Icon name="material-symbols:search-rounded" is:inline class="text-[1.4rem]" style="font-variation-settings: 'wght' 700"></Icon>
+			<button
+				aria-label={i18n(I18nKey.tools)}
+				aria-controls="nav-tools-panel"
+				aria-expanded="false"
+				class="btn-plain h-9 w-9 inline-flex"
+				id="nav-tools-btn"
+				name="Tools"
+				type="button"
+			>
+				<Icon name="material-symbols:tune-rounded" is:inline class="text-[1.4rem]" style="font-variation-settings: 'wght' 700"></Icon>
 			</button>
 			<button aria-label="Menu" name="Nav Menu" class="btn-plain h-9 w-9 lg:hidden!" id="nav-menu-switch">
 				<Icon name="material-symbols:menu-rounded" is:inline class="text-[1.2rem]"></Icon>
@@ -155,12 +165,95 @@ if (isLocalSrcLogo) {
 		<!-- Logo 资料卡面板：hover/焦点展开（桌面）、底部半屏卡片（移动），
 		     挂在 segments 下，避开左段滚动收缩态 overflow:hidden 对面板的裁剪 -->
 		<NavbarProfileCard />
+
+		<!-- 工具面板：桌面端悬停/聚焦右段工具按钮浮出（公告/主题/搜索）。
+		     挂在 segments 下，避开右段滚动收缩态 overflow:hidden 对面板的裁剪 -->
+		<div class="nav-tools-panel" id="nav-tools-panel">
+			<div aria-label={i18n(I18nKey.tools)} class="nav-tools-box" role="group">
+				{announcementConfig.items.length > 0 && (
+					<button
+						aria-label={i18n(I18nKey.announcement)}
+						class="nav-tools-item"
+						data-tooltip={i18n(I18nKey.announcement)}
+						id="nav-tools-announcement"
+						type="button"
+					>
+						<Icon name="material-symbols:notifications-outline-rounded" is:inline class="text-[1.3rem]"></Icon>
+					</button>
+				)}
+				<button
+					aria-label={i18n(I18nKey.switchToDark)}
+					class="nav-tools-item"
+					data-tooltip={i18n(I18nKey.switchToDark)}
+					id="nav-tools-theme"
+					type="button"
+				>
+					<Icon name="material-symbols:wb-sunny-outline-rounded" is:inline class="text-[1.3rem] nav-tools-theme-icon-light"></Icon>
+					<Icon name="material-symbols:dark-mode-outline-rounded" is:inline class="text-[1.3rem] nav-tools-theme-icon-dark hidden"></Icon>
+				</button>
+				<button
+					aria-label={i18n(I18nKey.search)}
+					class="nav-tools-item"
+					data-nav-search-trigger
+					data-tooltip={i18n(I18nKey.search)}
+					type="button"
+				>
+					<Icon name="material-symbols:search-rounded" is:inline class="text-[1.3rem]"></Icon>
+				</button>
+			</div>
+		</div>
 	</div>
+
+	<!-- 公告弹窗：工具面板公告入口点击后，水平垂直居中展示公告列表 -->
+	{announcementConfig.items.length > 0 && (
+		<div
+			aria-label={announcementConfig.title || i18n(I18nKey.announcement)}
+			aria-modal="true"
+			class="nav-announcement-modal"
+			id="nav-announcement-modal"
+			role="dialog"
+		>
+			<div class="nav-announcement-backdrop" data-nav-announcement-close></div>
+			<div class="nav-announcement-panel">
+				<div class="nav-announcement-header">
+					<Icon name="material-symbols:notifications-outline-rounded" is:inline class="text-[1.2rem]"></Icon>
+					<span>{announcementConfig.title || i18n(I18nKey.announcement)}</span>
+					<button aria-label={i18n(I18nKey.announcementClose)} class="nav-announcement-close" data-nav-announcement-close type="button">
+						<Icon name="material-symbols:close-rounded" is:inline class="text-[1.1rem]"></Icon>
+					</button>
+				</div>
+				<div class="nav-announcement-list">
+					{announcementConfig.items
+						.slice()
+						.sort((a, b) => b.sort - a.sort)
+						.map((item) => (
+							<article class="nav-announcement-item">
+								<div class="nav-announcement-item__header">
+									<span class="nav-announcement-item__tag">{item.tag}</span>
+									<span class="nav-announcement-item__title">{item.title}</span>
+									<time class="nav-announcement-item__time">{item.time}</time>
+								</div>
+								<p class="nav-announcement-item__content">{item.content}</p>
+								{item.link && (
+									<a href={item.link} class="nav-announcement-item__link btn-line text-sm">
+										{i18n(I18nKey.viewDetails)}
+										<Icon name="fa7-solid:arrow-right" is:inline class="ml-2 text-xs"></Icon>
+									</a>
+								)}
+							</article>
+						))}
+				</div>
+			</div>
+		</div>
+	)}
 </div>
 
 <!-- 样式已迁移至 src/styles/layout/navbar-new.css -->
 
 <script>
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import { getStoredTheme, setTheme } from "@/utils/setting-utils";
 import { requestSearchModalToggle } from "@/utils/search-modal-controller";
 import {
 	repositionNavbarDropdown,
@@ -664,32 +757,220 @@ function initNavbarScrollLayout() {
 // 滚动/尺寸监听绑在 window 与 ResizeObserver 上，跨导航一直有效，只需装一次
 definePersistentIsland("navbar:scroll-layout", initNavbarScrollLayout);
 
-function initSearchShortcut() {
-	const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-	const text = isMac ? "⌘K" : "Ctrl K";
-	document.querySelectorAll("[data-shortcut]").forEach((el) => {
-		el.textContent = text;
-	});
-}
-
 // generation === 0 就是首次加载：此时激活项已经是服务端渲染好的，不要做位移过渡；
-// 导航后才需要动画。原先首次加载只在模块顶层调了 initHoverSlider()，
-// initSearchShortcut() 却只挂在 astro:page-load 上 —— 而该事件首次加载并不触发，
-// 于是直接打开页面时快捷键提示（⌘K / Ctrl K）一直是空的
+// 导航后才需要动画
 definePageIsland({
 	name: "navbar:hover-slider",
 	mount: ({ generation }) => {
 		initHoverSlider(generation > 0);
-		initSearchShortcut();
 	},
 });
 
-// Navbar search button → open search modal
-// 使用事件委托绑定在 #navbar 上，Swup 导航后无需重新绑定
+// ===== 右段工具面板（桌面端）：悬停/聚焦展开 公告 / 主题 / 搜索 =====
+// 导航栏在 Swup 容器之外、本模块只执行一次，事件直接绑在持久节点上
+const TOOLS_CLOSE_DELAY = 260;
+
+const toolsButton = document.getElementById("nav-tools-btn");
+const toolsPanel = document.getElementById("nav-tools-panel");
+let toolsCloseTimer: number | null = null;
+
+function isToolsPanelOpen(): boolean {
+	return toolsPanel?.classList.contains("is-open") ?? false;
+}
+
+function cancelToolsClose(): void {
+	if (toolsCloseTimer !== null) {
+		window.clearTimeout(toolsCloseTimer);
+		toolsCloseTimer = null;
+	}
+}
+
+function scheduleToolsClose(): void {
+	if (toolsCloseTimer !== null) return;
+	toolsCloseTimer = window.setTimeout(() => {
+		toolsCloseTimer = null;
+		closeToolsPanel();
+	}, TOOLS_CLOSE_DELAY);
+}
+
+// 面板右缘对齐工具按钮右缘：滚动收缩后右段变成吸附在导航中段旁的小球，
+// 固定 right:0 会让面板与小球脱节，所以每次展开时实测定位
+function positionToolsPanel(): void {
+	if (!toolsButton || !toolsPanel) return;
+	const segments = toolsButton.closest(".navbar-segments");
+	if (!segments) return;
+	const segmentsRect = segments.getBoundingClientRect();
+	const buttonRect = toolsButton.getBoundingClientRect();
+	toolsPanel.style.right = `${Math.max(0, segmentsRect.right - buttonRect.right)}px`;
+}
+
+function openToolsPanel(): void {
+	if (!toolsPanel || !toolsButton) return;
+	cancelToolsClose();
+	if (isToolsPanelOpen()) return;
+	positionToolsPanel();
+	toolsPanel.classList.add("is-open");
+	toolsButton.setAttribute("aria-expanded", "true");
+}
+
+function closeToolsPanel(): void {
+	if (!toolsPanel || !toolsButton) return;
+	cancelToolsClose();
+	if (!isToolsPanelOpen()) return;
+	toolsPanel.classList.remove("is-open");
+	toolsButton.setAttribute("aria-expanded", "false");
+}
+
+if (toolsButton && toolsPanel) {
+	toolsButton.addEventListener("mouseenter", openToolsPanel);
+	toolsButton.addEventListener("mouseleave", scheduleToolsClose);
+	// 面板与按钮之间有过渡区，进入面板时取消收起计时
+	toolsPanel.addEventListener("mouseenter", cancelToolsClose);
+	toolsPanel.addEventListener("mouseleave", scheduleToolsClose);
+	// 键盘路径：聚焦展开，焦点离开按钮与面板后延迟收起
+	toolsButton.addEventListener("focusin", openToolsPanel);
+	toolsButton.addEventListener("focusout", (event) => {
+		const next = event.relatedTarget;
+		if (next instanceof Node && toolsPanel.contains(next)) return;
+		scheduleToolsClose();
+	});
+	toolsPanel.addEventListener("focusout", (event) => {
+		const next = event.relatedTarget;
+		if (
+			next instanceof Node &&
+			(toolsPanel.contains(next) || toolsButton.contains(next))
+		) {
+			return;
+		}
+		scheduleToolsClose();
+	});
+	// 点击开合兜底（触屏 / 键盘 Enter）
+	toolsButton.addEventListener("click", (event) => {
+		event.stopPropagation();
+		if (isToolsPanelOpen()) closeToolsPanel();
+		else openToolsPanel();
+	});
+	// 收缩小球随滚动位移，面板锚点会失效，滚动即收起
+	window.addEventListener(
+		"scroll",
+		() => {
+			if (isToolsPanelOpen()) closeToolsPanel();
+		},
+		{ passive: true },
+	);
+	window.addEventListener("resize", () => {
+		if (isToolsPanelOpen()) positionToolsPanel();
+	}, { passive: true });
+	document.addEventListener("click", (event) => {
+		const target = event.target;
+		if (!(target instanceof Node)) return;
+		if (toolsButton.contains(target) || toolsPanel.contains(target)) return;
+		if (isToolsPanelOpen()) closeToolsPanel();
+	});
+}
+
+// 面板主题按钮：与悬浮坞同一套 setTheme + theme-change 同步逻辑
+const toolsThemeButton = document.getElementById("nav-tools-theme");
+if (toolsThemeButton) {
+	// 函数声明会被提升，null 收窄不跨函数边界，捕获到常量里用
+	const themeButton = toolsThemeButton;
+	const lightIcon = themeButton.querySelector(".nav-tools-theme-icon-light");
+	const darkIcon = themeButton.querySelector(".nav-tools-theme-icon-dark");
+
+	function updateToolsThemeState(): void {
+		const isDark = document.documentElement.classList.contains("dark");
+		lightIcon?.classList.toggle("hidden", isDark);
+		darkIcon?.classList.toggle("hidden", !isDark);
+		const label = i18n(isDark ? I18nKey.switchToLight : I18nKey.switchToDark);
+		themeButton.setAttribute("data-tooltip", label);
+		themeButton.setAttribute("aria-label", label);
+	}
+
+	themeButton.addEventListener("click", (event) => {
+		event.stopPropagation();
+		const current = getStoredTheme();
+		const resolved = current === "system"
+			? (document.documentElement.classList.contains("dark") ? "dark" : "light")
+			: current;
+		setTheme(resolved === "light" ? "dark" : "light");
+	});
+
+	updateToolsThemeState();
+	window.addEventListener("theme-change", updateToolsThemeState);
+}
+
+// ===== 公告弹窗：水平垂直居中展示公告列表 =====
+const announcementModal = document.getElementById("nav-announcement-modal");
+const announcementTrigger = document.getElementById("nav-tools-announcement");
+let announcementPreviousOverflow = "";
+
+function isAnnouncementModalOpen(): boolean {
+	return announcementModal?.classList.contains("is-open") ?? false;
+}
+
+function openAnnouncementModal(): void {
+	if (!announcementModal || isAnnouncementModalOpen()) return;
+	closeToolsPanel();
+	announcementModal.classList.add("is-open");
+	// 锁背景滚动，公告列表自身仍可滚动
+	announcementPreviousOverflow = document.body.style.overflow;
+	document.body.style.overflow = "hidden";
+	announcementModal.querySelector<HTMLElement>(".nav-announcement-close")?.focus();
+}
+
+function closeAnnouncementModal(restoreFocus: boolean): void {
+	if (!announcementModal || !isAnnouncementModalOpen()) return;
+	announcementModal.classList.remove("is-open");
+	document.body.style.overflow = announcementPreviousOverflow;
+	announcementPreviousOverflow = "";
+	if (restoreFocus) announcementTrigger?.focus();
+}
+
+announcementTrigger?.addEventListener("click", (event) => {
+	event.stopPropagation();
+	openAnnouncementModal();
+});
+
+// 遮罩与关闭按钮共用 data-nav-announcement-close 委托
+announcementModal?.addEventListener("click", (event) => {
+	const target = event.target;
+	if (
+		target instanceof HTMLElement &&
+		target.closest("[data-nav-announcement-close]")
+	) {
+		closeAnnouncementModal(false);
+	}
+});
+
+// Escape：公告弹窗优先，其次工具面板；收起后焦点还给触发器
+document.addEventListener("keydown", (event) => {
+	if (event.key !== "Escape") return;
+	if (isAnnouncementModalOpen()) {
+		event.preventDefault();
+		closeAnnouncementModal(true);
+		return;
+	}
+	if (isToolsPanelOpen()) {
+		event.preventDefault();
+		closeToolsPanel();
+		toolsButton?.focus();
+	}
+});
+
+// 导航后收起面板与弹窗（公告卡片里的站内链接会触发 Swup 导航）
+onNavigation(() => {
+	closeToolsPanel();
+	closeAnnouncementModal(false);
+});
+
+// Navbar search / tools-panel search button → open search modal
+// 使用事件委托绑定在 #navbar 上，Swup 导航后无需重新绑定；
+// 移动端搜索按钮与工具面板里的搜索共用 [data-nav-search-trigger]
 document.getElementById("navbar")?.addEventListener("click", (e) => {
-	const btn = (e.target as HTMLElement)?.closest?.("#nav-search-btn");
+	const btn = (e.target as HTMLElement)?.closest?.("[data-nav-search-trigger]");
 	if (!btn) return;
 	e.stopPropagation();
+	closeToolsPanel();
 	requestSearchModalToggle();
 });
 </script>

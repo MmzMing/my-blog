@@ -24,8 +24,7 @@ html:has(.music-visualizer-page) .navbar-logo,
 html:has(.music-visualizer-page) .navbar-logo-text,
 html:has(.music-visualizer-page) .dropdown-trigger,
 html:has(.music-visualizer-page) .dropdown-container > a,
-html:has(.music-visualizer-page) .nav-search-btn,
-html:has(.music-visualizer-page) .nav-search-btn__shortcut,
+html:has(.music-visualizer-page) .nav-tools-btn,
 html:has(.music-visualizer-page) #nav-menu-switch {
 	color: oklch(0.92 0 0);
 }

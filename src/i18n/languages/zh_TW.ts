@@ -59,7 +59,6 @@ export const zh_TW: Translation = {
 	[Key.musicProgress]: "播放進度",
 	[Key.musicCover]: "封面",
 	[Key.musicNoCover]: "暫無封面",
-	[Key.musicFloatingLyrics]: "懸浮歌詞",
 
 	// 公告欄
 	[Key.announcement]: "公告",

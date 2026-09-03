@@ -59,7 +59,6 @@ export const ja: Translation = {
 	[Key.musicProgress]: "再生の進捗",
 	[Key.musicCover]: "カバー",
 	[Key.musicNoCover]: "カバーなし",
-	[Key.musicFloatingLyrics]: "フローティング歌詞",
 
 	// お知らせ
 	[Key.announcement]: "お知らせ",

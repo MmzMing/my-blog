@@ -6,9 +6,9 @@ import UmamiAnalytics from "@components/analytics/UmamiAnalytics.astro";
 import CodeGroupManager from "@components/features/CodeGroupManager.astro";
 import CopyNoticeManager from "@components/features/CopyNoticeManager.astro";
 import FancyboxManager from "@components/features/FancyboxManager.astro";
-import FloatingLyrics from "@components/features/FloatingLyrics.astro";
 import FontManager from "@components/features/FontManager.astro";
 import MusicManager from "@components/features/MusicManager.astro";
+import MusicPlayer from "@components/features/MusicPlayer.astro";
 import PageLoader from "@components/features/PageLoader.astro";
 import PrivacyModal from "@components/features/PrivacyModal.astro";
 import UserAgreementModal from "@components/features/UserAgreementModal.astro";
@@ -251,9 +251,9 @@ const siteLang = lang.replace("_", "-");
     <PageLoader />
     <ConfigCarrier />
     <MusicManager />
-    <FloatingLyrics />
     <slot />
     {/* 全局持久化组件 — Swup 容器外，所有页面共享（CLAUDE.md 4.2） */}
+    <MusicPlayer />
     <FloatingDock />
     <MobileDock />
     <div id="search-modal-root"></div>

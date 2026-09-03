@@ -56,7 +56,6 @@
 		gap: 0.15rem;
 		align-items: center;
 		padding: var(--space-2) var(--space-3);
-		border-bottom: 1px solid var(--article-toc-line);
 	}
 
 	.article-toc-panel__tool-btn {
@@ -158,7 +157,7 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		overscroll-behavior-y: contain;
-		scrollbar-gutter: stable;
+		/* 不预留滚动条槽位：内容未超高时无滚动条，超过 max-height 才出现 */
 	}
 
 	.article-toc-panel__lines {

@@ -59,7 +59,6 @@ export const ru: Translation = {
 	[Key.musicProgress]: "Прогресс воспроизведения",
 	[Key.musicCover]: "Обложка",
 	[Key.musicNoCover]: "Нет обложки",
-	[Key.musicFloatingLyrics]: "Плавающий текст",
 
 	// Объявление
 	[Key.announcement]: "Объявление",

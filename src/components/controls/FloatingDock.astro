@@ -4,48 +4,13 @@ import Icon from "@components/common/Icon.astro";
  * 极简悬浮坞 — 替代原 FloatingControls。
  * 桌面端工具默认常驻显示，重组件通过图标按钮打开抽屉。
  */
-import MusicPlayer from "@/components/features/MusicPlayer.astro";
-import { announcementConfig, spineModelConfig } from "@/config";
-import { musicPlayerConfig } from "@/config/musicConfig";
+import { spineModelConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
-
-const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 ---
 
 <div class="floating-dock" id="floating-dock">
 	<div class="dock-buttons">
-		{musicPlayerConfig.showInNavbar !== false && (
-			<button class="dock-btn dock-btn-music" id="dock-music-btn" aria-label={i18n(I18nKey.music)} type="button" data-tooltip={i18n(I18nKey.music)}>
-				<span class="dock-btn-icon"><Icon name="material-symbols:music-note-rounded" class="text-3xl" /></span>
-				<span class="dock-btn-label">{i18n(I18nKey.music)}</span>
-			</button>
-		)}
-
-		{announcementConfig.items.length > 0 && (
-			<button
-				class={`dock-btn dock-btn-announcement${isHomePath ? "" : " hide"}`}
-				id="dock-announcement-btn"
-				aria-label={i18n(I18nKey.announcement)}
-				aria-hidden={isHomePath ? "false" : "true"}
-				tabindex={isHomePath ? 0 : -1}
-				type="button"
-				data-tooltip={i18n(I18nKey.announcement)}
-			>
-				<span class="dock-btn-icon"><Icon name="material-symbols:notifications-outline-rounded" class="text-3xl" /></span>
-				<span class="dock-btn-label">{i18n(I18nKey.announcement)}</span>
-			</button>
-		)}
-
-		<button class="dock-btn" id="dock-theme-btn" aria-label={i18n(I18nKey.switchToDark)} type="button" data-tooltip={i18n(I18nKey.switchToDark)} data-theme-state="light">
-			<span class="dock-btn-icon">
-				<Icon name="material-symbols:wb-sunny-outline-rounded" class="text-3xl dock-theme-icon-light" />
-				<Icon name="material-symbols:dark-mode-outline-rounded" class="text-3xl dock-theme-icon-dark hidden" />
-			</span>
-			<span class="dock-btn-label dock-theme-label-light">{i18n(I18nKey.switchToDark)}</span>
-			<span class="dock-btn-label dock-theme-label-dark hidden">{i18n(I18nKey.switchToLight)}</span>
-		</button>
-
 		<!-- 目录入口：仅文章详情且宽屏（≥96rem）已有右侧大纲栏时隐藏，见 updatePathDependent -->
 		<button class="dock-btn dock-btn-toc hide" id="dock-toc-btn" aria-label={i18n(I18nKey.tableOfContents)} aria-hidden="true" tabindex="-1" type="button" data-tooltip={i18n(I18nKey.tableOfContents)}>
 			<span class="dock-btn-icon"><Icon name="material-symbols:format-list-bulleted" class="text-3xl" /></span>
@@ -73,46 +38,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 
 {/* 抽屉容器 */}
 
-{announcementConfig.items.length > 0 && (
-	<div class="dock-drawer dock-drawer-closed" id="dock-drawer-announcement">
-		<div class="dock-drawer-title">
-			<Icon name="material-symbols:notifications-outline-rounded" class="dock-drawer-title-icon" />
-			<span>{announcementConfig.title || i18n(I18nKey.announcement)}</span>
-		</div>
-		<div class="dock-announcement-list">
-			{announcementConfig.items
-				.slice()
-				.sort((a, b) => b.sort - a.sort)
-				.map((item) => (
-					<div class="dock-announcement-card">
-						<div class="dock-announcement-card__header">
-							<span class="dock-announcement-card__tag">{item.tag}</span>
-							<span class="dock-announcement-card__title">{item.title}</span>
-						</div>
-						<time class="dock-announcement-card__time">{item.time}</time>
-						<p class="dock-announcement-card__content">{item.content}</p>
-						{item.link && (
-							<a href={item.link} class="dock-announcement-card__link btn-line text-sm" aria-label={`${i18n(I18nKey.viewAnnouncement)}：${item.title}`}>
-								{i18n(I18nKey.viewDetails)}
-								<Icon name="fa7-solid:arrow-right" class="ml-2 text-xs" />
-							</a>
-						)}
-					</div>
-				))}
-		</div>
-	</div>
-)}
-
-{musicPlayerConfig.showInNavbar !== false && (
-	<div class="dock-drawer dock-drawer-closed" id="dock-drawer-music">
-		<div class="dock-drawer-title">
-			<Icon name="material-symbols:music-note-rounded" class="dock-drawer-title-icon" />
-			<span>{i18n(I18nKey.music)}</span>
-		</div>
-		<MusicPlayer lazy />
-	</div>
-)}
-
 <div class="dock-drawer dock-drawer-toc dock-drawer-closed" id="dock-drawer-toc">
 	<div class="dock-drawer-title">
 		<Icon name="material-symbols:format-list-bulleted" class="dock-drawer-title-icon" />
@@ -128,7 +53,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 <script>
 	import I18nKey from "@/i18n/i18nKey";
 	import { i18n } from "@/i18n/translation";
-	import { getStoredTheme, setTheme } from "@/utils/setting-utils";
 	import { definePersistentIsland, onNavigation } from "@/utils/swup-lifecycle";
 
 	// 悬浮坞在 Swup 容器之外，DOM 与监听跨导航持久存在，只需初始化一次
@@ -139,8 +63,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		if (!dock) return;
 
 		const drawers: Record<string, string> = {
-			"dock-music-btn": "dock-drawer-music",
-			"dock-announcement-btn": "dock-drawer-announcement",
 			"dock-toc-btn": "dock-drawer-toc",
 		};
 		/* 目录抽屉：首次打开懒建 TOC，导航后销毁重建（标题集合随页面变化） */
@@ -200,29 +122,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			if (!isInDrawer && !dock.contains(target)) closeAllDrawers();
 		}, { signal: dockSignal });
 
-		// 音乐按钮播放旋转
-		const musicBtn = document.getElementById("dock-music-btn");
-		function updateMusicIconSpin() {
-			if (!musicBtn) return;
-			const isPlaying = window.__fireflyMusic?.getState().isPlaying ?? false;
-			musicBtn.classList.toggle("is-playing", isPlaying);
-		}
-		updateMusicIconSpin();
-		window.addEventListener("fm:play-state", updateMusicIconSpin, { signal: dockSignal });
-
-		// 音乐抽屉懒加载：首次打开时触发 MusicManager 初始化
-		const musicDrawerEl = document.getElementById("dock-drawer-music");
-		if (musicBtn && musicDrawerEl) {
-			musicBtn.addEventListener("click", () => {
-				const manager = window.__fireflyMusic;
-				if (manager && !manager.getState().initialized) {
-					const loadingEl = musicDrawerEl.querySelector(".music-player-widget .music-loading");
-					loadingEl?.classList.remove("opacity-0", "pointer-events-none");
-					void manager.init();
-				}
-			}, { signal: dockSignal });
-		}
-
 		// Spine 显隐切换
 		function bindSpineToggle(btnId: string, targetId: string, storageKey: string) {
 			const button = document.getElementById(btnId);
@@ -245,37 +144,6 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 		}
 		bindSpineToggle("dock-spine-btn", "spine-model-container", "spine-hidden");
 
-		// 主题切换：点击直接切换亮/暗
-		const themeButton = document.getElementById("dock-theme-btn");
-		if (themeButton) {
-			const lightIcon = themeButton.querySelector(".dock-theme-icon-light");
-			const darkIcon = themeButton.querySelector(".dock-theme-icon-dark");
-			const lightLabel = themeButton.querySelector(".dock-theme-label-light");
-			const darkLabel = themeButton.querySelector(".dock-theme-label-dark");
-
-			function updateThemeIcon() {
-				const isDark = document.documentElement.classList.contains("dark");
-				lightIcon?.classList.toggle("hidden", isDark);
-				darkIcon?.classList.toggle("hidden", !isDark);
-				lightLabel?.classList.toggle("hidden", isDark);
-				darkLabel?.classList.toggle("hidden", !isDark);
-				themeButton?.setAttribute("data-tooltip", isDark ? i18n(I18nKey.switchToLight) : i18n(I18nKey.switchToDark));
-			}
-
-			themeButton.addEventListener("click", (event) => {
-				event.stopPropagation();
-				const current = getStoredTheme();
-				const resolved = current === "system"
-					? (document.documentElement.classList.contains("dark") ? "dark" : "light")
-					: current;
-				setTheme(resolved === "light" ? "dark" : "light");
-				updateThemeIcon();
-			}, { signal: dockSignal });
-
-			updateThemeIcon();
-			window.addEventListener("theme-change", updateThemeIcon, { signal: dockSignal });
-		}
-
 		document.getElementById("dock-top-btn")?.addEventListener("click", (event) => {
 			event.stopPropagation();
 			window.scroll({ top: 0, behavior: "smooth" });
@@ -295,21 +163,16 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 
 		function updatePathDependent() {
 			const pathname = window.location.pathname;
-			const isHome = pathname === "/" || pathname === "";
 			const isPost = /\/posts?\//.test(pathname);
 			const isFriends = /^\/friends\/?$/.test(pathname);
 			const hasComment = !!document.getElementById("post-comments");
 
-			setButtonVisibility("dock-announcement-btn", isHome);
 			setButtonVisibility("dock-comment-btn", (isPost || isFriends) && hasComment);
 			/* 目录按钮：文章详情且宽屏（≥96rem）已有大纲栏时隐藏 */
 			const tocDrawerOpen = !document.getElementById("dock-drawer-toc")?.classList.contains("dock-drawer-closed");
 			const showToc = isPost && !window.matchMedia("(min-width: 96rem)").matches;
 			setButtonVisibility("dock-toc-btn", showToc);
 			if (!showToc && tocDrawerOpen) closeAllDrawers();
-			if (!isHome && document.getElementById("dock-drawer-announcement") && !document.getElementById("dock-drawer-announcement")?.classList.contains("dock-drawer-closed")) {
-				closeAllDrawers();
-			}
 		}
 
 		updateScrollDependent();

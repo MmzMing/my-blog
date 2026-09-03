@@ -181,37 +181,7 @@
 	background-color: transparent !important;
 }
 
-.nav-search-btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.375rem;
-	padding-inline: 0.5rem;
-}
-
-.nav-search-btn__shortcut {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 1.4rem;
-	height: 1.15rem;
-	padding: 0 0.3rem;
-	font-size: 0.65rem;
-	font-weight: 600;
-	line-height: 1;
-	color: var(--deep-text);
-	background: transparent;
-	border: none;
-	opacity: 0.75;
-	white-space: nowrap;
-	overflow: hidden;
-	transition:
-		max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-		opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-		transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-		padding-inline 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 收缩状态：右段成球，只保留搜索图标 */
+/* 收缩状态：右段成球，只保留工具按钮 */
 #navbar.scrolled .navbar-seg--right {
 	width: 2.25rem;
 	min-width: 2.25rem;
@@ -236,30 +206,6 @@
 	}
 }
 
-#navbar.scrolled .nav-search-btn__shortcut {
-	max-width: 0;
-	min-width: 0;
-	opacity: 0;
-	transform: translateX(-6px);
-	padding-inline: 0;
-	border-width: 0;
-	pointer-events: none;
-}
-
-#navbar.scrolled .nav-search-btn {
-	padding-inline: 0;
-	width: 100%;
-	justify-content: center;
-	gap: 0;
-}
-
-/* 移动端：徽章始终隐藏（空间紧凑） */
-@media (max-width: 768px) {
-	.nav-search-btn__shortcut {
-		display: none;
-	}
-}
-
 /* 移动端：滚动收缩不触发（左右段保持展开） */
 @media (max-width: 1023px) {
 	#navbar.scrolled .navbar-seg--left,
@@ -279,10 +225,6 @@
 	}
 	#navbar.scrolled .navbar-logo {
 		padding: 0 0.25rem;
-		width: auto;
-	}
-	#navbar.scrolled .nav-search-btn {
-		padding-inline: 0.5rem;
 		width: auto;
 	}
 	#navbar.scrolled .navbar-segments {
@@ -416,3 +358,270 @@
  * 小于1280px时隐藏一级导航触发器图标（仅 active 时显示由 dropdown-menu.css 控制）
  * 这里仅控制非 active 的默认隐藏逻辑由 dropdown-menu.css 统一处理
  * ============================================ */
+
+/* ============================================
+ * 右段工具按钮 + 悬停工具面板（桌面端 ≥1024px）
+ * 面板挂在 .navbar-segments 下（position:relative），
+ * 避开右段滚动收缩态 overflow:hidden 的裁剪；
+ * 水平位置由控制器按工具按钮实测定位
+ * ============================================ */
+/* 窄屏（<1024px）无中段导航与搜索按钮，工具面板是公告/主题/搜索唯一入口，
+   因此不再按断点隐藏面板；<768px 整个 #navbar 由 mobile-dock.css 隐藏 */
+.nav-tools-panel {
+	position: absolute;
+	top: 100%;
+	right: 0;
+	/* 与导航栏拉开距离，保留悬停过渡区防止面板收起 */
+	padding-top: 1rem;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translateY(-8px);
+	transition:
+		opacity 0.2s ease-out,
+		visibility 0.2s ease-out,
+		transform 0.2s ease-out;
+	z-index: 50;
+}
+
+.nav-tools-panel.is-open {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translateY(0);
+}
+
+.nav-tools-box {
+	display: flex;
+	align-items: center;
+	gap: 0.125rem;
+	padding: 0.25rem;
+	border: 1.5px solid var(--deep-text);
+	border-radius: 0.75rem;
+	background: var(--float-panel-bg);
+	color: var(--deep-text);
+}
+
+/* 指向工具按钮的箭头：箱体本身是 static，::before 以面板为定位上下文，
+   top 里补回面板 padding-top 与箱体 1.5px 上边框厚度（同下拉面板箭头口径） */
+.nav-tools-box::before {
+	position: absolute;
+	top: calc(1rem - 0.45rem + 1.5px);
+	right: 0.875rem;
+	width: 0.75rem;
+	height: 0.75rem;
+	border-top: 1.5px solid var(--deep-text);
+	border-left: 1.5px solid var(--deep-text);
+	background: var(--float-panel-bg);
+	content: "";
+	transform: rotate(45deg);
+}
+
+.nav-tools-item {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: 9999px;
+	color: var(--deep-text);
+	transition: background-color 0.15s ease-out, color 0.15s ease-out;
+}
+
+/* 与导航下拉项同款悬停：灰色背景 + 主色图标（navbar-hover-highlight 同源） */
+.nav-tools-item:hover {
+	background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	color: var(--primary);
+}
+
+.nav-tools-item:active {
+	background-color: color-mix(in oklch, var(--deep-text) 12%, transparent);
+}
+
+/* 工具提示：图标正下方浮现（footer 的 data-tooltip 惯例，方向翻转向下） */
+.nav-tools-item::after {
+	content: attr(data-tooltip);
+	position: absolute;
+	top: calc(100% + 0.5rem);
+	left: 50%;
+	padding: 0.25rem 0.5rem;
+	border-radius: var(--radius-small);
+	background: var(--deep-text);
+	color: var(--page-bg);
+	font-size: 0.75rem;
+	line-height: 1.3;
+	white-space: nowrap;
+	opacity: 0;
+	pointer-events: none;
+	transform: translate(-50%, -0.25rem);
+	transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+	visibility: hidden;
+	z-index: 5;
+}
+
+.nav-tools-item:hover::after,
+.nav-tools-item:focus-visible::after {
+	opacity: 1;
+	visibility: visible;
+	transform: translate(-50%, 0);
+}
+
+/* ============================================
+ * 公告弹窗：工具面板公告入口 → 水平垂直居中展示
+ * ============================================ */
+.nav-announcement-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 99999;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+}
+
+.nav-announcement-modal.is-open {
+	display: flex;
+}
+
+.nav-announcement-backdrop {
+	position: absolute;
+	inset: 0;
+	background: oklch(0 0 0 / 0.5);
+	backdrop-filter: blur(4px);
+}
+
+.nav-announcement-modal.is-open .nav-announcement-backdrop {
+	animation: nav-announcement-fade 0.2s ease-out;
+}
+
+.nav-announcement-panel {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	max-width: 26rem;
+	max-height: min(42rem, 85vh);
+	border: 1.5px solid var(--deep-text);
+	border-radius: 0.75rem;
+	background: var(--float-panel-bg);
+	color: var(--deep-text);
+	box-shadow: 0 25px 50px -12px oklch(0 0 0 / 0.25);
+	overflow: hidden;
+}
+
+.nav-announcement-modal.is-open .nav-announcement-panel {
+	animation: nav-announcement-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-announcement-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.875rem 1rem;
+	font-weight: 600;
+	border-bottom: 1.5px solid color-mix(in oklch, var(--deep-text) 15%, transparent);
+}
+
+.nav-announcement-close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	margin-left: auto;
+	border-radius: 9999px;
+	color: var(--deep-text);
+	transition: background-color 0.2s ease;
+}
+
+.nav-announcement-close:hover {
+	background-color: var(--navbar-highlight-bg);
+}
+
+.nav-announcement-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding: 0.75rem 1rem 1rem;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: thin;
+}
+
+.nav-announcement-item {
+	padding: 0.75rem 0.875rem;
+	border: 1px solid color-mix(in oklch, var(--deep-text) 15%, transparent);
+	border-radius: 0.625rem;
+}
+
+.nav-announcement-item__header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+.nav-announcement-item__tag {
+	padding: 0.1rem 0.45rem;
+	font-size: 0.65rem;
+	font-weight: 600;
+	border-radius: 9999px;
+	background-color: color-mix(in oklch, var(--deep-text) 12%, transparent);
+}
+
+.nav-announcement-item__title {
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+.nav-announcement-item__time {
+	margin-left: auto;
+	font-size: 0.7rem;
+	opacity: 0.6;
+}
+
+.nav-announcement-item__content {
+	margin-top: 0.4rem;
+	font-size: 0.82rem;
+	line-height: 1.6;
+	opacity: 0.85;
+}
+
+.nav-announcement-item__link {
+	display: inline-flex;
+	align-items: center;
+	margin-top: 0.5rem;
+}
+
+@keyframes nav-announcement-fade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes nav-announcement-in {
+	from {
+		opacity: 0;
+		transform: translateY(0.5rem) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nav-tools-panel,
+	.nav-tools-item::after {
+		transition: none !important;
+	}
+
+	.nav-announcement-backdrop,
+	.nav-announcement-panel {
+		animation: none !important;
+	}
+}

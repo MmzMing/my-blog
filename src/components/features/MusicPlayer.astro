@@ -1,784 +1,157 @@
 ---
 import Icon from "@components/common/Icon.astro";
-import { musicPlayerConfig } from "@/config/musicConfig";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 
-interface Props {
-	class?: string;
-	style?: string;
-	id?: string;
-	/** 延迟初始化：不自动触发 mgr.init()，由外部（如工具栏按钮点击）触发 */
-	lazy?: boolean;
-}
-const { class: className, style, id, lazy = false } = Astro.props;
-
-const config = musicPlayerConfig;
-
-const viewConfigStr = JSON.stringify({
-	showLyrics: config.showLyrics ?? true,
-	i18n: {
-		noPlaying: i18n(I18nKey.musicNoPlaying),
-		lyrics: i18n(I18nKey.musicLyrics),
-		noLyrics: i18n(I18nKey.musicNoLyrics),
-		loadingLyrics: i18n(I18nKey.musicLoadingLyrics),
-		failedLyrics: i18n(I18nKey.musicFailedLyrics),
-		noSongs: i18n(I18nKey.musicNoSongs),
-		error: i18n(I18nKey.musicError),
-		play: i18n(I18nKey.musicPlay),
-		pause: i18n(I18nKey.musicPause),
-		noCover: i18n(I18nKey.musicNoCover),
-		music: i18n(I18nKey.music),
-	},
-});
-
-const widgetId =
-	id || `music-widget-${Math.random().toString(36).substring(2, 9)}`;
+/**
+ * 桌面端左下角多态音乐组件（Swup 容器外持久存在）。
+ * 三态：disc 收起唱片 → pill 播放中胶囊（唱片 + 歌词） → bar 展开 dock；
+ * bar 态分层：信息层（曲名 / 艺术家 / 进度）+ 工具栏层两张独立表面，
+ * 歌单按钮再向上展一层歌单面板（信息层保持不关）。
+ * 引擎为 MusicManager 单例，逻辑见 src/utils/music-player-controller.ts，
+ * 样式见 src/styles/components/music-player.css。移动端（≤768px）隐藏，由 MobileDock 承担。
+ */
 ---
 
-<div id={widgetId} class:list={["music-player-widget w-full relative transition-all duration-300", className]} style={style} role="region" aria-label={i18n(I18nKey.music)}>
+<div
+	class="music-player music-player-widget"
+	data-state="disc"
+	data-panel="closed"
+	data-playing="false"
+	role="region"
+	aria-label={i18n(I18nKey.music)}
+>
+	<!-- 上展面板：dock 上方独立一层，顶部可切换歌单 / 歌词 -->
+	<div class="music-player__panel">
+		<div class="music-player__panel-clip">
+			<div class="music-player__panel-body">
+				<div class="music-player__panel-tabs">
+					<button class="music-player__tab music-player__tab--playlist is-active" type="button">{i18n(I18nKey.musicPlaylist)}</button>
+					<button class="music-player__tab music-player__tab--lyrics" type="button">{i18n(I18nKey.musicLyrics)}</button>
+				</div>
+				<div class="music-player__panel-views">
+					<div class="music-player__playlist-view is-active">
+						<div class="music-player__playlist-list custom-scrollbar" role="listbox" aria-label={i18n(I18nKey.musicPlaylist)}></div>
+					</div>
+					<div class="music-player__lyrics-view">
+						<div class="music-player__lyrics-list custom-scrollbar" role="listbox" aria-label={i18n(I18nKey.musicLyrics)}>
+							<div class="music-player__lyrics-placeholder">{i18n(I18nKey.musicNoLyrics)}</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 
-    <!-- Top Row: Cover & Info -->
-<div class="flex items-center gap-2 mb-2 px-1">
-    <!-- Circular Cover -->
-    <div class="relative shrink-0 w-14 h-14 group">
-            <div class="w-full h-full rounded-full overflow-hidden shadow-lg border-2 border-white dark:border-neutral-700 relative z-10 bg-(--primary)/10 flex items-center justify-center">
-            <Icon name="material-symbols:music-note-rounded" class="text-2xl text-(--primary) opacity-40 absolute" aria-hidden="true" />
-            <img class="music-cover w-full h-full object-cover animate-spin-slow relative z-10 opacity-0 transition-opacity duration-300" src="" alt={i18n(I18nKey.musicCover)} style="animation-play-state: paused;" />
-            </div>
-    </div>
+	<div class="music-player__stage">
+		<!-- 信息层：bar 态默认展开的独立表面 -->
+		<div class="music-player__info">
+			<div class="music-player__info-clip">
+				<div class="music-player__info-surface">
+					<p class="music-player__title">{i18n(I18nKey.musicNoPlaying)}</p>
+					<p class="music-player__artist"></p>
+					<div class="music-player__progress-row">
+						<span class="music-player__time-current">0:00</span>
+						<div
+							class="music-player__progress"
+							role="slider"
+							aria-label={i18n(I18nKey.musicProgress)}
+							aria-valuemin="0"
+							aria-valuemax="100"
+							aria-valuenow="0"
+						>
+							<div class="music-player__progress-bar"></div>
+							<div class="music-player__progress-thumb"></div>
+						</div>
+						<span class="music-player__time-total">0:00</span>
+					</div>
+				</div>
+			</div>
+		</div>
 
-    <!-- Info Section -->
-    <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <div class="flex items-center justify-between overflow-hidden gap-2">
-            <div class="flex-1 min-w-0 overflow-hidden relative">
-                <p class="music-title font-bold text-base text-neutral-800 dark:text-neutral-100 leading-tight truncate">
-                    {i18n(I18nKey.music)}
-                </p>
-            </div>
-        </div>
+		<!-- 工具栏层：胶囊歌词槽与工具栏共用同一槽位交叉淡入 -->
+		<div class="music-player__bar">
+			<div class="music-player__slot">
+				<span class="music-player__pill-text"><span class="music-player__pill-label"></span></span>
+				<div class="music-player__toolbar">
+					<button class="music-player__btn music-player__btn--mode" data-tooltip={i18n(I18nKey.playModeList)} aria-label={i18n(I18nKey.playModeList)} type="button">
+						<Icon name="material-symbols:repeat-rounded" class="music-player__icon-mode-list text-xl" aria-hidden="true" />
+						<Icon name="material-symbols:repeat-one-rounded" class="music-player__icon-mode-one text-xl hidden" aria-hidden="true" />
+						<Icon name="material-symbols:shuffle-rounded" class="music-player__icon-mode-shuffle text-xl hidden" aria-hidden="true" />
+					</button>
+					<button class="music-player__btn music-player__btn--lyrics" data-tooltip={i18n(I18nKey.musicLyrics)} aria-label={i18n(I18nKey.musicLyrics)} aria-pressed="true" type="button">
+						<Icon name="material-symbols:subtitles-outline-rounded" class="music-player__icon-lrc-on text-xl" aria-hidden="true" />
+						<Icon name="material-symbols:subtitles-off-outline-rounded" class="music-player__icon-lrc-off text-xl hidden" aria-hidden="true" />
+					</button>
+					<button class="music-player__btn music-player__btn--prev" data-tooltip={i18n(I18nKey.musicPrev)} aria-label={i18n(I18nKey.musicPrev)} type="button">
+						<Icon name="material-symbols:skip-previous-rounded" class="text-2xl" aria-hidden="true" />
+					</button>
+					<button class="music-player__btn music-player__btn--play" data-tooltip={i18n(I18nKey.musicPlay)} aria-label={i18n(I18nKey.musicPlay)} type="button">
+						<Icon name="material-symbols:play-arrow-rounded" class="music-player__icon-play text-3xl" aria-hidden="true" />
+						<Icon name="material-symbols:pause-rounded" class="music-player__icon-pause text-3xl hidden" aria-hidden="true" />
+					</button>
+					<button class="music-player__btn music-player__btn--next" data-tooltip={i18n(I18nKey.musicNext)} aria-label={i18n(I18nKey.musicNext)} type="button">
+						<Icon name="material-symbols:skip-next-rounded" class="text-2xl" aria-hidden="true" />
+					</button>
+					<button class="music-player__btn music-player__btn--playlist" data-tooltip={i18n(I18nKey.musicPlaylist)} aria-label={i18n(I18nKey.musicPlaylist)} type="button">
+						<Icon name="mdi:playlist-music" class="text-xl" aria-hidden="true" />
+					</button>
+					<div class="music-player__volume">
+						<button class="music-player__btn music-player__btn--volume" data-tooltip={i18n(I18nKey.musicVolume)} aria-label={i18n(I18nKey.musicVolume)} type="button">
+							<Icon name="material-symbols:volume-up-rounded" class="music-player__icon-vol-on text-xl" aria-hidden="true" />
+							<Icon name="material-symbols:volume-off-rounded" class="music-player__icon-vol-off text-xl hidden" aria-hidden="true" />
+						</button>
+						<div class="music-player__volume-pop">
+							<span class="music-player__volume-value">70</span>
+							<div
+								class="music-player__volume-track"
+								role="slider"
+								aria-label={i18n(I18nKey.musicVolume)}
+								aria-orientation="vertical"
+								aria-valuemin="0"
+								aria-valuemax="100"
+								aria-valuenow="70"
+							>
+								<div class="music-player__volume-bar"></div>
+								<div class="music-player__volume-thumb"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
-        <div class="min-w-0 overflow-hidden">
-            <p class="music-artist text-xs font-medium text-neutral-500 dark:text-neutral-400 truncate">
-                {i18n(I18nKey.musicNoPlaying)}
-            </p>
-        </div>
+		<!-- 唱片：三态复用的圆碟，位置随形态过渡 -->
+		<button class="music-player__disc" type="button" aria-label={i18n(I18nKey.music)}>
+			<Icon name="material-symbols:music-note-rounded" class="music-player__disc-placeholder text-2xl" aria-hidden="true" />
+			<img class="music-player__disc-img is-empty" src="" alt="" />
+		</button>
 
-        <!-- Volume & Lyric Buttons (Always visible) -->
-        <div class="flex items-center gap-1 h-5">
-            <button class="btn-mute hover:text-(--primary) transition-colors p-0.5 rounded-md flex items-center text-neutral-400" title={i18n(I18nKey.musicVolume)} aria-label={i18n(I18nKey.musicVolume)}>
-                <Icon name="material-symbols:volume-up-rounded" class=" icon-vol-high text-lg" aria-hidden="true" />
-                <Icon name="material-symbols:volume-off-rounded" class="icon-vol-mute text-lg hidden" aria-hidden="true" />
-            </button>
-            <div class="w-16 transition-all duration-300 ease-out flex items-center">
-                <div class="vol-container h-1 w-16 bg-neutral-200 dark:bg-neutral-600 rounded-full cursor-pointer relative ml-1" role="slider" aria-label={i18n(I18nKey.musicVolume)} aria-valuemin="0" aria-valuemax="100" aria-valuenow="70">
-                    <div class="vol-bar absolute left-0 top-0 h-full bg-(--primary) rounded-full w-[70%]"></div>
-                </div>
-            </div>
-            <!-- Visualizer (3D page) + Lyric Toggle + Floating Lyric Toggle -->
-            <a href="/music/" class="btn-visualizer transition-all duration-300 p-0.5 transform active:scale-95 shrink-0 ml-auto inline-flex items-center justify-center" title={i18n(I18nKey.musicVisualizer)} aria-label={i18n(I18nKey.musicVisualizer)}>
-                <Icon name="material-symbols:graphic-eq-rounded" class="text-xl" aria-hidden="true" />
-            </a>
-            <button class={`btn-lrc-toggle hover:text-(--primary) transition-all duration-300 p-0.5 transform active:scale-95 text-neutral-400 shrink-0 ${!config.showLyrics ? 'hidden' : ''}`} title={i18n(I18nKey.musicLyrics)} aria-label={i18n(I18nKey.musicLyrics)}>
-                <Icon name="material-symbols:subtitles-off-outline-rounded" class="icon-lrc-off text-xl" aria-hidden="true" />
-                <Icon name="material-symbols:subtitles-outline-rounded" class="icon-lrc-on text-xl hidden" aria-hidden="true" />
-            </button>
-            <button class={`btn-floating-lrc-toggle hover:text-(--primary) transition-all duration-300 p-0.5 pr-2 transform active:scale-95 text-neutral-400 shrink-0 ${!config.showLyrics ? 'hidden' : ''}`} title={i18n(I18nKey.musicFloatingLyrics)} aria-label={i18n(I18nKey.musicFloatingLyrics)}>
-                <Icon name="material-symbols:lyrics-outline-rounded" class="icon-floating-lrc-off text-xl" aria-hidden="true" />
-                <Icon name="material-symbols:lyrics-rounded" class="icon-floating-lrc-on text-xl hidden" aria-hidden="true" />
-            </button>
-        </div>
-    </div>
+		<div class="music-player__loading" aria-hidden="true">
+			<Icon name="material-symbols:sync-rounded" class="text-2xl" aria-hidden="true" />
+		</div>
+	</div>
 </div>
 
-<!-- Progress Bar with Time -->
-<div class="px-1 flex items-center gap-2">
-    <span class="current-time text-xs font-mono text-neutral-500 dark:text-neutral-400 shrink-0" aria-live="polite">0:00</span>
-    <div class="progress-container relative flex-1 h-1 bg-neutral-200 dark:bg-neutral-600 rounded-full cursor-pointer touch-none group" role="slider" aria-label={i18n(I18nKey.musicProgress)} aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-        <div class="progress-bar absolute left-0 top-0 h-full bg-(--primary) rounded-full w-0 transition-[width] duration-100"></div>
-        <!-- Hover Thumb -->
-        <div class="progress-thumb absolute top-1/2 -mt-1.5 -ml-1.5 w-3 h-3 bg-(--primary) ring-2 ring-white dark:ring-neutral-800 rounded-full shadow-sm scale-0 group-hover:scale-100 transition-transform duration-200"></div>
-    </div>
-    <span class="total-time text-xs font-mono text-neutral-500 dark:text-neutral-400 shrink-0">0:00</span>
-</div>
-
-<!-- Controls Row -->
-<div class="flex items-center justify-between px-1 select-none">
-    <!-- Repeat Mode -->
-    <button class="btn-repeat text-neutral-300 dark:text-neutral-600 hover:text-(--primary) transition-colors p-2 active:scale-95" title={i18n(I18nKey.musicPlayMode)} aria-label={i18n(I18nKey.musicPlayMode)}>
-        <Icon name="material-symbols:repeat-rounded" class="icon-repeat text-xl" aria-hidden="true" />
-        <Icon name="material-symbols:repeat-one-rounded" class="icon-repeat-one text-xl hidden" aria-hidden="true" />
-        <Icon name="material-symbols:shuffle-rounded" class="icon-shuffle text-xl hidden" aria-hidden="true" />
-    </button>
-
-    <!-- Prev -->
-    <button class="btn-prev text-neutral-600 dark:text-neutral-300 hover:text-(--primary) transition-colors p-2 active:scale-95" title={i18n(I18nKey.musicPrev)} aria-label={i18n(I18nKey.musicPrev)}>
-        <Icon name="material-symbols:skip-previous-rounded" class="text-3xl" aria-hidden="true" />
-    </button>
-
-    <!-- Play/Pause (Feature) -->
-    <button class="btn-play w-12 h-12 text-neutral-600 dark:text-neutral-300 hover:text-(--primary) rounded-full flex items-center justify-center transition-all duration-300" title={i18n(I18nKey.musicPlay)} aria-label={i18n(I18nKey.musicPlay)}>
-        <Icon name="material-symbols:play-arrow-rounded" class="icon-play text-3xl ml-0.5" aria-hidden="true" />
-        <Icon name="material-symbols:pause-rounded" class="icon-pause text-3xl hidden" aria-hidden="true" />
-    </button>
-
-    <!-- Next -->
-    <button class="btn-next text-neutral-600 dark:text-neutral-300 hover:text-(--primary) transition-colors p-2 active:scale-95" title={i18n(I18nKey.musicNext)} aria-label={i18n(I18nKey.musicNext)}>
-        <Icon name="material-symbols:skip-next-rounded" class="text-3xl" aria-hidden="true" />
-    </button>
-
-    <!-- Playlist Toggle Arrow -->
-    <button class="btn-drawer-toggle text-neutral-400 hover:text-(--primary) transition-all duration-300 p-2 transform active:scale-95" title={i18n(I18nKey.musicPlaylist)} aria-label={i18n(I18nKey.musicPlaylist)}>
-        <Icon name="mdi:playlist-music" class="text-xl" aria-hidden="true" />
-    </button>
-</div>
-
-<!-- Lyrics Drawer -->
-<div class="lrc-drawer grid transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] grid-rows-[0fr] opacity-0">
-    <div class="overflow-hidden min-h-0">
-        <div class="mt-2 pt-2 border-t border-neutral-300 dark:border-neutral-600 mx-1">
-            <div class="lrc-container h-48 overflow-y-auto custom-scrollbar flex flex-col items-center gap-2 p-4 py-24 text-center relative scroll-smooth" role="listbox" aria-label={i18n(I18nKey.musicLyrics)}>
-                <div class="text-neutral-400 text-sm py-10" role="option">{i18n(I18nKey.musicNoLyrics)}</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Playlist Drawer (Accordion) -->
-<div class="playlist-drawer grid transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] grid-rows-[0fr] opacity-0">
-    <div class="overflow-hidden min-h-0">
-            <div class="mt-2 pt-2 border-t border-neutral-300 dark:border-neutral-600 mx-1">
-            <div class="playlist-container max-h-48 overflow-y-auto custom-scrollbar pr-1 pb-1 flex flex-col gap-1" role="listbox" aria-label={i18n(I18nKey.musicPlaylist)}>
-                <!-- Items -->
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Loading Overlay -->
-    <div class="music-loading absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/60 dark:bg-[#1e1e1e]/60 backdrop-blur-[2px] transition-opacity duration-300 opacity-0 pointer-events-none rounded-xl" aria-busy="true" aria-hidden="true">
-    <div class="w-8 h-8 text-(--primary) animate-spin">
-        <Icon name="material-symbols:sync-rounded" class="text-3xl" aria-hidden="true" />
-    </div>
-</div>
-</div>
-
-<template id={`playlist-item-template-${widgetId}`}>
-<div class="playlist-item flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors group">
-    <div class="w-8 h-8 rounded-md overflow-hidden shrink-0 relative bg-neutral-200 dark:bg-neutral-700">
-        <img src="" class="item-cover w-full h-full object-cover" loading="lazy" alt="" />
-        <!-- Active Indicator overlay -->
-        <div class="item-active-overlay absolute inset-0 bg-(--primary)/20 hidden items-center justify-center">
-            <Icon name="material-symbols:graphic-eq-rounded" class="text-(--primary) text-sm" />
-        </div>
-    </div>
-    <div class="flex-1 min-w-0">
-        <div class="item-title text-xs font-bold text-neutral-700 dark:text-neutral-200 truncate group-hover:text-(--primary) transition-colors"></div>
-        <div class="item-artist text-[10px] text-neutral-400 truncate"></div>
-    </div>
-</div>
+<template id="music-player-item-template">
+	<div class="music-player__track" role="option">
+		<div class="music-player__track-cover-wrap">
+			<img src="" class="music-player__track-cover" loading="lazy" alt="" />
+			<div class="music-player__track-active hidden">
+				<Icon name="material-symbols:graphic-eq-rounded" class="text-sm" aria-hidden="true" />
+			</div>
+		</div>
+		<div class="music-player__track-meta">
+			<div class="music-player__track-title"></div>
+			<div class="music-player__track-artist"></div>
+		</div>
+	</div>
 </template>
 
-<script define:vars={{ viewConfigStr, widgetId, lazy }} is:inline>
-(function () {
-    var cfg = JSON.parse(viewConfigStr);
-    var isLazy = !!lazy;
-    var widget = document.getElementById(widgetId);
-    if (!widget) return;
+<script>
+	import { setupMusicPlayerWidget } from "@/utils/music-player-controller";
+	import { definePersistentIsland } from "@/utils/swup-lifecycle";
 
-    var mgr = window.__fireflyMusic;
-    if (!mgr) return;
-
-    // Guard: skip if already initialized (SwupScriptsPlugin may re-execute)
-    if (widget.__musicInitialized) {
-        if (typeof widget.__musicSync === 'function') widget.__musicSync();
-        return;
-    }
-    widget.__musicInitialized = true;
-
-    // ── UI element refs ──────────────────────────────────────
-    var ui = {
-        widget: widget,
-        loading: widget.querySelector('.music-loading'),
-        cover: widget.querySelector('.music-cover'),
-        title: widget.querySelector('.music-title'),
-        artist: widget.querySelector('.music-artist'),
-        progressBar: widget.querySelector('.progress-bar'),
-        progressThumb: widget.querySelector('.progress-thumb'),
-        progressContainer: widget.querySelector('.progress-container'),
-        currentTime: widget.querySelector('.current-time'),
-        totalTime: widget.querySelector('.total-time'),
-        btnPlay: widget.querySelector('.btn-play'),
-        iconPlay: widget.querySelector('.icon-play'),
-        iconPause: widget.querySelector('.icon-pause'),
-        btnPrev: widget.querySelector('.btn-prev'),
-        btnNext: widget.querySelector('.btn-next'),
-        btnRepeat: widget.querySelector('.btn-repeat'),
-        iconRepeat: widget.querySelector('.icon-repeat'),
-        iconRepeatOne: widget.querySelector('.icon-repeat-one'),
-        iconShuffle: widget.querySelector('.icon-shuffle'),
-        btnMute: widget.querySelector('.btn-mute'),
-        iconVolHigh: widget.querySelector('.icon-vol-high'),
-        iconVolMute: widget.querySelector('.icon-vol-mute'),
-        volContainer: widget.querySelector('.vol-container'),
-        volBar: widget.querySelector('.vol-bar'),
-        btnLrc: widget.querySelector('.btn-lrc-toggle'),
-        btnFloatingLrc: widget.querySelector('.btn-floating-lrc-toggle'),
-        iconFloatingLrcOn: widget.querySelector('.icon-floating-lrc-on'),
-        iconFloatingLrcOff: widget.querySelector('.icon-floating-lrc-off'),
-        iconLrcOn: widget.querySelector('.icon-lrc-on'),
-        iconLrcOff: widget.querySelector('.icon-lrc-off'),
-        lrcDrawer: widget.querySelector('.lrc-drawer'),
-        lrcContainer: widget.querySelector('.lrc-container'),
-        btnDrawer: widget.querySelector('.btn-drawer-toggle'),
-        playlistDrawer: widget.querySelector('.playlist-drawer'),
-        playlistContainer: widget.querySelector('.playlist-container'),
-        itemTemplate: document.getElementById('playlist-item-template-' + widgetId)
-    };
-
-    // Verify critical elements
-    var _critical = [ui.btnPlay, ui.btnRepeat, ui.btnMute, ui.volContainer,
-        ui.btnDrawer, ui.btnLrc, ui.lrcDrawer, ui.lrcContainer,
-        ui.progressContainer, ui.btnNext, ui.btnPrev, ui.loading,
-        ui.cover, ui.title, ui.artist, ui.playlistContainer, ui.itemTemplate];
-    if (_critical.some(function(el) { return !el; })) return;
-
-    // ── Local state (drawers, user scrolling) ────────────────
-    var local = {
-        isUserScrolling: false,
-        scrollTimeout: null,
-        currentLrcIndex: -1,
-        // 歌单分批渲染
-        playlistData: [],
-        playlistRenderedCount: 0,
-        playlistBatchSize: 100,
-        playlistScrollBound: false
-    };
-
-    // ── UI update functions ──────────────────────────────────
-    function setLoading(bool) {
-        if (bool) {
-            ui.loading.classList.remove('opacity-0', 'pointer-events-none');
-        } else {
-            ui.loading.classList.add('opacity-0', 'pointer-events-none');
-        }
-    }
-
-    function updatePlayStateUI(isPlaying) {
-        if (isPlaying) {
-            ui.btnPlay.classList.add('text-(--primary)');
-            ui.btnPlay.classList.remove('text-neutral-600', 'dark:text-neutral-300');
-            ui.iconPlay.classList.add('hidden');
-            ui.iconPause.classList.remove('hidden');
-            ui.cover.style.animationPlayState = 'running';
-            ui.btnPlay.setAttribute('aria-label', cfg.i18n.pause);
-            ui.btnPlay.title = cfg.i18n.pause;
-        } else {
-            ui.btnPlay.classList.remove('text-(--primary)');
-            ui.btnPlay.classList.add('text-neutral-600', 'dark:text-neutral-300');
-            ui.iconPlay.classList.remove('hidden');
-            ui.iconPause.classList.add('hidden');
-            ui.cover.style.animationPlayState = 'paused';
-            ui.btnPlay.setAttribute('aria-label', cfg.i18n.play);
-            ui.btnPlay.title = cfg.i18n.play;
-        }
-    }
-
-    function updateModeUI(playMode) {
-        var primaryColor = 'text-(--primary)';
-        if (playMode === 0) {
-            ui.btnRepeat.className = 'p-2 active:scale-95 transition-colors text-neutral-300 dark:text-neutral-600 hover:text-[var(--primary)]';
-            ui.iconRepeat.classList.remove('hidden');
-            ui.iconRepeatOne.classList.add('hidden');
-            ui.iconShuffle.classList.add('hidden');
-        } else if (playMode === 1) {
-            ui.btnRepeat.className = 'p-2 active:scale-95 transition-colors ' + primaryColor;
-            ui.iconRepeat.classList.add('hidden');
-            ui.iconRepeatOne.classList.remove('hidden');
-            ui.iconShuffle.classList.add('hidden');
-        } else {
-            ui.btnRepeat.className = 'p-2 active:scale-95 transition-colors ' + primaryColor;
-            ui.iconRepeat.classList.add('hidden');
-            ui.iconRepeatOne.classList.add('hidden');
-            ui.iconShuffle.classList.remove('hidden');
-        }
-    }
-
-    function updateVolumeUI(volume, isMuted) {
-        var pct = isMuted ? 0 : volume * 100;
-        ui.volBar.style.width = pct + '%';
-        ui.volContainer.setAttribute('aria-valuenow', Math.round(pct).toString());
-        if (isMuted || volume === 0) {
-            ui.iconVolHigh.classList.add('hidden');
-            ui.iconVolMute.classList.remove('hidden');
-        } else {
-            ui.iconVolHigh.classList.remove('hidden');
-            ui.iconVolMute.classList.add('hidden');
-        }
-    }
-
-    function updateTrackUI(track) {
-        if (!track) return;
-        ui.title.innerText = track.name;
-        ui.title.title = track.name;
-        ui.artist.innerText = track.artist;
-        ui.artist.title = track.artist;
-
-        if (track.pic) {
-            ui.cover.classList.add('opacity-0');
-            ui.cover.src = track.pic;
-            ui.cover.alt = track.name + ' - ' + track.artist;
-        } else {
-            ui.cover.src = '';
-            ui.cover.classList.add('opacity-0');
-            ui.cover.alt = cfg.i18n.noCover;
-        }
-
-        // Reset cover rotation
-        ui.cover.classList.remove('animate-spin-slow');
-        void ui.cover.offsetWidth;
-        ui.cover.classList.add('animate-spin-slow');
-        ui.cover.style.animationPlayState = 'paused';
-
-        // Reset progress
-        ui.progressBar.style.width = '0%';
-        ui.progressThumb.style.left = '0%';
-        ui.progressContainer.setAttribute('aria-valuenow', '0');
-        ui.currentTime.innerText = '0:00';
-        ui.totalTime.innerText = '0:00';
-    }
-
-    // ── 歌单分批渲染 ────────────────────────────────────────
-    function appendPlaylistBatch(start, end) {
-        var playlist = local.playlistData;
-        var actualEnd = Math.min(end, playlist.length);
-        for (var idx = start; idx < actualEnd; idx++) {
-            var track = playlist[idx];
-            var clone = ui.itemTemplate.content.cloneNode(true);
-            var itemEl = clone.querySelector('.playlist-item');
-            var img = clone.querySelector('.item-cover');
-            var title = clone.querySelector('.item-title');
-            var artist = clone.querySelector('.item-artist');
-
-            img.src = track.pic || '';
-            img.alt = track.name + ' - ' + track.artist;
-            title.innerText = track.name;
-            artist.innerText = track.artist;
-
-            itemEl.dataset.index = idx;
-            itemEl.setAttribute('role', 'option');
-            itemEl.setAttribute('aria-label', track.name + ' - ' + track.artist);
-            itemEl.onclick = function () {
-                mgr.playTrackByIndex(parseInt(this.dataset.index));
-            };
-            ui.playlistContainer.appendChild(clone);
-        }
-        local.playlistRenderedCount = actualEnd;
-    }
-
-    function onPlaylistScroll() {
-        if (local.playlistRenderedCount >= local.playlistData.length) return;
-        var el = ui.playlistContainer;
-        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20) {
-            appendPlaylistBatch(local.playlistRenderedCount, local.playlistRenderedCount + local.playlistBatchSize);
-        }
-    }
-
-    function ensurePlaylistItemVisible(index) {
-        if (index < local.playlistRenderedCount) return;
-        appendPlaylistBatch(local.playlistRenderedCount, index + 1);
-        var target = ui.playlistContainer.querySelector('[data-index="' + index + '"]');
-        if (target) target.scrollIntoView({ block: 'nearest' });
-    }
-
-    function renderPlaylist(playlist, currentIndex) {
-        local.playlistData = playlist;
-        local.playlistRenderedCount = 0;
-        ui.playlistContainer.innerHTML = '';
-
-        if (playlist.length > 0) {
-            appendPlaylistBatch(0, local.playlistBatchSize);
-        }
-
-        if (!local.playlistScrollBound) {
-            local.playlistScrollBound = true;
-            ui.playlistContainer.addEventListener('scroll', onPlaylistScroll);
-        }
-
-        updatePlaylistActiveUI(currentIndex);
-    }
-
-    function updatePlaylistActiveUI(currentIndex) {
-        // 如果活跃项尚未渲染，先加载到该位置
-        if (currentIndex >= local.playlistRenderedCount && local.playlistData.length > 0) {
-            ensurePlaylistItemVisible(currentIndex);
-        }
-        var items = ui.playlistContainer.querySelectorAll('.playlist-item');
-        items.forEach(function (el) {
-            var idx = parseInt(el.dataset.index);
-            var overlay = el.querySelector('.item-active-overlay');
-            var title = el.querySelector('.item-title');
-            if (idx === currentIndex) {
-                el.classList.add('bg-neutral-100', 'dark:bg-white/10');
-                el.setAttribute('aria-current', 'true');
-                overlay.classList.remove('hidden');
-                overlay.classList.add('flex');
-                title.classList.add('text-(--primary)');
-            } else {
-                el.classList.remove('bg-neutral-100', 'dark:bg-white/10');
-                el.removeAttribute('aria-current');
-                overlay.classList.add('hidden');
-                overlay.classList.remove('flex');
-                title.classList.remove('text-(--primary)');
-            }
-        });
-    }
-
-    function renderLyricsUI(lyrics, status) {
-        local.currentLrcIndex = -1;
-        ui.lrcContainer.innerHTML = '';
-        if (status === 'loading') {
-            ui.lrcContainer.innerHTML = '<div class="text-neutral-400 text-sm py-10">' + cfg.i18n.loadingLyrics + '</div>';
-            return;
-        }
-        if (status === 'failed') {
-            ui.lrcContainer.innerHTML = '<div class="text-neutral-400 text-sm py-10">' + cfg.i18n.failedLyrics + '</div>';
-            return;
-        }
-        if (!lyrics || lyrics.length === 0) {
-            ui.lrcContainer.innerHTML = '<div class="text-neutral-400 text-sm py-10" role="option">' + cfg.i18n.noLyrics + '</div>';
-            return;
-        }
-        lyrics.forEach(function (line, index) {
-            var lineEl = document.createElement('div');
-            lineEl.className = 'lrc-line transition-all duration-300 text-sm text-neutral-400 py-1 cursor-pointer hover:text-(--primary)';
-            lineEl.innerText = line.text;
-            lineEl.dataset.index = index;
-            lineEl.setAttribute('role', 'option');
-            lineEl.setAttribute('aria-label', line.text);
-            lineEl.onclick = function () {
-                mgr.seekToTime(line.time);
-            };
-            ui.lrcContainer.appendChild(lineEl);
-        });
-    }
-
-    function updateLrcHighlight(index) {
-        if (index === local.currentLrcIndex) return;
-        local.currentLrcIndex = index;
-
-        var lines = ui.lrcContainer.querySelectorAll('.lrc-line');
-        lines.forEach(function (line, i) {
-            if (i === index) {
-                line.classList.add('text-(--primary)', 'font-bold', 'text-base');
-                line.classList.remove('text-neutral-400', 'text-sm');
-            } else {
-                line.classList.remove('text-(--primary)', 'font-bold', 'text-base');
-                line.classList.add('text-neutral-400', 'text-sm');
-            }
-        });
-
-        // Auto-scroll unless user is scrolling
-        if (index !== -1 && !local.isUserScrolling) {
-            var line = ui.lrcContainer.querySelector('.lrc-line[data-index="' + index + '"]');
-            if (line) {
-                var containerHeight = ui.lrcContainer.clientHeight;
-                var lineOffset = line.offsetTop;
-                var lineHeight = line.offsetHeight;
-                var targetScroll = lineOffset - (containerHeight / 2) + (lineHeight / 2);
-                ui.lrcContainer.scrollTo({ top: targetScroll, behavior: 'smooth' });
-            }
-        }
-    }
-
-    // ── Full sync from manager state (for late-mount) ────────
-    function syncAll() {
-        var s = mgr.getState();
-        if (!s.initialized) return;
-
-        // Loading off
-        setLoading(false);
-
-        if (s.playlist.length === 0) {
-            ui.title.innerText = s.error || cfg.i18n.noSongs;
-            return;
-        }
-
-        renderPlaylist(s.playlist, s.currentIndex);
-        if (s.track) updateTrackUI(s.track);
-        updatePlayStateUI(s.isPlaying);
-        updateModeUI(s.playMode);
-        updateVolumeUI(s.volume, s.isMuted);
-
-        // Progress
-        if (s.duration > 0) {
-            ui.progressBar.style.width = s.progress + '%';
-            ui.progressThumb.style.left = s.progress + '%';
-            ui.progressContainer.setAttribute('aria-valuenow', Math.round(s.progress).toString());
-            ui.currentTime.innerText = s.currentTimeStr;
-            ui.totalTime.innerText = s.durationStr;
-        }
-
-        // Lyrics
-        renderLyricsUI(s.lyrics, s.lyrics.length > 0 ? 'loaded' : 'none');
-        if (s.currentLrcIndex >= 0) updateLrcHighlight(s.currentLrcIndex);
-
-        // Cover image: if already set, show it
-        if (s.track && s.track.pic && ui.cover.src && ui.cover.complete && ui.cover.naturalWidth > 0) {
-            ui.cover.classList.remove('opacity-0');
-        }
-        // Update cover animation state to match play state
-        ui.cover.style.animationPlayState = s.isPlaying ? 'running' : 'paused';
-    }
-
-    // ── Event listeners (fm:* from manager) ──────────────────
-    var handlers = {};
-
-    function on(name, fn) {
-        handlers[name] = fn;
-        window.addEventListener(name, fn);
-    }
-
-    on('fm:init', function (e) {
-        var d = e.detail;
-        setLoading(false);
-        if (d.playlist.length > 0) {
-            renderPlaylist(d.playlist, 0);
-            updateModeUI(d.playMode);
-            updateVolumeUI(d.volume, d.isMuted);
-        } else {
-            ui.title.innerText = cfg.i18n.noSongs;
-        }
-    });
-
-    on('fm:track', function (e) {
-        var d = e.detail;
-        updateTrackUI(d.track);
-        updatePlaylistActiveUI(d.index);
-    });
-
-    on('fm:play-state', function (e) {
-        updatePlayStateUI(e.detail.isPlaying);
-    });
-
-    on('fm:time', function (e) {
-        var d = e.detail;
-        ui.progressBar.style.width = d.progress + '%';
-        ui.progressThumb.style.left = d.progress + '%';
-        ui.progressContainer.setAttribute('aria-valuenow', Math.round(d.progress).toString());
-        ui.currentTime.innerText = d.currentTimeStr;
-        ui.totalTime.innerText = d.durationStr;
-    });
-
-    on('fm:volume', function (e) {
-        updateVolumeUI(e.detail.volume, e.detail.isMuted);
-    });
-
-    on('fm:mode', function (e) {
-        updateModeUI(e.detail.playMode);
-    });
-
-    on('fm:lyrics', function (e) {
-        renderLyricsUI(e.detail.lyrics, e.detail.status);
-    });
-
-    on('fm:lrc-index', function (e) {
-        updateLrcHighlight(e.detail.index);
-    });
-
-    on('fm:error', function (e) {
-        ui.title.innerText = e.detail.message || cfg.i18n.error;
-    });
-
-    // ── Button click delegates ───────────────────────────────
-    ui.btnPlay.addEventListener('click', function () {
-        // Lazy 模式下，首次点击播放按钮时触发初始化
-        if (!mgr.getState().initialized) {
-            setLoading(true);
-            mgr.init();
-            return;
-        }
-        mgr.togglePlay();
-    });
-    ui.btnNext.addEventListener('click', function () { mgr.playNext(); });
-    ui.btnPrev.addEventListener('click', function () { mgr.playPrev(); });
-    ui.btnRepeat.addEventListener('click', function () { mgr.cyclePlayMode(); });
-    ui.btnMute.addEventListener('click', function () { mgr.toggleMute(); });
-
-    ui.volContainer.addEventListener('click', function (e) {
-        var rect = ui.volContainer.getBoundingClientRect();
-        var x = e.clientX - rect.left;
-        var val = Math.max(0, Math.min(1, x / rect.width));
-        mgr.setVolume(val);
-    });
-
-    ui.progressContainer.addEventListener('click', function (e) {
-        var rect = ui.progressContainer.getBoundingClientRect();
-        var clickX = e.clientX - rect.left;
-        var percent = Math.min(Math.max(clickX / rect.width, 0), 1);
-        mgr.seek(percent);
-    });
-
-    // ── Drawer logic (local state) ───────────────────────────
-    ui.btnLrc.addEventListener('click', function () {
-        var isOpen = ui.lrcDrawer.style.gridTemplateRows === '1fr';
-        if (isOpen) {
-            ui.lrcDrawer.style.gridTemplateRows = '0fr';
-            ui.lrcDrawer.classList.remove('opacity-100');
-            ui.lrcDrawer.classList.add('opacity-0');
-            ui.btnLrc.classList.remove('text-(--primary)');
-            ui.btnLrc.classList.add('text-neutral-400');
-            ui.iconLrcOn.classList.add('hidden');
-            ui.iconLrcOff.classList.remove('hidden');
-        } else {
-            // Close playlist if open
-            ui.playlistDrawer.style.gridTemplateRows = '0fr';
-            ui.playlistDrawer.classList.remove('opacity-100');
-            ui.playlistDrawer.classList.add('opacity-0');
-            ui.btnDrawer.classList.remove('text-(--primary)');
-            ui.btnDrawer.classList.add('text-neutral-400');
-
-            ui.lrcDrawer.style.gridTemplateRows = '1fr';
-            ui.lrcDrawer.classList.add('opacity-100');
-            ui.lrcDrawer.classList.remove('opacity-0');
-            ui.btnLrc.classList.add('text-(--primary)');
-            ui.btnLrc.classList.remove('text-neutral-400');
-            ui.iconLrcOn.classList.remove('hidden');
-            ui.iconLrcOff.classList.add('hidden');
-        }
-    });
-
-    // Floating lyrics toggle
-    if (ui.btnFloatingLrc) {
-        var FLOATING_LRC_KEY = 'floating-lyrics-visible';
-
-        function updateFloatingLrcUI(visible) {
-            if (visible) {
-                ui.btnFloatingLrc.classList.add('text-(--primary)');
-                ui.btnFloatingLrc.classList.remove('text-neutral-400');
-                if (ui.iconFloatingLrcOn) ui.iconFloatingLrcOn.classList.remove('hidden');
-                if (ui.iconFloatingLrcOff) ui.iconFloatingLrcOff.classList.add('hidden');
-            } else {
-                ui.btnFloatingLrc.classList.remove('text-(--primary)');
-                ui.btnFloatingLrc.classList.add('text-neutral-400');
-                if (ui.iconFloatingLrcOn) ui.iconFloatingLrcOn.classList.add('hidden');
-                if (ui.iconFloatingLrcOff) ui.iconFloatingLrcOff.classList.remove('hidden');
-            }
-        }
-
-        // Sync initial icon state from persisted preference
-        updateFloatingLrcUI(localStorage.getItem(FLOATING_LRC_KEY) !== 'false');
-
-        // Keep icon in sync with FloatingLyrics (covers its own close button too)
-        on('fm:floating-lyrics-state', function (e) {
-            updateFloatingLrcUI(!!e.detail.visible);
-        });
-
-        ui.btnFloatingLrc.addEventListener('click', function () {
-            window.dispatchEvent(new CustomEvent('fm:toggle-floating-lyrics'));
-        });
-    }
-
-    ui.btnDrawer.addEventListener('click', function () {
-        var isOpen = ui.playlistDrawer.style.gridTemplateRows === '1fr';
-        if (isOpen) {
-            ui.playlistDrawer.style.gridTemplateRows = '0fr';
-            ui.playlistDrawer.classList.remove('opacity-100');
-            ui.playlistDrawer.classList.add('opacity-0');
-            ui.btnDrawer.classList.add('text-neutral-400');
-            ui.btnDrawer.classList.remove('text-(--primary)');
-        } else {
-            // Close lyrics if open
-            ui.lrcDrawer.style.gridTemplateRows = '0fr';
-            ui.lrcDrawer.classList.remove('opacity-100');
-            ui.lrcDrawer.classList.add('opacity-0');
-            ui.btnLrc.classList.remove('text-(--primary)');
-            ui.btnLrc.classList.add('text-neutral-400');
-
-            ui.playlistDrawer.style.gridTemplateRows = '1fr';
-            ui.playlistDrawer.classList.add('opacity-100');
-            ui.playlistDrawer.classList.remove('opacity-0');
-            ui.btnDrawer.classList.remove('text-neutral-400');
-            ui.btnDrawer.classList.add('text-(--primary)');
-        }
-    });
-
-    // ── Lyrics user scroll detection ─────────────────────────
-    function resetScrollTimeout() {
-        clearTimeout(local.scrollTimeout);
-        local.scrollTimeout = setTimeout(function () {
-            local.isUserScrolling = false;
-            // Snap back to current lyric
-            var s = mgr.getState();
-            if (s.currentLrcIndex >= 0) {
-                var line = ui.lrcContainer.querySelector('.lrc-line[data-index="' + s.currentLrcIndex + '"]');
-                if (line) {
-                    var containerHeight = ui.lrcContainer.clientHeight;
-                    var lineOffset = line.offsetTop;
-                    var lineHeight = line.offsetHeight;
-                    var targetScroll = lineOffset - (containerHeight / 2) + (lineHeight / 2);
-                    ui.lrcContainer.scrollTo({ top: targetScroll, behavior: 'auto' });
-                }
-            }
-        }, 3000);
-    }
-
-    ui.lrcContainer.addEventListener('wheel', function () {
-        local.isUserScrolling = true;
-        resetScrollTimeout();
-    });
-    ui.lrcContainer.addEventListener('touchstart', function () {
-        local.isUserScrolling = true;
-        resetScrollTimeout();
-    });
-
-    // ── Cover image events ───────────────────────────────────
-    ui.cover.addEventListener('load', function () {
-        ui.cover.classList.remove('opacity-0');
-    });
-    ui.cover.addEventListener('error', function () {
-        ui.cover.classList.add('opacity-0');
-    });
-
-    // ── Cleanup on DOM removal ───────────────────────────────
-    var observer = new MutationObserver(function (mutations) {
-        for (var i = 0; i < mutations.length; i++) {
-            var removed = mutations[i].removedNodes;
-            for (var j = 0; j < removed.length; j++) {
-                if (removed[j] === widget || (removed[j].contains && removed[j].contains(widget))) {
-                    // Widget removed from DOM – clean up event listeners
-                    Object.keys(handlers).forEach(function (name) {
-                        window.removeEventListener(name, handlers[name]);
-                    });
-                    if (ui.playlistContainer) {
-                        ui.playlistContainer.removeEventListener('scroll', onPlaylistScroll);
-                    }
-                    observer.disconnect();
-                    clearTimeout(local.scrollTimeout);
-                    return;
-                }
-            }
-        }
-    });
-    if (widget.parentNode) {
-        observer.observe(widget.parentNode, { childList: true });
-    }
-
-    // ── Expose syncAll for manager to call after Swup transitions ──
-    widget.__musicSync = syncAll;
-
-    // ── Init: either sync existing state or trigger init ─────
-    var currentState = mgr.getState();
-    if (currentState.initialized) {
-        // Manager already initialized (late mount) – sync all UI
-        syncAll();
-    } else if (!isLazy) {
-        // 非 Lazy 模式：立即触发初始化
-        setLoading(true);
-        mgr.init();
-    }
-    // Lazy 模式：不触发 init()，等待外部调用（如工具栏按钮点击）
-})();
+	// 组件挂在 Swup 容器外，DOM 跨导航持久存在，整个文档生命周期只初始化一次
+	definePersistentIsland("music-player-widget", setupMusicPlayerWidget);
 </script>
-
-<!-- 样式已迁移至 src/styles/components/music-player.css -->

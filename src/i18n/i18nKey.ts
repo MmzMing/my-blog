@@ -58,7 +58,6 @@ enum I18nKey {
 	musicProgress = "musicProgress",
 	musicCover = "musicCover",
 	musicNoCover = "musicNoCover",
-	musicFloatingLyrics = "musicFloatingLyrics",
 
 	more = "more",
 	collapse = "collapse",
