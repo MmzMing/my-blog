@@ -12,14 +12,59 @@
 ![Swup](https://img.shields.io/badge/Swup-4.x-%237467EF)
 ![Pagefind](https://img.shields.io/badge/Pagefind-1.x-%234B5563)
 
-PC端
 
-<img alt="博客预览" src="./docs/images/image-1.webp" />
+# 页面预览
 
-性能测试
-
-<img alt="博客预览移动端" src="./docs/images/image-2.webp" />
-
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./docs/images/image-hero.webp" alt="hero 主题预览" />
+    </td>
+    <td width="50%">
+      <img src="./docs/images/image-Mobile.webp" alt="hero Mobile 主题预览" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><strong>门户</strong></td>
+    <td align="center"><strong>移动端</strong></td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/images/image-archive.webp" alt="archive 主题预览" />
+    </td>
+    <td width="50%">
+      <img src="./docs/images/image-categories.webp" alt="categories 主题预览" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><strong>归档</strong></td>
+    <td align="center"><strong>图谱</strong></td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/images/image-list.webp" alt="list 主题预览" />
+    </td>
+    <td width="50%">
+      <img src="./docs/images/image-other.webp" alt="other 主题预览" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><strong>文章</strong></td>
+    <td align="center"><strong>一些小组件</strong></td>
+  </tr>
+    <tr>
+    <td width="50%">
+      <img src="./docs/images/image-about.webp" alt="about 主题预览" />
+    </td>
+    <td width="50%">
+      <img src="./docs/images/image-guestbook.webp" alt="guestbook 主题预览" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><strong>关于</strong></td>
+    <td align="center"><strong>留言</strong></td>
+  </tr>
+</table>
 
 
 ## 项目概述

@@ -983,10 +983,14 @@ function setupReveal(context: SetupContext) {
 }
 
 /**
- * 第一层入场标题，整段入场压在 enterDuration（默认 0.5s）内：
- * 长条整体横移 → 内缘往两侧退开、标题从缝里显露 → 两侧竖线与中缝横线跟随滑动 →
- * 长条钉在两侧后往外缩放消失，中央虚线圆同时显露并转 90°；
- * 落定后标题上移，第二层祝福语逐字翻入并循环。退场交给 setupReveal 的 scrub 时间线。
+ * 第一层入场标题，整段入场压在 enterDuration 内，按五幕推进：
+ * ① 开场只有两半长条在中心拼成的一颗小方块，线条与圆环一概不在场；
+ * ② 两半边放大边滑向两侧，到竖线处停住，标题从缝里显露，
+ *    圆心准星（内圈+四向斜刻度）先在标题背后亮起；
+ * ③ 长条在竖线位置原地缩没；中央刻度环自小放大转正，
+ *    中缝横线带方块自中间往两侧摊开；
+ * ④ 长条快缩没时两侧竖线就位并纵向长出；
+ * ⑤ 落定后标题上移，第二层祝福语逐字翻入并循环。退场交给 setupReveal 的 scrub 时间线。
  */
 function setupHeadline(context: SetupContext) {
 	const { root, gsap, ScrollTrigger, config, signal } = context;
@@ -999,7 +1003,7 @@ function setupHeadline(context: SetupContext) {
 	const title = selectRequired<HTMLElement>(headline, "[data-headline-title]");
 	const ring = selectRequired<HTMLElement>(headline, "[data-headline-ring]");
 	const core = selectRequired<HTMLElement>(headline, "[data-headline-core]");
-	// 虚线圆与圆心准星同进同出，一并当作一组处理
+	// 刻度环与圆心准星不同幕亮起，仅共用落定与销毁处理
 	const reticle = [ring, core];
 	const axisLeft = selectRequired<HTMLElement>(
 		headline,
@@ -1011,6 +1015,10 @@ function setupHeadline(context: SetupContext) {
 	);
 	const edges = Array.from(
 		headline.querySelectorAll<HTMLElement>("[data-headline-edge]"),
+	);
+	// 竖线的日期刻度层：随竖线一同淡入，但不参与纵向生长（避免文字被 scaleY 拉伸）
+	const edgeDates = Array.from(
+		headline.querySelectorAll<HTMLElement>("[data-headline-edge-dates]"),
 	);
 	const bands = Array.from(
 		headline.querySelectorAll<HTMLElement>("[data-headline-band]"),
@@ -1054,19 +1062,32 @@ function setupHeadline(context: SetupContext) {
 	let relayoutTimer: number | undefined;
 
 	/**
-	 * 长条只做 scaleX：外缘钉死在 CSS 的 band-inset 上，内缘往两侧退。
-	 * 退开的宽度取标题半宽再加一点留白，标题才刚好从缝里露全。
+	 * 长条全程只做 scaleX + x：外缘 origin 钉死在 CSS 的 band-inset 上。
+	 * 开场两半在中心拼成一颗小方块（blockScale / blockShift），
+	 * 滑到两侧竖线处（stopShift）正好长满（openScale，内缘恰退到标题半宽外），
+	 * 随后停在竖线位置原地缩没，全程不驻留。
 	 */
 	const measure = () => {
 		const bandWidth = bands[0]?.offsetWidth ?? 0;
+		const bandLeft = bands[0]?.offsetLeft ?? 0;
+		// 停驻点取两侧竖线的布局位：缩没时正好化进竖线里
+		const edgeLeft = edges[0]?.offsetLeft ?? window.innerWidth * 0.132;
 		const gapHalf = title.offsetWidth / 2 + window.innerWidth * 0.012;
+		const blockHalf = title.offsetWidth * 0.2;
 		return {
 			openScale:
-				bandWidth > 0 ? clamp(1 - gapHalf / bandWidth, 0.06, 0.98) : 0.76,
+				bandWidth > 0
+					? clamp(1 - (gapHalf + edgeLeft - bandLeft) / bandWidth, 0.06, 0.98)
+					: 0.76,
+			blockScale:
+				bandWidth > 0 ? clamp(blockHalf / bandWidth, 0.04, 0.9) : 0.18,
+			// 小方块拼到正中所需的外缘平移量：50vw 减去长条外缘的布局位（offsetLeft）
+			blockShift: window.innerWidth / 2 - bandLeft - blockHalf,
+			// 停驻点：外缘滑到竖线位置即停
+			stopShift: edgeLeft - bandLeft,
 			// 入场时标题独占中线，落定后整栈上移让出第二层祝福语
 			titleY: -title.offsetHeight / 2,
 			stackY: -stack.offsetHeight / 2,
-			slide: window.innerWidth * 0.045,
 		};
 	};
 
@@ -1127,28 +1148,25 @@ function setupHeadline(context: SetupContext) {
 		if (!awake) flip.pause();
 	}
 
-	/** 入场前的初始态：两半长条贴合成一整条，整体偏左待滑入 */
+	/** 入场前的初始态：两半长条在中心拼成一颗小方块，其余元素全部清场待命 */
 	const reset = () => {
-		const { titleY, slide } = measure();
+		const { titleY, blockScale, blockShift } = measure();
 		stopCycle();
 		enter?.kill();
 		enter = null;
 		played = false;
 		current = 0;
 		gsap.set(headline, { yPercent: 0, autoAlpha: 0 });
-		gsap.set(bands, { x: -slide, scaleX: 1 });
-		gsap.set(edges, { x: -slide, scaleY: 0, autoAlpha: 0 });
-		gsap.set(axisLeft, {
-			x: -slide,
-			autoAlpha: 0,
-			clipPath: "inset(0% 0% 0% 100%)",
+		gsap.set(bands, {
+			x: (index: number) => (index === 0 ? blockShift : -blockShift),
+			scaleX: blockScale,
 		});
-		gsap.set(axisRight, {
-			x: -slide,
-			autoAlpha: 0,
-			clipPath: "inset(0% 100% 0% 0%)",
-		});
-		gsap.set(reticle, { autoAlpha: 0, rotation: -90, scale: 0.92 });
+		gsap.set(edges, { scaleY: 0, autoAlpha: 0 });
+		gsap.set(edgeDates, { autoAlpha: 0 });
+		gsap.set(axisLeft, { autoAlpha: 0, clipPath: "inset(0% 0% 0% 100%)" });
+		gsap.set(axisRight, { autoAlpha: 0, clipPath: "inset(0% 100% 0% 0%)" });
+		gsap.set(ring, { autoAlpha: 0, rotation: -90, scale: 0.6 });
+		gsap.set(core, { autoAlpha: 0 });
 		gsap.set(stack, { y: titleY });
 		for (const chars of messages) {
 			gsap.set(chars, { rotationX: 92, autoAlpha: 0 });
@@ -1167,6 +1185,7 @@ function setupHeadline(context: SetupContext) {
 		stopCycle();
 		gsap.set(bands, { x: 0, scaleX: 0 });
 		gsap.set(edges, { x: 0, scaleY: 1, autoAlpha: 1 });
+		gsap.set(edgeDates, { autoAlpha: 1 });
 		gsap.set([axisLeft, axisRight], {
 			x: 0,
 			autoAlpha: 1,
@@ -1190,63 +1209,80 @@ function setupHeadline(context: SetupContext) {
 		if (played) return;
 		played = true;
 		context.headlineState.played = true;
-		const { openScale, titleY, stackY, slide } = measure();
+		const { openScale, blockScale, blockShift, stopShift, titleY, stackY } =
+			measure();
 		const span = enterSpan;
 		gsap.set(stack, { y: titleY });
-		gsap.set(bands, { x: -slide, scaleX: 1 });
+		gsap.set(bands, {
+			x: (index: number) => (index === 0 ? blockShift : -blockShift),
+			scaleX: blockScale,
+		});
 
 		enter = gsap
 			.timeline({ onComplete: scheduleNext })
 			.set(headline, { yPercent: 0, autoAlpha: 1 }, 0)
-			// 整条长条先横移到位，此时看上去仍是一根完整长条
-			.to(bands, { x: 0, duration: span * 0.46, ease: "power3.out" }, 0)
-			// 内缘往两侧退开，标题从中缝里显露
+			// ① → ②：两半小方块边放大边滑向两侧，外缘滑到竖线位置时正好长满
 			.to(
 				bands,
-				{ scaleX: openScale, duration: span * 0.52, ease: "power2.inOut" },
+				{
+					x: (index: number) => (index === 0 ? stopShift : -stopShift),
+					scaleX: openScale,
+					duration: span * 0.32,
+					ease: "power2.in",
+				},
 				0,
 			)
-			// 露出两字左右时补上两侧竖线与中缝横线，二者跟着长条一起滑、一起定
+			// ②：缝开的路上圆心准星先一步亮到标题背后（刻度环此幕还不在场）
 			.to(
-				edges,
-				{
-					x: 0,
-					scaleY: 1,
-					autoAlpha: 1,
-					duration: span * 0.34,
-					ease: "power2.out",
-				},
-				span * 0.3,
+				core,
+				{ autoAlpha: 1, duration: span * 0.26, ease: "power2.out" },
+				span * 0.08,
 			)
-			.to(
-				[axisLeft, axisRight],
-				{
-					x: 0,
-					autoAlpha: 1,
-					clipPath: "inset(0% 0% 0% 0%)",
-					duration: span * 0.36,
-					ease: "power3.out",
-				},
-				span * 0.34,
-			)
-			// 长条钉在两侧后往外缩放消失，中央虚线圆同时显露并转 90°
+			// ③：到竖线处即停住、不停顿，原地缩没；
+			// 刻度环自小放大转正，中缝横线带方块自中间往两侧摊开
 			.to(
 				bands,
-				{ scaleX: 0, duration: span * 0.48, ease: "power2.inOut" },
-				span * 0.52,
+				{ scaleX: 0, duration: span * 0.28, ease: "power2.out" },
+				span * 0.32,
 			)
 			.to(
-				reticle,
+				ring,
 				{
 					autoAlpha: 1,
 					rotation: 0,
 					scale: 1,
-					duration: span * 0.44,
+					duration: span * 0.3,
 					ease: "power2.out",
 				},
-				span * 0.56,
+				span * 0.34,
 			)
-			// 入场落定后标题上移，第二层第一条祝福语逐字翻入
+			.to(
+				[axisLeft, axisRight],
+				{
+					autoAlpha: 1,
+					clipPath: "inset(0% 0% 0% 0%)",
+					duration: span * 0.3,
+					ease: "power3.out",
+				},
+				span * 0.34,
+			)
+			// ④：长条快缩没时两侧竖线就位并纵向长出，日期刻度随之淡入
+			.to(
+				edges,
+				{
+					scaleY: 1,
+					autoAlpha: 1,
+					duration: span * 0.3,
+					ease: "power2.out",
+				},
+				span * 0.5,
+			)
+			.to(
+				edgeDates,
+				{ autoAlpha: 1, duration: span * 0.3, ease: "power2.out" },
+				span * 0.54,
+			)
+			// ⑤：入场落定后标题上移，第二层第一条祝福语逐字翻入
 			.to(stack, { y: stackY, duration: 0.46, ease: "power3.out" }, span + 0.06)
 			.fromTo(
 				messages[0] ?? [],
@@ -1332,6 +1368,7 @@ function setupHeadline(context: SetupContext) {
 			axisLeft,
 			axisRight,
 			...edges,
+			...edgeDates,
 			...bands,
 			...messages.flat(),
 		]);

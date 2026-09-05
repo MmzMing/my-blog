@@ -160,7 +160,7 @@ export const homeConfig: HomeConfig = {
 			headline: {
 				title: "祝愿各位",
 				messages: ["夜路有星光", "岁岁皆欢愉", "所念皆星河", "版本无回滚"],
-				enterDuration: 0.5,
+				enterDuration: 0.6,
 				messageHold: 2.6,
 				messageFlipDuration: 0.75,
 			},
