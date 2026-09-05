@@ -12,7 +12,6 @@ import type { NavBarLink } from "@/types/config";
 import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
 import { url } from "@/utils/url-utils";
 import DropdownMenu from "./DropdownMenu.astro";
-import NavbarProfileCard from "./NavbarProfileCard.astro";
 
 const navbarTitle = siteConfig.navbar.title || siteConfig.title;
 void siteConfig.navbar.widthFull;
@@ -161,10 +160,6 @@ if (isLocalSrcLogo) {
 				<Icon name="material-symbols:menu-rounded" is:inline class="text-[1.2rem]"></Icon>
 			</button>
 		</div>
-
-		<!-- Logo 资料卡面板：hover/焦点展开（桌面）、底部半屏卡片（移动），
-		     挂在 segments 下，避开左段滚动收缩态 overflow:hidden 对面板的裁剪 -->
-		<NavbarProfileCard />
 
 		<!-- 工具面板：桌面端悬停/聚焦右段工具按钮浮出（公告/主题/搜索）。
 		     挂在 segments 下，避开右段滚动收缩态 overflow:hidden 对面板的裁剪 -->

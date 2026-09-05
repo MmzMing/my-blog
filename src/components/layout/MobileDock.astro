@@ -358,9 +358,10 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 <script>
 	import I18nKey from "@/i18n/i18nKey";
 	import { i18n } from "@/i18n/translation";
+	import { NAVBAR_PROFILE_TOGGLE_EVENT } from "@/utils/navbar-profile-controller";
 	import { requestSearchModalToggle } from "@/utils/search-modal-controller";
 	import { getStoredTheme, setTheme } from "@/utils/setting-utils";
-	import { onNavigation, preloadUrl } from "@/utils/swup-lifecycle";
+	import { onNavigation } from "@/utils/swup-lifecycle";
 
 	type DockShape = "pill" | "bubble" | "card";
 	type DockView = "menu" | "music" | "announcement" | "tags" | "toc";
@@ -801,24 +802,22 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 			else openCard("menu");
 		}, { signal });
 
-		contextButton.addEventListener("click", () => {
-			if (shape === "bubble") {
-				setShape("pill");
-				return;
-			}
-			if (shape === "card") {
-				if (activeView !== "menu") setView("menu");
-				return;
-			}
-			if (musicState?.isPlaying && musicState.track) openCard("music");
-			else if (window.location.pathname !== "/") window.navigateToPage("/");
-		}, { signal });
+	contextButton.addEventListener("click", () => {
+		if (shape === "bubble") {
+			setShape("pill");
+			return;
+		}
+		if (shape === "card") {
+			if (activeView !== "menu") setView("menu");
+			return;
+		}
+		// 播放中站名位是歌词，点击进音乐视图；否则打开导航资料卡面板
+		// （回首页交给左侧 logo 链接，PC 端同款面板由 profile 控制器接管）
+		if (musicState?.isPlaying && musicState.track) openCard("music");
+		else window.dispatchEvent(new CustomEvent(NAVBAR_PROFILE_TOGGLE_EVENT));
+	}, { signal });
 
-		contextButton.addEventListener("touchstart", () => {
-			if (!musicState?.isPlaying) preloadUrl("/");
-		}, { passive: true, signal });
-
-		overlay.addEventListener("click", closeCard, { signal });
+	overlay.addEventListener("click", closeCard, { signal });
 		viewButtons.forEach((button) => {
 			button.addEventListener("click", () => setView(button.dataset.viewTarget as DockView), { signal });
 		});

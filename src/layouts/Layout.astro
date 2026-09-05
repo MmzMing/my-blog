@@ -15,6 +15,7 @@ import UserAgreementModal from "@components/features/UserAgreementModal.astro";
 import WikiLinkCardManager from "@components/features/WikiLinkCardManager.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
 import MobileDock from "@components/layout/MobileDock.astro";
+import NavbarProfileCard from "@components/layout/NavbarProfileCard.astro";
 import FloatingDock from "@/components/controls/FloatingDock.astro";
 
 import { expressiveCodeConfig, homeConfig, siteConfig } from "@/config";
@@ -256,6 +257,9 @@ const siteLang = lang.replace("_", "-");
     <MusicPlayer />
     <FloatingDock />
     <MobileDock />
+    {/* Logo 资料卡面板：挂 body 末尾而非 #navbar 内——移动端 #navbar 整体
+        display:none 会连带隐藏所有后代，面板在其中永远无法显示 */}
+    <NavbarProfileCard />
     <div id="search-modal-root"></div>
     <PrivacyModal />
     <UserAgreementModal />

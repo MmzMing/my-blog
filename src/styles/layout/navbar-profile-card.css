@@ -1,8 +1,10 @@
 /* ============================================
    导航 Logo 资料卡 — 来自 NavbarProfileCard.astro
-   桌面端：hover/focus 展开的左右双栏面板（is-open 类由控制器驱动）；
+   桌面端：hover/focus 展开的左右双栏面板（is-open 类由控制器驱动，
+   fixed 定位，打开时由控制器实测导航左段位置写入锚点，滚动即收起）；
    移动端：同一元素变为底部半屏卡片 + 遮罩。
-   面板位于 #top-row（z-80）层叠上下文内，整体高于移动坞（z-74）。
+   面板挂在 body 末尾（Layout.astro）：移动端 #navbar / #top-row 整体
+   display:none（mobile-dock.css），面板留在其中会被连带隐藏。
    ============================================ */
 
 .navbar-profile-dropdown {
@@ -452,9 +454,9 @@
 @media (min-width: 1024px) {
 	.navbar-profile-dropdown {
 		display: block;
-		position: absolute;
-		top: 100%;
-		left: 0;
+		/* body 级 fixed：left/top 由控制器打开时实测导航左段位置写入，
+		   滚动即收起（与工具面板同一策略），无需 compact 态重锚定 */
+		position: fixed;
 		/* 与导航栏拉开距离，保留悬停过渡区防止面板收起 */
 		padding-top: 1.25rem;
 		opacity: 0;
@@ -498,11 +500,6 @@
 		overflow-x: hidden;
 		overscroll-behavior: contain;
 		scrollbar-width: thin;
-	}
-
-	/* 滚动收缩后左段右移成球，面板改为对齐球体左缘（球宽 2.25rem） */
-	#navbar.scrolled .navbar-profile-dropdown {
-		left: calc(var(--navbar-compact-left, 0px) - 2.25rem);
 	}
 }
 

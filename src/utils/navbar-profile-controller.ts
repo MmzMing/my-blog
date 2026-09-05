@@ -3,7 +3,13 @@
  *
  * 面板替代旧的 logo 悬停下拉与悬浮坞日历。桌面端 hover/focus 展开（is-open
  * 类驱动，不再用纯 CSS :has 悬停——JS 需要在展开时机上同步懒加载数据），
- * 移动端点击 logo 弹出底部半屏卡片（遮罩 + 下滑关闭 + 滚动锁定）。
+ * 移动端点击 logo 或 MobileDock 站名按钮（NAVBAR_PROFILE_TOGGLE_EVENT）
+ * 弹出底部半屏卡片（遮罩 + 下滑关闭 + 滚动锁定）。
+ *
+ * 面板 DOM 挂在 body 末尾（Layout.astro）：移动端 #navbar / #top-row 整体
+ * display:none（mobile-dock.css），留在其中会被连带隐藏。桌面端打开时实测
+ * 导航左段位置写入 fixed 锚点；锚点随滚动失效（左段收缩成球位移），与工具
+ * 面板同一策略——滚动即收起。
  *
  * 右栏三态：default（周/月/年底倒计时 + 最近节日进度 + 建站日进度）、
  * site（hover 个人网站时的大按钮预览，移出即还原进入前状态）、
@@ -92,6 +98,9 @@ const MOBILE_MEDIA = "(max-width: 1023.98px)";
 /** 鼠标在 logo 与面板之间移动的过渡余量，避免误收起 */
 const CLOSE_DELAY = 260;
 
+/** MobileDock 站名按钮等外部入口请求开合面板时派发的窗口事件名 */
+export const NAVBAR_PROFILE_TOGGLE_EVENT = "navbar-profile:toggle";
+
 let config: ProfileConfig | null = null;
 let refs: ProfileRefs | null = null;
 let initialized = false;
@@ -179,7 +188,8 @@ function collectRefs(
 		panel,
 		card,
 		mask: panel.querySelector("[data-profile-mask]"),
-		leftSeg: panel.parentElement?.querySelector(".navbar-seg--left") ?? null,
+		// 面板挂在 body 末尾，左段改从文档级查找（hover/focus 触发源 + 桌面端锚点）
+		leftSeg: document.querySelector("#navbar .navbar-seg--left"),
 		heatmap: card.querySelector("[data-profile-heatmap]"),
 		cells,
 		siteTriggers: Array.from(
@@ -632,12 +642,33 @@ function scheduleClose(): void {
 	}, CLOSE_DELAY);
 }
 
+/**
+ * 桌面端把面板锚定到导航左段下缘。面板是 body 级 fixed 元素，
+ * left/top 内联写入；移动端是全屏卡片，不使用该锚点
+ */
+function positionPanel(): void {
+	if (!refs?.leftSeg) return;
+	const rect = refs.leftSeg.getBoundingClientRect();
+	refs.panel.style.left = `${rect.left}px`;
+	refs.panel.style.top = `${rect.bottom}px`;
+}
+
 function openPanel(): void {
 	if (!refs) return;
 	cancelScheduledClose();
 	if (refs.panel.classList.contains("is-open")) return;
+	const mobile = isMobileViewport();
+	// 无导航栏的页面桌面端无从锚定，放弃打开（移动端是全屏卡片，不受影响）
+	if (!mobile && !refs.leftSeg) return;
 	ensureData();
-	openedAsMobile = isMobileViewport();
+	openedAsMobile = mobile;
+	if (mobile) {
+		// 清掉桌面端可能写入的内联锚点，避免覆盖移动端 inset:0
+		refs.panel.style.removeProperty("left");
+		refs.panel.style.removeProperty("top");
+	} else {
+		positionPanel();
+	}
 	refs.panel.classList.add("is-open");
 	// 每次展开都重放数字滚动与进度条动效
 	playEntranceAnimation();
@@ -721,6 +752,31 @@ function bindEvents(): void {
 	});
 
 	mask?.addEventListener("click", closePanel);
+
+	// MobileDock 站名按钮等外部入口：仅移动端响应（dock 只在移动断点渲染）
+	window.addEventListener(NAVBAR_PROFILE_TOGGLE_EVENT, () => {
+		if (!isMobileViewport()) return;
+		togglePanel();
+	});
+
+	// 桌面端锚点随滚动失效（左段收缩成球位移），与工具面板同一策略：滚动即收起
+	window.addEventListener(
+		"scroll",
+		() => {
+			if (!panel.classList.contains("is-open") || openedAsMobile) return;
+			closePanel();
+		},
+		{ passive: true },
+	);
+	// 视口变化改变居中布局，面板开着时重锚定
+	window.addEventListener(
+		"resize",
+		() => {
+			if (!panel.classList.contains("is-open") || openedAsMobile) return;
+			positionPanel();
+		},
+		{ passive: true },
+	);
 
 	document.addEventListener("keydown", (event) => {
 		if (event.key !== "Escape" || !panel.classList.contains("is-open")) return;
