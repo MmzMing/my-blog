@@ -497,6 +497,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "夜白的小屋",
+		imgurl: "https://yibi2333.fun/favicon.ico",
+		desc: "这个人很懒，什么都没留下",
+		siteurl: "https://yibi2333.fun/",
+		image: "/assets/images/friends/yibi2333.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
