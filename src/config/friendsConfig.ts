@@ -507,6 +507,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "星宇安全实验室",
+		imgurl:
+			"https://bk.zhaozhiqiang.pw/wp-content/uploads/2026/07/1784847314130_148x148.png",
+		desc: "星宇安全实验室，专注网络安全技术分享，记录团队实战经历、安全研究与编程成长笔记，致力于分享网安学习干货。",
+		siteurl: "https://bk.zhaozhiqiang.pw/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
