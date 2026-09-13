@@ -741,6 +741,10 @@ function bindEvents(): void {
 		if (!isMobileViewport()) scheduleClose();
 	});
 	panel.addEventListener("focusout", (event) => {
+		// 移动端底部卡片不随焦点移出收起：触屏点链接不会把焦点挪过去，
+		// 钉住的按钮失焦回 body 时 relatedTarget 为空，会被误判成焦点离开
+		// 面板，点站点 CTA 就等于把卡片关了
+		if (openedAsMobile) return;
 		const next = event.relatedTarget;
 		if (
 			next instanceof Node &&
@@ -792,7 +796,14 @@ function bindEvents(): void {
 	// 键盘 focus 预览保留，Tab 移开后还原
 	for (const trigger of siteTriggers) {
 		const key = trigger.dataset.profileSiteTrigger ?? null;
-		trigger.addEventListener("focusin", () => hoverSite(key));
+		// 移动端不挂 focus 预览：触屏 focusin 在 mousedown 时同步触发，右栏
+		// 当场换面板、卡片高度跳变，触发键从指下滑走，mouseup 落到遮罩上，
+		// click 被浏览器判定无效 → 站点钉不住，点 CTA 又被失焦还原成日期面板。
+		// 移动端只靠 click 切换，按下期间布局不动，click 必然落地
+		trigger.addEventListener("focusin", () => {
+			if (isMobileViewport()) return;
+			hoverSite(key);
+		});
 		trigger.addEventListener("focusout", (event) => {
 			const next = event.relatedTarget;
 			if (next instanceof Node && trigger.contains(next)) return;

@@ -301,7 +301,9 @@
 
 	.site-footer__inner {
 		min-height: 0;
-		padding: 3rem 1rem calc(4rem + env(safe-area-inset-bottom));
+		/* 底部内边距是移动端固定 Dock 的唯一滚动让位（mobile-dock.css 不再另留），
+		   数值取 Dock 胶囊高度 + 底部偏移 + 一档呼吸；页脚背景因此能贴到屏幕底 */
+		padding: 3rem 1rem calc(4.5rem + env(safe-area-inset-bottom));
 	}
 
 	.site-footer__primary,

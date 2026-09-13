@@ -194,6 +194,9 @@
 	.mobile-dock__lyric-viewport {
 		min-width: 0;
 		width: 100%;
+		/* 左内边距与遮罩左渐变同宽：文字起始点落在渐变达到不透明的位置，
+		   静止歌词的首字不会被渐变吃掉半边；跑马灯滚出时仍在渐变带内淡出 */
+		padding-left: 0.5rem;
 		overflow: hidden;
 		white-space: nowrap;
 		mask-image: linear-gradient(90deg, transparent 0, #000 0.5rem, #000 calc(100% - 0.5rem), transparent 100%);
@@ -410,7 +413,12 @@
 		display: none;
 		flex-direction: column;
 		min-height: 0;
-		max-height: calc(70dvh - 7.3rem - var(--mobile-dock-content-top-padding));
+		/* 比外层再多减一份 content-top-padding：外层容器的 padding-top 占的
+		   正是这份高度，不扣掉的话视图顶满时底边越过容器的裁切线，音乐控制
+		   区的下内边距被整段裁掉，播放按钮会贴死工具栏分隔线 */
+		max-height: calc(
+			70dvh - 7.3rem - var(--mobile-dock-content-top-padding) * 2
+		);
 		overflow-y: auto;
 		overflow-x: hidden;
 		overscroll-behavior: contain;
@@ -989,9 +997,8 @@
 		display: none !important;
 	}
 
-	#main-grid-wrapper {
-		padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
-	}
+	/* Dock 的滚动让位由 .site-footer__inner 的底部内边距承担（footer.css）：
+	   页脚背景随之延伸到屏幕底，不再在页脚后面留一段无主的空档 */
 
 	@keyframes mobile-dock-view-in {
 		0% { transform: translateY(0.2rem); opacity: 0; }

@@ -84,17 +84,6 @@
 	min-width: 0;
 }
 
-/* 触发键与菜单之间留了 0.6rem 空隙，悬停移过去会掉出去 —— 用一道透明桥接住
-   （同 post-hero__share-menu::after 的做法） */
-.post-nav__category::after {
-	content: "";
-	position: absolute;
-	top: 100%;
-	left: 0;
-	right: 0;
-	height: 0.6rem;
-}
-
 .post-nav__current {
 	overflow: hidden;
 	text-overflow: ellipsis;

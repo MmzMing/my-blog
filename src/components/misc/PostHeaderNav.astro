@@ -70,7 +70,6 @@ const backHref = toHref(currentValue);
       aria-expanded="false"
       aria-label={i18n(I18nKey.postNavCategory)}
     >
-      <svg class="post-nav__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8z"/></svg>
       <span class="post-nav__current">{current.label}</span>
       <svg class="post-nav__icon post-nav__arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
     </button>
@@ -127,19 +126,13 @@ const backHref = toHref(currentValue);
       trigger.setAttribute("aria-expanded", String(open));
     };
 
-    // 悬停设备靠进出分类区开合（菜单也是容器的子节点，移到菜单上不会收起）；
-    // 触屏没有悬停，退回点击开合
-    const canHover = window.matchMedia("(hover: hover)").matches;
-    const onDropdownEnter = () => setOpen(true);
-    const onDropdownLeave = () => setOpen(false);
-
     const onNavClick = (event: MouseEvent) => {
       const el = event.target as HTMLElement;
       if (el.closest("[data-post-nav-trigger]")) {
         event.preventDefault();
-        // 悬停设备上菜单已随悬停打开，点击只兜底确保打开（键盘 Enter 也走
-        // 这里），不反向收起，免得和悬停态打架
-        setOpen(canHover ? true : !dropdown.classList.contains("is-open"));
+        // 点击开合，再点一下收起（键盘 Enter 同走这里）；面板比触发键宽，
+        // 悬停开合会被鼠标斜穿间隙误关，所以只用点击
+        setOpen(!dropdown.classList.contains("is-open"));
         return;
       }
       // 菜单项是真链接，只收起菜单，跳转让 Swup 接手
@@ -187,19 +180,11 @@ const backHref = toHref(currentValue);
     nav.addEventListener("click", onNavClick);
     nav.addEventListener("keydown", onNavKeydown);
     document.addEventListener("click", onDocClick);
-    if (canHover) {
-      dropdown.addEventListener("mouseenter", onDropdownEnter);
-      dropdown.addEventListener("mouseleave", onDropdownLeave);
-    }
 
     cleanup = () => {
       nav.removeEventListener("click", onNavClick);
       nav.removeEventListener("keydown", onNavKeydown);
       document.removeEventListener("click", onDocClick);
-      if (canHover) {
-        dropdown.removeEventListener("mouseenter", onDropdownEnter);
-        dropdown.removeEventListener("mouseleave", onDropdownLeave);
-      }
     };
   }
 
