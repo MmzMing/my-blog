@@ -11,13 +11,15 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: var(--post-hero-inline-pad) var(--post-hero-inline-pad) 0.5rem;
+  /* 顶部留白（导航栏 → 返回上一页行）在原值 1.25rem 基础上增至 1.5 倍 */
+  padding: 1.875rem var(--post-hero-inline-pad) 0.5rem;
 }
 
 @media (min-width: 768px) {
   .post-hero__content {
     --post-hero-inline-pad: 2rem;
-    padding: var(--post-hero-inline-pad) var(--post-hero-inline-pad) 0.75rem;
+    /* 桌面原值 2rem，同样增至 1.5 倍 */
+    padding: 3rem var(--post-hero-inline-pad) 0.75rem;
   }
 }
 
@@ -396,7 +398,8 @@
    AI 摘要折叠框
    ============================================ */
 .post-intro-card {
-  border: 0;
+  /* 整卡一圈细描边：取分隔线变量再压淡，亮色/暗色主题下都只做轻分隔 */
+  border: 1px solid color-mix(in oklab, var(--line-divider) 60%, transparent);
   border-radius: var(--radius-large);
   background: var(--article-surface-bg);
   overflow: hidden;
@@ -535,22 +538,22 @@
   min-width: 0;
 }
 
-/* ============================================
-   Cover image
-   ============================================ */
-.post-cover {
-  width: 100%;
+/* 封面图层内边距与 AI 摘要层一致，图片不贴卡边 */
+.post-intro-card__section--cover {
+  padding: 0.25rem 1.125rem 0.875rem;
+}
+
+/* 图片圆角：沿用原独立封面的 --radius-large，容器 overflow 裁切四角（含 LQIP 占位底） */
+.post-intro-card__cover {
   overflow: hidden;
   border-radius: var(--radius-large);
 }
 
-/* imageOptimization.formats 为 "both" 时 CoverImage 会输出 <picture> */
-.post-cover picture {
+.post-intro-card__cover picture {
   display: block;
-  width: 100%;
 }
 
-.post-cover img {
+.post-intro-card__cover img {
   display: block;
   width: 100%;
   height: auto;
@@ -559,7 +562,7 @@
 }
 
 @media (min-width: 768px) {
-  .post-cover img {
+  .post-intro-card__cover img {
     max-height: 560px;
   }
 }

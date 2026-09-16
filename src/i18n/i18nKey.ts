@@ -458,6 +458,7 @@ enum I18nKey {
 	sponsorChooseMethod = "sponsorChooseMethod",
 	sponsorNotAvailable = "sponsorNotAvailable",
 	postAiSummaryLabel = "postAiSummaryLabel",
+	postCoverLabel = "postCoverLabel",
 	coverImageAltSuffix = "coverImageAltSuffix",
 
 	// ===== 通用操作（进行态等）=====

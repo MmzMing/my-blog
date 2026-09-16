@@ -436,6 +436,7 @@ export const ja: Translation = {
 	[Key.sponsorChooseMethod]: "お好みの支払い方法を選択してください",
 	[Key.sponsorNotAvailable]: "現在未対応",
 	[Key.postAiSummaryLabel]: "AI 要約",
+	[Key.postCoverLabel]: "カバー画像",
 	[Key.coverImageAltSuffix]: "のカバー画像",
 
 	// ===== 留言板 =====

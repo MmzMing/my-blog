@@ -436,6 +436,7 @@ export const en: Translation = {
 	[Key.sponsorChooseMethod]: "Choose your preferred payment method",
 	[Key.sponsorNotAvailable]: "Not available yet",
 	[Key.postAiSummaryLabel]: "AI Summary",
+	[Key.postCoverLabel]: "Cover",
 	[Key.coverImageAltSuffix]: " cover image",
 
 	// ===== 留言板 =====

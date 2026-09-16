@@ -439,6 +439,7 @@ export const ru: Translation = {
 	[Key.sponsorChooseMethod]: "Выберите способ оплаты",
 	[Key.sponsorNotAvailable]: "Пока недоступно",
 	[Key.postAiSummaryLabel]: "AI-сводка",
+	[Key.postCoverLabel]: "Обложка",
 	[Key.coverImageAltSuffix]: " — обложка",
 
 	// ===== 留言板 =====

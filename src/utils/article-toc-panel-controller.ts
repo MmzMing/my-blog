@@ -121,6 +121,8 @@ export class ArticleTocPanelController {
 	private railBaseTop = 0;
 	private railHeight = 0;
 	private appliedRailTop: number | null = null;
+	/** 顶部跟随锚点（过期提示/AI 摘要/封面图信息卡）：初始与卡顶对齐，不存在则恒停靠 */
+	private introAnchor: HTMLElement | null = null;
 
 	constructor(root: HTMLElement) {
 		this.root = root;
@@ -159,11 +161,17 @@ export class ArticleTocPanelController {
 		this.root.hidden = false;
 		const rootTop = Number.parseFloat(getComputedStyle(this.root).top);
 		this.railBaseTop = Number.isNaN(rootTop) ? 0 : rootTop;
+		// 信息卡缺省（无摘要/过期/封面）时为 null，syncDock 退化为恒停靠在 railBaseTop
+		this.introAnchor = document.querySelector(".post-intro-card");
 		this.cachePositions();
 		this.renderRows();
 		this.bindInteractions();
 		this.resizeObserver = new ResizeObserver(() => this.scheduleMeasure());
 		this.resizeObserver.observe(this.article);
+		// 字体换字、封面图折叠等会推移信息卡顶，一并监听以重算停靠位置与标题坐标
+		const hero = document.querySelector(".post-hero");
+		if (hero) this.resizeObserver.observe(hero);
+		if (this.introAnchor) this.resizeObserver.observe(this.introAnchor);
 		window.addEventListener("scroll", () => this.scheduleUpdate(), {
 			passive: true,
 			signal: this.abortController.signal,
@@ -646,7 +654,19 @@ export class ArticleTocPanelController {
 			anchorBottom - this.railHeight - RAIL_BOTTOM_GAP - this.railBaseTop;
 		/* 面板底边不许越过正文卡底：正常时停在 CSS 的 top，越过后随文档滚走 */
 		const maxTop = limit + this.railBaseTop - window.scrollY;
-		const nextTop = Math.min(this.railBaseTop, maxTop);
+
+		/* 顶部跟随：页面在顶时面板顶与信息卡顶对齐；信息卡随页面上移越过停靠线
+		   （CSS 的 8rem，即原本与标题对齐的位置）后，钳制在停靠线悬停跟随。
+		   每帧实时取视口坐标，字体加载/折叠卡片导致的位移无需额外缓存。
+		   fitTop 防止矮视口下初始位置把面板底边撑出屏幕。 */
+		let followTop = this.railBaseTop;
+		const introTop = this.introAnchor?.getBoundingClientRect().top;
+		if (introTop !== undefined) {
+			const fitTop = window.innerHeight - this.railHeight - RAIL_BOTTOM_GAP;
+			followTop = Math.min(Math.max(this.railBaseTop, introTop), fitTop);
+		}
+
+		const nextTop = Math.min(followTop, maxTop);
 		if (nextTop === this.appliedRailTop) return;
 
 		this.appliedRailTop = nextTop;

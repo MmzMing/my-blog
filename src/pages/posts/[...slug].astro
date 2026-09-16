@@ -406,9 +406,9 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
     </div>
   </div>
 
-  <!-- Layer 2: AI 摘要 -->
+  <!-- Layer 2: 过期提示 / AI 摘要 / 封面图 -->
   {
-    (entry.data.description || siteConfig.showLastModified) && (() => {
+    (entry.data.description || siteConfig.showLastModified || (showPostCover && postCover)) && (() => {
       const lastModified = dayjs(entry.data.updated || entry.data.published);
       const dateStr = lastModified.format("YYYY-MM-DD");
       const outdatedThreshold = siteConfig.outdatedThreshold ?? 1;
@@ -461,24 +461,46 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
               </details>
             </>
           )}
+          {showPostCover && postCover && (
+            <>
+              {(siteConfig.showLastModified || entry.data.description) && (
+                <div class="post-intro-card__divider" />
+              )}
+              <details class="post-intro-card__details" open>
+                <summary class="post-intro-card__summary">
+                  <span class="post-intro-card__summary-title">
+                    <Icon
+                      name="material-symbols:image-outline-rounded"
+                      class="post-intro-card__summary-icon"
+                      aria-hidden="true"
+                    />
+                    <span>{i18n(I18nKey.postCoverLabel)}</span>
+                  </span>
+                  <Icon
+                    name="material-symbols:keyboard-arrow-down-rounded"
+                    class="post-intro-card__summary-arrow"
+                    aria-hidden="true"
+                  />
+                </summary>
+                <div class="post-intro-card__section post-intro-card__section--cover">
+                  <div id="post-cover" class="post-intro-card__cover" style={postCover.lqipStyle}>
+                    <CoverImage
+                      cover={postCover}
+                      alt={`${entry.data.title} - ${i18n(I18nKey.coverImageAltSuffix)}`}
+                      loading="eager"
+                      fetchpriority="high"
+                      apiUrls={coverApiUrls}
+                      fallbackSrc={coverFallbackUrl || undefined}
+                    />
+                  </div>
+                </div>
+              </details>
+            </>
+          )}
         </div>
       );
     })()
   }
-
-  {/* Layer 3: Cover image */}
-  {showPostCover && postCover && (
-    <div id="post-cover" class="post-cover mb-2" style={postCover.lqipStyle}>
-      <CoverImage
-        cover={postCover}
-        alt={`${entry.data.title} - ${i18n(I18nKey.coverImageAltSuffix)}`}
-        loading="eager"
-        fetchpriority="high"
-        apiUrls={coverApiUrls}
-        fallbackSrc={coverFallbackUrl || undefined}
-      />
-    </div>
-  )}
 
   <div class="flex w-full rounded-(--radius-large) overflow-hidden relative mb-2">
     <div id="post-container" class="card-base z-10 px-3 pb-4 pt-0 relative w-full">

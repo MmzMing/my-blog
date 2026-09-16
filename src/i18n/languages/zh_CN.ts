@@ -430,6 +430,7 @@ export const zh_CN: Translation = {
 	[Key.sponsorChooseMethod]: "选择你喜欢的支付方式",
 	[Key.sponsorNotAvailable]: "暂不开通",
 	[Key.postAiSummaryLabel]: "AI 摘要",
+	[Key.postCoverLabel]: "封面图",
 	[Key.coverImageAltSuffix]: "封面图",
 	// ===== 留言板 =====
 	[Key.sending]: "发送中",

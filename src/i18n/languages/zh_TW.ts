@@ -432,6 +432,7 @@ export const zh_TW: Translation = {
 	[Key.sponsorChooseMethod]: "選擇你喜歡的支付方式",
 	[Key.sponsorNotAvailable]: "暫不開通",
 	[Key.postAiSummaryLabel]: "AI 摘要",
+	[Key.postCoverLabel]: "封面圖",
 	[Key.coverImageAltSuffix]: "封面圖",
 
 	// ===== 留言板 =====

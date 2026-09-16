@@ -20,7 +20,7 @@
 	margin-inline: calc(
 		(var(--post-hero-inline-pad, 1.25rem) - var(--post-nav-edge-gap)) * -1
 	);
-	margin-bottom: 1rem;
+	margin-bottom: 1.75rem;
 	/* post-hero__content 是居中布局，这一行要自己拉回左对齐 */
 	text-align: start;
 }
@@ -198,7 +198,7 @@
 
 @media (max-width: 768px) {
 	.post-nav {
-		margin-bottom: 0.75rem;
+		margin-bottom: 1.25rem;
 	}
 
 	/* 窄屏给分类名留够省略空间，别把返回键挤没 */
