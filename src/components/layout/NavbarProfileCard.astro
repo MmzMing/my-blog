@@ -133,18 +133,18 @@ const profileConfig = JSON.stringify({
 					);
 				})}
 
+				<!-- 唯一入口：点击后右栏切换为站点列表（跳转由右栏 CTA 承担） -->
 				{navBarConfig.personalSites.length > 0 && (
-					<div class="profile-card__sites" data-profile-sites role="group" aria-label={i18n(I18nKey.profilePersonalSites)}>
-						{navBarConfig.personalSites.map((_, index) => (
-							<button
-								type="button"
-								class="profile-card__site-btn"
-								data-profile-site-trigger={String(index)}
-								aria-pressed="false"
-							>
-								<span>{i18n(I18nKey.otherSites)}</span>
-							</button>
-						))}
+					<div class="profile-card__sites">
+						<button
+							type="button"
+							class="profile-card__site-btn"
+							data-profile-site-trigger
+							aria-pressed="false"
+							aria-expanded="false"
+						>
+							<span>{i18n(I18nKey.otherSites)}</span>
+						</button>
 					</div>
 				)}
 			</div>
@@ -171,7 +171,7 @@ const profileConfig = JSON.stringify({
 			</div>
 		</div>
 
-		<!-- 右栏：default / site / posts 三态，控制器切换 -->
+		<!-- 右栏：default / site / posts 三态，控制器切换；site 态展示完整站点列表 -->
 		<div class="profile-card__right">
 			<div class="profile-card__pane" data-profile-pane="default">
 				<div class="profile-card__countdowns">
@@ -231,14 +231,12 @@ const profileConfig = JSON.stringify({
 			</div>
 
 			<div class="profile-card__pane" data-profile-pane="site" hidden>
-				{navBarConfig.personalSites.map((site, index) => (
+				{navBarConfig.personalSites.map((site) => (
 					<a
 						class="profile-card__site-cta"
 						href={site.url}
 						target="_blank"
 						rel="noopener noreferrer"
-						data-profile-site-cta={String(index)}
-						hidden
 					>
 						<Icon name={site.icon} is:inline class="profile-card__site-cta-icon" />
 						<span class="profile-card__site-cta-name">{site.name}</span>

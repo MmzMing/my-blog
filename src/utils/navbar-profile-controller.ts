@@ -12,7 +12,7 @@
  * 面板同一策略——滚动即收起。
  *
  * 右栏三态：default（周/月/年底倒计时 + 最近节日进度 + 建站日进度）、
- * site（hover 个人网站时的大按钮预览，移出即还原进入前状态）、
+ * site（点击「其他站点」入口后的站点列表，再次点击或关闭面板还原）、
  * posts（点击热力图方块后的该周文章列表）。面板关闭或 Swup 导航后强制回
  * default 并清空选中态；数据缓存跨导航保留，仅首次展开时请求。
  */
@@ -71,8 +71,7 @@ interface ProfileRefs {
 	leftSeg: HTMLElement | null;
 	heatmap: HTMLElement | null;
 	cells: Map<string, HTMLButtonElement>;
-	siteTriggers: HTMLElement[];
-	siteCtas: Map<string, HTMLElement>;
+	siteTrigger: HTMLElement | null;
 	panes: { default: HTMLElement; site: HTMLElement; posts: HTMLElement };
 	days: { week: HTMLElement; month: HTMLElement; year: HTMLElement };
 	events: {
@@ -110,9 +109,10 @@ let dataPromise: Promise<void> | null = null;
 let postsByCell = new Map<string, PostMeta[]>();
 
 let selectedCellKey: string | null = null;
-let hoveredCtaKey: string | null = null;
-/** 点击钉住的站点按钮：hover 是临时预览，点击后移出鼠标仍保持该站展示 */
-let pinnedSiteKey: string | null = null;
+/** 点击「其他站点」钉住：右栏保持站点列表，直到再次点击 / 关面板 / 选中周 */
+let siteListPinned = false;
+/** 桌面端键盘 focus 预览：Tab 到入口按钮时右栏临时展示站点列表 */
+let siteListPreview = false;
 let closeTimer: number | null = null;
 let openedAsMobile = false;
 let previousBodyOverflow = "";
@@ -146,13 +146,6 @@ function collectRefs(
 		.forEach((cell) => {
 			const key = cell.dataset.profileCell;
 			if (key !== undefined) cells.set(key, cell);
-		});
-	const siteCtas = new Map<string, HTMLElement>();
-	panel
-		.querySelectorAll<HTMLElement>("[data-profile-site-cta]")
-		.forEach((cta) => {
-			const key = cta.dataset.profileSiteCta;
-			if (key !== undefined) siteCtas.set(key, cta);
 		});
 	const daysWeek = card.querySelector<HTMLElement>(
 		"[data-profile-days='week']",
@@ -192,10 +185,7 @@ function collectRefs(
 		leftSeg: document.querySelector("#navbar .navbar-seg--left"),
 		heatmap: card.querySelector("[data-profile-heatmap]"),
 		cells,
-		siteTriggers: Array.from(
-			card.querySelectorAll<HTMLElement>("[data-profile-site-trigger]"),
-		),
-		siteCtas,
+		siteTrigger: card.querySelector<HTMLElement>("[data-profile-site-trigger]"),
 		panes: { default: defaultPane, site: sitePane, posts: postsPane },
 		days: { week: daysWeek, month: daysMonth, year: daysYear },
 		events: {
@@ -532,50 +522,37 @@ function setState(next: RightState): void {
 	refs.panes.default.hidden = next !== "default";
 	refs.panes.site.hidden = next !== "site";
 	refs.panes.posts.hidden = next !== "posts";
-	for (const [key, cta] of refs.siteCtas) {
-		const visible = next === "site" && key === hoveredCtaKey;
-		cta.hidden = !visible;
-	}
 }
 
-/** hover 个人网站：右侧切换成该站大按钮；移出时还原（有钉住则回钉住站） */
-function hoverSite(key: string | null): void {
-	if (!key || !refs?.siteCtas.has(key)) return;
-	hoveredCtaKey = key;
-	setState("site");
+/** 站点列表是否应展示（点击钉住或桌面端键盘 focus 预览） */
+function isSiteListActive(): boolean {
+	return siteListPinned || siteListPreview;
 }
 
-function hoverSiteEnd(): void {
-	if (pinnedSiteKey) {
-		hoveredCtaKey = pinnedSiteKey;
+/** 入口按钮的 pressed/expanded 状态跟随右栏站点态 */
+function syncSiteTriggerState(): void {
+	if (!refs?.siteTrigger) return;
+	const pressed = String(isSiteListActive());
+	refs.siteTrigger.setAttribute("aria-pressed", pressed);
+	refs.siteTrigger.setAttribute("aria-expanded", pressed);
+}
+
+/** 归位右栏：站点态激活则展示列表，否则回选中周或默认面板 */
+function reconcileRightPane(): void {
+	if (isSiteListActive()) {
 		setState("site");
 		return;
 	}
-	hoveredCtaKey = null;
 	setState(selectedCellKey ? "posts" : "default");
 }
 
-/** 点击站点按钮：只切换右侧展示（钉住/取消钉住），跳转由右侧 CTA 承担 */
-function clickSite(key: string | null): void {
-	if (!key || !refs?.siteCtas.has(key)) return;
-	if (pinnedSiteKey === key) {
-		pinnedSiteKey = null;
-		hoveredCtaKey = null;
-		setState(selectedCellKey ? "posts" : "default");
-	} else {
-		pinnedSiteKey = key;
-		hoveredCtaKey = key;
-		setState("site");
-	}
-	syncSiteTriggerStates();
-}
-
-function syncSiteTriggerStates(): void {
-	if (!refs) return;
-	for (const trigger of refs.siteTriggers) {
-		const key = trigger.dataset.profileSiteTrigger;
-		trigger.setAttribute("aria-pressed", String(key === pinnedSiteKey));
-	}
+/** 点击「其他站点」唯一入口：钉住/取消右栏站点列表，跳转由列表内 CTA 承担 */
+function clickSiteEntry(): void {
+	siteListPinned = !siteListPinned;
+	// 取消钉住时连 focus 预览一并清掉：焦点仍留在按钮上也不回列表态
+	if (!siteListPinned) siteListPreview = false;
+	syncSiteTriggerState();
+	reconcileRightPane();
 }
 
 function clearSelection(): void {
@@ -593,9 +570,10 @@ function selectCell(key: string): void {
 	if (!refs || !config) return;
 	const posts = postsByCell.get(key);
 	clearSelection();
-	// 选周展示后站点钉住失效
-	pinnedSiteKey = null;
-	syncSiteTriggerStates();
+	// 选周展示后站点列表态失效
+	siteListPinned = false;
+	siteListPreview = false;
+	syncSiteTriggerState();
 	// 空周不进文章态，右侧直接回默认
 	if (!posts || posts.length === 0) {
 		setState("default");
@@ -686,11 +664,11 @@ function closePanel(): void {
 	cancelCounterFrames();
 	if (openedAsMobile) document.body.style.overflow = previousBodyOverflow;
 	openedAsMobile = false;
-	// 关闭即复位右栏、热力图选中态与站点钉住（数据缓存保留）
+	// 关闭即复位右栏、热力图选中态与站点列表态（数据缓存保留）
 	clearSelection();
-	pinnedSiteKey = null;
-	hoveredCtaKey = null;
-	syncSiteTriggerStates();
+	siteListPinned = false;
+	siteListPreview = false;
+	syncSiteTriggerState();
 	setState("default");
 }
 
@@ -708,7 +686,7 @@ function focusLogo(): void {
 
 function bindEvents(): void {
 	if (!refs) return;
-	const { panel, card, mask, leftSeg, heatmap, siteTriggers } = refs;
+	const { panel, card, mask, leftSeg, heatmap, siteTrigger } = refs;
 
 	// 移动端：点击 logo 开合面板。必须阻断冒泡——Swup 的文档级点击委托会把
 	// logo 当内部链接拦截导航，preventDefault 挡不住它；桌面端保持回主页
@@ -792,24 +770,27 @@ function bindEvents(): void {
 		if (focusInCard) focusLogo();
 	});
 
-	// 个人网站文字按钮：无悬停预览，点击选中/取消（右侧展示对应站点，跳转由 CTA 承担）；
-	// 键盘 focus 预览保留，Tab 移开后还原
-	for (const trigger of siteTriggers) {
-		const key = trigger.dataset.profileSiteTrigger ?? null;
-		// 移动端不挂 focus 预览：触屏 focusin 在 mousedown 时同步触发，右栏
-		// 当场换面板、卡片高度跳变，触发键从指下滑走，mouseup 落到遮罩上，
-		// click 被浏览器判定无效 → 站点钉不住，点 CTA 又被失焦还原成日期面板。
-		// 移动端只靠 click 切换，按下期间布局不动，click 必然落地
-		trigger.addEventListener("focusin", () => {
+	// 「其他站点」唯一入口：无悬停预览，点击钉住/取消右栏站点列表（跳转由
+	// 列表内 CTA 承担）；键盘 focus 预览保留，Tab 移开后还原。
+	// 移动端不挂 focus 预览：触屏 focusin 在 mousedown 时同步触发，右栏
+	// 当场换面板、卡片高度跳变，触发键从指下滑走，mouseup 落到遮罩上，
+	// click 被浏览器判定无效 → 站点列表钉不住，点 CTA 又被失焦还原成日期面板。
+	// 移动端只靠 click 切换，按下期间布局不动，click 必然落地
+	if (siteTrigger) {
+		siteTrigger.addEventListener("focusin", () => {
 			if (isMobileViewport()) return;
-			hoverSite(key);
+			siteListPreview = true;
+			syncSiteTriggerState();
+			reconcileRightPane();
 		});
-		trigger.addEventListener("focusout", (event) => {
+		siteTrigger.addEventListener("focusout", (event) => {
 			const next = event.relatedTarget;
-			if (next instanceof Node && trigger.contains(next)) return;
-			hoverSiteEnd();
+			if (next instanceof Node && siteTrigger.contains(next)) return;
+			siteListPreview = false;
+			syncSiteTriggerState();
+			reconcileRightPane();
 		});
-		trigger.addEventListener("click", () => clickSite(key));
+		siteTrigger.addEventListener("click", () => clickSiteEntry());
 	}
 
 	// 热力图点击：有文章进文章态，空周回默认，再点已选中方块取消

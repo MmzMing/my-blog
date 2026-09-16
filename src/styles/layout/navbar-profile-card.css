@@ -107,7 +107,8 @@
 	color: var(--primary);
 }
 
-/* 站点名以纯文字并列，点击选中后在右侧展示对应站点（无悬停预览） */
+/* 「其他站点」唯一入口按钮，与社交图标同行、靠左栏右侧；
+   点击后右栏切换为完整站点列表（无悬停预览） */
 .profile-card__sites {
 	display: flex;
 	flex-wrap: wrap;
@@ -365,24 +366,27 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* site 态：个人网站大按钮（无边框，构建期按列表渲染，控制器切换显隐） */
+/* site 态：站点列表（尺寸与 posts 态文章列表统一，构建期一次渲染，控制器只切面板显隐） */
+.profile-card__pane[data-profile-pane='site'] {
+	gap: 0.15rem;
+}
+
 .profile-card__site-cta {
 	display: flex;
 	align-items: center;
-	gap: 0.7rem;
-	padding: 0.85rem 1rem;
+	gap: 0.5rem;
+	padding: 0.4rem 0.5rem;
 	color: inherit;
 	text-decoration: none;
-	border-radius: 0.75rem;
-	background: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	border-radius: 0.45rem;
 	transition:
 		background-color 0.15s ease,
 		color 0.15s ease;
 }
 
 .profile-card__site-cta:hover {
-	background: var(--deep-text);
-	color: var(--page-bg);
+	background: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	color: var(--primary);
 }
 
 .profile-card__site-cta[hidden] {
@@ -390,17 +394,17 @@
 }
 
 .profile-card__site-cta-icon {
-	font-size: 1.35rem;
+	font-size: 0.95rem;
 }
 
 .profile-card__site-cta-name {
 	flex: 1;
-	font-size: 0.95rem;
-	font-weight: 700;
+	font-size: 0.78rem;
+	font-weight: 500;
 }
 
 .profile-card__site-cta-arrow {
-	font-size: 0.8rem;
+	font-size: 0.7rem;
 	opacity: 0.6;
 }
 
