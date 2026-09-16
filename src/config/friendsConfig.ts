@@ -528,6 +528,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "GTX690战术核显卡导弹的猫窝",
+		imgurl: "https://logo.nekopara.uk/logo.jpg",
+		desc: "全网独家猫娘乐园主题 × 硬核技术折腾日常",
+		siteurl: "https://www.nekopara.uk/",
+		image: "/assets/images/friends/nekopara.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
