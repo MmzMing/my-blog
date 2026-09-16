@@ -17,6 +17,16 @@ const personalSites: PersonalSite[] = [
 		url: "https://www.mmzhiku.xyz/",
 		icon: "material-symbols:link",
 	},
+	{
+		name: "记事本",
+		url: "https://memos.mmzhiku.xyz/",
+		icon: "material-symbols:link",
+	},
+	{
+		name: "站点统计",
+		url: "https://stats.mmzhiku.xyz/share/HZrqqAfVdx1UEVNm",
+		icon: "material-symbols:link",
+	},
 ];
 
 /**
