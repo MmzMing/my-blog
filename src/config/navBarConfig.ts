@@ -18,13 +18,18 @@ const personalSites: PersonalSite[] = [
 		icon: "material-symbols:link",
 	},
 	{
-		name: "记事本",
+		name: "memos记事本",
 		url: "https://memos.mmzhiku.xyz/",
 		icon: "material-symbols:link",
 	},
 	{
 		name: "站点统计",
 		url: "https://stats.mmzhiku.xyz/share/HZrqqAfVdx1UEVNm",
+		icon: "material-symbols:link",
+	},
+	{
+		name: "工具盒子",
+		url: "https://tool.mmzhiku.xyz/",
 		icon: "material-symbols:link",
 	},
 ];
