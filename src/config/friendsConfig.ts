@@ -539,6 +539,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "lijie blog",
+		imgurl: "https://lijie.cool/image/avatar.jpg",
+		desc: "懒于当下，勤于长远",
+		siteurl: "https://lijie.cool",
+		image: "/assets/images/friends/lijie.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
