@@ -549,6 +549,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "Moyor的炼药小锅",
+		imgurl: "https://moyor.cc/images/logo.svg",
+		desc: "把代码、美术与创意熬成游戏的炼药锅。",
+		siteurl: "https://moyor.cc/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
