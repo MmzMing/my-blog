@@ -554,6 +554,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://moyor.cc/images/logo.svg",
 		desc: "把代码、美术与创意熬成游戏的炼药锅。",
 		siteurl: "https://moyor.cc/",
+		image: "/assets/images/friends/moyor.webp",
 		tags: ["Blog"],
 		weight: 5,
 		enabled: true,
