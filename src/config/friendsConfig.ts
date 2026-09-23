@@ -559,6 +559,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "冷汐的杂货铺",
+		imgurl:
+			"https://weavatar.com/avatar/52f243e67ccc2293d68c6f33db3f4083?s=640",
+		desc: "你好谢谢小笼包再见！",
+		siteurl: "https://lengxiqwq.com/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
