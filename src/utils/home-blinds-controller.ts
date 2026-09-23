@@ -409,10 +409,7 @@ function setupScenes(context: SetupContext) {
 		// 尺寸量的是舞台内容盒：window.innerWidth 含纵向滚动条，会算出偏宽的 cover。
 		gsap.set(portalImage, { xPercent: -50, yPercent: -50 });
 		if (portalImage.naturalWidth > 0 && portalImage.naturalHeight > 0) {
-			const viewportCover = coverScale(
-				stage.clientWidth,
-				stage.clientHeight,
-			);
+			const viewportCover = coverScale(stage.clientWidth, stage.clientHeight);
 			const frameCover = coverScale(cachedSceneWidth, cachedSceneHeight);
 			cachedPortalScale = frameCover / viewportCover;
 			gsap.set(portalImage, {
