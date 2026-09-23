@@ -1,5 +1,6 @@
 <script lang="ts">
 import {
+	ArrowUp,
 	ImagePlus,
 	LoaderCircle,
 	Reply,
@@ -7,6 +8,7 @@ import {
 	TriangleAlert,
 	X,
 } from "lucide-svelte";
+import type { Snippet } from "svelte";
 import { tick } from "svelte";
 import { commentConfig } from "@/config/commentConfig";
 import I18nKey from "@/i18n/i18nKey";
@@ -45,6 +47,7 @@ interface Props {
 		attachment?: GuestbookImageAttachment,
 	) => Promise<boolean>;
 	onToolError: (message: string) => void;
+	children?: Snippet;
 }
 
 let {
@@ -64,6 +67,7 @@ let {
 	onLogout,
 	onSend,
 	onToolError,
+	children,
 }: Props = $props();
 
 const MAX_DRAFT_LENGTH = 300;
@@ -109,13 +113,13 @@ const inputDisabled = $derived(
 const authName = $derived(authUser?.display_name || i18n(I18nKey.gbVisitor));
 const activeEmojiPack = $derived(emojiPacks[activeEmojiPackIndex] ?? null);
 const hasGuestProfile = $derived(profile.nick.trim().length >= 2);
-
-function formatMobileIdentityName(value: string): string {
-	const characters = Array.from(value.trim());
-	return characters.length > 4
-		? `${characters.slice(0, 4).join("")}...`
-		: characters.join("");
-}
+const identityLabel = $derived(
+	authUser
+		? authName
+		: hasGuestProfile
+			? profile.nick
+			: i18n(I18nKey.gbNotLoggedIn),
+);
 
 async function openGuestProfile() {
 	profileDraft = { ...profile };
@@ -130,6 +134,16 @@ function closeGuestProfile() {
 	if (profileDialog?.open) profileDialog.close();
 	profileDialogError = "";
 	document.body.style.overflow = "";
+}
+
+function handleDialogLogin() {
+	closeGuestProfile();
+	onLogin();
+}
+
+function handleDialogLogout() {
+	closeGuestProfile();
+	onLogout();
 }
 
 function validateGuestProfile(nextProfile: GuestbookProfile): string {
@@ -499,6 +513,12 @@ async function handleImageSelection(event: Event) {
 			</div>
 		{/if}
 
+		<span class="guestbook-composer__count">
+			{i18n(I18nKey.gbCharCount)
+				.replace("{count}", String(draft.length))
+				.replace("{max}", String(MAX_DRAFT_LENGTH))}
+		</span>
+
 		<div class="guestbook-composer__footer">
 			<div class="guestbook-composer__tools">
 				<button
@@ -536,113 +556,23 @@ async function handleImageSelection(event: Event) {
 					tabindex="-1"
 					aria-hidden="true"
 				/>
+				{@render children?.()}
 			</div>
 
 			<div class="guestbook-composer__actions">
-				<span class="guestbook-composer__count">
-					{i18n(I18nKey.gbCharCount)
-						.replace("{count}", String(draft.length))
-						.replace("{max}", String(MAX_DRAFT_LENGTH))}
-				</span>
-				{#if authUser}
-					<span
-						class:is-admin={authUser.type === "administrator"}
-						class="guestbook-composer__identity-summary"
-						tabindex="0"
-						aria-label={i18n(I18nKey.gbCurrentUserAria).replace(
-							"{name}",
-							authName,
-						)}
-					>
-						<span
-							class="guestbook-composer__identity-label guestbook-composer__identity-label--desktop"
-						>
-							{authUser.type === "administrator"
-								? i18n(I18nKey.gbAdminRole)
-								: i18n(I18nKey.gbLoggedIn)} · {authName}
+				<button
+					class="guestbook-composer__identity"
+					type="button"
+					onclick={() => void openGuestProfile()}
+					title={i18n(I18nKey.gbGuestProfile)}
+				>
+					{#if authUser?.type === "administrator"}
+						<span class="guestbook-composer__identity-role">
+							{i18n(I18nKey.gbAdminRole)}
 						</span>
-						<span
-							class="guestbook-composer__identity-label guestbook-composer__identity-label--mobile"
-						>
-							{authUser.type === "administrator"
-								? i18n(I18nKey.gbAdminRole)
-								: formatMobileIdentityName(authName)}
-						</span>
-						<span class="guestbook-composer__identity-tooltip" role="tooltip">
-							<span>{i18n(I18nKey.gbCurrentUser).replace("{name}", authName)}</span>
-						</span>
-					</span>
-				{:else if loginMode !== "force"}
-					<span
-						class="guestbook-composer__identity-summary"
-						tabindex="0"
-						aria-label={hasGuestProfile
-							? i18n(I18nKey.gbGuestProfileAriaFilled)
-									.replace("{nick}", profile.nick)
-									.replace(
-										"{mail}",
-										profile.mail || i18n(I18nKey.gbNotFilled),
-									)
-									.replace(
-										"{link}",
-										profile.link || i18n(I18nKey.gbNotFilled),
-									)
-							: i18n(I18nKey.gbGuestProfileAriaEmpty)}
-					>
-						<span
-							class="guestbook-composer__identity-label guestbook-composer__identity-label--desktop"
-						>
-							{hasGuestProfile ? profile.nick : i18n(I18nKey.none)}
-						</span>
-						<span
-							class="guestbook-composer__identity-label guestbook-composer__identity-label--mobile"
-						>
-							{hasGuestProfile
-								? formatMobileIdentityName(profile.nick)
-								: i18n(I18nKey.none)}
-						</span>
-						<span class="guestbook-composer__identity-tooltip" role="tooltip">
-							{#if hasGuestProfile}
-								<span>{i18n(I18nKey.gbNicknameTooltip).replace("{value}", profile.nick)}</span>
-								<span>{i18n(I18nKey.gbEmailTooltip).replace("{value}", profile.mail || i18n(I18nKey.gbNotFilled))}</span>
-								<span>{i18n(I18nKey.gbLinkTooltip).replace("{value}", profile.link || i18n(I18nKey.gbNotFilled))}</span>
-							{:else}
-								<span>{i18n(I18nKey.gbGuestProfileNotFilled)}</span>
-							{/if}
-						</span>
-					</span>
-					<button
-						class="guestbook-composer__guest-profile"
-						type="button"
-						onclick={() => void openGuestProfile()}
-						title={hasGuestProfile
-							? i18n(I18nKey.gbEditGuestProfile)
-							: i18n(I18nKey.gbFillGuestProfile)}
-					>
-						{i18n(I18nKey.gbGuestAccess)}
-					</button>
-				{/if}
-				{#if loginMode !== "disable"}
-					{#if authUser}
-						<button
-							class="guestbook-composer__login guestbook-composer__login--logout"
-							type="button"
-							onclick={onLogout}
-							title={i18n(I18nKey.gbLogoutWalineTitle)}
-						>
-							{i18n(I18nKey.logout)}
-						</button>
-					{:else}
-						<button
-							class="guestbook-composer__login"
-							type="button"
-							onclick={onLogin}
-							disabled={loggingIn}
-						>
-							{loggingIn ? i18n(I18nKey.gbLoggingIn) : i18n(I18nKey.login)}
-						</button>
 					{/if}
-				{/if}
+					<span class="guestbook-composer__identity-name">{identityLabel}</span>
+				</button>
 
 				<button
 					class="guestbook-composer__send"
@@ -650,8 +580,14 @@ async function handleImageSelection(event: Event) {
 					onclick={() => void submitMessage()}
 					disabled={inputDisabled || isSending || isUploadingImage}
 					aria-busy={isSending}
+					aria-label={i18n(I18nKey.send)}
+					title={i18n(I18nKey.send)}
 				>
-					{isSending ? i18n(I18nKey.sending) : i18n(I18nKey.send)}
+					{#if isSending}
+						<LoaderCircle class="is-spinning" size={18} aria-hidden="true" />
+					{:else}
+						<ArrowUp size={18} aria-hidden="true" />
+					{/if}
 				</button>
 			</div>
 		</div>
@@ -757,46 +693,98 @@ async function handleImageSelection(event: Event) {
 			</button>
 		</div>
 		<div class="privacy-body guestbook-profile-modal__body">
-			<label>
-				<span>{i18n(I18nKey.gbNickname)}</span>
-				<input
-					bind:this={profileNickInput}
-					bind:value={profileDraft.nick}
-					maxlength="30"
-					autocomplete="nickname"
-					placeholder={i18n(I18nKey.gbNicknamePlaceholder)}
-					required
-				/>
-			</label>
-			<label>
-				<span>{i18n(I18nKey.gbEmail)}</span>
-				<input
-					bind:value={profileDraft.mail}
-					maxlength="100"
-					type="email"
-					autocomplete="email"
-					placeholder={i18n(I18nKey.gbEmailPlaceholder)}
-				/>
-			</label>
-			<label>
-				<span>{i18n(I18nKey.gbLink)}</span>
-				<input
-					bind:value={profileDraft.link}
-					maxlength="200"
-					type="url"
-					autocomplete="url"
-					placeholder={i18n(I18nKey.gbOptional)}
-				/>
-			</label>
-			{#if profileDialogError}
-				<p class="guestbook-profile-modal__error" role="alert">
-					{profileDialogError}
+			{#if authUser}
+				<p class="guestbook-profile-modal__signed">
+					{authUser.type === "administrator"
+						? i18n(I18nKey.gbAdminRole)
+						: i18n(I18nKey.gbLoggedIn)}
+					· {authName}
 				</p>
+			{:else if loginMode !== "force"}
+				<label>
+					<span>{i18n(I18nKey.gbNickname)}</span>
+					<input
+						bind:this={profileNickInput}
+						bind:value={profileDraft.nick}
+						maxlength="30"
+						autocomplete="nickname"
+						placeholder={i18n(I18nKey.gbNicknamePlaceholder)}
+						required
+					/>
+				</label>
+				<label>
+					<span>{i18n(I18nKey.gbEmail)}</span>
+					<input
+						bind:value={profileDraft.mail}
+						maxlength="100"
+						type="email"
+						autocomplete="email"
+						placeholder={i18n(I18nKey.gbEmailPlaceholder)}
+					/>
+				</label>
+				<label>
+					<span>{i18n(I18nKey.gbLink)}</span>
+					<input
+						bind:value={profileDraft.link}
+						maxlength="200"
+						type="url"
+						autocomplete="url"
+						placeholder={i18n(I18nKey.gbOptional)}
+					/>
+				</label>
+				{#if profileDialogError}
+					<p class="guestbook-profile-modal__error" role="alert">
+						{profileDialogError}
+					</p>
+				{/if}
+				{#if loginMode === "enable"}
+					<div class="guestbook-profile-modal__login-entry">
+						<span class="guestbook-profile-modal__divider" aria-hidden="true">
+							{i18n(I18nKey.gbOr)}
+						</span>
+						<button
+							type="button"
+							onclick={handleDialogLogin}
+							disabled={loggingIn}
+						>
+							{loggingIn ? i18n(I18nKey.gbLoggingIn) : i18n(I18nKey.login)}
+						</button>
+					</div>
+				{/if}
 			{/if}
 		</div>
 		<div class="privacy-footer guestbook-profile-modal__actions">
-			<button type="button" onclick={closeGuestProfile}>{i18n(I18nKey.cancel)}</button>
-			<button class="privacy-confirm-btn" type="submit">{i18n(I18nKey.gbSaveProfile)}</button>
+			{#if authUser}
+				<button
+					class="guestbook-profile-modal__logout"
+					type="button"
+					onclick={handleDialogLogout}
+				>
+					{i18n(I18nKey.logout)}
+				</button>
+				<button class="privacy-confirm-btn" type="button" onclick={closeGuestProfile}>
+					{i18n(I18nKey.close)}
+				</button>
+			{:else if loginMode === "force"}
+				<button type="button" onclick={closeGuestProfile}>
+					{i18n(I18nKey.cancel)}
+				</button>
+				<button
+					class="privacy-confirm-btn"
+					type="button"
+					onclick={handleDialogLogin}
+					disabled={loggingIn}
+				>
+					{loggingIn ? i18n(I18nKey.gbLoggingIn) : i18n(I18nKey.login)}
+				</button>
+			{:else}
+				<button type="button" onclick={closeGuestProfile}>
+					{i18n(I18nKey.cancel)}
+				</button>
+				<button class="privacy-confirm-btn" type="submit">
+					{i18n(I18nKey.gbSaveProfile)}
+				</button>
+			{/if}
 		</div>
 	</form>
 </dialog>

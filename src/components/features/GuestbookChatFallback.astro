@@ -3,7 +3,6 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 
 const skeletonRows = Array.from({ length: 6 });
-const messageCountLabel = i18n(I18nKey.gbMessageCount).replace("{count}", "--");
 ---
 
 <section
@@ -11,22 +10,6 @@ const messageCountLabel = i18n(I18nKey.gbMessageCount).replace("{count}", "--");
 	aria-label={i18n(I18nKey.gbTitle)}
 	aria-busy="true"
 >
-	<header class="guestbook-chat__header">
-		<div class="guestbook-chat__channel">
-			<div>
-				<div class="guestbook-chat__title-row">
-					<h2>{i18n(I18nKey.gbTitle)}</h2>
-					<span>· {messageCountLabel}</span>
-					<div class="guestbook-chat__status">
-						<span></span>
-						{i18n(I18nKey.gbConnecting)}
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="guestbook-chat__fallback-action" aria-hidden="true"></div>
-	</header>
-
 	<div class="guestbook-chat__workspace">
 		<div class="guestbook-chat__conversation">
 			<div class="guestbook-chat__loading" aria-label={i18n(I18nKey.gbLoadingAria)}>
@@ -42,29 +25,22 @@ const messageCountLabel = i18n(I18nKey.gbMessageCount).replace("{count}", "--");
 				))}
 			</div>
 
-			<footer class="guestbook-chat__fallback-composer" aria-hidden="true">
-				<div class="guestbook-chat__fallback-editor">
-					<div class="guestbook-chat__fallback-resize-handle"></div>
-					<div class="guestbook-chat__fallback-textarea"></div>
-					<div class="guestbook-chat__fallback-toolbar">
-						<span class="guestbook-chat__fallback-tool"></span>
-						<div>
-							<span class="guestbook-chat__fallback-count"></span>
-							<span class="guestbook-chat__fallback-login"></span>
-							<span class="guestbook-chat__fallback-send"></span>
+			<div class="guestbook-chat__composer-area">
+				<footer class="guestbook-chat__fallback-composer" aria-hidden="true">
+					<div class="guestbook-chat__fallback-editor">
+						<div class="guestbook-chat__fallback-resize-handle"></div>
+						<div class="guestbook-chat__fallback-textarea"></div>
+						<div class="guestbook-chat__fallback-toolbar">
+							<span class="guestbook-chat__fallback-tool"></span>
+							<div>
+								<span class="guestbook-chat__fallback-count"></span>
+								<span class="guestbook-chat__fallback-login"></span>
+								<span class="guestbook-chat__fallback-send"></span>
+							</div>
 						</div>
 					</div>
-				</div>
-			</footer>
-		</div>
-
-		<aside class="guestbook-chat__sidebar guestbook-chat__fallback-sidebar" aria-hidden="true">
-			<div class="guestbook-chat__fallback-panel-title"></div>
-			<div class="guestbook-chat__fallback-member-list">
-				{skeletonRows.slice(0, 5).map(() => (
-					<div><span></span><i></i></div>
-				))}
+				</footer>
 			</div>
-		</aside>
+		</div>
 	</div>
 </section>

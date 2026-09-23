@@ -10,6 +10,7 @@ import {
 	AlertCircle,
 	Bell,
 	ChevronDown,
+	ChevronUp,
 	LoaderCircle,
 	RefreshCw,
 	RotateCcw,
@@ -47,8 +48,7 @@ import GuestbookChatComposer from "./GuestbookChatComposer.svelte";
 import GuestbookChatMessage from "./GuestbookChatMessage.svelte";
 
 const CHANNEL_PATH = "/guestbook/";
-const PAGE_SIZE = 30;
-const POLL_INTERVAL = 30_000;
+const PAGE_SIZE = 10;
 const MIN_MESSAGE_LENGTH = 2;
 const MAX_MESSAGE_LENGTH = 300;
 const PROFILE_STORAGE_KEY = "guestbook-chat-profile";
@@ -81,15 +81,17 @@ let messageList = $state<HTMLDivElement | null>(null);
 let announcementDialog = $state<HTMLDialogElement | null>(null);
 let deleteDialog = $state<HTMLDialogElement | null>(null);
 let selectedAnnouncement = $state<GuestbookAnnouncementItem | null>(null);
-let announcementBarVisible = $state(true);
+let noticeDialog = $state<HTMLDialogElement | null>(null);
+let memberPanel = $state<HTMLElement | null>(null);
+let memberToggle = $state<HTMLButtonElement | null>(null);
 let sidebarOpen = $state(false);
 let showScrollToBottom = $state(false);
+let olderAboveCount = $state(0);
 let editingMessageId = $state<string | null>(null);
 let editDraft = $state("");
 let mutatingMessageId = $state<string | null>(null);
 let messageActionError = $state<{ id: string; message: string } | null>(null);
 let deleteTarget = $state<GuestbookMessage | null>(null);
-let pollTimer: number | undefined;
 let dataController: AbortController | null = null;
 let syncQueued = false;
 let initialMediaCleanup: (() => void) | null = null;
@@ -126,12 +128,42 @@ function handleChatKeydown(event: KeyboardEvent) {
 	sidebarOpen = false;
 }
 
+function handlePopoverPointerdown(event: PointerEvent) {
+	const target = event.target;
+	if (!(target instanceof Node)) return;
+	if (
+		sidebarOpen &&
+		!memberPanel?.contains(target) &&
+		!memberToggle?.contains(target)
+	) {
+		sidebarOpen = false;
+	}
+}
+
 function canManageMessage(message: GuestbookMessage): boolean {
 	if (!authUser?.token || !message.objectId || message.localState) return false;
 	return (
 		authUser.type === "administrator" ||
 		(typeof message.userId === "number" && message.userId === authUser.objectId)
 	);
+}
+
+async function openNotice() {
+	await tick();
+	if (!noticeDialog?.open) noticeDialog?.showModal();
+	document.body.style.overflow = "hidden";
+}
+
+function closeNotice() {
+	if (noticeDialog?.open) noticeDialog.close();
+	document.body.style.overflow = "";
+}
+
+async function openAnnouncementFromNotice(
+	announcement: GuestbookAnnouncementItem,
+) {
+	closeNotice();
+	await openAnnouncement(announcement);
 }
 
 async function openAnnouncement(announcement: GuestbookAnnouncementItem) {
@@ -343,6 +375,8 @@ async function fetchPage(page: number, signal?: AbortSignal) {
 	});
 }
 
+let autoNoticeShown = false;
+
 async function loadInitial() {
 	if (isOffline) {
 		initialLoading = false;
@@ -373,6 +407,10 @@ async function loadInitial() {
 		await tick();
 		scrollToBottom(false);
 		preserveInitialBottomWhileMediaLoads();
+		if (!autoNoticeShown && announcements[0]) {
+			autoNoticeShown = true;
+			void openAnnouncement(announcements[0]);
+		}
 	} catch (error) {
 		if (controller.signal.aborted || dataController !== controller) return;
 		const authenticationExpired = handleAuthenticationError(error);
@@ -445,7 +483,8 @@ async function loadOlder() {
 	const controller = new AbortController();
 	dataController = controller;
 	loadingOlder = true;
-	const previousHeight = messageList.scrollHeight;
+	const anchorFromBottom =
+		document.documentElement.scrollHeight - window.scrollY;
 	const nextPage = currentPage + 1;
 
 	try {
@@ -459,7 +498,10 @@ async function loadOlder() {
 		totalPages = response.totalPages;
 		totalCount = response.count;
 		await tick();
-		messageList.scrollTop += messageList.scrollHeight - previousHeight;
+		window.scrollTo({
+			top: document.documentElement.scrollHeight - anchorFromBottom,
+			behavior: "instant",
+		});
 	} catch (error) {
 		if (controller.signal.aborted || dataController !== controller) return;
 		const authenticationExpired = handleAuthenticationError(error);
@@ -474,62 +516,69 @@ async function loadOlder() {
 	}
 }
 
-function startPolling() {
-	if (pollTimer) window.clearInterval(pollTimer);
-	pollTimer = undefined;
-	if (document.visibilityState !== "visible" || !navigator.onLine) return;
-	pollTimer = window.setInterval(() => {
-		if (document.visibilityState === "visible" && navigator.onLine) {
-			void syncLatest();
-		}
-	}, POLL_INTERVAL);
-}
-
 function handleVisibilityChange() {
-	if (document.visibilityState === "visible") {
-		queueLatestSync();
-		startPolling();
-		return;
+	// 兜底：首载在后台标签页失败/未完成时，恢复可见后补跑一次；后续刷新一律手动
+	if (document.visibilityState !== "visible") return;
+	if (!initialLoadQueued && !lastSyncedAt && !initialLoading) {
+		initialLoadQueued = true;
+		void loadInitial();
 	}
-	if (pollTimer) window.clearInterval(pollTimer);
-	pollTimer = undefined;
 }
 
 function handleOnline() {
 	isOffline = false;
-	queueLatestSync();
-	startPolling();
+	syncError = "";
 }
 
 function handleOffline() {
 	isOffline = true;
 	syncError = i18n(I18nKey.gbNetworkDisconnected);
-	if (pollTimer) window.clearInterval(pollTimer);
-	pollTimer = undefined;
 	dataController?.abort();
 }
 
 function isNearBottom(): boolean {
-	if (!messageList) return true;
-	return (
-		messageList.scrollHeight -
-			messageList.scrollTop -
-			messageList.clientHeight <
-		120
-	);
+	const doc = document.documentElement;
+	return doc.scrollHeight - window.scrollY - doc.clientHeight < 120;
 }
 
 function scrollToBottom(smooth = true) {
-	if (!messageList) return;
 	const reduceMotion = window.matchMedia(
 		"(prefers-reduced-motion: reduce)",
 	).matches;
-	messageList.scrollTo({
-		top: messageList.scrollHeight,
-		behavior: smooth && !reduceMotion ? "smooth" : "auto",
+	window.scrollTo({
+		top: document.documentElement.scrollHeight,
+		behavior: smooth && !reduceMotion ? "smooth" : "instant",
 	});
 	newMessageCount = 0;
 	showScrollToBottom = false;
+	updateAboveCount();
+}
+
+function scrollToTop() {
+	const reduceMotion = window.matchMedia(
+		"(prefers-reduced-motion: reduce)",
+	).matches;
+	window.scrollTo({ top: 0, behavior: reduceMotion ? "instant" : "smooth" });
+}
+
+async function expandOlder() {
+	if (hasMore && !loadingOlder) await loadOlder();
+	scrollToTop();
+}
+
+function updateAboveCount() {
+	if (!messageList) {
+		olderAboveCount = 0;
+		return;
+	}
+	let loadedAbove = 0;
+	for (const node of messageList.querySelectorAll<HTMLElement>(
+		".guestbook-message",
+	)) {
+		if (node.getBoundingClientRect().bottom < 80) loadedAbove += 1;
+	}
+	const unloaded = hasMore ? Math.max(0, totalCount - messages.length) : 0;
+	olderAboveCount = loadedAbove + unloaded;
 }
 
 function preserveInitialBottomWhileMediaLoads() {
@@ -583,12 +632,12 @@ function preserveInitialBottomWhileMediaLoads() {
 	initialMediaCleanup = cleanup;
 }
 
-function handleMessageScroll() {
-	if (!messageList) return;
-	if (messageList.scrollTop < 72 && hasMore) void loadOlder();
+function handleWindowScroll() {
+	if (window.scrollY < 72 && hasMore) void loadOlder();
 	const nearBottom = isNearBottom();
 	showScrollToBottom = !nearBottom;
 	if (nearBottom) newMessageCount = 0;
+	updateAboveCount();
 }
 
 function formatMessageTime(value: number): string {
@@ -599,22 +648,6 @@ function formatMessageTime(value: number): string {
 		minute: "2-digit",
 		hour12: false,
 	}).format(value);
-}
-
-function formatSyncStatus(): string {
-	if (isOffline) return i18n(I18nKey.gbSyncOffline);
-	if (syncing) return i18n(I18nKey.gbSyncSyncing);
-	if (syncError) return i18n(I18nKey.gbSyncFailed);
-	if (!lastSyncedAt) return i18n(I18nKey.gbSyncWaiting);
-	return i18n(I18nKey.gbSyncedAt).replace(
-		"{time}",
-		new Intl.DateTimeFormat("zh-CN", {
-			hour: "2-digit",
-			minute: "2-digit",
-			second: "2-digit",
-			hour12: false,
-		}).format(lastSyncedAt),
-	);
 }
 
 function dateKey(value: number): string {
@@ -973,11 +1006,8 @@ async function initializeGuestbook(returnedToken: string | null) {
 	if (isOffline) {
 		initialLoading = false;
 		initialError = i18n(I18nKey.gbOfflineInitial);
-	} else if (document.visibilityState === "visible") {
-		await loadInitial();
 	} else {
-		initialLoading = false;
-		initialError = i18n(I18nKey.gbHiddenUntilVisible);
+		await loadInitial();
 	}
 }
 
@@ -998,6 +1028,8 @@ function handleDraftChange(nextDraft: string) {
 	composerError = "";
 }
 
+let initialLoadQueued = false;
+
 onMount(() => {
 	const storedProfile = readStoredValue<unknown>(
 		localStorage,
@@ -1010,14 +1042,11 @@ onMount(() => {
 	isOffline = !navigator.onLine;
 	const returnedToken = new URL(window.location.href).searchParams.get("token");
 	void initializeGuestbook(returnedToken);
-	if (announcements[0]) void openAnnouncement(announcements[0]);
-	startPolling();
 	document.addEventListener("visibilitychange", handleVisibilityChange);
 	window.addEventListener("online", handleOnline);
 	window.addEventListener("offline", handleOffline);
 
 	return () => {
-		if (pollTimer) window.clearInterval(pollTimer);
 		dataController?.abort();
 		initialMediaCleanup?.();
 		if (announcementDialog?.open) announcementDialog.close();
@@ -1030,105 +1059,44 @@ onMount(() => {
 });
 </script>
 
-<svelte:window onkeydown={handleChatKeydown} />
+<svelte:window
+	onkeydown={handleChatKeydown}
+	onpointerdown={handlePopoverPointerdown}
+	onscroll={handleWindowScroll}
+	onresize={handleWindowScroll}
+/>
 
 <section class="guestbook-chat" aria-label={i18n(I18nKey.gbTitle)}>
-	<header class="guestbook-chat__header">
-		<div class="guestbook-chat__channel">
+	<div class="guestbook-chat__workspace">
+		{#if !initialLoading && !initialError && olderAboveCount > 0}
 			<button
-				class:is-syncing={syncing}
-				class="guestbook-chat__mobile-channel-refresh"
+				class="guestbook-chat__older-count"
 				type="button"
-				onclick={() => void syncLatest()}
-				disabled={syncing || initialLoading || isOffline}
-				aria-label={syncing
-					? i18n(I18nKey.gbRefreshingAria)
-					: i18n(I18nKey.gbRefreshAria)}
-				aria-busy={syncing}
+				onclick={() => void expandOlder()}
+				disabled={loadingOlder}
+				aria-label={i18n(I18nKey.gbOlderAbove).replace(
+					"{count}",
+					String(olderAboveCount),
+				)}
+				title={i18n(I18nKey.gbOlderAbove).replace(
+					"{count}",
+					String(olderAboveCount),
+				)}
 			>
-				<span>{i18n(I18nKey.gbTitle)}</span>
-				<span class:is-visible={syncing} class="guestbook-chat__mobile-refresh-icon">
-					<RefreshCw size={15} aria-hidden="true" />
+				{#if loadingOlder}
+					<LoaderCircle class="is-spinning" size={14} aria-hidden="true" />
+				{:else}
+					<ChevronUp size={14} aria-hidden="true" />
+				{/if}
+				<span>
+					{i18n(I18nKey.gbOlderAboveShort).replace(
+						"{count}",
+						String(olderAboveCount),
+					)}
 				</span>
 			</button>
-			<div class="guestbook-chat__desktop-channel-details">
-				<div class="guestbook-chat__title-row">
-					<h2>{i18n(I18nKey.gbTitle)}</h2>
-					<span>
-						· {i18n(I18nKey.gbMessageCount).replace(
-							"{count}",
-							initialLoading ? "--" : String(totalCount),
-						)}
-					</span>
-					<div class="guestbook-chat__sync">
-						<div
-							class:is-failed={Boolean(syncError)}
-							class="guestbook-chat__status"
-							aria-live="polite"
-						>
-							<span class:is-offline={isOffline}></span>
-							{formatSyncStatus()} {i18n(I18nKey.gbSyncIntervalSuffix)}
-						</div>
-						<button
-							class:is-syncing={syncing} class="guestbook-chat__refresh"
-							type="button"
-							onclick={() => void syncLatest()}
-							disabled={syncing || initialLoading || isOffline}
-							aria-label={i18n(I18nKey.gbRefreshNowAria)}
-							title={i18n(I18nKey.gbRefreshNowTitle)}
-						>
-							<RefreshCw size={17} aria-hidden="true" />
-						</button>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<div class="guestbook-chat__actions">
-			<button
-				class="guestbook-chat__sidebar-toggle"
-				type="button"
-				onclick={() => (sidebarOpen = !sidebarOpen)}
-				aria-expanded={sidebarOpen}
-				aria-controls="guestbook-chat-sidebar"
-				title={i18n(I18nKey.gbMembers)}
-			>
-				<Users size={18} aria-hidden="true" />
-				<span>{chatMembers.length}</span>
-			</button>
-		</div>
-	</header>
-
-	<div
-		class:has-announcement-bar={announcementBarVisible && announcements.length > 0}
-		class="guestbook-chat__workspace"
-	>
+		{/if}
 		<div class="guestbook-chat__conversation">
-			{#if announcementBarVisible && announcements.length > 0}
-				<aside class="guestbook-chat__announcement-bar" aria-label={i18n(I18nKey.announcement)}>
-					<div class="guestbook-chat__announcement-bar-label">
-						<Bell size={16} aria-hidden="true" />
-						<strong>{i18n(I18nKey.announcement)}</strong>
-					</div>
-					<div class="guestbook-chat__announcement-bar-items">
-						{#each announcements as announcement}
-							<button type="button" onclick={() => void openAnnouncement(announcement)}>
-								{announcement.title}
-							</button>
-						{/each}
-					</div>
-					<button
-						class="guestbook-chat__announcement-bar-close"
-						type="button"
-						onclick={() => (announcementBarVisible = false)}
-						aria-label={i18n(I18nKey.gbCloseAnnouncement)}
-						title={i18n(I18nKey.gbCloseAnnouncement)}
-					>
-						<X size={17} aria-hidden="true" />
-					</button>
-				</aside>
-			{/if}
-
 			{#if initialLoading}
 				<div
 					class="guestbook-chat__loading"
@@ -1159,7 +1127,6 @@ onMount(() => {
 				<div
 					class="guestbook-chat__messages custom-scrollbar"
 					bind:this={messageList}
-					onscroll={handleMessageScroll}
 					aria-live="polite"
 					aria-relevant="additions"
 				>
@@ -1254,6 +1221,83 @@ onMount(() => {
 					</div>
 				{/if}
 
+				{#if sidebarOpen}
+					<button
+						class="guestbook-chat__sidebar-overlay"
+						type="button"
+						onclick={() => (sidebarOpen = false)}
+						aria-label={i18n(I18nKey.gbCloseMembers)}
+					></button>
+				{/if}
+
+				<aside
+					id="guestbook-chat-sidebar"
+					bind:this={memberPanel}
+					class:is-open={sidebarOpen}
+					class="guestbook-chat__sidebar"
+					aria-label={i18n(I18nKey.gbMembers)}
+				>
+					<div class="guestbook-chat__sidebar-heading">
+						<strong>{i18n(I18nKey.gbMembers)}</strong>
+						<button
+							type="button"
+							onclick={() => (sidebarOpen = false)}
+							aria-label={i18n(I18nKey.gbCloseMembers)}
+						>
+							<X size={18} aria-hidden="true" />
+						</button>
+					</div>
+
+					<section class="guestbook-chat__members" aria-label={i18n(I18nKey.gbMembersListAria)}>
+						<div class="guestbook-chat__member-list custom-scrollbar">
+							{#each [
+								{ title: i18n(I18nKey.gbAdmin), members: stationMembers },
+								{ title: i18n(I18nKey.gbMembers), members: guestMembers },
+							] as group (group.title)}
+								<div class="guestbook-chat__member-group">
+									<div class="guestbook-chat__member-group-title">
+										<strong>{group.title}</strong>
+										<span aria-label={i18n(I18nKey.gbMemberCountAria).replace("{count}", String(group.members.length))}>— {group.members.length}</span>
+									</div>
+
+									<div class="guestbook-chat__member-group-list">
+										{#each group.members as member (`${member.nick}-${member.avatar}`)}
+											{#if member.link}
+												<a
+													class="guestbook-chat__member"
+													href={member.link}
+													target="_blank"
+													rel="nofollow noopener noreferrer"
+												>
+													<span class="guestbook-chat__member-avatar">
+														<span>{getGuestbookInitials(member.nick)}</span>
+														{#if member.avatar}<img src={member.avatar} alt="" loading="lazy" />{/if}
+													</span>
+													<span class="guestbook-chat__member-identity">
+														{#if member.label}<small>{member.label}</small>{/if}
+														<span class="guestbook-chat__member-name">{member.nick}</span>
+													</span>
+												</a>
+											{:else}
+												<div class="guestbook-chat__member">
+													<span class="guestbook-chat__member-avatar">
+														<span>{getGuestbookInitials(member.nick)}</span>
+														{#if member.avatar}<img src={member.avatar} alt="" loading="lazy" />{/if}
+													</span>
+													<span class="guestbook-chat__member-identity">
+														{#if member.label}<small>{member.label}</small>{/if}
+														<span class="guestbook-chat__member-name">{member.nick}</span>
+													</span>
+												</div>
+											{/if}
+										{/each}
+									</div>
+								</div>
+							{/each}
+						</div>
+					</section>
+				</aside>
+
 				<GuestbookChatComposer
 					{profile}
 					{authUser}
@@ -1272,86 +1316,90 @@ onMount(() => {
 				onSend={(content, attachment) =>
 					sendMessage(undefined, attachment, content)}
 					onToolError={(message) => (composerError = message)}
-				/>
+				>
+					<button
+						class="guestbook-chat__dock-chip"
+						type="button"
+						onclick={() => void openNotice()}
+						aria-label={i18n(I18nKey.announcement)}
+						title={i18n(I18nKey.announcement)}
+					>
+						<Bell size={18} aria-hidden="true" />
+						{#if announcements.length > 0}
+							<span class="guestbook-chat__dock-chip-dot" aria-hidden="true"></span>
+						{/if}
+					</button>
+					<button
+						bind:this={memberToggle}
+						class:is-active={sidebarOpen}
+						class="guestbook-chat__dock-chip"
+						type="button"
+						onclick={() => (sidebarOpen = !sidebarOpen)}
+						aria-expanded={sidebarOpen}
+						aria-controls="guestbook-chat-sidebar"
+						aria-label={i18n(I18nKey.gbMembers)}
+						title={i18n(I18nKey.gbMembers)}
+					>
+						<Users size={18} aria-hidden="true" />
+						<span>{chatMembers.length}</span>
+					</button>
+					<button
+						class="guestbook-chat__dock-chip"
+						type="button"
+						onclick={() => void syncLatest()}
+						disabled={syncing || initialLoading}
+						aria-label={i18n(I18nKey.gbRefreshNowAria)}
+						title={i18n(I18nKey.gbRefreshNowTitle)}
+					>
+						{#if syncing}
+							<LoaderCircle class="is-spinning" size={18} aria-hidden="true" />
+						{:else}
+							<RefreshCw size={18} aria-hidden="true" />
+						{/if}
+					</button>
+				</GuestbookChatComposer>
 			</div>
 		</div>
 
-		{#if sidebarOpen}
-			<button
-				class="guestbook-chat__sidebar-overlay"
-				type="button"
-				onclick={() => (sidebarOpen = false)}
-				aria-label={i18n(I18nKey.gbCloseMembers)}
-			></button>
-		{/if}
+	</div>
 
-		<aside
-			id="guestbook-chat-sidebar"
-			class:is-open={sidebarOpen}
-			class="guestbook-chat__sidebar"
-			aria-label={i18n(I18nKey.gbMembers)}
-		>
-			<div class="guestbook-chat__sidebar-heading">
-				<strong>{i18n(I18nKey.gbMembers)}</strong>
+	<dialog
+		bind:this={noticeDialog}
+		class="privacy-modal guestbook-notice-modal"
+		aria-labelledby="guestbook-notice-title"
+		onclose={() => (document.body.style.overflow = "")}
+		oncancel={(event) => {
+			event.preventDefault();
+			closeNotice();
+		}}
+	>
+		<div class="privacy-overlay" onclick={closeNotice}></div>
+		<div class="privacy-panel guestbook-notice-modal__panel">
+			<div class="privacy-header">
+				<h2 id="guestbook-notice-title" class="privacy-title">
+					{i18n(I18nKey.announcement)}
+				</h2>
 				<button
+					class="privacy-close"
 					type="button"
-					onclick={() => (sidebarOpen = false)}
-					aria-label={i18n(I18nKey.gbCloseMembers)}
+					onclick={closeNotice}
+					aria-label={i18n(I18nKey.announcement)}
 				>
-					<X size={18} aria-hidden="true" />
+					<X size={20} aria-hidden="true" />
 				</button>
 			</div>
-
-			<section class="guestbook-chat__members" aria-label={i18n(I18nKey.gbMembersListAria)}>
-				<div class="guestbook-chat__member-list custom-scrollbar">
-					{#each [
-						{ title: i18n(I18nKey.gbAdmin), members: stationMembers },
-						{ title: i18n(I18nKey.gbMembers), members: guestMembers },
-					] as group (group.title)}
-						<div class="guestbook-chat__member-group">
-							<div class="guestbook-chat__member-group-title">
-								<strong>{group.title}</strong>
-								<span aria-label={i18n(I18nKey.gbMemberCountAria).replace("{count}", String(group.members.length))}>— {group.members.length}</span>
-							</div>
-
-							<div class="guestbook-chat__member-group-list">
-								{#each group.members as member (`${member.nick}-${member.avatar}`)}
-									{#if member.link}
-										<a
-											class="guestbook-chat__member"
-											href={member.link}
-											target="_blank"
-											rel="nofollow noopener noreferrer"
-										>
-											<span class="guestbook-chat__member-avatar">
-												<span>{getGuestbookInitials(member.nick)}</span>
-												{#if member.avatar}<img src={member.avatar} alt="" loading="lazy" />{/if}
-											</span>
-											<span class="guestbook-chat__member-identity">
-												{#if member.label}<small>{member.label}</small>{/if}
-												<span class="guestbook-chat__member-name">{member.nick}</span>
-											</span>
-										</a>
-									{:else}
-										<div class="guestbook-chat__member">
-											<span class="guestbook-chat__member-avatar">
-												<span>{getGuestbookInitials(member.nick)}</span>
-												{#if member.avatar}<img src={member.avatar} alt="" loading="lazy" />{/if}
-											</span>
-											<span class="guestbook-chat__member-identity">
-												{#if member.label}<small>{member.label}</small>{/if}
-												<span class="guestbook-chat__member-name">{member.nick}</span>
-											</span>
-										</div>
-									{/if}
-								{/each}
-							</div>
-						</div>
-					{/each}
-				</div>
-			</section>
-		</aside>
-	</div>
+			<div class="privacy-body guestbook-notice-modal__body">
+				{#each announcements as announcement (announcement.id)}
+					<button
+						type="button"
+						onclick={() => void openAnnouncementFromNotice(announcement)}
+					>
+						{announcement.title}
+					</button>
+				{/each}
+			</div>
+		</div>
+	</dialog>
 
 	<dialog
 		bind:this={announcementDialog}

@@ -55,6 +55,9 @@ function sanitizeGuestbookHtml(rendered: string): string {
 				element.remove();
 				continue;
 			}
+			if (isWalineEmojiSource(src)) {
+				element.classList.add("guestbook-message__emoji");
+			}
 			element.setAttribute("loading", "lazy");
 			element.setAttribute("decoding", "async");
 			element.setAttribute("referrerpolicy", "no-referrer");
