@@ -74,25 +74,6 @@ html {
     overflow-x: hidden;
 }
 
-/* Lenis 首页平滑滚动启用时（<html> 会挂上 .lenis 类）的配套规则：
-   关掉上面的 CSS 平滑避免双重插值，其余为 Lenis 官方推荐样式 */
-html.lenis,
-html.lenis body {
-    height: auto;
-}
-
-.lenis.lenis-smooth {
-    scroll-behavior: auto !important;
-}
-
-.lenis.lenis-stopped {
-    overflow: clip;
-}
-
-.lenis [data-lenis-prevent] {
-    overscroll-behavior: contain;
-}
-
 /* 极简模式：顶部高光禁用 */
 .top-gradient-highlight { display: none; }
 

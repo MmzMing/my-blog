@@ -43,8 +43,9 @@
 	position: fixed;
 	inset: 0;
 	z-index: 0;
-	width: 100vw;
-	height: 100vh;
+	/* 刻意不写 width / height：100vw 含纵向滚动条，会比真实视口宽出一截，
+	   reveal 背景的 cover 裁切与 portal 收缩几何都以此为基准，宽一点就对不上缝。
+	   inset: 0 恒等于视口，两端交接才能逐像素重合。 */
 	overflow: hidden;
 	background: var(--page-bg);
 	opacity: 0;
@@ -72,10 +73,11 @@
 	top: 50%;
 	left: 50%;
 	display: block;
-	/* 兜底尺寸：图片自然尺寸未就绪时控制器写不出精确宽高，先按满屏 cover 撑住，
-	   就绪后由控制器替换成「视口 cover 的渲染尺寸」 */
-	width: 100vw;
-	height: 100vh;
+	/* 兜底尺寸：图片自然尺寸未就绪时控制器写不出精确宽高，先按满屏 cover 撑住
+	   （父级 portal 为 inset:0，恒等于视口），就绪后由控制器替换成
+	   「视口 cover 的渲染尺寸」 */
+	width: 100%;
+	height: 100%;
 	object-fit: cover;
 	object-position: center;
 	user-select: none;
@@ -119,15 +121,12 @@
 	inset: 0;
 }
 
-/* 过渡层：全屏背景收缩成首幕图框。元素尺寸恒为满屏，收缩靠 clip-path 收窗
-   （只触发 paint）加内部图片的等比 scale（走合成），不再补间 width / height。
+/* 过渡层：全屏背景收缩成首幕图框。元素靠 inset:0 恒等于视口，
+   与舞台、cover 计算共用同一几何基准（100vw 含滚动条会错位），收缩靠 clip-path
+   收窗（只触发 paint）加内部图片的等比 scale（走合成），不再补间 width / height。
    起点可视区精确等于「视口 cover」、终点精确等于「图框 cover」，两端交接都不跳变。 */
 .home-blinds__portal {
 	z-index: 5;
-	top: 50%;
-	left: 50%;
-	width: 100vw;
-	height: 100vh;
 	overflow: hidden;
 	background: var(--page-bg);
 	opacity: 0;

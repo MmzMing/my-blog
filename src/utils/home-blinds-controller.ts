@@ -403,14 +403,16 @@ function setupScenes(context: SetupContext) {
 		// scale，object-fit 因此不再随尺寸重算裁切（那正是每帧重光栅的来源）。
 		// 起点 scale=1 精确等于视口 cover，终点等于图框 cover，两端分别与 reveal 层
 		// 背景、首幕图框重合。等比缩放对任意长宽比都成立，无边界条件。
-		// 居中一律要写，自然尺寸没就绪时也得先摆正（此时尺寸走 CSS 的 100vw/100vh 兜底）
-		gsap.set(portalImage, {
-			xPercent: -50,
-			yPercent: -50,
-			y: cachedPhotoOffsetY,
-		});
+		// 注意 y 不在此处写：终点偏移 cachedPhotoOffsetY 交给收缩时间线按进度插值，
+		// 起点必须与 reveal 背景完全重合（居中、y=0），否则收缩一开始图片就先上移，
+		// 底部露出 portal 底色裂隙，交接瞬间也会跳变。
+		// 尺寸量的是舞台内容盒：window.innerWidth 含纵向滚动条，会算出偏宽的 cover。
+		gsap.set(portalImage, { xPercent: -50, yPercent: -50 });
 		if (portalImage.naturalWidth > 0 && portalImage.naturalHeight > 0) {
-			const viewportCover = coverScale(window.innerWidth, window.innerHeight);
+			const viewportCover = coverScale(
+				stage.clientWidth,
+				stage.clientHeight,
+			);
 			const frameCover = coverScale(cachedSceneWidth, cachedSceneHeight);
 			cachedPortalScale = frameCover / viewportCover;
 			gsap.set(portalImage, {
@@ -668,10 +670,9 @@ function setupScenes(context: SetupContext) {
 		);
 	}
 
-	// 尺寸恒为满屏，收缩由 clip-path 收窗完成，故这里不再写 width / height
+	// 尺寸恒等于视口（inset:0），收缩由 clip-path 收窗完成，故这里不再写 width / height，
+	// 也无需任何居中 transform
 	gsap.set(portal, {
-		xPercent: -50,
-		yPercent: -50,
 		x: 0,
 		y: 0,
 		clipPath: "inset(0px 0px 0px 0px)",
@@ -720,14 +721,26 @@ function setupScenes(context: SetupContext) {
 				clipPath: () => {
 					const insetX = Math.max(
 						0,
-						(window.innerWidth - cachedSceneWidth) / 2,
+						(stage.clientWidth - cachedSceneWidth) / 2,
 					);
-					const centerGap = (window.innerHeight - cachedSceneHeight) / 2;
+					const centerGap = (stage.clientHeight - cachedSceneHeight) / 2;
 					// 图框在卡内偏上，收窗终点随之上移，上下 inset 不再对称
 					const insetTop = Math.max(0, centerGap + cachedPhotoOffsetY);
 					const insetBottom = Math.max(0, centerGap - cachedPhotoOffsetY);
 					return `inset(${insetTop}px ${insetX}px ${insetBottom}px ${insetX}px)`;
 				},
+				duration: 1,
+				ease: "power3.inOut",
+				immediateRender: false,
+			},
+			0,
+		)
+		.fromTo(
+			portalImage,
+			{ y: 0 },
+			{
+				// 与收窗同步上移：起点 y=0 与 reveal 背景严丝合缝，终点落在首幕图框中心
+				y: () => cachedPhotoOffsetY,
 				duration: 1,
 				ease: "power3.inOut",
 				immediateRender: false,
