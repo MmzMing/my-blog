@@ -1,9 +1,12 @@
 import { type CollectionEntry, render } from "astro:content";
-import { siteConfig } from "@/config";
-import { coverImageConfig } from "@/config/coverImageConfig";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import type { ArticleListPost, UmamiPageviewConfig } from "@/types/article-list";
+import { siteConfig } from "@/config";
+import { coverImageConfig } from "@/config/coverImageConfig";
+import type {
+	ArticleListPost,
+	UmamiPageviewConfig,
+} from "@/types/article-list";
 import { buildCoverImage } from "@/utils/cover-image";
 import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
 import { getFileDirFromPath, getPostUrlBySlug, url } from "@/utils/url-utils";
@@ -36,10 +39,7 @@ const { randomCoverImage } = coverImageConfig;
  * 「文章 × 页面」的组合数反复重渲染（实测把整次构建从几分钟拉到十几分钟）。
  * 静态构建全程同一个 Node 进程，模块级缓存即可去重。
  */
-const postRenderCache = new Map<
-	string,
-	ReturnType<typeof render>
->();
+const postRenderCache = new Map<string, ReturnType<typeof render>>();
 
 function renderPostOnce(entry: CollectionEntry<"posts">) {
 	const cached = postRenderCache.get(entry.id);
@@ -57,11 +57,14 @@ const fallbackImagePath = randomCoverImage.enable
 export const fallbackImageUrl = fallbackImagePath ? url(fallbackImagePath) : "";
 export const showCoverLoading = randomCoverImage.showLoading ?? true;
 
-const dateFormatter = new Intl.DateTimeFormat(siteConfig.lang.replace("_", "-"), {
-	year: "numeric",
-	month: "2-digit",
-	day: "2-digit",
-});
+const dateFormatter = new Intl.DateTimeFormat(
+	siteConfig.lang.replace("_", "-"),
+	{
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	},
+);
 
 /** 从分类名推导稳定的色相，让同一分类的卡片配色始终一致 */
 export function getCategoryHue(category: string): number {
@@ -147,7 +150,9 @@ export function getUmamiPageviews(): UmamiPageviewConfig {
 			!!umamiConfig?.pageviews?.enabled &&
 			!!umamiConfig.shareId &&
 			!!umamiConfig.scriptUrl,
-		apiBase: umamiConfig?.scriptUrl ? new URL(umamiConfig.scriptUrl).origin : "",
+		apiBase: umamiConfig?.scriptUrl
+			? new URL(umamiConfig.scriptUrl).origin
+			: "",
 		shareId: umamiConfig?.shareId || "",
 	};
 }

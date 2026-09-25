@@ -30,8 +30,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # playwright 仅服务友链脚本，依赖隔离在 .github/scripts 下，不进站点依赖
+      - name: Install friend-link script dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: .github/scripts
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
+        working-directory: .github/scripts
 
       - name: Process friend request
         uses: actions/github-script@v7

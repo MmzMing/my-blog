@@ -1,11 +1,11 @@
 ---
-import PageTitle from "@/components/common/PageTitle.astro";
-import ArticleList from "@/components/pages/article-list/ArticleList.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import MainGridLayout from "@/layouts/MainGridLayout.astro";
-import { siteConfig } from "@/config";
 import type { GetStaticPaths } from "astro";
+import PageTitle from "@/components/common/PageTitle.astro";
+import ArticleList from "@/components/pages/article-list/ArticleList.astro";
+import { siteConfig } from "@/config";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import {
 	createArticleListPosts,
 	fallbackImageUrl,

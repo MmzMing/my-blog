@@ -1,0 +1,9 @@
+{
+	"name": "friend-link-scripts",
+	"private": true,
+	"packageManager": "pnpm@9.14.4",
+	"description": "友链 workflow 专用依赖（仅 CI 使用，与站点构建无关）",
+	"dependencies": {
+		"playwright": "^1.52.0"
+	}
+}

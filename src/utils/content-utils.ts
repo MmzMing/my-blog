@@ -5,7 +5,12 @@ import {
 	buildKnowledgeGraphData,
 	type KGData,
 } from "@utils/knowledge-graph-data";
-import { getCategoryUrl, getPostUrlBySlug, getTagArchiveUrl, getTagUrl } from "@utils/url-utils";
+import {
+	getCategoryUrl,
+	getPostUrlBySlug,
+	getTagArchiveUrl,
+	getTagUrl,
+} from "@utils/url-utils";
 import type { MarkdownHeading } from "astro";
 import { siteConfig } from "@/config";
 
@@ -161,9 +166,7 @@ export async function getPostsByCategory(
  * 标签共现表：tag → 与之同现次数最多的其他标签。
  * 标签枢纽页用它做横向互链，把同主题的枢纽串起来（顺带解决枢纽页之间的孤岛问题）。
  */
-export async function getRelatedTagMap(
-	limit = 8,
-): Promise<Map<string, Tag[]>> {
+export async function getRelatedTagMap(limit = 8): Promise<Map<string, Tag[]>> {
 	const allPosts = await getAllPosts();
 	const tagList = await getTagList();
 	const hubList = tagList.filter((tag) => tag.count >= MIN_TAG_HUB_POSTS);
