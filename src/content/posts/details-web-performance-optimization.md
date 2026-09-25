@@ -2,7 +2,7 @@
 title: 前端性能优化十项主流：问题、方法与收益
 image: ./assets/details-web-performance-optimization.webp
 published: 2026-08-09
-description: 整理网站性能优化主流方法：性能分析、HTTP 协议升级、传输压缩、HTTP 缓存、CDN、Nginx 配置、加载策略、图片、字体与 JS 长任务治理，每项说明问题原因、处理方法、典型提升幅度与注意事项。
+description: 整理前端与站点性能优化十项主流方法：性能分析、HTTP 缓存、CDN、Nginx 配置、加载策略、图片、字体与 JS 长任务治理，每项说明原因、做法与收益。
 tags: [性能优化, Nginx, CDN, HTTP]
 category: 学习文档
 draft: false

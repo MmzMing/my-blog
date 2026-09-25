@@ -1,5 +1,5 @@
 ---
-title: 日常Prompt提示词收录
+title: AI 辅助前端开发 Prompt 模板集：目录结构、组件复用与代码审查
 image: ./assets/ai-prompt-collection.webp
 published: 2026-06-19
 description: 收录 AI 辅助前端开发的 Prompt 模板，覆盖目录结构、组件复用、命名规范、依赖约束、样式管理、测试和代码审查要求。

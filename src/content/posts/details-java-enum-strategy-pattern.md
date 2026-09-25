@@ -1,8 +1,8 @@
 ---
-title: Java 枚举策略模式
+title: Java 枚举策略模式：用枚举替换 if-else 分发的三种绑定方式
 image: ./assets/details-java-enum-strategy-pattern.webp
 published: 2026-09-13
-description: 记录日常使用设计模式，用枚举承接按类型分发行为的 if-else 链：时间单位偏移与数据收集服务分发两个真实案例，覆盖三种绑定形式的选择、失败路径的取舍，以及 ordinal 落库、构造期 NPE 等高频坑。
+description: 用 Java 枚举承接按类型分发行为的 if-else 链：时间单位偏移与数据收集服务分发两个案例，覆盖三种绑定形式的选择与 ordinal 落库等高频坑。
 tags: [Java, 设计模式, 枚举]
 category: 学习文档
 draft: false

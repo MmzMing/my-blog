@@ -1,8 +1,8 @@
 ---
-title: 米塔3D字体网页端实现
+title: 米塔 3D 字体网页端实现：Three.js SDF Text 与物理动画
 image: ./assets/projects-miside-3d-text.webp
 published: 2026-08-01
-description: 使用 React Three Fiber、Three.js、SDF Text 和 Rapier 实现仿 Miside 3D 字体物理动画，涵盖字形分割、状态机、相机视差和移动端性能。
+description: 用 React Three Fiber、Three.js 与 Rapier 实现仿米塔 3D 字体物理动画：字形分割、状态机、相机视差与移动端性能。
 tags:
   - React
   - Three

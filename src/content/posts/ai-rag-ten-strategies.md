@@ -1,8 +1,8 @@
 ---
-title: RAG 策略
+title: RAG 检索增强生成 10 种策略：分块、混合检索与重排序选型
 image: ./assets/ai-rag-ten-strategies.webp
 published: 2026-08-27
-description: 按 RAG 两阶段流程整理 10 种检索增强生成策略：语义分块、命题分块、领域 Embedding、元数据索引、Graph RAG、查询改写、HyDE、混合检索、重排序与 Agentic RAG，并给出新项目默认选型、实现骨架与升级触发条件。
+description: 按 RAG 两阶段流程整理 10 种检索增强生成策略：语义分块、领域 Embedding、元数据索引、Graph RAG、混合检索与重排序，并给出默认选型与升级触发条件。
 tags:
   - AI
   - RAG

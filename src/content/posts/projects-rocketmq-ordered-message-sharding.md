@@ -2,7 +2,7 @@
 title: RocketMQ 顺序消息与多线程分片：生产、存储、消费的一致性设计
 image: ./assets/projects-rocketmq-ordered-message-sharding.webp
 published: 2026-06-13
-description: 顺序消费的并行度上限由队列数决定。本文从生产端分片键路由、Broker 队列 FIFO、消费端三把锁讲起，给出提升吞吐的四个方案与各自乱序风险，以及 at-least-once 语义下靠幂等表、状态机校验、对账兜底的一致性设计。
+description: 从生产端分片键路由、Broker 队列 FIFO 与消费端三把锁讲起，给出提升顺序消费吞吐的四个方案、各自乱序风险与幂等对账兜底设计。
 tags: [RocketMQ, 消息队列, 顺序消费, 分布式一致性, 高并发]
 category: 学习文档
 draft: false

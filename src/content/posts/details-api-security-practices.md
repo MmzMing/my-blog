@@ -1,5 +1,5 @@
 ---
-title: 保证接口安全的 技巧：原理、实现与边界
+title: 接口安全实践：从传输通道、入口到数据输出的全链路防护
 image: ./assets/details-api-security-practices.webp
 published: 2026-07-14
 description: 接口安全技巧，按请求链路从传输通道、入口、业务逻辑排到数据输出与运营治理，附 Spring Boot 代码示例与落地检查清单。

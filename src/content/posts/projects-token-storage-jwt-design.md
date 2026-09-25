@@ -1,8 +1,8 @@
 ---
-title: 前后端登录Token存储方案
+title: 前后端 Token 存储方案：RS256、HttpOnly Cookie 与主动吊销
 image: ./assets/projects-token-storage-jwt-design.webp
 published: 2026-05-04
-description: 设计 ZSK-Cloud 的 Access Token + Refresh Token 认证体系，介绍 RS256 签名、HttpOnly Cookie、Redis 会话白名单、主动吊销和跨服务验签。
+description: 设计 Access Token + Refresh Token 认证体系：RS256 签名、HttpOnly Cookie、Redis 会话白名单、主动吊销与跨服务验签。
 tags: [JWT, 认证, 安全]
 category: 设计文档
 draft: false

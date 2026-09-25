@@ -2,7 +2,7 @@
 title: EasyExcel 导出下载中心与导入设计方案
 image: ./assets/projects-easyexcel-export-import-design.webp
 published: 2026-06-20
-description: 面向百万级数据的异步导出下载中心与批量导入设计：EasyExcel 流式读写内存机制、ID 游标分页替代深分页、多 sheet 拆分、OSS 生命周期管理、批量入库、幂等与错误回执，附验收指标与风险清单。
+description: 面向百万级数据的异步导出下载中心与批量导入设计：EasyExcel 流式读写、ID 游标分页、多 sheet 拆分、OSS 生命周期、幂等与错误回执。
 tags: [EasyExcel, 设计文档, 大数据量, 导入导出, 高并发]
 category: 设计文档
 draft: false
