@@ -322,6 +322,13 @@ export const en: Translation = {
 	[Key.tagIndex]: "Tag Index",
 	[Key.tagUnit]: " tags",
 	[Key.browseAllTags]: "All Tags",
+	[Key.tagIndexDescription]:
+		"Browse every post on this site by tag — {count} tags in total. Tags are ordered by post count; select any tag to see all posts on that topic.",
+	[Key.tagPageDescription]:
+		"All {count} posts tagged “{tag}”, listed newest first, covering practice notes and write-ups on related topics.",
+	[Key.categoryPageDescription]:
+		"All {count} posts in the “{category}” category, listed newest first, covering practice notes and write-ups in this category.",
+	[Key.relatedTags]: "Related tags",
 	[Key.subscribeContact]: "Subscribe & Contact",
 	[Key.contactMethods]: "Contact",
 	[Key.viewsLabel]: "Views",

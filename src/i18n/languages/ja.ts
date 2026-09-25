@@ -323,6 +323,13 @@ export const ja: Translation = {
 	[Key.tagIndex]: "タグインデックス",
 	[Key.tagUnit]: "個のタグ",
 	[Key.browseAllTags]: "すべてのタグ",
+	[Key.tagIndexDescription]:
+		"タグから当サイトの記事を一覧できます。タグは全 {count} 個。記事数の多い順に並んでおり、タグを選ぶとそのテーマの記事をすべて表示します。",
+	[Key.tagPageDescription]:
+		"「{tag}」タグの記事一覧です。全 {count} 件。公開日の新しい順に並んでおり、関連テーマの実践記録とまとめを収録しています。",
+	[Key.categoryPageDescription]:
+		"「{category}」カテゴリの記事一覧です。全 {count} 件。公開日の新しい順に並んでおり、このカテゴリの実践記録とまとめを収録しています。",
+	[Key.relatedTags]: "関連タグ",
 	[Key.subscribeContact]: "購読と連絡",
 	[Key.contactMethods]: "主な連絡先",
 	[Key.viewsLabel]: "閲覧数",

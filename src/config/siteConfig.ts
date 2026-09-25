@@ -16,8 +16,11 @@ export const siteConfig: SiteConfig = {
 	site_url: "https://tblog.mmzhiku.xyz",
 
 	// 站点描述
+	// 同时用作：首页与各功能页的 <meta name="description"> 兜底、JSON-LD 里
+	// WebSite/Person 实体的 description。所以这里写清站点的实际内容方向，
+	// 而不是只写"记录学习与生活"这类无检索价值的通用表述。
 	description:
-		"一个记录学习、工作实践、开发经验与生活随笔的个人博客，持续整理值得分享的知识、项目和思考。",
+		"记录 Java 后端与 AI 工程的实践笔记，涵盖并发编程、接口安全、认证授权、缓存设计、性能优化与 RAG 应用开发。",
 
 	// 站点关键词
 	keywords: [

@@ -5,7 +5,7 @@ import { siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { getKnowledgeGraphData, getTagList } from "@/utils/content-utils";
-import { getTagUrl, url } from "@/utils/url-utils";
+import { getTagIndexUrl, url } from "@/utils/url-utils";
 import "@/styles/pages/categories.css";
 import "@/styles/widgets/knowledge-graph.css";
 import "@/styles/widgets/graph-filter-panel.css";
@@ -54,10 +54,11 @@ const robots = Astro.url.search ? "noindex,follow" : undefined;
     <ul>
       {tags.map((tag) => (
         <li>
-          <a href={getTagUrl(tag.name)}>#{tag.name}</a>（{tag.count}）
+          <a href={tag.url}>#{tag.name}</a>（{tag.count}）
         </li>
       ))}
     </ul>
+    <a href={getTagIndexUrl()}>{i18n(I18nKey.browseAllTags)}</a>
   </nav>
 
   <div class="graph-page">

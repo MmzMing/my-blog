@@ -324,6 +324,13 @@ export const ru: Translation = {
 	[Key.tagIndex]: "Каталог тегов",
 	[Key.tagUnit]: " тегов",
 	[Key.browseAllTags]: "Все теги",
+	[Key.tagIndexDescription]:
+		"Просмотр всех статей сайта по тегам — всего {count} тегов. Теги упорядочены по числу статей; выберите тег, чтобы увидеть все статьи по теме.",
+	[Key.tagPageDescription]:
+		"Все статьи с тегом «{tag}» — {count} шт. Сначала новые: практические заметки и разборы по связанным темам.",
+	[Key.categoryPageDescription]:
+		"Все статьи в категории «{category}» — {count} шт. Сначала новые: практические заметки и разборы в этой категории.",
+	[Key.relatedTags]: "Связанные теги",
 	[Key.subscribeContact]: "Подписка и контакты",
 	[Key.contactMethods]: "Контакты",
 	[Key.viewsLabel]: "Просмотры",

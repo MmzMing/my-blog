@@ -320,6 +320,13 @@ export const zh_TW: Translation = {
 	[Key.tagIndex]: "標籤索引",
 	[Key.tagUnit]: "個標籤",
 	[Key.browseAllTags]: "全部標籤",
+	[Key.tagIndexDescription]:
+		"依標籤瀏覽本站全部文章，共 {count} 個標籤。標籤依文章數量排序，點擊任一標籤可查看該主題下的全部文章。",
+	[Key.tagPageDescription]:
+		"「{tag}」標籤下的全部文章，共 {count} 篇。依發佈時間倒序排列，涵蓋相關主題的實踐記錄與整理。",
+	[Key.categoryPageDescription]:
+		"「{category}」分類下的全部文章，共 {count} 篇。依發佈時間倒序排列，涵蓋該分類下的實踐記錄與整理。",
+	[Key.relatedTags]: "相關標籤",
 	[Key.subscribeContact]: "訂閱與聯絡",
 	[Key.contactMethods]: "常用聯絡方式",
 	[Key.viewsLabel]: "訪問量",

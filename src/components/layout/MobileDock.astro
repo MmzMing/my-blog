@@ -16,7 +16,7 @@ import { i18n } from "@/i18n/translation";
 import { LinkPreset, type NavBarLink } from "@/types/config";
 import { getTagList } from "@/utils/content-utils";
 import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
-import { getTagUrl, url } from "@/utils/url-utils";
+import { url } from "@/utils/url-utils";
 
 const resolveLink = (link: NavBarLink | LinkPreset): NavBarLink =>
 	typeof link === "number" ? LinkPresets[link] : link;
@@ -287,7 +287,7 @@ const isHomePath = Astro.url.pathname === "/" || Astro.url.pathname === "";
 				<section class="mobile-dock__view" data-dock-view="tags" data-title={i18n(I18nKey.tags)} hidden>
 					<div class="mobile-dock__tag-list">
 						{tags.map((tag) => (
-							<a href={getTagUrl(tag.name)} class="mobile-dock__tag-row" data-dock-navigation>
+							<a href={tag.url} class="mobile-dock__tag-row" data-dock-navigation>
 								<span># {tag.name.trim()}</span>
 								<strong>{tag.count}</strong>
 							</a>

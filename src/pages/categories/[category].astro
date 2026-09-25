@@ -1,0 +1,88 @@
+---
+import PageTitle from "@/components/common/PageTitle.astro";
+import ArticleList from "@/components/pages/article-list/ArticleList.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { siteConfig } from "@/config";
+import type { GetStaticPaths } from "astro";
+import {
+	createArticleListPosts,
+	fallbackImageUrl,
+	getUmamiPageviews,
+	showCoverLoading,
+} from "@/utils/article-list-posts";
+import { getCategoryList, getPostsByCategory } from "@/utils/content-utils";
+import { termToSlug, url } from "@/utils/url-utils";
+import "@/styles/pages/article-list.css";
+
+export const getStaticPaths = (async () => {
+	if (!siteConfig.pages.categories) return [];
+
+	// 分类是作者手工维护的少量分组（当前 4 个），全部建页；
+	// 与标签的「≥2 篇才建页」策略不同——分类数量可控，不会造成薄页面泛滥。
+	const categories = await getCategoryList();
+	return categories.map((category) => ({
+		params: { category: termToSlug(category.name) },
+		props: { categoryName: category.name, categoryCount: category.count },
+	}));
+}) satisfies GetStaticPaths;
+
+if (!siteConfig.pages.categories) {
+	return Astro.redirect("/404/");
+}
+
+const { categoryName, categoryCount } = Astro.props;
+
+const entries = await getPostsByCategory(categoryName);
+
+// 兜底：分类被改名/清空后残留的静态路径不应当渲染成空壳页
+if (entries.length === 0) {
+	return Astro.redirect("/404/");
+}
+
+const posts = await createArticleListPosts(entries);
+
+const title = `${categoryName} - ${i18n(I18nKey.categories)}`;
+const description = i18n(I18nKey.categoryPageDescription)
+	.replace("{category}", categoryName)
+	.replace("{count}", String(categoryCount));
+---
+
+<MainGridLayout title={title} description={description} hasOwnH1={true}>
+	<section class="article-list-page z-10 px-4 py-6 md:px-9 relative w-full">
+		<header class="article-list-page__header">
+			<PageTitle
+				title={categoryName}
+				eyebrow="Category"
+				description={description}
+				variant="stacked"
+			/>
+		</header>
+
+		<ArticleList
+			pinnedPosts={[]}
+			regularPosts={posts}
+			totalPosts={posts.length}
+			currentPage={1}
+			totalPages={1}
+			umamiPageviews={getUmamiPageviews()}
+			fallbackImageUrl={fallbackImageUrl}
+			showCoverLoading={showCoverLoading}
+		/>
+
+		<p class="mt-8 text-sm text-(--content-meta)">
+			<a href={url("/categories/")} class="hover:text-(--primary)">
+				{i18n(I18nKey.categories)}
+			</a>
+			·
+			<a href={url("/tags/")} class="hover:text-(--primary)">
+				{i18n(I18nKey.browseAllTags)}
+			</a>
+			·
+			<a href={url("/archive/")} class="hover:text-(--primary)">
+				{i18n(I18nKey.archive)}
+			</a>
+		</p>
+	</section>
+</MainGridLayout>

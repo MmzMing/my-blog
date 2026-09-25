@@ -1,0 +1,113 @@
+---
+import PageTitle from "@/components/common/PageTitle.astro";
+import ArticleList from "@/components/pages/article-list/ArticleList.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { siteConfig } from "@/config";
+import type { GetStaticPaths } from "astro";
+import {
+	createArticleListPosts,
+	fallbackImageUrl,
+	getUmamiPageviews,
+	showCoverLoading,
+} from "@/utils/article-list-posts";
+import {
+	getPostsByTag,
+	getRelatedTagMap,
+	getTagHubList,
+	MIN_TAG_HUB_POSTS,
+} from "@/utils/content-utils";
+import { termToSlug, url } from "@/utils/url-utils";
+import "@/styles/pages/article-list.css";
+
+export const getStaticPaths = (async () => {
+	if (!siteConfig.pages.archive) return [];
+
+	const hubs = await getTagHubList();
+	return hubs.map((tag) => ({
+		params: { tag: termToSlug(tag.name) },
+		props: { tagName: tag.name, tagCount: tag.count },
+	}));
+}) satisfies GetStaticPaths;
+
+if (!siteConfig.pages.archive) {
+	return Astro.redirect("/404/");
+}
+
+const { tagName, tagCount } = Astro.props;
+
+const [entries, relatedTagMap] = await Promise.all([
+	getPostsByTag(tagName),
+	getRelatedTagMap(),
+]);
+
+// 兜底：静态路径与文章标签理论上同源，但一旦缓存/排序漂移导致空列表，
+// 这里直接 404 而不是渲染一个空壳页被搜索引擎收录
+if (entries.length < MIN_TAG_HUB_POSTS) {
+	return Astro.redirect("/404/");
+}
+
+const posts = await createArticleListPosts(entries);
+const relatedTags = relatedTagMap.get(tagName) ?? [];
+
+const title = `${tagName} - ${i18n(I18nKey.tags)}`;
+const description = i18n(I18nKey.tagPageDescription)
+	.replace("{tag}", tagName)
+	.replace("{count}", String(tagCount));
+---
+
+<MainGridLayout title={title} description={description} hasOwnH1={true}>
+	<section class="article-list-page z-10 px-4 py-6 md:px-9 relative w-full">
+		<header class="article-list-page__header">
+			<PageTitle
+				title={`#${tagName}`}
+				eyebrow="Tag"
+				description={description}
+				variant="stacked"
+			/>
+		</header>
+
+		<ArticleList
+			pinnedPosts={[]}
+			regularPosts={posts}
+			totalPosts={posts.length}
+			currentPage={1}
+			totalPages={1}
+			umamiPageviews={getUmamiPageviews()}
+			fallbackImageUrl={fallbackImageUrl}
+			showCoverLoading={showCoverLoading}
+		/>
+
+		{relatedTags.length > 0 && (
+			<nav class="mt-8" aria-label={i18n(I18nKey.relatedTags)}>
+				<h2 class="mb-3 font-medium text-(--deep-text)">
+					{i18n(I18nKey.relatedTags)}
+				</h2>
+				<ul class="flex flex-wrap gap-2">
+					{relatedTags.map((tag) => (
+						<li>
+							<a
+								href={tag.url}
+								class="inline-flex items-center gap-1.5 rounded-full border border-(--line-divider) px-3 py-1 text-sm text-(--deep-text) transition-colors hover:border-(--primary) hover:text-(--primary)"
+							>
+								<span>#{tag.name}</span>
+								<span class="text-xs opacity-70">{tag.count}</span>
+							</a>
+						</li>
+					))}
+				</ul>
+			</nav>
+		)}
+
+		<p class="mt-8 text-sm text-(--content-meta)">
+			<a href={url("/tags/")} class="hover:text-(--primary)">
+				{i18n(I18nKey.browseAllTags)}
+			</a>
+			·
+			<a href={url("/archive/")} class="hover:text-(--primary)">
+				{i18n(I18nKey.archive)}
+			</a>
+		</p>
+	</section>
+</MainGridLayout>

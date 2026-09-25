@@ -5,7 +5,7 @@ import {
 	buildKnowledgeGraphData,
 	type KGData,
 } from "@utils/knowledge-graph-data";
-import { getCategoryUrl, getPostUrlBySlug, getTagUrl } from "@utils/url-utils";
+import { getCategoryUrl, getPostUrlBySlug, getTagArchiveUrl, getTagUrl } from "@utils/url-utils";
 import type { MarkdownHeading } from "astro";
 import { siteConfig } from "@/config";
 
@@ -71,14 +71,35 @@ export async function getSortedPostsList(): Promise<PostForList[]> {
 export type Tag = {
 	name: string;
 	count: number;
+	/** 该标签的落地地址：够篇数的走标签枢纽页，碎片化标签退回归档页过滤 */
+	url: string;
 };
+
+/**
+ * 标签枢纽页的最低篇数门槛。
+ *
+ * 本站 26 篇文章却有 59 个标签，其中约 45 个只挂着 1 篇文章。给它们全部建页会产出一批
+ * 「只有 1 张卡片」的薄页面（与那篇文章自身的列表项高度重复），稀释抓取配额、拉低
+ * 站点质量信号。低于门槛的标签不建页，链接退回归档页过滤。
+ * 页面路由（src/pages/tags/[tag].astro）与链接生成必须共用本常量。
+ */
+export const MIN_TAG_HUB_POSTS = 2;
+
+/** 按篇数决定标签该指向枢纽页还是归档页 */
+export function resolveTagLink(tag: string, count: number): string {
+	return count >= MIN_TAG_HUB_POSTS ? getTagUrl(tag) : getTagArchiveUrl(tag);
+}
 
 export async function getTagList(): Promise<Tag[]> {
 	const allBlogPosts = await getAllPosts();
 
 	const countMap: { [key: string]: number } = {};
 	allBlogPosts.forEach((post) => {
-		post.data.tags.forEach((tag) => {
+		// 同一篇文章里重复写同一个标签只算一次，否则计数虚高会误开枢纽页
+		const uniqueTags = new Set(
+			post.data.tags.map((tag) => tag.trim()).filter(Boolean),
+		);
+		uniqueTags.forEach((tag) => {
 			if (!countMap[tag]) countMap[tag] = 0;
 			countMap[tag]++;
 		});
@@ -89,7 +110,91 @@ export async function getTagList(): Promise<Tag[]> {
 		return countMap[b] - countMap[a];
 	});
 
-	return keys.map((key) => ({ name: key, count: countMap[key] }));
+	return keys.map((key) => ({
+		name: key,
+		count: countMap[key],
+		url: resolveTagLink(key, countMap[key]),
+	}));
+}
+
+/** 有独立枢纽页的标签（篇数达到门槛），按篇数倒序 */
+export async function getTagHubList(): Promise<Tag[]> {
+	const tags = await getTagList();
+	return tags.filter((tag) => tag.count >= MIN_TAG_HUB_POSTS);
+}
+
+/** 取某个标签下的文章，按发布时间倒序（草稿已排除） */
+export async function getPostsByTag(
+	tag: string,
+): Promise<CollectionEntry<"posts">[]> {
+	const target = tag.trim();
+	const allPosts = await getAllPosts();
+	return allPosts
+		.filter((post) => post.data.tags.some((item) => item.trim() === target))
+		.sort((a, b) =>
+			a.data.published > b.data.published
+				? -1
+				: a.data.published < b.data.published
+					? 1
+					: 0,
+		);
+}
+
+/** 取某个分类下的文章，按发布时间倒序（草稿已排除） */
+export async function getPostsByCategory(
+	category: string,
+): Promise<CollectionEntry<"posts">[]> {
+	const target = category.trim();
+	const allPosts = await getAllPosts();
+	return allPosts
+		.filter((post) => (post.data.category ?? "").trim() === target)
+		.sort((a, b) =>
+			a.data.published > b.data.published
+				? -1
+				: a.data.published < b.data.published
+					? 1
+					: 0,
+		);
+}
+
+/**
+ * 标签共现表：tag → 与之同现次数最多的其他标签。
+ * 标签枢纽页用它做横向互链，把同主题的枢纽串起来（顺带解决枢纽页之间的孤岛问题）。
+ */
+export async function getRelatedTagMap(
+	limit = 8,
+): Promise<Map<string, Tag[]>> {
+	const allPosts = await getAllPosts();
+	const tagList = await getTagList();
+	const hubList = tagList.filter((tag) => tag.count >= MIN_TAG_HUB_POSTS);
+	const hubByName = new Map(hubList.map((tag) => [tag.name, tag]));
+	const cooccur = new Map<string, Map<string, number>>();
+
+	for (const post of allPosts) {
+		const tags = [...new Set(post.data.tags.map((tag) => tag.trim()))].filter(
+			(tag) => hubByName.has(tag),
+		);
+		for (const current of tags) {
+			const bucket = cooccur.get(current) ?? new Map<string, number>();
+			for (const other of tags) {
+				if (other === current) continue;
+				bucket.set(other, (bucket.get(other) ?? 0) + 1);
+			}
+			cooccur.set(current, bucket);
+		}
+	}
+
+	const result = new Map<string, Tag[]>();
+	for (const tag of hubList) {
+		const bucket = cooccur.get(tag.name) ?? new Map<string, number>();
+		const related = [...bucket.entries()]
+			.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+			.slice(0, limit)
+			.map(([name]) => hubByName.get(name))
+			.filter((item): item is Tag => Boolean(item));
+		result.set(tag.name, related);
+	}
+	return result;
 }
 
 /**
@@ -133,6 +238,17 @@ export async function getKnowledgeGraphData(): Promise<KGData> {
 	const posts = await getAllPosts();
 	const headingMap = await getAllPostHeadings();
 
+	// 图谱里标签节点也要遵循「够篇数才有枢纽页」的门槛，否则一堆节点会指向归档页
+	const tagCounts = new Map<string, number>();
+	for (const post of posts) {
+		const uniqueTags = new Set(
+			post.data.tags.map((tag) => tag.trim()).filter(Boolean),
+		);
+		for (const tag of uniqueTags) {
+			tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+		}
+	}
+
 	return buildKnowledgeGraphData(
 		posts.map((post) => ({
 			id: post.id,
@@ -150,7 +266,8 @@ export async function getKnowledgeGraphData(): Promise<KGData> {
 		{
 			uncategorizedName: i18n(I18nKey.uncategorized),
 			categoryUrl: getCategoryUrl,
-			tagUrl: getTagUrl,
+			tagUrl: (tagName: string) =>
+				resolveTagLink(tagName, tagCounts.get(tagName.trim()) ?? 0),
 			siteStartDate: siteConfig.siteStartDate,
 		},
 	);
@@ -213,6 +330,10 @@ export async function getCategoryTagGroups(): Promise<CategoryTagGroup[]> {
 	>();
 	const uncategorized = i18n(I18nKey.uncategorized);
 
+	// 标签枢纽页是按全站篇数决定是否存在的，所以这里要单独统计全局篇数，
+	// 不能用 group.tagCounts（那是分类内的局部计数，会把够篇数的标签误判成碎片标签）
+	const globalTagCounts = new Map<string, number>();
+
 	for (const post of allBlogPosts) {
 		const categoryName = post.data.category?.trim() || uncategorized;
 		const group = groupMap.get(categoryName) ?? {
@@ -226,6 +347,7 @@ export async function getCategoryTagGroups(): Promise<CategoryTagGroup[]> {
 		);
 		for (const tag of postTags) {
 			group.tagCounts.set(tag, (group.tagCounts.get(tag) ?? 0) + 1);
+			globalTagCounts.set(tag, (globalTagCounts.get(tag) ?? 0) + 1);
 		}
 		groupMap.set(categoryName, group);
 	}
@@ -239,7 +361,7 @@ export async function getCategoryTagGroups(): Promise<CategoryTagGroup[]> {
 				.map(([tagName, count]) => ({
 					name: tagName,
 					count,
-					url: getTagUrl(tagName),
+					url: resolveTagLink(tagName, globalTagCounts.get(tagName) ?? count),
 				}))
 				.sort(
 					(a, b) =>

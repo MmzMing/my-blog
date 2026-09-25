@@ -13,12 +13,12 @@ import QRCode from "qrcode";
 import PostHeaderNav from "@/components/misc/PostHeaderNav.astro";
 import "@/styles/components/post-hero.css";
 import "@/styles/components/post-header-nav.css";
-import { getSortedPosts } from "@utils/content-utils";
+import { getSortedPosts, getTagList } from "@utils/content-utils";
 import {
 	getCategoryUrl,
 	getFileDirFromPath,
 	getPostUrlBySlug,
-	getTagUrl,
+	getTagArchiveUrl,
 	removeFileExtension,
 } from "@utils/url-utils";
 import dayjs from "dayjs";
@@ -145,16 +145,25 @@ const structuredImage =
 
 const siteRoot = new URL("/", Astro.site).href;
 
-// 分类没有独立静态路由：getCategoryUrl 产出的是 /archive/?category=xxx，而带 query 的
-// 归档页声明了 noindex——面包屑不能指向一个自己拒绝索引的 URL，因此退到可索引且已进
-// sitemap 的分类总览页。文章没有分类时直接省掉这一级，不编造中间节点。
+// 标签未必都有枢纽页（碎片化标签不建页），所以按 name → 地址查表，
+// 查不到就退回归档页过滤，避免链到不存在的 /tags/<slug>/
+const tagUrlMap = new Map<string, string>();
+for (const tag of await getTagList()) {
+	tagUrlMap.set(tag.name, tag.url);
+}
+const resolveTagHref = (tag: string): string =>
+	tagUrlMap.get(tag.trim()) ?? getTagArchiveUrl(tag);
+
+// 分类现有独立静态路由（/categories/<slug>/），面包屑直接指向它；
+// 未分类文章不编造中间节点。
 const breadcrumbItems: { name: string; url: string }[] = [
 	{ name: siteConfig.title, url: siteRoot },
 ];
-if (entry.data.category) {
+const entryCategory = entry.data.category?.trim();
+if (entryCategory) {
 	breadcrumbItems.push({
-		name: entry.data.category,
-		url: new URL("/categories/", Astro.site).href,
+		name: entryCategory,
+		url: new URL(getCategoryUrl(entryCategory), Astro.site).href,
 	});
 }
 breadcrumbItems.push({ name: entry.data.title, url: canonicalUrl });
@@ -217,6 +226,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
   setOGTypeArticle={true}
   postSlug={entry.id}
   postCategory={entry.data.category || undefined}
+  ogImage={structuredImageUrl}
   bannerPostMeta={bannerPostMeta}
   articleMeta={{
     published: entry.data.published,
@@ -395,7 +405,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
           {entry.data.tags && entry.data.tags.length > 0 && entry.data.tags.map((tag) => (
             <span class="post-hero__taxonomy-item">
               <span class="post-hero__taxonomy-separator" aria-hidden="true">/</span>
-              <a href={getTagUrl(tag)} class="post-hero__taxonomy-link post-hero__taxonomy-link--tag">
+              <a href={resolveTagHref(tag)} class="post-hero__taxonomy-link post-hero__taxonomy-link--tag">
                 {tag.trim()}
               </a>
             </span>

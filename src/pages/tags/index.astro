@@ -1,0 +1,67 @@
+---
+import PageTitle from "@/components/common/PageTitle.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { siteConfig } from "@/config";
+import { getTagList, MIN_TAG_HUB_POSTS } from "@/utils/content-utils";
+import { url } from "@/utils/url-utils";
+
+if (!siteConfig.pages.archive) {
+	return Astro.redirect("/404/");
+}
+
+const tags = await getTagList();
+
+const title = i18n(I18nKey.browseAllTags);
+const description = i18n(I18nKey.tagIndexDescription).replace(
+	"{count}",
+	String(tags.length),
+);
+---
+
+<MainGridLayout title={title} description={description} hasOwnH1={true}>
+	<section class="card-base z-10 px-4 py-6 md:px-9 relative w-full">
+		<header class="mb-6">
+			<PageTitle
+				title={title}
+				eyebrow="Tags"
+				description={description}
+				variant="stacked"
+			/>
+		</header>
+
+		<h2 class="mb-3 font-medium text-(--deep-text)">{i18n(I18nKey.tagIndex)}</h2>
+		<ul class="flex flex-wrap gap-2">
+			{tags.map((tag) => {
+				const isHub = tag.count >= MIN_TAG_HUB_POSTS;
+				return (
+					<li>
+						<a
+							href={tag.url}
+							class:list={[
+								"inline-flex items-center gap-1.5 rounded-full transition-colors hover:border-(--primary) hover:text-(--primary)",
+								isHub
+									? "border border-(--line-divider) px-3 py-1 text-sm text-(--deep-text)"
+									: "px-2.5 py-1 text-xs text-(--content-meta)",
+							]}
+						>
+							<span>#{tag.name}</span>
+							<span class="opacity-70">{tag.count}</span>
+						</a>
+					</li>
+				);
+			})}
+		</ul>
+
+		<p class="mt-8 text-sm text-(--content-meta)">
+			<a href={url("/archive/")} class="hover:text-(--primary)">
+				{i18n(I18nKey.archive)}
+			</a>
+			·
+			<a href={url("/categories/")} class="hover:text-(--primary)">
+				{i18n(I18nKey.categories)}
+			</a>
+		</p>
+	</section>
+</MainGridLayout>

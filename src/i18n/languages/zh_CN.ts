@@ -318,6 +318,13 @@ export const zh_CN: Translation = {
 	[Key.tagIndex]: "标签索引",
 	[Key.tagUnit]: "个标签",
 	[Key.browseAllTags]: "全部标签",
+	[Key.tagIndexDescription]:
+		"按标签浏览本站全部文章，共 {count} 个标签。标签按文章数量排序，点击任意标签可查看该主题下的全部文章。",
+	[Key.tagPageDescription]:
+		"「{tag}」标签下的全部文章，共 {count} 篇。按发布时间倒序排列，涵盖相关主题的实践记录与整理。",
+	[Key.categoryPageDescription]:
+		"「{category}」分类下的全部文章，共 {count} 篇。按发布时间倒序排列，涵盖该分类下的实践记录与整理。",
+	[Key.relatedTags]: "相关标签",
 	[Key.subscribeContact]: "订阅与联系",
 	[Key.contactMethods]: "常用联系方式",
 	[Key.viewsLabel]: "访问量",

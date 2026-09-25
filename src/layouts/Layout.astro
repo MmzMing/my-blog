@@ -48,10 +48,19 @@ interface Props {
 	postSlug?: string;
 	robots?: string;
 	articleMeta?: ArticleMeta;
+	/** 显式指定的社交分享图（绝对 URL），文章页传真实封面 */
+	ogImage?: string;
 }
 
-const { title, description, setOGTypeArticle, postSlug, articleMeta, robots } =
-	Astro.props;
+const {
+	title,
+	description,
+	setOGTypeArticle,
+	postSlug,
+	articleMeta,
+	robots,
+	ogImage,
+} = Astro.props;
 let { lang } = Astro.props;
 
 const configHue = siteConfig.themeColor.hue;
@@ -68,10 +77,15 @@ if (title === siteConfig.title) {
 		: siteConfig.title;
 }
 
-let ogImageUrl: string | undefined;
-if (siteConfig.generateOgImages && postSlug) {
-	ogImageUrl = new URL(`/og/${postSlug}.png`, Astro.site).toString();
-}
+// og:image 三级优先：显式传入的真实封面 → 构建期生成的 OG 图 → 站点默认图。
+// 此前只在 generateOgImages 打开时才有图，而该开关默认关闭，导致全部文章分享到
+// 微信 / X / Telegram 时没有卡片图——社交分发拿不到点击，也就攒不到自然外链。
+const ogImageUrl =
+	ogImage ||
+	(siteConfig.generateOgImages && postSlug
+		? new URL(`/og/${postSlug}.png`, Astro.site).toString()
+		: "") ||
+	new URL(siteConfig.defaultOgImage, Astro.site).toString();
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site).toString();
 
@@ -143,7 +157,7 @@ const siteLang = lang.replace("_", "-");
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description || siteConfig.description || pageTitle} />
-    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+    <meta property="og:image" content={ogImageUrl} />
     {setOGTypeArticle ? (
       <meta property="og:type" content="article" />
     ) : (
@@ -171,7 +185,7 @@ const siteLang = lang.replace("_", "-");
     <meta property="twitter:url" content={canonicalUrl} />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description || siteConfig.description || pageTitle} />
-    {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}
+    <meta name="twitter:image" content={ogImageUrl} />
     {/* 文章页 Twitter 卡片附加作者与阅读时间标签 */}
     {setOGTypeArticle && (
       <>
