@@ -77,14 +77,15 @@ if (title === siteConfig.title) {
 		: siteConfig.title;
 }
 
-// og:image 三级优先：显式传入的真实封面 → 构建期生成的 OG 图 → 站点默认图。
-// 此前只在 generateOgImages 打开时才有图，而该开关默认关闭，导致全部文章分享到
-// 微信 / X / Telegram 时没有卡片图——社交分发拿不到点击，也就攒不到自然外链。
+// og:image 三级优先（对齐上游 Firefly 的顺序）：构建期生成的 OG 卡片图 → 显式传入的真实
+// 封面 → 站点默认图。OG 卡片图必须排在封面之前：封面经 Astro 图片服务转成 WebP，而 QQ /
+// 微信等国内抓取器对 WebP 渲染不稳定，卡片常常有标题没图。
+// 站点默认图兜底是上游没有的一档，用于保证非文章页（首页 / 归档 / 枢纽页）也带 og:image。
 const ogImageUrl =
-	ogImage ||
 	(siteConfig.generateOgImages && postSlug
 		? new URL(`/og/${postSlug}.png`, Astro.site).toString()
 		: "") ||
+	ogImage ||
 	new URL(siteConfig.defaultOgImage, Astro.site).toString();
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site).toString();
@@ -158,6 +159,7 @@ const siteLang = lang.replace("_", "-");
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description || siteConfig.description || pageTitle} />
     <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:alt" content={pageTitle} />
     {setOGTypeArticle ? (
       <meta property="og:type" content="article" />
     ) : (
@@ -186,6 +188,7 @@ const siteLang = lang.replace("_", "-");
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description || siteConfig.description || pageTitle} />
     <meta name="twitter:image" content={ogImageUrl} />
+    <meta name="twitter:image:alt" content={pageTitle} />
     {/* 文章页 Twitter 卡片附加作者与阅读时间标签 */}
     {setOGTypeArticle && (
       <>

@@ -142,12 +142,17 @@ export const siteConfig: SiteConfig = {
 	// 是否显示文章顶部的分享按钮行（QQ / 邮件 / 飞书 / X / WhatsApp / 复制链接）
 	postShare: true,
 
-	// OpenGraph图片功能,注意开启后要渲染很长时间，不建议本地调试的时候开启
-	generateOgImages: false,
+	// OpenGraph图片功能,注意开启后要渲染很长时间，不建议本地调试的时候开启。
+	// 开启后 Layout 的 og:image 优先取 /og/<slug>.png（1200x630 PNG），而非正文封面的
+	// WebP 变体——QQ / 微信抓取器对 WebP 渲染不稳定，关掉会导致卡片有标题没图。
+	generateOgImages: true,
 
-	// 站点默认 OG 图：供 JSON-LD 结构化数据（SiteStructuredData）与无封面文章的结构化图片兜底使用。
-	// 与 coverImageConfig.randomCoverImage.fallback（随机封面图 API 失败的回退）互不相干，两者指向同一张图并非重复配置
-	defaultOgImage: "/assets/images/aut.webp",
+	// 站点默认 OG 图：供 JSON-LD 结构化数据（Person.image / Organization.logo）与
+	// 非文章页的 og:image 兜底使用。必须是 JPEG / PNG 等位图通用格式而非 WebP——
+	// QQ / 微信抓取器对 WebP 渲染不稳定，首页分享会出文字不出图。
+	// 与 coverImageConfig.randomCoverImage.fallback（随机封面图 API 失败的回退，走浏览器
+	// <img>，WebP 无碍）互不相干，两者是同一份美术的不同编码，并非重复配置
+	defaultOgImage: "/assets/images/aut.jpg",
 
 	// 页面加载动画配置
 	pageLoader: {
