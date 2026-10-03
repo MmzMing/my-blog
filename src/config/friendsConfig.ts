@@ -590,6 +590,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "左沐の手册",
+		imgurl: "https://tu.mstzuomu.space/file/头像/1786942479049_azumahead.jpg",
+		desc: "热爱是拯救无趣人生的唯一途径",
+		siteurl: "https://azuma.mstzuomu.space",
+		image: "/assets/images/friends/mstzuomu.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
