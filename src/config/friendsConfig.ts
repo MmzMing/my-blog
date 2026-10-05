@@ -600,6 +600,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "xane",
+		imgurl: "https://d9f.cc.cd/file/1784710214848_tx.jpg",
+		desc: "Keep going.",
+		siteurl: "https://xane.eu.cc",
+		image: "/assets/images/friends/eu.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
