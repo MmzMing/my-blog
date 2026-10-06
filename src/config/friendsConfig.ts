@@ -620,6 +620,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "夢酷",
+		imgurl: "https://imki.cn/avatar.jpg",
+		desc: "Crafting Dreams In Code.",
+		siteurl: "https://imki.cn",
+		image: "/assets/images/friends/imki.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
