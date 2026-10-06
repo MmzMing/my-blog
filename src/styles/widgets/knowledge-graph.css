@@ -92,10 +92,9 @@
 	font-size: 0.75rem;
 }
 
-/* 底部抽屉容器：桌面端两面板各自 absolute 分居左右，容器自身无盒；
-   移动端切成 flex 列，详情卡与控制卡上下堆叠，从布局上杜绝互相覆盖。
-   容器 pointer-events:none + 子面板 auto —— gap 空白点击穿透到画布，
-   「点空白取消选中」在两卡之间的缝隙依然有效 */
+/* 底部抽屉容器：桌面端 display:contents 零影响（详情面板自己 absolute 挂在左侧，
+   dock 与弹窗是 .knowledge-graph 的直接子节点，不进这里）；移动端切成 flex 列，
+   详情卡片从布局上就不会和别的东西互相覆盖 */
 .knowledge-graph__drawers {
 	display: contents;
 }
@@ -104,14 +103,20 @@
 	.knowledge-graph__drawers {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: var(--kg-drawer-gap);
 		position: absolute;
-		left: 0.75rem;
-		right: 0.75rem;
-		/* 只让开右下角的 dock 气泡（3.65rem 高、贴底 max(0.5rem, 安全区)），
-		   再留 0.5rem 呼吸缝。旧值把 dock 高度重复叠加，凭空多出一段空白 */
+		left: auto;
+		right: max(var(--kg-mobile-edge), env(safe-area-inset-right, 0px));
+		/* 与两条 dock 同一条宽度算式，详情卡左右缘才和它们对齐 */
+		width: calc(
+			100vw - max(var(--kg-mobile-edge), env(safe-area-inset-right, 0px)) -
+				max(var(--kg-mobile-edge), env(safe-area-inset-left, 0px))
+		);
+		max-width: calc(100vw - (var(--kg-mobile-edge) * 2));
+		/* 从下往上依次让开：安全区 → mobile-dock → 图谱 dock 条 → 一条呼吸缝 */
 		bottom: calc(
-			max(0.5rem, env(safe-area-inset-bottom, 0px)) + 3.65rem + 0.5rem
+			var(--kg-dock-mobile-bottom) + var(--kg-graph-bar-h) +
+				var(--kg-drawer-gap)
 		);
 		max-height: 72dvh;
 		z-index: 28;
@@ -119,16 +124,9 @@
 	}
 
 	.knowledge-graph__drawers > * {
+		/* 容器本身不吃点击：卡片之外的空白仍要能穿到画布，
+		   「点空白取消选中」才不会被这一层挡掉 */
 		pointer-events: auto;
-	}
-
-	/* 控制面板收起后，右下角多了一颗 2.875rem 的伸缩小球（graph-filter-panel.css）：
-	   详情卡再往上让一格，避免压在小球下面 */
-	.knowledge-graph[data-kg-panel-collapsed] .knowledge-graph__drawers {
-		bottom: calc(
-			max(0.5rem, env(safe-area-inset-bottom, 0px)) + 3.65rem + 0.5rem +
-				2.875rem + 0.5rem
-		);
 	}
 }
 

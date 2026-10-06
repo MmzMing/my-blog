@@ -605,6 +605,10 @@ export function mountKnowledgeGraph(
 			dirty = true;
 		}
 		if (layoutAnim) updateLayoutAnim(time);
+		// 连线描绘的续命：渲染器会报出「最晚一条线画完的时刻」。起笔前那
+		// 500ms 延迟里画布上什么都不会变，物理也收敛完了，不靠这个就没人来
+		// 触发第一次描线
+		if (time < scene.linesPendingUntil) dirty = true;
 
 		const alpha = simulation.sim.alpha();
 		if (alpha > simulation.sim.alphaMin()) {
@@ -692,7 +696,6 @@ export function mountKnowledgeGraph(
 	status.textContent = strings.loaded;
 	emitStats();
 	emitPlayback();
-	renderer.draw(performance.now());
 
 	if (reducedMotion) {
 		requestDraw();
@@ -702,6 +705,9 @@ export function mountKnowledgeGraph(
 		simulation.reheat(0.12);
 		startLoop();
 	}
+	// 首帧必须等播放头定下来之后再画：抢在 restart 之前画，会闪一帧完整图
+	// （节点全揭示、连线也全画完）才被清空重播
+	renderer.draw(performance.now());
 
 	return {
 		destroy() {

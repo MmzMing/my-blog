@@ -1,5 +1,6 @@
 import type { ZoomTransform } from "d3";
 import {
+	clamp,
 	curvePoint,
 	easeOutBack,
 	easeOutCubic,
@@ -13,6 +14,11 @@ import type { FilterState, GraphTier, SceneNode } from "./types";
 
 const PARTICLE_SPEED = 0.00115;
 const MAX_PARTICLES = 140;
+
+/** 力导向下连线的起笔延迟：等这条边的两端都揭示完，再空这么一会儿 */
+const LINE_DRAW_DELAY_MS = 250;
+/** 一条线从这一端拉到那一端的时长 */
+const LINE_DRAW_MS = 900;
 
 /** 层级 → 节点可见的最小缩放。缩小时先收掉细节层，避免糊成一片 */
 const TIER_MIN_ZOOM: Record<GraphTier, number> = {
@@ -163,12 +169,27 @@ export function createRenderer(
 					const anchor = scene.selected ?? scene.hovered;
 					return anchor === a || anchor === b;
 				})();
-			// 连线生长：力导向模式跟随两端揭示进度（回放），
-			// 脑图模式跟随「从左到右三波描绘」播放头
-			const grow =
-				scene.mode === "mindmap"
-					? mindmapLinkGrow(scene.lineProgress, link.kind)
-					: Math.min(a.reveal, b.reveal);
+			// 连线生长。脑图走「从左到右三波描绘」那条播放头；力导向逐条按自己
+			// 算 —— 两端都揭示完、这条边也变成可见了，再等一段，然后从这一端
+			// 拉到那一端。不等整张图播完才统一通电，谁先齐谁先连。
+			let grow: number;
+			if (scene.mode === "mindmap") {
+				grow = mindmapLinkGrow(scene.lineProgress, link.kind);
+			} else if (reducedMotion) {
+				grow = 1;
+			} else {
+				// 三件事都齐了才起笔：两端各自揭示完、这条边本身也变成可见了。
+				// shownAt 为 0 表示它从建场就可见，那时只由两端的揭示时刻决定
+				if (!a.revealedAt || !b.revealedAt) continue;
+				const start = Math.max(a.revealedAt, b.revealedAt, link.shownAt);
+				// 把这条线画完的时刻报给控制器：起笔前的那段延迟里画布什么都
+				// 不会变，控制器要靠它决定继续重绘，否则 RAF 一停就没人来起笔
+				const doneAt = start + LINE_DRAW_DELAY_MS + LINE_DRAW_MS;
+				if (doneAt > scene.linesPendingUntil) {
+					scene.linesPendingUntil = doneAt;
+				}
+				grow = clamp((time - start - LINE_DRAW_DELAY_MS) / LINE_DRAW_MS, 0, 1);
+			}
 			if (grow <= 0.01) continue;
 
 			const control = getCurveControl(ax, ay, bx, by, link.index);
@@ -230,7 +251,9 @@ export function createRenderer(
 			const y = node.y ?? 0;
 			if (x < view.x0 || x > view.x1 || y < view.y0 || y > view.y1) continue;
 
-			// 回放揭示：半径带轻微过冲，透明度线性追上
+			// 回放揭示：半径走带过冲的 easeOutBack（0 → 1.1 → 1）当泡泡长大。
+			// 透明度提前一半到位 —— 铺满整个入场过程的话，前半程的圆又小又虚，
+			// 看着是「淡入」而不是「冒出来」
 			const scale = easeOutBack(node.reveal);
 			const r =
 				node.radius * Math.max(0.01, scale) +
@@ -241,7 +264,9 @@ export function createRenderer(
 			context.arc(x, y, r, 0, TWO_PI);
 			context.fillStyle = color;
 			context.globalAlpha =
-				TIER_ALPHA[node.tier] * focusAlpha(node) * easeOutCubic(node.reveal);
+				TIER_ALPHA[node.tier] *
+				focusAlpha(node) *
+				easeOutCubic(clamp(node.reveal * 2, 0, 1));
 			context.fill();
 
 			// 分类节点加 surface 色描边，形成「挖空」的层次感

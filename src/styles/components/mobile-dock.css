@@ -9,12 +9,21 @@
 }
 
 @media (max-width: 768px) {
+	/* 上提到 :root 而不是留在 .mobile-dock 局部：图谱页那条 dock 要和这里
+	   同底色（graph-dock.css），局部变量继承不出去。仍限本断点内，桌面不受影响 */
+	:root {
+		--mobile-dock-surface: #e7e7e7;
+	}
+
+	:root.dark {
+		--mobile-dock-surface: #181818;
+	}
+
 	.mobile-dock {
 		--mobile-dock-edge: max(0.75rem, env(safe-area-inset-right, 0px));
 		--mobile-dock-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
 		--mobile-dock-motion: cubic-bezier(0.22, 1, 0.36, 1);
 		--mobile-dock-content-top-padding: 0.75rem;
-		--mobile-dock-surface: #e7e7e7;
 		/* 左侧留白与右侧 edge 同值，保证 dock 左右对称 —— 胶囊态和展开卡片共用，
 		   想让 dock 更长/更短就同时调这一个值和 --mobile-dock-edge */
 		--mobile-dock-inset-left: 0.75rem;
@@ -49,7 +58,6 @@
 	}
 
 	:root.dark .mobile-dock {
-		--mobile-dock-surface: #181818;
 		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 34%);
 	}
 

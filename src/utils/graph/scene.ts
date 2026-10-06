@@ -57,8 +57,12 @@ export type Scene = {
 	selected: SceneNode | null;
 	/** 当前视图模式：力导向 / 脑图 */
 	mode: GraphLayoutMode;
-	/** 脑图模式下的连线描绘播放头 0..1（graph 模式忽略，走 reveal） */
+	/** 脑图模式下的连线描绘播放头 0..1（graph 模式忽略） */
 	lineProgress: number;
+	/** 力导向下还有连线没画完的最早时刻（performance.now() 口径）。
+	    渲染器写、控制器读：控制器要靠它在「两端都画完但还没到起笔延迟」
+	    这段什么都不会变的空档里继续重绘，否则 RAF 一停就没人来起笔 */
+	linesPendingUntil: number;
 };
 
 /** 半径带上文章数权重，让热门标签/大分类更醒目 */
@@ -82,6 +86,8 @@ export function buildScene(data: KGData): Scene {
 		matched: false,
 		revealed: true,
 		reveal: 1,
+		revealSlot: -1,
+		revealedAt: 0,
 		selected: false,
 		focusDistance: -1,
 	}));
@@ -97,6 +103,7 @@ export function buildScene(data: KGData): Scene {
 			value: link.value,
 			index,
 			visible: true,
+			shownAt: 0,
 		}));
 
 	// 邻接表：parents/children 按层级深度定向，级联筛选靠它
@@ -152,6 +159,7 @@ export function buildScene(data: KGData): Scene {
 		selected: null,
 		mode: "graph",
 		lineProgress: 1,
+		linesPendingUntil: 0,
 	};
 }
 
@@ -288,6 +296,12 @@ export function applyFilters(scene: Scene, state: FilterState): void {
 				? scene.nodeMap.get(link.target)
 				: link.target;
 		const kindOn = link.kind === "tag-tag" ? state.showCooccurrence : true;
-		link.visible = Boolean(kindOn && source?.filtered && target?.filtered);
+		const next = Boolean(kindOn && source?.filtered && target?.filtered);
+		if (next === link.visible) continue;
+		// 记下这条边「变成可见」的时刻，连线描绘拿它跟两端的揭示时间一起算。
+		// 只靠两端的 revealedAt 会漏：改一次筛选让一条两端早就齐备的边重新可见，
+		// 那两个时间戳还是几秒前的，grow 一算就是 1，整张网跳过动效直接画完
+		link.shownAt = next ? performance.now() : 0;
+		link.visible = next;
 	}
 }

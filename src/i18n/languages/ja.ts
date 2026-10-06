@@ -583,8 +583,6 @@ export const ja: Translation = {
 	[Key.kgPanelTitle]: "グラフ設定",
 	[Key.kgSectionFilters]: "フィルター",
 	[Key.kgSectionGroups]: "カテゴリ選択",
-	[Key.kgSectionAppearance]: "外観",
-	[Key.kgSectionAnimation]: "アニメーション",
 	[Key.kgTierCategory]: "カテゴリ",
 	[Key.kgTierTag]: "タグ",
 	[Key.kgTierPost]: "記事",
@@ -598,8 +596,6 @@ export const ja: Translation = {
 	[Key.kgResetView]: "ビューをリセット",
 	[Key.kgLayoutMindmap]: "マインドマップ表示に切替",
 	[Key.kgLayoutForce]: "フォースレイアウトに切替",
-	[Key.kgCollapsePanel]: "設定パネルをたたむ",
-	[Key.kgExpandPanel]: "設定パネルを開く",
 	[Key.postNavBack]: "前のページへ",
 	[Key.postNavCategory]: "カテゴリを切替",
 	[Key.archiveMotto]:

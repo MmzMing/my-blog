@@ -573,8 +573,6 @@ export const en: Translation = {
 	[Key.kgPanelTitle]: "Graph Controls",
 	[Key.kgSectionFilters]: "Filters",
 	[Key.kgSectionGroups]: "Categories",
-	[Key.kgSectionAppearance]: "Appearance",
-	[Key.kgSectionAnimation]: "Animation",
 	[Key.kgTierCategory]: "Categories",
 	[Key.kgTierTag]: "Tags",
 	[Key.kgTierPost]: "Posts",
@@ -588,8 +586,6 @@ export const en: Translation = {
 	[Key.kgResetView]: "Reset view",
 	[Key.kgLayoutMindmap]: "Switch to mind map layout",
 	[Key.kgLayoutForce]: "Switch to force layout",
-	[Key.kgCollapsePanel]: "Collapse controls",
-	[Key.kgExpandPanel]: "Expand controls",
 	[Key.postNavBack]: "Back",
 	[Key.postNavCategory]: "Switch category",
 	[Key.archiveMotto]:

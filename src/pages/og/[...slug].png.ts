@@ -1,6 +1,7 @@
 import type { CollectionEntry } from "astro:content";
 import { getCollection } from "astro:content";
 import * as fs from "node:fs";
+import * as tls from "node:tls";
 import type { APIContext, GetStaticPaths } from "astro";
 import type { ImagesInput } from "takumi-js";
 import { setGlyphCacheMaxBytes } from "takumi-js";
@@ -27,6 +28,21 @@ const AVATAR_KEY = "og-avatar";
 // 注意 css/分片走 fonts.googleapis.com / fonts.gstatic.com，构建环境需可访问。
 const FONT_FAMILY = "Noto Sans SC";
 const fontCache = new Map<string, Promise<string>>();
+
+// 构建机若处于 MITM 代理 / 杀毒软件 HTTPS 审查环境下（本地根证书已装进系统库），
+// Node 内置 CA 列表不信任该根证书，拉取 Google Fonts 会报
+// "unable to verify the first certificate"。把系统 CA 合并进默认信任库，
+// 等价于 --use-system-ca 的运行时写法；这两个 API 是 Node 22.15+ 才有的，
+// 旧版本没有就跳过，维持原有行为（构建环境网络直连时本来就不受影响）。
+if (
+	typeof tls.getCACertificates === "function" &&
+	typeof tls.setDefaultCACertificates === "function"
+) {
+	tls.setDefaultCACertificates([
+		...tls.getCACertificates("default"),
+		...tls.getCACertificates("system"),
+	]);
+}
 
 // 字形缓存默认 8 MiB，按 takumi 官方说明只够容纳约一千个 CJK 字形，
 // 批量渲染中文标题会不断重栅格化刚被淘汰的字形。必须在首次 render 之前调用。

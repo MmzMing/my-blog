@@ -14,7 +14,17 @@
 	background: var(--page-bg);
 	/* 画布顶部安全区：导航栏悬浮其上，节点不该被盖住 */
 	--kg-top-inset: 4.75rem;
-	--kg-panel-width: 19rem;
+	/* dock 度量：按钮本身不带边框，一圈描边只落在包裹它们的胶囊外壳上 */
+	--kg-dock-btn-size: 2.875rem;
+	--kg-dock-pad: 0.375rem;
+	--kg-dock-gap: 0.125rem;
+	--kg-dock-edge: 1rem;
+	/* 悬停提示的右缘到按钮左缘的距离；箭头方块取同一个值，一半嵌进气泡融色、
+	   一半尖出去正好指着胶囊外壳（外壳占掉约 8px，所以这里留 14px） */
+	--kg-dock-tip-gap: 0.875rem;
+	--kg-popover-width: 19rem;
+	--kg-popover-margin: 1rem;
+	--kg-popover-arrow: 0.75rem;
 }
 
 /* 导航栏保持可达（音乐页同样保留），只把它提到画布之上 */
@@ -68,6 +78,16 @@ html:has(.graph-page).is-rendering #swup-container.transition-swup-main {
 @media (max-width: 768px) {
 	.graph-page {
 		--kg-top-inset: 4rem;
-		--kg-panel-width: 100%;
+		/* 移动端 dock 条的几何：与 mobile-dock.css:13-20 同一套留白口径 */
+		--kg-mobile-edge: 0.75rem;
+		--kg-mobile-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+		/* mobile-dock 的 pill 态高 3.25rem（border-box，padding 含在内），
+		   bubble 态是 3.65rem 的圆 —— 取较大者作为让位高度，两态都不压 */
+		--kg-mobile-dock-h: 3.65rem;
+		--kg-graph-bar-h: 3.25rem;
+		--kg-drawer-gap: 0.5rem;
+		--kg-dock-mobile-bottom: calc(
+			var(--kg-mobile-bottom) + var(--kg-mobile-dock-h) + var(--kg-drawer-gap)
+		);
 	}
 }

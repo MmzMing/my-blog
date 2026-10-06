@@ -1,5 +1,5 @@
 ---
-import GraphFilterPanel from "@components/widget/GraphFilterPanel.astro";
+import GraphDock from "@components/widget/GraphDock.astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import type { KGMeta } from "@/utils/knowledge-graph-data";
@@ -69,15 +69,15 @@ const detailGroups = [
       <span data-kg-tip-meta></span>
     </div>
 
-    {/* 播放/暂停控件在面板的「动画」分区里（GraphFilterPanel.astro） */}
+    {/* 播放/暂停、布局切换、连线与粒子开关都在右缘的 dock 上（GraphDock.astro） */}
   </div>
 
-  {/* 底部抽屉容器：桌面端 display:contents 零影响（两面板各自 absolute 分居
-      左右）；移动端切换为 flex 列堆叠，两卡片上下排列永不重叠 */}
+  {/* 底部抽屉容器：只装详情卡。桌面端它 display:contents 零影响（详情卡自己
+      absolute 挂在左侧）；移动端切成 flex 列，卡片从布局上不会和别的东西重叠 */}
   <div class="knowledge-graph__drawers">
   {/* 选中节点的详情弹窗：默认隐藏，由控制器的 kg:select 事件驱动填充。
       顶部固定层（层级 + 关闭 + 名称）与分组列表以分割线隔开；三个分组直接
-      复用右侧控制面板的 graph-accordion 类名与折叠委托，交互零新增监听。
+      复用 dock 弹窗那套 graph-accordion 类名与折叠委托，交互零新增监听。
       空分组整节隐藏 */}
   <aside class="graph-detail" data-kg-detail hidden aria-label={i18n(I18nKey.kgDetailTitle)}>
     <div class="graph-detail__top">
@@ -125,9 +125,12 @@ const detailGroups = [
       ))}
     </div>
   </aside>
-
-  <GraphFilterPanel meta={meta} />
   </div>
+
+  {/* dock 竖条与筛选弹窗是 .knowledge-graph 的直接子节点，不进抽屉容器：
+      桌面端要贴在右缘垂直居中，移动端要压在 .mobile-dock 上方，两端都不参与
+      详情卡的 flex 堆叠 */}
+  <GraphDock meta={meta} />
 </div>
 
 <script>
@@ -136,17 +139,18 @@ const detailGroups = [
     GraphTier,
     KGSelection,
   } from "@/utils/graph/types";
+  import { mountGraphDockPopover } from "@/utils/graph-dock-popover-controller";
   import { definePageIsland } from "@/utils/swup-lifecycle";
   import { url } from "@/utils/url-utils";
 
   let controller: GraphController | null = null;
-  let cleanup: (() => void) | null = null;
+  let cleanups: (() => void)[] = [];
   let version = 0;
 
   function teardown() {
     version++;
-    cleanup?.();
-    cleanup = null;
+    for (const off of cleanups) off();
+    cleanups = [];
     controller?.destroy();
     controller = null;
   }
@@ -175,7 +179,10 @@ const detailGroups = [
       if (current !== version || !root.isConnected) return;
 
       controller = mountKnowledgeGraph(root, graph, strings);
-      cleanup = wireControls(root, controller);
+      cleanups = [
+        wireControls(root, controller),
+        mountGraphDockPopover(root),
+      ];
       // 入场自动播放发生在挂载期间，早于监听器接线，手动同步一次图标
       root.dispatchEvent(
         new CustomEvent("kg:playback", { detail: controller.playback.getState() }),
@@ -188,7 +195,8 @@ const detailGroups = [
     }
   }
 
-  /** 单一委托监听覆盖面板（手风琴分区、筛选控件、播放按钮）的全部交互（CLAUDE.md 4.6） */
+  /** 单一委托监听覆盖 dock 按钮与弹窗内筛选控件的全部交互（CLAUDE.md 4.6）。
+      弹窗自身的开合与锚定不在这里 —— 它要监听 document，走 graph-dock-popover-controller */
   function wireControls(root: HTMLElement, ctrl: GraphController): () => void {
     const playBtn = root.querySelector<HTMLElement>('[data-kg-action="play"]');
     const playIcon = root.querySelector<HTMLElement>('[data-kg-icon="play"]');
@@ -215,10 +223,6 @@ const detailGroups = [
         ctrl.patchFilters({ minPosts: Number(el.value) });
         const out = root.querySelector<HTMLElement>('[data-kg-out="minPosts"]');
         if (out) out.textContent = el.value ?? "";
-      } else if (d.kgFilter === "cooccurrence") {
-        ctrl.patchFilters({ showCooccurrence: Boolean(el.checked) });
-      } else if (d.kgFilter === "particles") {
-        ctrl.patchFilters({ particles: Boolean(el.checked) });
       }
     };
 
@@ -241,7 +245,16 @@ const detailGroups = [
       else if (action === "reset-view") ctrl.resetView();
       else if (action === "deselect") ctrl.select(null);
       else if (action === "toggle-layout") ctrl.toggleLayout();
-      else if (action === "toggle-panel") togglePanel(root);
+      // dock 上的两个开关是「一颗按钮一个态」，状态就记在 aria-pressed 上
+      else if (action === "toggle-cooccurrence") {
+        const next = target.getAttribute("aria-pressed") !== "true";
+        target.setAttribute("aria-pressed", String(next));
+        ctrl.patchFilters({ showCooccurrence: next });
+      } else if (action === "toggle-particles") {
+        const next = target.getAttribute("aria-pressed") !== "true";
+        target.setAttribute("aria-pressed", String(next));
+        ctrl.patchFilters({ particles: next });
+      }
     };
 
     const onPlayback = (event: Event) => {
@@ -249,12 +262,12 @@ const detailGroups = [
       // svg 上放不了 hidden 属性（Astro 类型不收），用 display 切换两个图标
       if (playIcon) playIcon.style.display = state.playing ? "none" : "";
       if (pauseIcon) pauseIcon.style.display = state.playing ? "" : "none";
-      const playLabel = root.querySelector<HTMLElement>("[data-kg-play-label]");
-      if (playLabel) playLabel.textContent = state.playing ? strings.pause : strings.play;
-      playBtn?.setAttribute(
-        "aria-label",
-        state.playing ? strings.pause : strings.play,
-      );
+      const label = state.playing ? strings.pause : strings.play;
+      playBtn?.setAttribute("aria-pressed", String(state.playing));
+      playBtn?.setAttribute("aria-label", label);
+      // 提示走 data-tooltip（dock 的黑白箭头气泡读它），不用 title：
+      // 两个都写会叠出浏览器原生的第二个气泡
+      playBtn?.setAttribute("data-tooltip", label);
     };
 
     const onStats = (event: Event) => {
@@ -317,7 +330,7 @@ const detailGroups = [
       const mindmap = mode === "mindmap";
       const label = mindmap ? strings.forceLayout : strings.mindmap;
       layoutBtn.setAttribute("aria-pressed", String(mindmap));
-      layoutBtn.title = label;
+      layoutBtn.dataset.tooltip = label;
       layoutBtn.setAttribute("aria-label", label);
     };
 
@@ -338,25 +351,6 @@ const detailGroups = [
       root.removeEventListener("kg:select", onSelect);
       root.removeEventListener("kg:layout", onLayout);
     };
-  }
-
-  /**
-   * 控制面板 ⇄ 伸缩小球。状态只是根节点上的一个属性，滑出/滑入全交给 CSS
-   * （graph-filter-panel.css）。两个按钮文案是固定的（面板里那个只负责收，
-   * 小球只负责展），所以这里只同步 aria-expanded 与焦点。
-   */
-  function togglePanel(root: HTMLElement): void {
-    const collapsed = root.toggleAttribute("data-kg-panel-collapsed");
-    const collapseBtn = root.querySelector<HTMLElement>(
-      '[data-kg-panel] [data-kg-action="toggle-panel"]',
-    );
-    const handle = root.querySelector<HTMLElement>("[data-kg-panel-handle]");
-    collapseBtn?.setAttribute("aria-expanded", String(!collapsed));
-    handle?.setAttribute("aria-expanded", String(!collapsed));
-    // 刚点过的那个按钮马上要被 visibility/display 收掉，焦点得交接给对面。
-    // 隔一帧再 focus：此刻目标还带着旧的 visibility:hidden，直接调用会被忽略
-    const next = collapsed ? handle : collapseBtn;
-    requestAnimationFrame(() => next?.focus({ preventScroll: true }));
   }
 
   definePageIsland({ name: "knowledge-graph", mount: init, unmount: teardown });

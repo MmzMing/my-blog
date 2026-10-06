@@ -26,6 +26,12 @@ export interface SceneNode extends SimulationNodeDatum {
 	revealed: boolean;
 	/** 0..1 揭示进度，纯游标时间函数，可双向擦洗 */
 	reveal: number;
+	/** 播放槽位，只在当前可见节点之间连续编号；-1 = 被筛掉，不参与排队。
+	    每轮 applyReveal 重排一次，所以改了筛选后剩下的仍是匀速逐个冒 */
+	revealSlot: number;
+	/** 这个节点揭示完（reveal 到 1）的时刻，performance.now() 口径。
+	    0 = 还没揭示完。连线据此决定自己何时起笔 —— 两端都到位再等一段 */
+	revealedAt: number;
 	selected: boolean;
 	/** -1 = 不在聚焦子图内；0 = 选中节点；1.. = 跳数 */
 	focusDistance: number;
@@ -45,6 +51,10 @@ export interface SceneLink extends SimulationLinkDatum<SceneNode> {
 	source: string | SceneNode;
 	target: string | SceneNode;
 	visible: boolean;
+	/** 这条边变成可见的时刻（performance.now() 口径），0 = 当前不可见。
+	    只由两端节点的 revealedAt 推不出这一项：改筛选让一条早就两端齐备的边
+	    重新可见时，两端的揭示时间戳还是几秒前，连线会跳过描绘直接画完 */
+	shownAt: number;
 }
 
 export type ThemeColors = {

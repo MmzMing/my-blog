@@ -579,8 +579,6 @@ export const ru: Translation = {
 	[Key.kgPanelTitle]: "Управление графом",
 	[Key.kgSectionFilters]: "Фильтры",
 	[Key.kgSectionGroups]: "Категории",
-	[Key.kgSectionAppearance]: "Внешний вид",
-	[Key.kgSectionAnimation]: "Анимация",
 	[Key.kgTierCategory]: "Категории",
 	[Key.kgTierTag]: "Теги",
 	[Key.kgTierPost]: "Статьи",
@@ -594,8 +592,6 @@ export const ru: Translation = {
 	[Key.kgResetView]: "Сбросить вид",
 	[Key.kgLayoutMindmap]: "Переключить на минд-карту",
 	[Key.kgLayoutForce]: "Переключить на силовой граф",
-	[Key.kgCollapsePanel]: "Свернуть панель",
-	[Key.kgExpandPanel]: "Развернуть панель",
 	[Key.postNavBack]: "Назад",
 	[Key.postNavCategory]: "Сменить категорию",
 	[Key.archiveMotto]:
