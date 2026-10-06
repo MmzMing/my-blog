@@ -610,6 +610,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "YuJing的记忆终端",
+		imgurl: "https://yujingblog.top/assets/home/avatar.webp",
+		desc: "记一些无用的日常，和有光的时刻。",
+		siteurl: "https://yujingblog.top",
+		image: "/assets/images/friends/yujingblog.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
