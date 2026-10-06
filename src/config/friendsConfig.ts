@@ -635,6 +635,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://clannad.top/favicon.png",
 		desc: "Welcome to HZH",
 		siteurl: "https://clannad.top",
+		image: "/assets/images/friends/clannad.webp",
 		tags: ["Blog"],
 		weight: 5,
 		enabled: true,
