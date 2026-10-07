@@ -33,7 +33,7 @@ import type {
 import {
 	appendGuestbookImage,
 	buildGuestbookEditedMessageBody,
-	buildGuestbookMessageBody,
+	buildGuestbookReplyFields,
 	flattenGuestbookComments,
 	getGuestbookErrorMessage,
 	getGuestbookInitials,
@@ -48,7 +48,11 @@ import GuestbookChatComposer from "./GuestbookChatComposer.svelte";
 import GuestbookChatMessage from "./GuestbookChatMessage.svelte";
 
 const CHANNEL_PATH = "/guestbook/";
-const PAGE_SIZE = 10;
+// getComment 按根评论分页，回复只附在父评论所在的那一页上，所以必须整个 path 全量拉取才不会漏掉新回复。
+// 必须是 2 的幂：脏数据页靠对半拆分回退（见 collect）；64 是服务端 pageSize 上限 100 以内最大的 2 的幂。
+const SYNC_PAGE_SIZE = 64;
+// 一次渲染多少条。数据是全量的，这里只限制 DOM 里的消息数，展开时不再发请求。
+const VISIBLE_WINDOW = 20;
 const MIN_MESSAGE_LENGTH = 2;
 const MAX_MESSAGE_LENGTH = 300;
 const PROFILE_STORAGE_KEY = "guestbook-chat-profile";
@@ -68,13 +72,9 @@ let initialLoading = $state(true);
 let initialError = $state("");
 let syncError = $state("");
 let composerError = $state("");
-let loadingOlder = $state(false);
 let syncing = $state(false);
 let loggingIn = $state(false);
 let isOffline = $state(false);
-let currentPage = $state(1);
-let totalPages = $state(0);
-let totalCount = $state(0);
 let newMessageCount = $state(0);
 let lastSyncedAt = $state<number | null>(null);
 let messageList = $state<HTMLDivElement | null>(null);
@@ -86,7 +86,7 @@ let memberPanel = $state<HTMLElement | null>(null);
 let memberToggle = $state<HTMLButtonElement | null>(null);
 let sidebarOpen = $state(false);
 let showScrollToBottom = $state(false);
-let olderAboveCount = $state(0);
+let visibleCount = $state(VISIBLE_WINDOW);
 let editingMessageId = $state<string | null>(null);
 let editDraft = $state("");
 let mutatingMessageId = $state<string | null>(null);
@@ -96,10 +96,15 @@ let dataController: AbortController | null = null;
 let syncQueued = false;
 let initialMediaCleanup: (() => void) | null = null;
 
-const hasMore = $derived(currentPage < totalPages);
 const isSending = $derived(
 	messages.some((message) => message.localState === "sending"),
 );
+const visibleMessages = $derived(
+	messages.length > visibleCount
+		? messages.slice(messages.length - visibleCount)
+		: messages,
+);
+const hiddenMessageCount = $derived(messages.length - visibleMessages.length);
 const chatMembers = $derived.by(() => {
 	const members = new Map<
 		string,
@@ -361,18 +366,58 @@ function handleAuthenticationError(error: unknown): boolean {
 	return true;
 }
 
-async function fetchPage(page: number, signal?: AbortSignal) {
+async function fetchAllMessages(signal?: AbortSignal): Promise<{
+	items: GuestbookMessage[];
+	incomplete: boolean;
+}> {
 	if (!serverURL) throw new Error(i18n(I18nKey.gbServerNotConfigured));
-	return getComment({
-		serverURL,
-		lang,
-		path: CHANNEL_PATH,
-		page,
-		pageSize: PAGE_SIZE,
-		sortBy: "insertedAt_desc",
-		token: authUser?.token,
-		signal,
-	});
+
+	const collected = new Map<string, GuestbookMessage>();
+	let totalCount = 0;
+	let incomplete = false;
+	let responded = false;
+	let firstError: unknown = null;
+
+	// 服务端遇到 mail 为 null 的历史留言会在算头像时抛错、整页 500，
+	// 所以失败时把页区间对半重取，只丢掉单条也取不回来的那几条。
+	const collect = async (page: number, pageSize: number): Promise<void> => {
+		try {
+			const response = await getComment({
+				serverURL,
+				lang,
+				path: CHANNEL_PATH,
+				page,
+				pageSize,
+				sortBy: "insertedAt_desc",
+				token: authUser?.token,
+				signal,
+			});
+			responded = true;
+			totalCount ||= response.count;
+			for (const message of flattenGuestbookComments(response.data)) {
+				collected.set(message.id, message);
+			}
+		} catch (error) {
+			if (signal?.aborted) throw error;
+			firstError ||= error;
+			if (pageSize <= 1) {
+				incomplete = true;
+				return;
+			}
+			await collect(page * 2 - 1, pageSize / 2);
+			await collect(page * 2, pageSize / 2);
+		}
+	};
+
+	await collect(1, SYNC_PAGE_SIZE);
+	// 一次都没成功过就不是"缺几条"而是整站取不到，交给调用方走加载失败态
+	if (!responded && firstError) throw firstError;
+	const pageCount = Math.ceil(totalCount / SYNC_PAGE_SIZE) || 1;
+	for (let page = 2; page <= pageCount; page += 1) {
+		await collect(page, SYNC_PAGE_SIZE);
+	}
+
+	return { items: [...collected.values()], incomplete };
 }
 
 let autoNoticeShown = false;
@@ -387,23 +432,17 @@ async function loadInitial() {
 	const controller = new AbortController();
 	dataController = controller;
 	syncing = false;
-	loadingOlder = false;
 	initialLoading = true;
 	initialError = "";
 	syncError = "";
 
 	try {
-		const response = await fetchPage(1, controller.signal);
+		const { items, incomplete } = await fetchAllMessages(controller.signal);
 		if (dataController !== controller) return;
-		messages = mergeGuestbookMessages(
-			messages,
-			flattenGuestbookComments(response.data),
-		);
-		currentPage = 1;
-		totalPages = response.totalPages;
-		totalCount = response.count;
+		messages = mergeGuestbookMessages(messages, items);
 		lastSyncedAt = Date.now();
 		initialLoading = false;
+		if (incomplete) syncError = i18n(I18nKey.gbHistoryIncomplete);
 		await tick();
 		scrollToBottom(false);
 		preserveInitialBottomWhileMediaLoads();
@@ -450,16 +489,14 @@ async function syncLatest() {
 	);
 
 	try {
-		const response = await fetchPage(1, controller.signal);
+		const { items, incomplete } = await fetchAllMessages(controller.signal);
 		if (dataController !== controller) return;
-		const incoming = flattenGuestbookComments(response.data);
-		const freshCount = incoming.filter(
+		const freshCount = items.filter(
 			(message) => !knownIds.has(message.id),
 		).length;
-		messages = mergeGuestbookMessages(messages, incoming);
-		totalPages = response.totalPages;
-		totalCount = response.count;
+		messages = mergeGuestbookMessages(messages, items);
 		lastSyncedAt = Date.now();
+		if (incomplete) syncError = i18n(I18nKey.gbHistoryIncomplete);
 		await tick();
 
 		if (freshCount > 0 && wasNearBottom) scrollToBottom(true);
@@ -473,44 +510,6 @@ async function syncLatest() {
 	} finally {
 		if (dataController === controller) {
 			syncing = false;
-			finishDataRequest(controller);
-		}
-	}
-}
-
-async function loadOlder() {
-	if (!hasMore || loadingOlder || !messageList || dataController) return;
-	const controller = new AbortController();
-	dataController = controller;
-	loadingOlder = true;
-	const anchorFromBottom =
-		document.documentElement.scrollHeight - window.scrollY;
-	const nextPage = currentPage + 1;
-
-	try {
-		const response = await fetchPage(nextPage, controller.signal);
-		if (dataController !== controller) return;
-		messages = mergeGuestbookMessages(
-			messages,
-			flattenGuestbookComments(response.data),
-		);
-		currentPage = nextPage;
-		totalPages = response.totalPages;
-		totalCount = response.count;
-		await tick();
-		window.scrollTo({
-			top: document.documentElement.scrollHeight - anchorFromBottom,
-			behavior: "instant",
-		});
-	} catch (error) {
-		if (controller.signal.aborted || dataController !== controller) return;
-		const authenticationExpired = handleAuthenticationError(error);
-		if (authenticationExpired) syncQueued = true;
-		const message = getGuestbookErrorMessage(error);
-		if (message && !authenticationExpired) syncError = message;
-	} finally {
-		if (dataController === controller) {
-			loadingOlder = false;
 			finishDataRequest(controller);
 		}
 	}
@@ -551,34 +550,18 @@ function scrollToBottom(smooth = true) {
 	});
 	newMessageCount = 0;
 	showScrollToBottom = false;
-	updateAboveCount();
 }
 
-function scrollToTop() {
-	const reduceMotion = window.matchMedia(
-		"(prefers-reduced-motion: reduce)",
-	).matches;
-	window.scrollTo({ top: 0, behavior: reduceMotion ? "instant" : "smooth" });
-}
-
-async function expandOlder() {
-	if (hasMore && !loadingOlder) await loadOlder();
-	scrollToTop();
-}
-
-function updateAboveCount() {
-	if (!messageList) {
-		olderAboveCount = 0;
-		return;
-	}
-	let loadedAbove = 0;
-	for (const node of messageList.querySelectorAll<HTMLElement>(
-		".guestbook-message",
-	)) {
-		if (node.getBoundingClientRect().bottom < 80) loadedAbove += 1;
-	}
-	const unloaded = hasMore ? Math.max(0, totalCount - messages.length) : 0;
-	olderAboveCount = loadedAbove + unloaded;
+// 本地展开更早的消息：数据已经全量在手，不再发请求；补回顶部高度后按锚点复位滚动
+async function revealOlderMessages() {
+	const anchorFromBottom =
+		document.documentElement.scrollHeight - window.scrollY;
+	visibleCount += VISIBLE_WINDOW;
+	await tick();
+	window.scrollTo({
+		top: document.documentElement.scrollHeight - anchorFromBottom,
+		behavior: "instant",
+	});
 }
 
 function preserveInitialBottomWhileMediaLoads() {
@@ -633,11 +616,9 @@ function preserveInitialBottomWhileMediaLoads() {
 }
 
 function handleWindowScroll() {
-	if (window.scrollY < 72 && hasMore) void loadOlder();
 	const nearBottom = isNearBottom();
 	showScrollToBottom = !nearBottom;
 	if (nearBottom) newMessageCount = 0;
-	updateAboveCount();
 }
 
 function formatMessageTime(value: number): string {
@@ -671,8 +652,8 @@ function dateLabel(value: number): string {
 function shouldShowDate(index: number): boolean {
 	return (
 		index === 0 ||
-		dateKey(messages[index - 1].createdAt) !==
-			dateKey(messages[index].createdAt)
+		dateKey(visibleMessages[index - 1].createdAt) !==
+			dateKey(visibleMessages[index].createdAt)
 	);
 }
 
@@ -682,13 +663,14 @@ function selectReply(message: GuestbookMessage) {
 
 async function jumpToQuotedMessage(message: GuestbookMessage) {
 	if (!message.replyToId) return;
-	let target = messages.find((candidate) => candidate.id === message.replyToId);
-
-	while (!target && hasMore && !loadingOlder) {
-		await loadOlder();
-		target = messages.find((candidate) => candidate.id === message.replyToId);
+	const targetIndex = messages.findIndex(
+		(candidate) => candidate.id === message.replyToId,
+	);
+	// 目标可能在显示窗口之外，先把它纳入窗口再定位，否则拿不到节点
+	if (targetIndex > -1 && messages.length - targetIndex > visibleCount) {
+		visibleCount = messages.length - targetIndex;
+		await tick();
 	}
-
 	const element = document.getElementById(
 		`guestbook-message-${message.replyToId}`,
 	);
@@ -771,11 +753,12 @@ async function sendMessage(
 		nick: authUser?.display_name || profile.nick || i18n(I18nKey.gbVisitor),
 		avatar: authUser?.avatar || "",
 		link: authUser?.url || profile.link.trim() || undefined,
-		body: target ? `@${target.nick} ${content}` : content,
+		body: content,
 		createdAt: Date.now(),
 		isAdmin: false,
 		replyToId: target?.id,
 		replyToNick: target?.nick,
+		replyTargetId: target?.id,
 		localState: "sending",
 	};
 
@@ -796,11 +779,13 @@ async function sendMessage(
 			token: authUser?.token,
 			comment: {
 				nick: authUser?.display_name || profile.nick.trim(),
-				mail: authUser?.email || profile.mail.trim() || undefined,
+				// 必须下发空串而不是 undefined：服务端 gravatar 模板对 null 跑 trim 会 500
+				mail: authUser?.email || profile.mail.trim() || "",
 				link: authUser?.url || profile.link.trim() || undefined,
-				comment: buildGuestbookMessageBody(content, target),
+				comment: content,
 				ua: navigator.userAgent,
 				url: CHANNEL_PATH,
+				...buildGuestbookReplyFields(target),
 			},
 		});
 
@@ -812,7 +797,6 @@ async function sendMessage(
 		messages = mergeGuestbookMessages(messages, [
 			normalizeGuestbookComment(response.data),
 		]);
-		totalCount += 1;
 		initialError = "";
 		syncError = "";
 		lastSyncedAt = Date.now();
@@ -833,16 +817,11 @@ async function sendMessage(
 }
 
 async function retryMessage(message: GuestbookMessage) {
-	const target = message.replyToId
-		? (messages.find((candidate) => candidate.id === message.replyToId) ?? null)
+	const retryTargetId = message.replyTargetId;
+	replyTarget = retryTargetId
+		? (messages.find((candidate) => candidate.id === retryTargetId) ?? null)
 		: null;
-	replyTarget = target;
-	const prefix = target ? `@${target.nick} ` : "";
-	const content =
-		prefix && message.body.startsWith(prefix)
-			? message.body.slice(prefix.length)
-			: message.body;
-	await sendMessage(message.id, undefined, content);
+	await sendMessage(message.id, undefined, message.body);
 }
 
 function discardMessage(message: GuestbookMessage) {
@@ -937,7 +916,6 @@ async function confirmDeleteMessage() {
 			objectId: target.objectId,
 		});
 		messages = messages.filter((message) => message.id !== target.id);
-		totalCount = Math.max(0, totalCount - 1);
 		if (replyTarget?.id === target.id) replyTarget = null;
 		if (editingMessageId === target.id) {
 			editingMessageId = null;
@@ -1068,34 +1046,6 @@ onMount(() => {
 
 <section class="guestbook-chat" aria-label={i18n(I18nKey.gbTitle)}>
 	<div class="guestbook-chat__workspace">
-		{#if !initialLoading && !initialError && olderAboveCount > 0}
-			<button
-				class="guestbook-chat__older-count"
-				type="button"
-				onclick={() => void expandOlder()}
-				disabled={loadingOlder}
-				aria-label={i18n(I18nKey.gbOlderAbove).replace(
-					"{count}",
-					String(olderAboveCount),
-				)}
-				title={i18n(I18nKey.gbOlderAbove).replace(
-					"{count}",
-					String(olderAboveCount),
-				)}
-			>
-				{#if loadingOlder}
-					<LoaderCircle class="is-spinning" size={14} aria-hidden="true" />
-				{:else}
-					<ChevronUp size={14} aria-hidden="true" />
-				{/if}
-				<span>
-					{i18n(I18nKey.gbOlderAboveShort).replace(
-						"{count}",
-						String(olderAboveCount),
-					)}
-				</span>
-			</button>
-		{/if}
 		<div class="guestbook-chat__conversation">
 			{#if initialLoading}
 				<div
@@ -1130,24 +1080,17 @@ onMount(() => {
 					aria-live="polite"
 					aria-relevant="additions"
 				>
-					<div class="guestbook-chat__history">
-						{#if hasMore}
-							<button
-								type="button"
-								onclick={() => void loadOlder()}
-								disabled={loadingOlder}
-							>
-								{#if loadingOlder}
-									<LoaderCircle class="is-spinning" size={15} aria-hidden="true" />
-								{/if}
-								{loadingOlder
-									? i18n(I18nKey.gbLoadingOlder)
-									: i18n(I18nKey.gbLoadOlder)}
-							</button>
-						{:else if messages.length > 0}
-							<span>{i18n(I18nKey.gbNoMoreMessages)}</span>
-						{/if}
-					</div>
+					{#if hiddenMessageCount > 0}
+						<button
+							class="guestbook-chat__reveal-older"
+							type="button"
+							onclick={() => void revealOlderMessages()}
+						>
+							<ChevronUp size={15} aria-hidden="true" />{i18n(
+								I18nKey.gbShowOlder
+							).replace("{count}", String(hiddenMessageCount))}
+						</button>
+					{/if}
 
 					{#if messages.length === 0}
 						<div class="guestbook-chat__empty">
@@ -1157,7 +1100,7 @@ onMount(() => {
 						</div>
 					{/if}
 
-					{#each messages as message, index (message.id)}
+					{#each visibleMessages as message, index (message.id)}
 						{#if shouldShowDate(index)}
 							<div class="guestbook-chat__date">
 								<span>{dateLabel(message.createdAt)}</span>

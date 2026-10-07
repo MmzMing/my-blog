@@ -161,7 +161,7 @@ export function getGuestbookTextLength(content: string): number {
 	return Array.from(content.replace(MARKDOWN_IMAGE, "").trim()).length;
 }
 
-export function normalizeGuestbookTimestamp(value: number): number {
+function normalizeGuestbookTimestamp(value: number): number {
 	const numeric = Number(value);
 	if (!Number.isFinite(numeric)) return Date.now();
 	return numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
@@ -175,18 +175,27 @@ function decodeReplyNick(value: string): string {
 	}
 }
 
-export function parseGuestbookMessageBody(raw: string): {
+function parseGuestbookMessageBody(raw: string): {
 	body: string;
 	replyToId?: string;
 	replyToNick?: string;
+	marker?: string;
 } {
 	const match = raw.match(REPLY_MARKER);
 	if (!match) return { body: raw.trim() };
 
+	const replyToNick = decodeReplyNick(match[2]);
+	const withoutMarker = raw.replace(REPLY_MARKER, "").trim();
+	// 旧版把「@昵称 」写进了正文，新数据改由服务端 pid 承载，这里补掉前缀才能新旧一致
+	const mention = `@${replyToNick} `;
+
 	return {
-		body: raw.replace(REPLY_MARKER, "").trim(),
+		body: withoutMarker.startsWith(mention)
+			? withoutMarker.slice(mention.length).trim()
+			: withoutMarker,
 		replyToId: match[1],
-		replyToNick: decodeReplyNick(match[2]),
+		replyToNick,
+		marker: match[0],
 	};
 }
 
@@ -219,10 +228,13 @@ export function normalizeGuestbookComment(
 	const parsed = parseGuestbookMessageBody(
 		comment.orig || htmlToPlainText(comment.comment),
 	);
+	// 引用关系优先取服务端的 pid（真回复，会触发邮件通知），历史数据才回退到正文里的注释标记
+	const nativeReply = "pid" in comment && comment.pid ? comment.pid : null;
 
 	return {
 		id: String(comment.objectId),
 		objectId: comment.objectId,
+		rootId: "rid" in comment ? comment.rid : comment.objectId,
 		userId: comment.user_id,
 		nick: comment.nick || "匿名访客",
 		avatar: comment.avatar || "",
@@ -234,8 +246,12 @@ export function normalizeGuestbookComment(
 		addr: comment.addr,
 		label: comment.label,
 		isAdmin: comment.type === "administrator",
-		replyToId: parsed.replyToId,
-		replyToNick: parsed.replyToNick,
+		replyToId: nativeReply ? String(nativeReply) : parsed.replyToId,
+		replyToNick:
+			nativeReply && "reply_user" in comment
+				? comment.reply_user?.nick
+				: parsed.replyToNick,
+		legacyReplyMarker: nativeReply ? undefined : parsed.marker,
 		status: comment.status,
 	};
 }
@@ -269,22 +285,20 @@ export function mergeGuestbookMessages(
 	);
 }
 
-export function buildGuestbookMessageBody(
-	content: string,
+export function buildGuestbookReplyFields(
 	target: GuestbookChatMessage | null,
-): string {
-	if (!target?.objectId) return content;
-	const marker = `<!--guestbook-reply:${target.objectId}:${encodeURIComponent(target.nick)}-->`;
-	return `${marker}\n@${target.nick} ${content}`;
+): { pid?: number; rid?: number } {
+	if (!target?.objectId) return {};
+	const pid = target.objectId;
+	return { pid, rid: target.rootId ?? pid };
 }
 
 export function buildGuestbookEditedMessageBody(
 	content: string,
 	message: GuestbookChatMessage,
 ): string {
-	if (!message.replyToId) return content;
-	const marker = `<!--guestbook-reply:${message.replyToId}:${encodeURIComponent(message.replyToNick || "访客")}-->`;
-	return `${marker}\n${content}`;
+	if (!message.legacyReplyMarker) return content;
+	return `${message.legacyReplyMarker}\n${content}`;
 }
 
 export function getGuestbookErrorMessage(error: unknown): string {

@@ -197,15 +197,6 @@ html:has(.guestbook-page) {
 	color: inherit;
 }
 
-.guestbook-chat__panel-title {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	color: var(--deep-text);
-	font-size: 0.82rem;
-	font-weight: 700;
-}
-
 .guestbook-chat__members {
 	display: flex;
 	flex-direction: column;
@@ -326,32 +317,22 @@ html:has(.guestbook-page) {
 		var(--space-6);
 }
 
-.guestbook-chat__history {
+.guestbook-chat__reveal-older {
 	display: flex;
+	align-items: center;
 	justify-content: center;
+	gap: var(--space-1);
+	width: 100%;
 	min-height: var(--control-size);
 	margin-bottom: var(--space-3);
-	color: var(--guestbook-muted);
-	font-size: 0.75rem;
-}
-
-.guestbook-chat__history button {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-1);
-	min-height: var(--control-size);
-	padding: 0 var(--space-3);
 	border: 0;
 	background: transparent;
 	color: var(--guestbook-muted);
+	font-size: 0.78rem;
 }
 
-.guestbook-chat__history button:hover {
+.guestbook-chat__reveal-older:hover {
 	color: var(--deep-text);
-}
-
-.guestbook-chat__history span {
-	align-self: center;
 }
 
 .guestbook-chat__date {
@@ -373,10 +354,10 @@ html:has(.guestbook-page) {
 .guestbook-chat__empty,
 .guestbook-chat__state {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	min-height: 100%;
 	padding: var(--space-8);
 	color: var(--guestbook-muted);
 	text-align: center;
@@ -449,31 +430,6 @@ html:has(.guestbook-page) {
 	padding: 0 var(--space-2) var(--space-2);
 	color: var(--guestbook-danger);
 	font-size: 0.72rem;
-}
-
-.guestbook-chat__older-count {
-	position: fixed;
-	top: calc(var(--guestbook-viewport-offset) + var(--space-2));
-	left: 50%;
-	z-index: 5;
-	display: inline-flex;
-	align-items: center;
-	gap: var(--space-1);
-	min-height: 2.25rem;
-	padding: 0 var(--space-3);
-	border: 0;
-	border-radius: var(--radius-full);
-	background: color-mix(in srgb, var(--guestbook-dock-bg) 82%, transparent);
-	box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 0.12);
-	backdrop-filter: blur(0.75rem) saturate(1.4);
-	color: var(--guestbook-muted);
-	font-size: 0.75rem;
-	font-weight: 700;
-	transform: translateX(-50%);
-}
-
-.guestbook-chat__older-count:hover {
-	color: var(--deep-text);
 }
 
 .guestbook-chat__sync-error span {
@@ -1805,10 +1761,6 @@ html:has(.guestbook-page) {
 
 	.guestbook-composer {
 		padding: var(--space-2) var(--space-3);
-	}
-
-	html.guestbook-composer-focused .guestbook-composer {
-		padding-bottom: var(--space-2);
 	}
 
 	.guestbook-chat__fallback-composer {
