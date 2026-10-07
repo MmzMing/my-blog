@@ -216,12 +216,11 @@ export type NavBarLink = {
 export type PersonalSite = {
 	name: string; // 站点名称
 	url: string; // 站点地址（外链原样使用，不走 url()）
-	icon: string; // 图标（iconify 名）
 };
 
 export type NavBarConfig = {
 	links: (NavBarLink | LinkPreset)[];
-	// Logo 下拉资料卡里的「个人网站」列表：左侧渲染按钮组，hover 时右侧切换成对应站点大按钮
+	// Logo 下拉资料卡「其他站点」标签页里的站点列表
 	personalSites: PersonalSite[];
 };
 
@@ -391,6 +390,8 @@ export type HeroStickerConfig = {
 
 export type HomeConfig = {
 	avatar?: string;
+	/** 资料卡横幅图；留空则用头像模糊放大兜底。路径约定同 avatar */
+	avatarBanner?: string;
 	name: string;
 	displayName?: string; // 首页展示名字（如 MmMing）
 	occupation?: string; // 职业/身份标签（如 后端开发 / 技术博主）

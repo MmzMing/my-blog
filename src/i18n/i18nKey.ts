@@ -225,9 +225,11 @@ enum I18nKey {
 	calendarNoHoliday = "calendarNoHoliday",
 	profileMonthWeek = "profileMonthWeek",
 	profilePostCount = "profilePostCount",
-	profilePersonalSites = "profilePersonalSites",
 	otherSites = "otherSites",
 	profileHeatmap = "profileHeatmap",
+	profileTabHeatmap = "profileTabHeatmap",
+	profileTabDates = "profileTabDates",
+	profileTabsLabel = "profileTabsLabel",
 
 	contactMe = "contactMe",
 	qqGroup = "qqGroup",

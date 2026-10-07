@@ -11,10 +11,12 @@
  * 导航左段位置写入 fixed 锚点；锚点随滚动失效（左段收缩成球位移），与工具
  * 面板同一策略——滚动即收起。
  *
- * 右栏三态：default（周/月/年底倒计时 + 最近节日进度 + 建站日进度）、
- * site（点击「其他站点」入口后的站点列表，再次点击或关闭面板还原）、
- * posts（点击热力图方块后的该周文章列表）。面板关闭或 Swup 导航后强制回
- * default 并清空选中态；数据缓存跨导航保留，仅首次展开时请求。
+ * 卡片自上而下四层：横幅+头像堆叠 / 名字职业+社交 / 内容区 / 分段标签 dock。
+ * 内容区三页（heatmap / dates / sites）互斥且高度跟随当前页，切换带方向感知：
+ * 标签索引增大时新页从右侧滑入、旧页向左滑出，反向对称。热力图点格在同一页
+ * 内联展开该周文章；日期页的入场动效（数字滚动 + 进度条重充）改由「日期页
+ * 可见」触发，不再挂在面板展开上。面板关闭或 Swup 导航后回到默认页并清空
+ * 选中态；数据缓存跨导航保留，仅首次展开时请求。
  */
 
 import {
@@ -69,10 +71,15 @@ interface ProfileRefs {
 	card: HTMLElement;
 	mask: HTMLElement | null;
 	leftSeg: HTMLElement | null;
+	content: HTMLElement;
+	tablist: HTMLElement;
+	/** DOM 实际渲染出的标签顺序，方向判定与键盘循环都以它为准 */
+	tabs: ProfileTab[];
+	panes: Map<ProfileTab, HTMLElement>;
+	tabButtons: Map<ProfileTab, HTMLButtonElement>;
 	heatmap: HTMLElement | null;
 	cells: Map<string, HTMLButtonElement>;
-	siteTrigger: HTMLElement | null;
-	panes: { default: HTMLElement; site: HTMLElement; posts: HTMLElement };
+	weekPosts: HTMLElement | null;
 	days: { week: HTMLElement; month: HTMLElement; year: HTMLElement };
 	events: {
 		holiday: EventElements | null;
@@ -80,6 +87,8 @@ interface ProfileRefs {
 	};
 	postsTitle: HTMLElement | null;
 	postList: HTMLElement | null;
+	tooltip: HTMLElement | null;
+	bannerImg: HTMLElement | null;
 }
 
 interface EventElements {
@@ -90,12 +99,30 @@ interface EventElements {
 	remaining: HTMLElement | null;
 }
 
-type RightState = "default" | "site" | "posts";
+const PROFILE_TABS = ["heatmap", "dates", "sites"] as const;
+
+type ProfileTab = (typeof PROFILE_TABS)[number];
+
+function isProfileTab(value: string | undefined): value is ProfileTab {
+	return value !== undefined && PROFILE_TABS.some((tab) => tab === value);
+}
 
 /** 与样式断点（min-width: 1024px 走桌面布局）保持互补 */
 const MOBILE_MEDIA = "(max-width: 1023.98px)";
 /** 鼠标在 logo 与面板之间移动的过渡余量，避免误收起 */
 const CLOSE_DELAY = 260;
+/** 兜底默认页；模板未渲染出该页时退到实际首个标签 */
+const DEFAULT_TAB: ProfileTab = "heatmap";
+/** 标签页横向滑动时长 */
+const SLIDE_DURATION = 240;
+/** 与移动端底部卡片入场同一条曲线，两处动效节奏对齐 */
+const SLIDE_EASING = "cubic-bezier(0.32, 0.72, 0.29, 1)";
+/** 触摸手势判定主轴所需的最低位移，越过即锁定本手势轴向 */
+const SWIPE_AXIS_LOCK = 16;
+/** 移动端横向每滑动多少像素换一格标签 */
+const SWIPE_TAB_DISTANCE = 48;
+/** 移动端竖向下滑关闭阈值 */
+const SWIPE_CLOSE_DISTANCE = 64;
 
 /** MobileDock 站名按钮等外部入口请求开合面板时派发的窗口事件名 */
 export const NAVBAR_PROFILE_TOGGLE_EVENT = "navbar-profile:toggle";
@@ -109,21 +136,35 @@ let dataPromise: Promise<void> | null = null;
 let postsByCell = new Map<string, PostMeta[]>();
 
 let selectedCellKey: string | null = null;
-/** 点击「其他站点」钉住：右栏保持站点列表，直到再次点击 / 关面板 / 选中周 */
-let siteListPinned = false;
-/** 桌面端键盘 focus 预览：Tab 到入口按钮时右栏临时展示站点列表 */
-let siteListPreview = false;
+let activeTab: ProfileTab | null = null;
+let defaultTab: ProfileTab = DEFAULT_TAB;
+/** 滑动代数：每次新切换自增，过期回调据此放弃提交终态 */
+let slideRevision = 0;
+let slideAnimations: Animation[] = [];
 let closeTimer: number | null = null;
 let openedAsMobile = false;
 let previousBodyOverflow = "";
 /** 入场数字滚动的 rAF 句柄，重放/收起时取消 */
 let counterFrames: number[] = [];
+/** 浮层篇数滚动的 rAF 句柄，浮层收起或改挂别处时取消 */
+let tooltipFrames: number[] = [];
+
+function cancelTooltipFrames(): void {
+	for (const frame of tooltipFrames) cancelAnimationFrame(frame);
+	tooltipFrames = [];
+}
 
 /** 数字滚动时长，与旧日历组件的计数动画节奏一致 */
 const COUNTER_DURATION = 520;
+/** 篇数上滚时长：比面板入场的 520ms 短，悬停反馈要更跟手 */
+const TOOLTIP_COUNT_DURATION = 420;
 
 function isMobileViewport(): boolean {
 	return window.matchMedia(MOBILE_MEDIA).matches;
+}
+
+function prefersReducedMotion(): boolean {
+	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 function parseConfig(card: HTMLElement): ProfileConfig | null {
@@ -147,6 +188,27 @@ function collectRefs(
 			const key = cell.dataset.profileCell;
 			if (key !== undefined) cells.set(key, cell);
 		});
+	const content = card.querySelector<HTMLElement>("[data-profile-content]");
+	const tablist = card.querySelector<HTMLElement>("[data-profile-tabs]");
+	if (!content || !tablist) return null;
+	// 标签与面板按 DOM 实际结果配对：sites 页在 personalSites 为空时整块不渲染，
+	// 收 Map 而不是 Record，方向判定与键盘循环都只认这份顺序
+	const panes = new Map<ProfileTab, HTMLElement>();
+	const tabButtons = new Map<ProfileTab, HTMLButtonElement>();
+	tablist
+		.querySelectorAll<HTMLButtonElement>("[data-profile-tab]")
+		.forEach((button) => {
+			const tab = button.dataset.profileTab;
+			if (!isProfileTab(tab)) return;
+			const pane = card.querySelector<HTMLElement>(
+				`[data-profile-pane='${tab}']`,
+			);
+			if (!pane) return;
+			tabButtons.set(tab, button);
+			panes.set(tab, pane);
+		});
+	const tabs = [...panes.keys()];
+	if (tabs.length === 0) return null;
 	const daysWeek = card.querySelector<HTMLElement>(
 		"[data-profile-days='week']",
 	);
@@ -156,6 +218,7 @@ function collectRefs(
 	const daysYear = card.querySelector<HTMLElement>(
 		"[data-profile-days='year']",
 	);
+	if (!daysWeek || !daysMonth || !daysYear) return null;
 	const readEvent = (name: string): EventElements | null => {
 		const root = card.querySelector<HTMLElement>(
 			`[data-profile-event='${name}']`,
@@ -169,13 +232,6 @@ function collectRefs(
 			remaining: root.querySelector("[data-profile-event-remaining]"),
 		};
 	};
-	const pane = (name: string) =>
-		card.querySelector<HTMLElement>(`[data-profile-pane='${name}']`);
-	const defaultPane = pane("default");
-	const sitePane = pane("site");
-	const postsPane = pane("posts");
-	if (!defaultPane || !sitePane || !postsPane) return null;
-	if (!daysWeek || !daysMonth || !daysYear) return null;
 
 	return {
 		panel,
@@ -183,10 +239,14 @@ function collectRefs(
 		mask: panel.querySelector("[data-profile-mask]"),
 		// 面板挂在 body 末尾，左段改从文档级查找（hover/focus 触发源 + 桌面端锚点）
 		leftSeg: document.querySelector("#navbar .navbar-seg--left"),
+		content,
+		tablist,
+		tabs,
+		panes,
+		tabButtons,
 		heatmap: card.querySelector("[data-profile-heatmap]"),
 		cells,
-		siteTrigger: card.querySelector<HTMLElement>("[data-profile-site-trigger]"),
-		panes: { default: defaultPane, site: sitePane, posts: postsPane },
+		weekPosts: card.querySelector("[data-profile-week]"),
 		days: { week: daysWeek, month: daysMonth, year: daysYear },
 		events: {
 			holiday: readEvent("holiday"),
@@ -194,6 +254,8 @@ function collectRefs(
 		},
 		postsTitle: card.querySelector("[data-profile-posts-title]"),
 		postList: card.querySelector("[data-profile-post-list]"),
+		tooltip: card.querySelector("[data-profile-tooltip]"),
+		bannerImg: card.querySelector("[data-profile-banner-img]"),
 	};
 }
 
@@ -240,6 +302,8 @@ function ensureData(): void {
 			postsByCell = buildPostsByCell(result.posts);
 			renderHeatmapCounts();
 			renderEvents();
+			// 数据可能在用户已经切到日期页之后才到，此时补播一次入场动效
+			if (activeTab === "dates") playEntranceAnimation();
 		})
 		.finally(() => {
 			refs?.card.setAttribute("aria-busy", "false");
@@ -295,11 +359,6 @@ function formatWeekLabel(key: string): string {
 
 /* ── 渲染 ── */
 
-/** 倒计时只需本地日期，初始化即渲染终值，不等接口；展开时的滚动动效另由 playEntranceAnimation 负责 */
-function renderCountdowns(): void {
-	applyCountdowns(1);
-}
-
 function computeCountdownTargets(): {
 	week: number;
 	month: number;
@@ -338,7 +397,7 @@ function cancelCounterFrames(): void {
 	counterFrames = [];
 }
 
-/* ── 展开入场动效：数字滚动 + 进度条重充，每次展开面板都重放 ── */
+/* ── 日期页入场动效：数字滚动 + 进度条重充，日期页每次可见都重放 ── */
 
 function animateCounters(): void {
 	if (!refs || !config) return;
@@ -393,11 +452,37 @@ function replayFills(): void {
 
 function playEntranceAnimation(): void {
 	if (!refs) return;
-	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+	if (prefersReducedMotion()) return;
 	cancelCounterFrames();
 	animateCounters();
 	animateEventRemainings();
 	replayFills();
+}
+
+/** 日期页可见才重放入场动效（默认页是简介，打开面板时不放） */
+function onDatesVisible(): void {
+	if (activeTab !== "dates") return;
+	playEntranceAnimation();
+}
+
+/** 把日期页的数字与进度钉在终值：动效中途切走 / 关闭面板时收口，不留半程值 */
+function finalizeDates(): void {
+	if (!refs || !config) return;
+	cancelCounterFrames();
+	applyCountdowns(1);
+	for (const event of [refs.events.holiday, refs.events.anniversary]) {
+		if (!event?.remaining) continue;
+		const target = event.remaining.dataset.profileTarget;
+		if (target !== undefined) {
+			event.remaining.textContent = `${target}${config.labels.days}`;
+		}
+		if (event.fill && event.progress) {
+			setFillWidth(
+				event.fill,
+				Number(event.progress.getAttribute("aria-valuenow") ?? 0),
+			);
+		}
+	}
 }
 
 function renderHeatmapCounts(): void {
@@ -407,12 +492,15 @@ function renderHeatmapCounts(): void {
 		cell.classList.remove("is-level-1", "is-level-2", "is-level-3");
 		if (count > 0) cell.classList.add(`is-level-${Math.min(3, count)}`);
 		const label = formatWeekLabel(key);
-		const tooltip =
+		// 篇数单独挂 data，交给浮层现挂现滚；aria-label 仍是完整静态文案
+		if (count > 0) cell.dataset.tooltipCount = String(count);
+		else delete cell.dataset.tooltipCount;
+		cell.setAttribute(
+			"aria-label",
 			count > 0
 				? `${label} · ${config.labels.postCount.replace("{count}", String(count))}`
-				: label;
-		cell.dataset.tooltip = tooltip;
-		cell.setAttribute("aria-label", tooltip);
+				: label,
+		);
 	}
 }
 
@@ -446,7 +534,7 @@ function renderEventCard(
 		target.date.textContent = formatDateKey(milestone.date);
 	}
 	if (target.remaining) {
-		// 目标值挂 dataset，供每次展开面板时的滚动动效读取
+		// 目标值挂 dataset，供日期页每次可见时的滚动动效读取
 		target.remaining.dataset.profileTarget = String(milestone.remainingDays);
 		target.remaining.textContent = `${milestone.remainingDays}${config?.labels.days ?? ""}`;
 	}
@@ -454,10 +542,15 @@ function renderEventCard(
 		target.progress.setAttribute("aria-valuenow", String(milestone.progress));
 		target.progress.setAttribute("aria-valuetext", `${milestone.progress}%`);
 	}
-	animateFillTo(target.fill, milestone.progress);
+	// 渲染只落终值，重放统一走 playEntranceAnimation，避免双重播
+	setFillWidth(target.fill, milestone.progress);
 }
 
-/** 进度条从 0 重新充满：数据到达与每次展开面板时都重放 */
+function setFillWidth(fill: HTMLElement | null, progress: number): void {
+	if (fill) fill.style.width = `${progress}%`;
+}
+
+/** 进度条从 0 重新充满：入场动效重放时用 */
 function animateFillTo(fill: HTMLElement | null, progress: number): void {
 	if (!fill) return;
 	fill.style.transition = "none";
@@ -510,52 +603,152 @@ function renderEvents(): void {
 		),
 		currentConfig.labels.unavailable,
 	);
-
-	// 首次加载即播放天数滚动，后续每次展开由 playEntranceAnimation 重放
-	animateEventRemainings();
 }
 
-/* ── 右栏状态机 ── */
+/* ── 标签页状态机 ── */
 
-function setState(next: RightState): void {
+/**
+ * 内容区高度跟随当前页。面板是绝对堆叠在容器里的，被容器夹住时 scrollHeight
+ * 不会小于 clientHeight，所以先临时放开容器高度量一次自然高，再写回目标值，
+ * 让高度过渡与横向滑动同步进行；超出 CSS 的 max-height 才走页内滚动。
+ */
+function syncContentHeight(): void {
+	if (!refs || !activeTab) return;
+	const pane = refs.panes.get(activeTab);
+	if (!pane) return;
+	const { content } = refs;
+	const from = content.getBoundingClientRect().height;
+	content.style.transition = "none";
+	content.style.height = "auto";
+	const natural = Math.ceil(pane.scrollHeight);
+	content.style.height = `${String(from)}px`;
+	void content.offsetWidth;
+	content.style.removeProperty("transition");
+	content.style.height = `${String(natural)}px`;
+}
+
+/** 让 DOM 与 activeTab 一致：激活页可见，其余隐藏且不留内联样式 */
+function syncPaneVisibility(): void {
 	if (!refs) return;
-	refs.panes.default.hidden = next !== "default";
-	refs.panes.site.hidden = next !== "site";
-	refs.panes.posts.hidden = next !== "posts";
+	for (const [tab, pane] of refs.panes) {
+		pane.hidden = tab !== activeTab;
+		pane.style.removeProperty("pointer-events");
+	}
 }
 
-/** 站点列表是否应展示（点击钉住或桌面端键盘 focus 预览） */
-function isSiteListActive(): boolean {
-	return siteListPinned || siteListPreview;
+function syncTabButtons(): void {
+	if (!refs) return;
+	for (const [tab, button] of refs.tabButtons) {
+		const isActive = tab === activeTab;
+		button.setAttribute("aria-selected", String(isActive));
+		// roving tabindex：整个标签条在 Tab 序列里只占一站
+		button.tabIndex = isActive ? 0 : -1;
+		button.classList.toggle("profile-card__tab--active", isActive);
+		button.classList.toggle("profile-card__tab--inactive", !isActive);
+	}
 }
 
-/** 入口按钮的 pressed/expanded 状态跟随右栏站点态 */
-function syncSiteTriggerState(): void {
-	if (!refs?.siteTrigger) return;
-	const pressed = String(isSiteListActive());
-	refs.siteTrigger.setAttribute("aria-pressed", pressed);
-	refs.siteTrigger.setAttribute("aria-expanded", pressed);
+/** 结束进行中的滑动并收回所有非激活页：连点标签时不排队、不堆叠 */
+function settleSlides(): void {
+	slideRevision += 1;
+	for (const animation of slideAnimations) animation.cancel();
+	slideAnimations = [];
+	refs?.content.classList.remove("is-sliding");
+	syncPaneVisibility();
 }
 
-/** 归位右栏：站点态激活则展示列表，否则回选中周或默认面板 */
-function reconcileRightPane(): void {
-	if (isSiteListActive()) {
-		setState("site");
+/** 索引增大 = 前进 = 新页从右侧滑入 */
+function slideDirection(from: ProfileTab, to: ProfileTab): 1 | -1 {
+	if (!refs) return 1;
+	return refs.tabs.indexOf(to) >= refs.tabs.indexOf(from) ? 1 : -1;
+}
+
+function activateTab(next: ProfileTab, withSlide: boolean): void {
+	if (!refs || next === activeTab) return;
+	const toPane = refs.panes.get(next);
+	if (!toPane) return;
+	const fromTab = activeTab;
+	const fromPane = fromTab ? refs.panes.get(fromTab) : undefined;
+
+	activeTab = next;
+	syncTabButtons();
+	hideTooltip();
+	if (fromTab === "dates") finalizeDates();
+	// 焦点若还留在旧页内，先挪到新标签按钮：否则旧页被 hidden 时焦点掉回
+	// body，面板 focusout 会把 relatedTarget 为空的这次移动误判成离开面板
+	if (fromPane?.contains(document.activeElement)) {
+		refs.tabButtons.get(next)?.focus();
+	}
+	settleSlides();
+
+	const canSlide =
+		withSlide &&
+		!!fromPane &&
+		!!fromTab &&
+		!prefersReducedMotion() &&
+		typeof fromPane.animate === "function" &&
+		typeof toPane.animate === "function";
+	if (!canSlide || !fromPane || !fromTab) {
+		syncContentHeight();
+		onDatesVisible();
 		return;
 	}
-	setState(selectedCellKey ? "posts" : "default");
+
+	const dir = slideDirection(fromTab, next);
+	const revision = slideRevision;
+	const options: KeyframeAnimationOptions = {
+		duration: SLIDE_DURATION,
+		easing: SLIDE_EASING,
+	};
+	// settleSlides 已把旧页收回，双向滑动要把它重新摆回轨道上
+	fromPane.hidden = false;
+	fromPane.style.pointerEvents = "none";
+	toPane.style.pointerEvents = "none";
+	refs.content.classList.add("is-sliding");
+	// outgoing 停在屏外（fill: both），incoming 结束后回到 CSS 无 transform 态
+	const outgoing = fromPane.animate(
+		[
+			{ transform: "translateX(0)" },
+			{ transform: `translateX(${-dir * 100}%)` },
+		],
+		{ ...options, fill: "both" },
+	);
+	const incoming = toPane.animate(
+		[
+			{ transform: `translateX(${dir * 100}%)` },
+			{ transform: "translateX(0)" },
+		],
+		options,
+	);
+	slideAnimations = [outgoing, incoming];
+	void Promise.all([
+		outgoing.finished.catch(() => undefined),
+		incoming.finished.catch(() => undefined),
+	]).then(() => {
+		// 已被更新的切换接管：过期回调不提交终态，否则会盖掉新页
+		if (revision !== slideRevision) return;
+		fromPane.hidden = true;
+		outgoing.cancel();
+		fromPane.style.removeProperty("pointer-events");
+		toPane.style.removeProperty("pointer-events");
+		slideAnimations = [];
+		refs?.content.classList.remove("is-sliding");
+	});
+	// 高度过渡与横向滑动同帧启动，两者共用时长与曲线
+	syncContentHeight();
+	onDatesVisible();
 }
 
-/** 点击「其他站点」唯一入口：钉住/取消右栏站点列表，跳转由列表内 CTA 承担 */
-function clickSiteEntry(): void {
-	siteListPinned = !siteListPinned;
-	// 取消钉住时连 focus 预览一并清掉：焦点仍留在按钮上也不回列表态
-	if (!siteListPinned) siteListPreview = false;
-	syncSiteTriggerState();
-	reconcileRightPane();
+function selectTabByIndex(index: number): void {
+	if (!refs) return;
+	const bounded = Math.min(refs.tabs.length - 1, Math.max(0, index));
+	const next = refs.tabs[bounded];
+	if (next) activateTab(next, true);
 }
 
-function clearSelection(): void {
+/* ── 热力图内联展开 ── */
+
+function collapseWeek(): void {
 	if (!refs) return;
 	if (selectedCellKey) {
 		const cell = refs.cells.get(selectedCellKey);
@@ -563,22 +756,15 @@ function clearSelection(): void {
 		cell?.setAttribute("aria-pressed", "false");
 	}
 	selectedCellKey = null;
-	if (refs.postList) refs.postList.replaceChildren();
+	refs.postList?.replaceChildren();
+	if (refs.weekPosts) refs.weekPosts.hidden = true;
 }
 
+/** 点格：该周文章在同一页内联展开，不再换掉整块内容 */
 function selectCell(key: string): void {
 	if (!refs || !config) return;
 	const posts = postsByCell.get(key);
-	clearSelection();
-	// 选周展示后站点列表态失效
-	siteListPinned = false;
-	siteListPreview = false;
-	syncSiteTriggerState();
-	// 空周不进文章态，右侧直接回默认
-	if (!posts || posts.length === 0) {
-		setState("default");
-		return;
-	}
+	if (!posts || posts.length === 0) return;
 
 	selectedCellKey = key;
 	const cell = refs.cells.get(key);
@@ -588,7 +774,11 @@ function selectCell(key: string): void {
 	if (refs.postsTitle) {
 		const { month, start, end } = cellDateRangeOf(key);
 		const pad = (value: number): string => String(value).padStart(2, "0");
-		refs.postsTitle.textContent = `${formatWeekLabel(key)} · ${pad(month + 1)}.${pad(start)} – ${pad(month + 1)}.${pad(end)}`;
+		const count = config.labels.postCount.replace(
+			"{count}",
+			String(posts.length),
+		);
+		refs.postsTitle.textContent = `${formatWeekLabel(key)} · ${pad(month + 1)}.${pad(start)} – ${pad(month + 1)}.${pad(end)} · ${count}`;
 	}
 	if (refs.postList) {
 		refs.postList.replaceChildren();
@@ -600,7 +790,95 @@ function selectCell(key: string): void {
 			refs.postList.appendChild(link);
 		}
 	}
-	setState("posts");
+	if (refs.weekPosts) refs.weekPosts.hidden = false;
+}
+
+/* ── 热力图提示浮层 ── */
+
+/**
+ * 浮层与内容区同级、不在滚动容器内，因此不受页内 overflow 裁剪。
+ * 坐标取源元素与卡片的 rect 差值：两个 rect 同处一个 transform 空间，
+ * 差值天然抵消祖先的 translateY，比 position: fixed 稳。
+ *
+ * 源元素靠 data-tooltip-label 认领（热力图方块与社交图标共用一套），
+ * 带 data-tooltip-count 时把篇数交给里程表式数字条上滚到终值。
+ */
+function showTooltip(source: HTMLElement): void {
+	if (!refs?.tooltip || !config) return;
+	const label = source.dataset.tooltipLabel;
+	if (!label) return;
+	const target = Number(source.dataset.tooltipCount ?? 0);
+	const { tooltip } = refs;
+	cancelTooltipFrames();
+	tooltip.replaceChildren(
+		document.createTextNode(target > 0 ? `${label} · ` : label),
+	);
+	if (target > 0) {
+		const [before, after = ""] = config.labels.postCount.split("{count}");
+		const roll = buildCountRoll(target);
+		tooltip.append(document.createTextNode(before), roll, after);
+		animateCountRoll(roll, target);
+	}
+	const sourceRect = source.getBoundingClientRect();
+	const cardRect = refs.card.getBoundingClientRect();
+	tooltip.style.left = `${sourceRect.left - cardRect.left + sourceRect.width / 2}px`;
+	tooltip.style.top = `${sourceRect.top - cardRect.top}px`;
+	tooltip.classList.add("is-visible");
+}
+
+/** 取事件目标所属的浮层源元素；不在任何源内则返回 null */
+function tooltipSourceFrom(target: EventTarget | null): HTMLElement | null {
+	return target instanceof Element
+		? target.closest<HTMLElement>("[data-tooltip-label]")
+		: null;
+}
+
+function hideTooltip(): void {
+	cancelTooltipFrames();
+	refs?.tooltip?.classList.remove("is-visible");
+}
+
+/** 造一条 0..target 的竖排数字条，套在一行高的窗口里当里程表 */
+function buildCountRoll(target: number): HTMLElement {
+	const roll = document.createElement("span");
+	roll.className = "profile-card__tooltip-roll";
+	const strip = document.createElement("span");
+	strip.className = "profile-card__tooltip-roll-strip";
+	for (let value = 0; value <= target; value += 1) {
+		const cell = document.createElement("span");
+		cell.textContent = String(value);
+		strip.append(cell);
+	}
+	roll.append(strip);
+	return roll;
+}
+
+/**
+ * 数字条整体上滚到终值。窗口宽度由最宽的一格（终值本身）撑开，
+ * 所以滚动过程不会左右抖；每格高度实测，不依赖 CSS 里的行高常量。
+ */
+function animateCountRoll(roll: HTMLElement, target: number): void {
+	const strip = roll.firstElementChild;
+	if (!(strip instanceof HTMLElement)) return;
+	const cellHeight =
+		strip.firstElementChild?.getBoundingClientRect().height ?? 0;
+	const shift = (value: number): void => {
+		strip.style.transform = `translate3d(0, ${String(-value * cellHeight)}px, 0)`;
+	};
+	if (cellHeight <= 0 || prefersReducedMotion()) {
+		shift(target);
+		return;
+	}
+	const start = performance.now();
+	shift(0);
+	const tick = (now: number): void => {
+		const progress = Math.min(1, (now - start) / TOOLTIP_COUNT_DURATION);
+		const eased = 1 - (1 - progress) ** 3;
+		shift(target * eased);
+		if (progress < 1) tooltipFrames.push(requestAnimationFrame(tick));
+		else shift(target);
+	};
+	tooltipFrames.push(requestAnimationFrame(tick));
 }
 
 /* ── 开合控制 ── */
@@ -648,8 +926,6 @@ function openPanel(): void {
 		positionPanel();
 	}
 	refs.panel.classList.add("is-open");
-	// 每次展开都重放数字滚动与进度条动效
-	playEntranceAnimation();
 	if (openedAsMobile) {
 		previousBodyOverflow = document.body.style.overflow;
 		document.body.style.overflow = "hidden";
@@ -661,15 +937,17 @@ function closePanel(): void {
 	cancelScheduledClose();
 	if (!refs.panel.classList.contains("is-open")) return;
 	refs.panel.classList.remove("is-open");
-	cancelCounterFrames();
+	// 面板在 Swup 容器之外、DOM 跨导航复用，这里是唯一的状态归位点
+	settleSlides();
+	collapseWeek();
+	hideTooltip();
+	activeTab = defaultTab;
+	syncTabButtons();
+	syncPaneVisibility();
+	syncContentHeight();
+	finalizeDates();
 	if (openedAsMobile) document.body.style.overflow = previousBodyOverflow;
 	openedAsMobile = false;
-	// 关闭即复位右栏、热力图选中态与站点列表态（数据缓存保留）
-	clearSelection();
-	siteListPinned = false;
-	siteListPreview = false;
-	syncSiteTriggerState();
-	setState("default");
 }
 
 function togglePanel(): void {
@@ -686,7 +964,7 @@ function focusLogo(): void {
 
 function bindEvents(): void {
 	if (!refs) return;
-	const { panel, card, mask, leftSeg, heatmap, siteTrigger } = refs;
+	const { panel, card, mask, leftSeg, heatmap, tablist } = refs;
 
 	// 移动端：点击 logo 开合面板。必须阻断冒泡——Swup 的文档级点击委托会把
 	// logo 当内部链接拦截导航，preventDefault 挡不住它；桌面端保持回主页
@@ -720,7 +998,7 @@ function bindEvents(): void {
 	});
 	panel.addEventListener("focusout", (event) => {
 		// 移动端底部卡片不随焦点移出收起：触屏点链接不会把焦点挪过去，
-		// 钉住的按钮失焦回 body 时 relatedTarget 为空，会被误判成焦点离开
+		// 标签按钮失焦回 body 时 relatedTarget 为空，会被误判成焦点离开
 		// 面板，点站点 CTA 就等于把卡片关了
 		if (openedAsMobile) return;
 		const next = event.relatedTarget;
@@ -750,12 +1028,13 @@ function bindEvents(): void {
 		},
 		{ passive: true },
 	);
-	// 视口变化改变居中布局，面板开着时重锚定
+	// 视口变化改变居中布局与高度上限，面板开着时重锚定并重新量一次内容高度
 	window.addEventListener(
 		"resize",
 		() => {
 			if (!panel.classList.contains("is-open") || openedAsMobile) return;
 			positionPanel();
+			syncContentHeight();
 		},
 		{ passive: true },
 	);
@@ -770,68 +1049,147 @@ function bindEvents(): void {
 		if (focusInCard) focusLogo();
 	});
 
-	// 「其他站点」唯一入口：无悬停预览，点击钉住/取消右栏站点列表（跳转由
-	// 列表内 CTA 承担）；键盘 focus 预览保留，Tab 移开后还原。
-	// 移动端不挂 focus 预览：触屏 focusin 在 mousedown 时同步触发，右栏
-	// 当场换面板、卡片高度跳变，触发键从指下滑走，mouseup 落到遮罩上，
-	// click 被浏览器判定无效 → 站点列表钉不住，点 CTA 又被失焦还原成日期面板。
-	// 移动端只靠 click 切换，按下期间布局不动，click 必然落地
-	if (siteTrigger) {
-		siteTrigger.addEventListener("focusin", () => {
-			if (isMobileViewport()) return;
-			siteListPreview = true;
-			syncSiteTriggerState();
-			reconcileRightPane();
-		});
-		siteTrigger.addEventListener("focusout", (event) => {
-			const next = event.relatedTarget;
-			if (next instanceof Node && siteTrigger.contains(next)) return;
-			siteListPreview = false;
-			syncSiteTriggerState();
-			reconcileRightPane();
-		});
-		siteTrigger.addEventListener("click", () => clickSiteEntry());
-	}
+	// 标签条：点击切换 + 方向键/Home/End 循环（automatic activation）
+	tablist.addEventListener("click", (event) => {
+		const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+			"[data-profile-tab]",
+		);
+		const tab = button?.dataset.profileTab;
+		if (!isProfileTab(tab)) return;
+		activateTab(tab, true);
+	});
+	tablist.addEventListener("keydown", (event) => {
+		const current = activeTab ? (refs?.tabs.indexOf(activeTab) ?? 0) : 0;
+		const total = refs?.tabs.length ?? 0;
+		if (total === 0) return;
+		let nextIndex: number;
+		switch (event.key) {
+			case "ArrowRight": {
+				nextIndex = (current + 1) % total;
+				break;
+			}
+			case "ArrowLeft": {
+				nextIndex = (current - 1 + total) % total;
+				break;
+			}
+			case "Home": {
+				nextIndex = 0;
+				break;
+			}
+			case "End": {
+				nextIndex = total - 1;
+				break;
+			}
+			default:
+				return;
+		}
+		event.preventDefault();
+		const next = refs?.tabs[nextIndex];
+		if (next) refs?.tabButtons.get(next)?.focus();
+		selectTabByIndex(nextIndex);
+	});
 
-	// 热力图点击：有文章进文章态，空周回默认，再点已选中方块取消
+	// 热力图：点格内联展开该周文章，再点已选中方块收起
 	heatmap?.addEventListener("click", (event) => {
 		const target = event.target as HTMLElement;
 		const cell = target.closest<HTMLButtonElement>("[data-profile-cell]");
 		const key = cell?.dataset.profileCell;
 		if (!key) return;
-		if (key === selectedCellKey) {
-			clearSelection();
-			setState("default");
-			return;
-		}
-		selectCell(key);
+		const same = key === selectedCellKey;
+		collapseWeek();
+		if (!same) selectCell(key);
+		// 展开/收起改变了本页自然高度，收口处统一同步一次，避免中途多段动画
+		syncContentHeight();
 	});
 
-	// 移动端底部卡片：下滑超过阈值关闭
-	let touchStartY: number | null = null;
+	// 提示浮层：热力图方块与社交图标共用一套，源元素靠 data-tooltip-label 认领
+	card.addEventListener("mouseover", (event) => {
+		const source = tooltipSourceFrom(event.target);
+		if (source) showTooltip(source);
+	});
+	card.addEventListener("mouseout", (event) => {
+		// 源内部换子节点（社交图标移到内层 svg）不算离开，否则浮层会闪一下
+		if (tooltipSourceFrom(event.relatedTarget)) return;
+		hideTooltip();
+	});
+	card.addEventListener("focusin", (event) => {
+		const source = tooltipSourceFrom(event.target);
+		if (source) showTooltip(source);
+	});
+	card.addEventListener("focusout", () => hideTooltip());
+	// 页内滚动会让方块位移，浮层先收起避免悬在半空。
+	// scroll 不冒泡，靠捕获阶段一个监听同时覆盖内容页与移动端整卡滚动
+	card.addEventListener("scroll", hideTooltip, {
+		capture: true,
+		passive: true,
+	});
+
+	// 横幅图加载失败：撤掉上层，露出底下糊化的头像垫底层。
+	// error 不冒泡，只能靠捕获阶段在包裹层上接住
+	refs.bannerImg?.addEventListener(
+		"error",
+		() => {
+			if (refs) refs.card.dataset.profileBannerState = "failed";
+		},
+		true,
+	);
+
+	// 移动端底部卡片：竖向下滑关闭，横向滑动切标签。
+	// 页内自带滚动，故起点落在内容页里时禁用竖向关闭，否则滚一下顺手就关卡片
+	let touchStartX = 0;
+	let touchStartY = 0;
+	let touchStartTab = 0;
+	let touchAxis: "h" | "v" | null = null;
+	let swipeCloseEnabled = false;
+	let tabStepsApplied = 0;
 	card.addEventListener(
 		"touchstart",
 		(event) => {
-			touchStartY = event.touches[0]?.clientY ?? null;
+			const touch = event.touches[0];
+			if (!touch) return;
+			touchStartX = touch.clientX;
+			touchStartY = touch.clientY;
+			touchStartTab = activeTab ? (refs?.tabs.indexOf(activeTab) ?? 0) : 0;
+			touchAxis = null;
+			tabStepsApplied = 0;
+			swipeCloseEnabled = !(event.target as HTMLElement).closest(
+				"[data-profile-pane]",
+			);
 		},
 		{ passive: true },
 	);
 	card.addEventListener(
 		"touchmove",
 		(event) => {
-			if (touchStartY === null || !openedAsMobile) return;
-			const deltaY = (event.touches[0]?.clientY ?? 0) - touchStartY;
-			if (deltaY > 64) {
-				touchStartY = null;
-				closePanel();
+			if (!openedAsMobile) return;
+			const touch = event.touches[0];
+			if (!touch) return;
+			const deltaX = touch.clientX - touchStartX;
+			const deltaY = touch.clientY - touchStartY;
+			if (touchAxis === null) {
+				if (
+					Math.abs(deltaX) < SWIPE_AXIS_LOCK &&
+					Math.abs(deltaY) < SWIPE_AXIS_LOCK
+				) {
+					return;
+				}
+				touchAxis = Math.abs(deltaX) > Math.abs(deltaY) ? "h" : "v";
 			}
+			if (touchAxis === "v") {
+				if (swipeCloseEnabled && deltaY > SWIPE_CLOSE_DISTANCE) closePanel();
+				return;
+			}
+			const steps = Math.trunc(-deltaX / SWIPE_TAB_DISTANCE);
+			if (steps === tabStepsApplied) return;
+			tabStepsApplied = steps;
+			selectTabByIndex(touchStartTab + steps);
 		},
 		{ passive: true },
 	);
 	card.addEventListener(
 		"touchend",
 		() => {
-			touchStartY = null;
+			touchAxis = null;
 		},
 		{ passive: true },
 	);
@@ -858,7 +1216,14 @@ export function initNavbarProfileCard(): void {
 	config = parsedConfig;
 	refs = collectRefs(panel, card);
 	if (!refs) return;
-	renderCountdowns();
+	// 默认页取 DOM 里的首个标签，与模板 hidden 的判据同源（模板恒以 heatmap 打头）
+	defaultTab = refs.tabs[0] ?? DEFAULT_TAB;
+	activeTab = defaultTab;
+	syncTabButtons();
+	syncPaneVisibility();
+	syncContentHeight();
+	// 倒计时只依赖本地日期，初始化即落终值，不等接口；日期页可见时的滚动另由 playEntranceAnimation 负责
+	applyCountdowns(1);
 	markCurrentWeekCell();
 	bindEvents();
 }

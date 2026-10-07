@@ -7,30 +7,25 @@ import {
 } from "../types/config";
 import { siteConfig } from "./siteConfig";
 
-// Logo 下拉资料卡里的「个人网站」列表（图标 + 名字 + 地址）
+// Logo 下拉资料卡「其他站点」标签页里的站点列表（名字 + 地址）
 // 原先挂在 LinkPreset.Feibichi 的「个人主站」外链收编为第一项，该预设已删除。
-// name 是站长自维护的站点名（展示在右侧 CTA 上，明文即可）；左侧切换按钮的
-// 文案是固定的 i18n 文案（I18nKey.otherSites），不从这里取
+// name 是站长自维护的站点名，展示在 CTA 上，明文即可
 const personalSites: PersonalSite[] = [
 	{
 		name: "个人主站",
 		url: "https://www.mmzhiku.xyz/",
-		icon: "material-symbols:link",
 	},
 	{
 		name: "memos记事本",
 		url: "https://memos.mmzhiku.xyz/",
-		icon: "material-symbols:link",
 	},
 	{
 		name: "站点统计",
 		url: "https://stats.mmzhiku.xyz/share/HZrqqAfVdx1UEVNm",
-		icon: "material-symbols:link",
 	},
 	{
 		name: "工具盒子",
 		url: "https://tool.mmzhiku.xyz/",
-		icon: "material-symbols:link",
 	},
 ];
 

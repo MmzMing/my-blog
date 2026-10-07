@@ -8,6 +8,10 @@ export const homeConfig: HomeConfig = {
 	// 3. 远程 URL："https://example.com/avatar.jpg"
 	avatar: "assets/images/avatar.webp",
 
+	// 资料卡横幅图（导航 Logo 资料卡第一层）
+	// 路径约定与头像一致；留空则回退为「头像模糊放大」当背景
+	avatarBanner: "/assets/images/avatar-banner.webp",
+
 	// 名字
 	name: "MmzMing",
 
