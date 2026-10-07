@@ -644,6 +644,7 @@ export const friendsConfig: FriendLink[] = [
 		title: "云泽の小屋",
 		imgurl: "https://zeyun.org/favicon/Happy_Mac.PNG",
 		desc: "一个记录技术探索，学习实践与网络安全实践的小站",
+		image: "/assets/images/friends/zeyun.webp",
 		siteurl: "https://zeyun.org/",
 		tags: ["Blog"],
 		weight: 5,
