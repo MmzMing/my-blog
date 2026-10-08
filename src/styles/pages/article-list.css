@@ -32,7 +32,6 @@
 .article-list-toolbar__summary {
 	display: flex;
 	min-width: 0;
-	min-height: var(--control-size);
 	align-items: flex-end;
 	gap: 0.5rem;
 }
@@ -79,15 +78,16 @@
    Pinned text list
    ========================================================================== */
 
+/* 与圆点自身的 margin-top 相等，让顶置卡片、圆点、「文章」三段等距 */
 .article-list-pinned {
-	position: relative;
-	margin: 0 0 var(--space-6);
+	margin: 0 0 var(--space-4);
 }
 
 .article-list-pinned__heading {
 	margin-bottom: var(--space-3);
 }
 
+/* 无 JS / 减弱动态效果时的兜底：顶置文章就是普通的纵向堆叠列表 */
 .article-list-pinned__collection {
 	display: flex;
 	width: 100%;
@@ -97,18 +97,44 @@
 	gap: var(--space-5);
 }
 
-.article-list-pinned:has(.article-list-pinned__dots) .article-list-pinned__collection {
-	padding-right: 2rem;
+/*
+ * 轮播接管后才切换成滑动视口（pinned-carousel-controller 加类）。
+ * 两张卡叠进同一个 grid 单元才能并排横向位移；非活动卡用 visibility 而不是
+ * hidden 收起——hidden 会被 Tailwind preflight 的 display:none!important 钉死，
+ * 且保留占位可让视口高度恒为最高那张卡，切页时不跳高。
+ */
+.article-list-pinned__collection.is-carousel-slides {
+	display: grid;
+	grid-template-areas: "slide";
+	gap: 0;
+	overflow: hidden;
+	/* 纵向手势留给页面滚动，浏览器接管时会给我们派发 pointercancel */
+	touch-action: pan-y;
+	user-select: none;
+}
+
+.is-carousel-slides > .article-list-pinned-item {
+	grid-area: slide;
+}
+
+.is-carousel-slides > .article-list-pinned-item:not([data-pinned-active]) {
+	visibility: hidden;
+}
+
+/* 滑动/拖拽期间来页与旧页都要参与绘制 */
+.is-carousel-slides > .article-list-pinned-item.is-pinned-sliding {
+	visibility: visible;
+}
+
+.article-list-pinned__collection.is-pinned-dragging {
+	cursor: grabbing;
 }
 
 .article-list-pinned__dots {
-	position: absolute;
-	top: 50%;
-	right: 0;
 	display: flex;
-	flex-direction: column;
-	gap: 0.4rem;
-	transform: translateY(-50%);
+	justify-content: center;
+	gap: 0.5rem;
+	margin-top: var(--space-4);
 }
 
 .article-list-pinned__dots button {
@@ -136,7 +162,7 @@
 }
 
 .article-list-pinned__dots button[aria-current="true"] {
-	height: 1.45rem;
+	width: 1.45rem;
 }
 
 .article-list-pinned__dots button:focus-visible {
@@ -207,30 +233,6 @@
 .article-list-card:hover .article-list-card__cover,
 .article-list-card:focus-within .article-list-card__cover {
 	transform: scale(1.025);
-}
-
-.article-list-pinned-item.is-carousel-leaving {
-	animation: article-list-pinned-leave 180ms ease both;
-}
-
-.article-list-pinned-item.is-carousel-entering {
-	animation: article-list-pinned-enter 240ms ease both;
-}
-
-@keyframes article-list-pinned-leave {
-	to {
-		opacity: 0;
-	}
-}
-
-@keyframes article-list-pinned-enter {
-	from {
-		opacity: 0;
-	}
-
-	to {
-		opacity: 1;
-	}
 }
 
 .article-list-pinned-item__title-row,
@@ -334,6 +336,14 @@
 .article-list-card__surface-link:focus-visible {
 	border-radius: var(--radius-small);
 	outline: 2px solid var(--primary);
+}
+
+/* 滑动视口的 overflow: hidden 会裁掉外偏的焦点环，顶置卡改成内描边 */
+.article-list-pinned-item__surface-link:focus-visible {
+	outline-offset: -2px;
+}
+
+.article-list-card__surface-link:focus-visible {
 	outline-offset: 2px;
 }
 
@@ -722,34 +732,12 @@
 		font-size: 0.8125rem;
 	}
 
-	.article-list-pinned {
-		margin: 0 0 var(--space-5);
-	}
-
 	.article-list-pinned__heading {
 		margin-bottom: var(--space-3);
 	}
 
 	.article-list-pinned__collection {
 		gap: var(--space-4);
-	}
-
-	.article-list-pinned:has(.article-list-pinned__dots) .article-list-pinned__collection {
-		padding-right: 0;
-		padding-bottom: 1.75rem;
-	}
-
-	.article-list-pinned__dots {
-		top: auto;
-		right: 0;
-		bottom: 0;
-		flex-direction: row;
-		transform: none;
-	}
-
-	.article-list-pinned__dots button[aria-current="true"] {
-		width: 1.45rem;
-		height: 0.5rem;
 	}
 
 	.article-list-pinned-item {
@@ -866,8 +854,6 @@
 		transform: translate3d(2.25rem, -50%, 0);
 	}
 
-	.article-list-pinned-item.is-carousel-leaving,
-	.article-list-pinned-item.is-carousel-entering,
 	.article-list-card.is-page-entering {
 		animation: none;
 	}

@@ -92,6 +92,7 @@ const totalPostLabel = i18n(
 		parseArticleCoverApiUrls,
 		type ArticleCoverLifecycle,
 	} from "@/utils/article-cover-lifecycle";
+	import { createPinnedCarousel } from "@/utils/pinned-carousel-controller";
 	import {
 		createEmptyUmamiPageviewLookup,
 		getUmamiPageviewLookup,
@@ -161,118 +162,11 @@ const totalPostLabel = i18n(
 			});
 		}
 
-		function initializePinnedCarousel(): () => void {
-			if (!pinnedList) return () => {};
-
-			const pinnedItems = Array.from(
-				pinnedList.querySelectorAll<HTMLElement>(
-					"[data-article-list-pinned-item]",
-				),
-			);
-			const pinnedDots = Array.from(
-				pinnedList.querySelectorAll<HTMLButtonElement>(
-					"[data-article-list-pinned-dot]",
-				),
-			);
-			if (pinnedItems.length <= 1) return () => {};
-
-			const reducedMotionQuery = window.matchMedia(
-				"(prefers-reduced-motion: reduce)",
-			);
-			if (reducedMotionQuery.matches) {
-				pinnedItems.forEach((item) => {
-					item.hidden = false;
-				});
-				pinnedDots.forEach((dot) => {
-					dot.hidden = true;
-				});
-				return () => {};
-			}
-
-			let activeIndex = Math.max(
-				0,
-				pinnedItems.findIndex((item) => !item.hidden),
-			);
-			let rotationTimer: number | undefined;
-			let fadeTimer: number | undefined;
-
-			function setPinnedCoverVisibility(item: HTMLElement, visible: boolean) {
-				item
-					.querySelectorAll<HTMLElement>("[data-article-list-cover-wrap]")
-					.forEach((wrap) => coverLifecycles.get(wrap)?.setVisible(visible));
-			}
-
-			function updatePinnedDots() {
-				pinnedDots.forEach((dot, index) => {
-					dot.setAttribute("aria-current", String(index === activeIndex));
-				});
-			}
-
-			function stopRotation() {
-				if (rotationTimer === undefined) return;
-				window.clearInterval(rotationTimer);
-				rotationTimer = undefined;
-			}
-
-			function showPinnedItem(nextIndex: number) {
-				if (fadeTimer !== undefined) return;
-				const currentItem = pinnedItems[activeIndex];
-				const resolvedIndex = (nextIndex + pinnedItems.length) % pinnedItems.length;
-				if (resolvedIndex === activeIndex) return;
-				const nextItem = pinnedItems[resolvedIndex];
-
-				currentItem.classList.remove("is-carousel-entering");
-				currentItem.classList.add("is-carousel-leaving");
-				fadeTimer = window.setTimeout(() => {
-					currentItem.hidden = true;
-					setPinnedCoverVisibility(currentItem, false);
-					currentItem.classList.remove("is-carousel-leaving");
-					nextItem.hidden = false;
-					setPinnedCoverVisibility(nextItem, true);
-					nextItem.classList.remove("is-carousel-leaving");
-					void nextItem.offsetWidth;
-					nextItem.classList.add("is-carousel-entering");
-					activeIndex = resolvedIndex;
-					updatePinnedDots();
-					fadeTimer = undefined;
-				}, 180);
-			}
-
-			function showNextPinnedItem() {
-				showPinnedItem(activeIndex + 1);
-			}
-
-			function startRotation() {
-				if (rotationTimer !== undefined) return;
-				rotationTimer = window.setInterval(showNextPinnedItem, 6000);
-			}
-
-			pinnedList.addEventListener("pointerenter", stopRotation, { signal });
-			pinnedList.addEventListener("pointerleave", startRotation, { signal });
-			pinnedList.addEventListener("focusin", stopRotation, { signal });
-			pinnedList.addEventListener(
-				"focusout",
-				(event) => {
-					const relatedTarget = event.relatedTarget;
-					if (!(relatedTarget instanceof Node) || !pinnedList.contains(relatedTarget)) {
-						startRotation();
-					}
-				},
-				{ signal },
-			);
-			pinnedDots.forEach((dot, index) => {
-				dot.addEventListener("click", () => showPinnedItem(index), { signal });
-			});
-
-			startRotation();
-			return () => {
-				stopRotation();
-				if (fadeTimer !== undefined) window.clearTimeout(fadeTimer);
-			};
-		}
-
-		const cleanupPinnedCarousel = initializePinnedCarousel();
+		// 封面生命周期必须先建好：轮播挂载时要按当前活动卡同步封面的加载与揭示
 		initCoverLoading();
+		const cleanupPinnedCarousel = pinnedList
+			? createPinnedCarousel({ section: pinnedList, coverLifecycles, signal })
+			: () => {};
 		renderPageviews();
 
 		const canLoadPageviews =

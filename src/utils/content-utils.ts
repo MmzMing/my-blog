@@ -56,6 +56,38 @@ export async function getSortedPosts(): Promise<CollectionEntry<"posts">[]> {
 	return sorted;
 }
 
+/**
+ * 顶置轮播最多展示的篇数。列表页的轮播、下方普通网格与分页数学必须共用本常量，
+ * 否则 /list/ 与 /list/2/ 的总页数会算不到溢出的那几篇。
+ */
+export const PINNED_CAROUSEL_MAX = 3;
+
+export type PinnedSplit = {
+	/** 进入顶置轮播的文章，按 getRawSortedPosts 的既有顺序取前 PINNED_CAROUSEL_MAX 篇 */
+	carousel: CollectionEntry<"posts">[];
+	/** 普通网格的文章：非置顶篇，加上超出轮播上限的置顶篇 */
+	rest: CollectionEntry<"posts">[];
+};
+
+/**
+ * 把已排序的文章切成「轮播用」与「网格用」两份。
+ *
+ * 超出上限的置顶文章回落到普通网格而不是直接不显示——它们仍带 pinned 语义，
+ * 从列表页消失会让文章没有入口。
+ */
+export function splitPinnedPosts(
+	entries: CollectionEntry<"posts">[],
+): PinnedSplit {
+	const pinned = entries.filter((entry) => entry.data.pinned);
+	const carouselIds = new Set(
+		pinned.slice(0, PINNED_CAROUSEL_MAX).map((entry) => entry.id),
+	);
+	return {
+		carousel: pinned.filter((entry) => carouselIds.has(entry.id)),
+		rest: entries.filter((entry) => !carouselIds.has(entry.id)),
+	};
+}
+
 export type PostForList = {
 	id: string;
 	data: CollectionEntry<"posts">["data"];

@@ -32,6 +32,7 @@ import { siteConfig } from "@/config/siteConfig";
 import { buildCoverImage } from "@/utils/cover-image";
 import { formatDateI18nParts, formatDateToYYYYMMDD } from "@/utils/date-utils";
 import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
+import { isPublicWikiPost, toWikiPath } from "@/utils/llm-wiki";
 import {
 	buildOrganizationEntity,
 	buildPersonEntity,
@@ -126,6 +127,10 @@ const shareQrCode = siteConfig.postShare
 			errorCorrectionLevel: "M",
 			color: { dark: "#000000", light: "#ffffff" },
 		})
+	: "";
+// 加密文章与 wikiExclude 文章不生成机器可读端点，链接会指向 404
+const wikiMarkdownUrl = isPublicWikiPost(entry)
+	? toWikiPath(entry.id, ".md")
 	: "";
 const defaultStructuredImageUrl = new URL(siteConfig.defaultOgImage, Astro.site)
 	.href;
@@ -390,6 +395,27 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
                   <span class="sr-only" role="status" aria-live="polite" data-post-share-status></span>
                 </div>
               </div>
+            </>
+          )}
+
+          {wikiMarkdownUrl && (
+            <>
+              <span class="post-hero__meta-dot" aria-hidden="true">·</span>
+
+              <a
+                class="post-hero__taxonomy-link post-hero__plaintext-link"
+                href={wikiMarkdownUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={i18n(I18nKey.plainTextVersion)}
+                data-pagefind-ignore
+              >
+                <Icon
+                  name="material-symbols:description-outline-rounded"
+                  aria-hidden="true"
+                />
+                <span>{i18n(I18nKey.plainTextVersion)}</span>
+              </a>
             </>
           )}
         </div>

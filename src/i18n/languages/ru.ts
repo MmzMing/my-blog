@@ -201,6 +201,7 @@ export const ru: Translation = {
 	[Key.shareToFeishu]: "Поделиться в Feishu",
 	[Key.shareToX]: "Поделиться в X",
 	[Key.shareToWhatsApp]: "Поделиться через WhatsApp",
+	[Key.plainTextVersion]: "Обычный текст",
 
 	// Конфигурация блоков коллапсируемого кода
 

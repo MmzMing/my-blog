@@ -198,6 +198,7 @@ export const zh_TW: Translation = {
 	[Key.shareToFeishu]: "分享到飛書",
 	[Key.shareToX]: "分享到 X",
 	[Key.shareToWhatsApp]: "透過 WhatsApp 分享",
+	[Key.plainTextVersion]: "純文字",
 
 	// 代碼區塊折疊配置
 

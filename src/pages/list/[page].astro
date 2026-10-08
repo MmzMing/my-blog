@@ -2,7 +2,7 @@
 import type { GetStaticPaths } from "astro";
 import ArticleListPage from "@/components/pages/article-list/ArticleListPage.astro";
 import { siteConfig } from "@/config";
-import { getSortedPosts } from "@/utils/content-utils";
+import { getSortedPosts, splitPinnedPosts } from "@/utils/content-utils";
 
 export const getStaticPaths = (async () => {
 	// 页面关闭时不生成任何分页路径。
@@ -13,7 +13,7 @@ export const getStaticPaths = (async () => {
 	}
 
 	const posts = await getSortedPosts();
-	const regularPostCount = posts.filter((entry) => !entry.data.pinned).length;
+	const regularPostCount = splitPinnedPosts(posts).rest.length;
 	const postsPerPage = Math.max(
 		1,
 		Math.floor(siteConfig.pagination.postsPerPage),

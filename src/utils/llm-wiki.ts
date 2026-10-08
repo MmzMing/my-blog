@@ -56,7 +56,8 @@ function encodeSlug(slug: string): string {
 		.join("/");
 }
 
-function toWikiPath(slug: string, extension: ".json" | ".md"): string {
+/** 机器可读端点的路径构造器：文章页的「纯文本」入口与 wiki 路由共用 */
+export function toWikiPath(slug: string, extension: ".json" | ".md"): string {
 	return `/wiki/articles/${encodeSlug(slug)}${extension}`;
 }
 
@@ -262,7 +263,8 @@ export function createMarkdownResponse(article: WikiArticle): Response {
 
 	return new Response(`${frontmatter}${article.content}\n`, {
 		headers: {
-			"Content-Type": "text/markdown; charset=utf-8",
+			/* text/markdown 浏览器不认，点开只会下载；纯文本才能在标签页里直接看 */
+			"Content-Type": "text/plain; charset=utf-8",
 			"Cache-Control": WIKI_CACHE_CONTROL,
 		},
 	});

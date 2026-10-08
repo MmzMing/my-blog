@@ -176,6 +176,7 @@ enum I18nKey {
 	shareToFeishu = "shareToFeishu",
 	shareToX = "shareToX",
 	shareToWhatsApp = "shareToWhatsApp",
+	plainTextVersion = "plainTextVersion",
 
 	// 代码块折叠配置
 

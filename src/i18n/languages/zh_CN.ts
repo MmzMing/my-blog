@@ -196,6 +196,7 @@ export const zh_CN: Translation = {
 	[Key.shareToFeishu]: "分享到飞书",
 	[Key.shareToX]: "分享到 X",
 	[Key.shareToWhatsApp]: "通过 WhatsApp 分享",
+	[Key.plainTextVersion]: "纯文本",
 
 	// 代码块折叠配置
 

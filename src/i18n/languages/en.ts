@@ -199,6 +199,7 @@ export const en: Translation = {
 	[Key.shareToFeishu]: "Share on Feishu",
 	[Key.shareToX]: "Share on X",
 	[Key.shareToWhatsApp]: "Share via WhatsApp",
+	[Key.plainTextVersion]: "Plain text",
 
 	// Code Block Collapsible Configuration
 

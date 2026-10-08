@@ -94,33 +94,28 @@
   transition: color 0.2s ease;
 }
 
-.post-hero__taxonomy-link::after {
-  position: absolute;
-  right: 0;
-  bottom: -0.125rem;
-  left: 0;
-  height: 1px;
-  content: "";
-  background: currentColor;
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.2s ease;
-}
-
+/* 悬停/聚焦只染青色（--article-title-marker，与标题标记同色相），不画下划线 */
 .post-hero__taxonomy-link:hover,
 .post-hero__taxonomy-link:focus-visible {
-  color: var(--primary);
-}
-
-.post-hero__taxonomy-link:hover::after,
-.post-hero__taxonomy-link:focus-visible::after {
-  transform: scaleX(1);
+  color: var(--article-title-marker);
 }
 
 .post-hero__taxonomy-link:focus-visible,
 .post-hero__share-action:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 3px;
+}
+
+/* 纯文本入口沿用分类链接的排版，只补图标的间距与尺寸；字号跟随元信息行 */
+.post-hero__plaintext-link {
+  gap: 0.3rem;
+  font-size: inherit;
+}
+
+.post-hero__plaintext-link svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
 }
 
 .post-hero__share-menu:focus-visible .post-hero__share-trigger {
@@ -181,7 +176,7 @@
 
 .post-hero__share-menu:hover .post-hero__share-trigger,
 .post-hero__share-menu:focus-within .post-hero__share-trigger {
-  color: var(--deep-text);
+  color: var(--article-title-marker);
 }
 
 .post-hero__share-popover {
@@ -384,7 +379,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .post-hero__taxonomy-link,
-  .post-hero__taxonomy-link::after,
   .post-hero__share-trigger,
   .post-hero__share-popover,
   .post-hero__share-action-icon,

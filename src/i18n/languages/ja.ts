@@ -200,6 +200,7 @@ export const ja: Translation = {
 	[Key.shareToFeishu]: "Feishu で共有",
 	[Key.shareToX]: "X で共有",
 	[Key.shareToWhatsApp]: "WhatsApp で共有",
+	[Key.plainTextVersion]: "テキスト版",
 
 	// コードブロック折りたたみ設定
 
