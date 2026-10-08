@@ -1,0 +1,59 @@
+---
+/**
+ * 相关文章卡片组（纯展示）：文字标题 + 独立小卡片。
+ * 有封面 → 封面铺满卡片、底部渐变遮罩叠白字（标题 / 分类 · 日期）；
+ * 无封面 → 纯色文字卡。被底部 RelatedPosts 与右侧 ArticleTocPanel 复用。
+ * 样式见 src/styles/components/related-post-cards.css（仅此一处 import）。
+ */
+import CoverImage from "@components/common/CoverImage.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { RelatedPostCard } from "@/utils/related-posts";
+import "@/styles/components/related-post-cards.css";
+
+interface Props {
+	cards: RelatedPostCard[];
+}
+
+const { cards } = Astro.props;
+---
+
+<div class="related-cards">
+	<h2 class="related-cards__title">{i18n(I18nKey.relatedPosts)}</h2>
+	<ul class="related-cards__list">
+		{
+			cards.map((card) => (
+				<li class="related-cards__item">
+					<a
+						class:list={[
+							"related-card",
+							card.cover ? "related-card--cover" : "related-card--text",
+						]}
+						href={card.url}
+					>
+						{card.cover && (
+							<span
+								class="related-card__media"
+								style={`aspect-ratio:${card.cover.width && card.cover.height ? `${card.cover.width}/${card.cover.height}` : "16 / 10"};${card.cover.lqipStyle ?? ""}`}
+							>
+								<CoverImage
+									cover={card.cover}
+									alt={`${card.title}${i18n(I18nKey.coverImageAltSuffix)}`}
+									loading="lazy"
+									decoding="async"
+								/>
+								<span class="related-card__scrim" />
+							</span>
+						)}
+						<span class="related-card__body">
+							<span class="related-card__title">{card.title}</span>
+							<span class="related-card__meta">
+								{[card.category, card.dateText].filter(Boolean).join(" · ")}
+							</span>
+						</span>
+					</a>
+				</li>
+			))
+		}
+	</ul>
+</div>

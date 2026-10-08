@@ -1,0 +1,152 @@
+/* 相关文章卡片组：文字标题 + 独立小卡片（封面叠字 / 纯文字两种形态）。
+   被底部 RelatedPosts 与右侧 ArticleTocPanel 共用，仅由 RelatedPostCards.astro import。 */
+
+.related-cards__title {
+	font-size: 1.05rem;
+	font-weight: 600;
+	color: var(--deep-text);
+	margin: 0 0 0.75rem;
+	padding-bottom: 0.5rem;
+	border-bottom: 1px solid var(--line-divider);
+}
+
+.related-cards__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.related-cards__item {
+	margin: 0;
+}
+
+/* 底部版本（窄屏/无面板设备）：横向多列，与参考图一致；面板内保持单列纵向 */
+.related-posts--bottom .related-cards__list {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+
+@media (min-width: 48rem) {
+	.related-posts--bottom .related-cards__list {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+/* 让链接撑满拉伸后的格子：同行卡片等高，纯文字卡背景不漏底 */
+.related-posts--bottom .related-cards__item {
+	display: flex;
+}
+
+.related-posts--bottom .related-card {
+	flex: 1 1 auto;
+}
+
+/* 底部横向布局：统一 16/10 裁切（压过内联的自然宽高比），整行高度一致 */
+.related-posts--bottom .related-card__media {
+	aspect-ratio: 16 / 10 !important;
+}
+
+.related-card {
+	display: block;
+	position: relative;
+	border-radius: var(--radius-large);
+	overflow: hidden;
+	text-decoration: none;
+}
+
+.related-card__media {
+	display: block;
+	width: 100%;
+	/* 竖向封面封顶，避免窄栏里卡片过高；宽幅封面按自然宽高比显示 */
+	max-height: 16rem;
+	background: var(--article-surface-bg);
+}
+
+/* 右侧面板里的卡片更紧凑：3 张卡在常规视口下完整放进 max-height 内 */
+.article-toc-panel__related .related-card__media {
+	max-height: 11rem;
+}
+
+.related-card__media img,
+.related-card__media picture {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+/* 有封面：渐变遮罩 + 底部白字（深浅主题通用，遮罩保证对比度） */
+.related-card--cover .related-card__scrim {
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(to top, rgb(0 0 0 / 55%), rgb(0 0 0 / 0%) 55%);
+	pointer-events: none;
+}
+
+.related-card--cover .related-card__body {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 0.6rem 0.75rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	color: #fff;
+}
+
+.related-card--cover .related-card__title {
+	font-size: 0.92rem;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.related-card--cover .related-card__meta {
+	font-size: 0.74rem;
+	color: rgb(255 255 255 / 80%);
+}
+
+/* 无封面：纯色文字卡（dark 由变量自动适配） */
+.related-card--text {
+	background: var(--article-surface-bg);
+	padding: 0.6rem 0.75rem;
+}
+
+.related-card--text .related-card__body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.related-card--text .related-card__title {
+	font-size: 0.92rem;
+	font-weight: 500;
+	color: var(--deep-text);
+	line-height: 1.4;
+}
+
+.related-card--text .related-card__meta {
+	font-size: 0.74rem;
+	color: var(--meta-divider);
+}
+
+.related-card:hover .related-card__title {
+	text-decoration: underline;
+}
+
+/* 底部相关文章：宽屏（与目录面板同条件）整体隐藏，HTML 仍在 */
+@media (min-width: 96rem) and (hover: hover) and (pointer: fine) {
+	.related-posts--bottom {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.related-card__media img {
+		transition: none;
+	}
+}

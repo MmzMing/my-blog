@@ -1,7 +1,18 @@
 ---
 import Icon from "@components/common/Icon.astro";
+import RelatedPostCards from "@components/misc/RelatedPostCards.astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+import type { RelatedPostCard } from "@/utils/related-posts";
+
+interface Props {
+	/** 相关文章卡片数据（[...slug] 一次性算好经 MainGridLayout 透传）；
+	    缺省或为空时不渲染相关视图，面板退化为纯目录（加密文章走此分支） */
+	relatedCards?: RelatedPostCard[];
+}
+
+const { relatedCards } = Astro.props;
+const switchable = !!relatedCards && relatedCards.length > 0;
 
 const outlineLabel = i18n(I18nKey.tableOfContents);
 const readingProgressLabel = i18n(I18nKey.readingProgress);
@@ -17,65 +28,81 @@ const closeLabel = i18n(I18nKey.close);
 ---
 
 <aside
-	class="article-toc-panel is-pending"
+	class:list={["article-toc-panel", "is-pending", switchable && "is-mode-switchable"]}
 	id="article-toc-panel"
 	aria-label={outlineLabel}
 >
-	<div class="article-toc-panel__toolbar">
-		<button
-			type="button"
-			class="article-toc-panel__tool-btn"
-			data-toc-auto-btn
-			aria-pressed="true"
-			data-tooltip={accordionAutoLabel}
-			aria-label={accordionAutoLabel}
-		>
-			<Icon name="mingcute:list-collapse-line" class="h-4 w-4" />
-		</button>
-		<button
-			type="button"
-			class="article-toc-panel__tool-btn"
-			data-toc-toggle-all-btn
-			aria-pressed="false"
-			data-tooltip={expandAllLabel}
-			aria-label={expandAllLabel}
-			data-toc-expand-label={expandAllLabel}
-			data-toc-collapse-label={collapseAllLabel}
-		>
-			<Icon
-				name="mdi:unfold-more-horizontal"
-				class="article-toc-panel__tool-icon is-expand h-4 w-4"
-			/>
-			<Icon
-				name="mdi:unfold-less-horizontal"
-				class="article-toc-panel__tool-icon is-collapse h-4 w-4"
-			/>
-		</button>
-		<button
-			type="button"
-			class="article-toc-panel__tool-btn"
-			data-toc-mindmap-btn
-			data-tooltip={mindMapLabel}
-			aria-label={mindMapLabel}
-		>
-			<Icon name="ri:node-tree" class="h-4 w-4" />
-		</button>
-		<span
-			class="article-toc-panel__progress"
-			role="progressbar"
-			aria-label={readingProgressLabel}
-			aria-valuemin="0"
-			aria-valuemax="100"
-			aria-valuenow="0"
-			data-toc-progress
-		>
-			<span class="article-toc-panel__progress-label" data-toc-progress-label>0%</span>
-		</span>
+	<!-- 目录视图（工具栏 + 节点树）；可切换时与相关视图绝对叠放交叉滑动 -->
+	<div class="article-toc-panel__view" data-toc-view>
+		<div class="article-toc-panel__toolbar">
+			<button
+				type="button"
+				class="article-toc-panel__tool-btn"
+				data-toc-auto-btn
+				aria-pressed="true"
+				data-tooltip={accordionAutoLabel}
+				aria-label={accordionAutoLabel}
+			>
+				<Icon name="mingcute:list-collapse-line" class="h-4 w-4" />
+			</button>
+			<button
+				type="button"
+				class="article-toc-panel__tool-btn"
+				data-toc-toggle-all-btn
+				aria-pressed="false"
+				data-tooltip={expandAllLabel}
+				aria-label={expandAllLabel}
+				data-toc-expand-label={expandAllLabel}
+				data-toc-collapse-label={collapseAllLabel}
+			>
+				<Icon
+					name="mdi:unfold-more-horizontal"
+					class="article-toc-panel__tool-icon is-expand h-4 w-4"
+				/>
+				<Icon
+					name="mdi:unfold-less-horizontal"
+					class="article-toc-panel__tool-icon is-collapse h-4 w-4"
+				/>
+			</button>
+			<button
+				type="button"
+				class="article-toc-panel__tool-btn"
+				data-toc-mindmap-btn
+				data-tooltip={mindMapLabel}
+				aria-label={mindMapLabel}
+			>
+				<Icon name="ri:node-tree" class="h-4 w-4" />
+			</button>
+			<span
+				class="article-toc-panel__progress"
+				role="progressbar"
+				aria-label={readingProgressLabel}
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-valuenow="0"
+				data-toc-progress
+			>
+				<span class="article-toc-panel__progress-label" data-toc-progress-label>0%</span>
+			</span>
+		</div>
+
+		<nav class="article-toc-panel__tree" aria-label={outlineLabel} data-toc-tree>
+			<svg class="article-toc-panel__lines" data-toc-lines aria-hidden="true" focusable="false"></svg>
+		</nav>
 	</div>
 
-	<nav class="article-toc-panel__tree" aria-label={outlineLabel} data-toc-tree>
-		<svg class="article-toc-panel__lines" data-toc-lines aria-hidden="true" focusable="false"></svg>
-	</nav>
+	<!-- 相关文章视图（仅 switchable 时渲染；控制器探测到后启用转换） -->
+	{
+		switchable && (
+			<div
+				class="article-toc-panel__related"
+				data-toc-related
+				aria-label={i18n(I18nKey.relatedPosts)}
+			>
+				<RelatedPostCards cards={relatedCards!} />
+			</div>
+		)
+	}
 
 	<dialog class="article-toc-mindmap" data-toc-mindmap aria-label={mindMapLabel}>
 		<div class="article-toc-mindmap__overlay" data-toc-mindmap-close></div>

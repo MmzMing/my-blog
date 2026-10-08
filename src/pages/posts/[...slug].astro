@@ -34,6 +34,10 @@ import { formatDateI18nParts, formatDateToYYYYMMDD } from "@/utils/date-utils";
 import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
 import { isPublicWikiPost, toWikiPath } from "@/utils/llm-wiki";
 import {
+	getRelatedPostCards,
+	type RelatedPostCard,
+} from "@/utils/related-posts";
+import {
 	buildOrganizationEntity,
 	buildPersonEntity,
 	buildWebSiteEntity,
@@ -95,6 +99,17 @@ const postCover =
 		: null);
 
 const showPostCover = Boolean(coverImageConfig.enableInPost && postCover);
+
+// 相关文章卡片：面板（ArticleTocPanel）与底部 RelatedPosts 共用同一份数据，只算一次。
+// 加密文章不算——面板不启用转换（无 related 视图），底部由 RelatedPosts 回退自算。
+const relatedPostCards: RelatedPostCard[] | undefined = entry.data.password
+	? undefined
+	: await getRelatedPostCards({
+			currentId: entry.id,
+			tags: entry.data.tags,
+			category: entry.data.category || undefined,
+			limit: 3,
+		});
 
 dayjs.extend(utc);
 
@@ -231,6 +246,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
   setOGTypeArticle={true}
   postSlug={entry.id}
   postCategory={entry.data.category || undefined}
+  relatedCards={relatedPostCards}
   ogImage={structuredImageUrl}
   bannerPostMeta={bannerPostMeta}
   articleMeta={{
@@ -556,6 +572,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
             licenseUrl={entry.data.licenseUrl}
           />
           <RelatedPosts
+            cards={relatedPostCards}
             currentId={entry.id}
             tags={entry.data.tags}
             category={entry.data.category || undefined}
@@ -577,6 +594,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
             licenseUrl={entry.data.licenseUrl}
           />
           <RelatedPosts
+            cards={relatedPostCards}
             currentId={entry.id}
             tags={entry.data.tags}
             category={entry.data.category || undefined}

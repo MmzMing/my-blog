@@ -24,8 +24,7 @@
 		width: var(--article-toc-surface-width);
 		/* 内容不满时贴合内容高度，超限时封顶并由树内部滚动 */
 		max-height: min(40rem, calc(100vh - 10rem));
-		background: var(--article-toc-panel-bg);
-		border-radius: var(--radius-large);
+		/* 卡片底色与圆角挂在 __view 上：根节点恒透明，相关文章浮层向下溢出时不漏出容器底 */
 	}
 
 	/* 无标题文章：控制器挂 hidden 属性，显式压过本块的 display:flex */
@@ -46,6 +45,90 @@
 	.article-toc-panel.is-pending {
 		opacity: 0;
 		pointer-events: none;
+	}
+
+	/* ---------- 目录 ↔ 相关文章双视图（堆叠换牌） ---------- */
+
+	/* 目录层是唯一的文档流子项，面板高度只由它决定；卡片底色挂在本层
+	   （根节点恒透明），相关文章层按自然高度向下溢出，不套容器底。
+	   面板几何恒定是这套动效不抖的前提：面板底边就是控制器的转换触发线，
+	   切换过程中它不能动，否则会立刻反向命中触发条件来回振荡。 */
+	.article-toc-panel__view {
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		min-height: 0;
+		background: var(--article-toc-panel-bg);
+		border-radius: var(--radius-large);
+	}
+
+	.article-toc-panel {
+		--toc-switch-duration: 280ms;
+		--toc-switch-ease: cubic-bezier(0.22, 1, 0.36, 1);
+		/* 换牌规则：只有入场层位移，退场层停在原位淡出、淡完才瞬时归位（此刻已不可见）。
+		   两个方向的淡出时长不同：
+		   - 相关文章盖目录（退场方=目录）用短淡出。相关文章不套容器底，卡片缝隙是透的，
+		     目录留太久会从缝里透出来压字；
+		   - 目录盖相关文章（退场方=相关文章）用满时长。目录是不透明整片，
+		     滑下来时确实压得住，两层同时可见才有堆叠感。 */
+		--toc-switch-out: 120ms;
+	}
+
+	/* 目录层：进场时从面板上沿之外滑下归位；退场时原地淡出，淡完才移到上沿之外待命 */
+	.article-toc-panel.is-mode-switchable .article-toc-panel__view {
+		position: relative;
+		z-index: 1;
+		transition:
+			transform var(--toc-switch-duration) var(--toc-switch-ease),
+			opacity 0s linear,
+			visibility 0s linear;
+	}
+
+	.article-toc-panel.is-mode-switchable.is-related-mode
+		.article-toc-panel__view {
+		z-index: 0;
+		transform: translateY(-100%);
+		opacity: 0;
+		visibility: hidden;
+		transition:
+			transform 0s linear var(--toc-switch-out),
+			opacity var(--toc-switch-out) ease,
+			visibility 0s linear var(--toc-switch-out);
+	}
+
+	/* 相关文章层：inset:0 只作定位框，内容自然高度向下溢出，不套容器底。
+	   待命时下移到面板底沿之外（位移量=面板高），进场时整片上滑盖住目录；
+	   退场时停在原位淡出，淡完才瞬时回位——不被目录推下去 */
+	.article-toc-panel.is-mode-switchable .article-toc-panel__related {
+		position: absolute;
+		inset: 0;
+		transform: translateY(100%);
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		transition:
+			transform 0s linear var(--toc-switch-duration),
+			opacity var(--toc-switch-duration) ease,
+			visibility 0s linear var(--toc-switch-duration);
+	}
+
+	.article-toc-panel.is-mode-switchable.is-related-mode
+		.article-toc-panel__related {
+		z-index: 2;
+		transform: translateY(0);
+		opacity: 1;
+		visibility: visible;
+		pointer-events: auto;
+		transition:
+			transform var(--toc-switch-duration) var(--toc-switch-ease),
+			opacity 0s linear,
+			visibility 0s linear;
+	}
+
+	/* 首次定态不播动画（滚动恢复落在转换区时防闪），下一帧由控制器摘掉 */
+	.article-toc-panel.is-mode-no-anim .article-toc-panel__view,
+	.article-toc-panel.is-mode-no-anim .article-toc-panel__related {
+		transition: none !important;
 	}
 
 	/* ---------- 工具栏 ---------- */
@@ -344,6 +427,12 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+		/* 双视图的滑动时长统一走变量，改这一处即可让四个状态规则一起失效 */
+		.article-toc-panel.is-mode-switchable {
+			--toc-switch-duration: 1ms;
+			--toc-switch-out: 1ms;
+		}
+
 		.article-toc-panel__tool-btn,
 		.article-toc-panel__tool-btn::after,
 		.article-toc-panel__line,

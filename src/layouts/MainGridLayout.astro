@@ -13,6 +13,7 @@ import {
 	spineModelConfig,
 } from "@/config";
 import { LinkPresets } from "@/constants/link-presets";
+import type { RelatedPostCard } from "@/utils/related-posts";
 import Layout from "./Layout.astro";
 
 import "@/styles/markdown.css";
@@ -29,6 +30,8 @@ interface Props {
 	hasOwnH1?: boolean;
 	robots?: string;
 	postCategory?: string;
+	/** 文章页相关文章卡片数据（[...slug] 一次性算好；加密文章缺省 → 面板不启用转换） */
+	relatedCards?: RelatedPostCard[];
 	/** 社交分享图（绝对 URL）。文章页传真实封面，其他页留空走站点默认图 */
 	ogImage?: string;
 	bannerPostMeta?: {
@@ -57,6 +60,7 @@ const {
 	hasOwnH1 = false,
 	robots,
 	postCategory,
+	relatedCards,
 	ogImage,
 	bannerPostMeta: _bannerPostMeta,
 	articleMeta,
@@ -95,7 +99,7 @@ const navLinks = navBarConfig.links.map((item) => {
 			<div id="right-sidebar-dynamic" class="hidden"></div>
 
 			<main id="swup-container" class="transition-swup-main" data-current-post-category={postCategory || ""}>
-				{isPostPage && <ArticleTocPanel />}
+				{isPostPage && <ArticleTocPanel relatedCards={relatedCards} />}
 				{/* 页面组件有自己的 H1 时不再输出布局兜底标题，确保每页只有一个 H1。 */}
 				{!isPostPage && !hasOwnH1 && <h1 class="sr-only">{title}</h1>}
 

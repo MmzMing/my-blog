@@ -5,8 +5,13 @@
  * 连接线）/ 思维导图弹窗。树与连接线全部由本控制器在客户端渲染。
  *
  * 坑位备忘：
- * - 面板是 max-height 封顶 + 树内部滚动，配合停靠钳制：面板底边触到正文卡底
- *   后随文档滚走，不悬浮在评论区上；
+ * - 面板是 max-height 封顶 + 树内部滚动；底部钳制锚在页脚顶边（不再锚正文卡底）：
+ *   面板底边触到页脚顶后随文档滚走，不悬浮在页脚上；
+ * - 可切换面板（带 [data-toc-related] 相关文章视图时）：许可协议卡底边与面板
+ *   底边对齐后切为堆叠换牌——目录留在文档流撑高（面板几何恒定，底边即固定触发
+ *   线），相关文章绝对叠在同位、按自然高度向下溢出。换牌时只有入场层位移（相关
+ *   文章自面板底沿上滑、目录自面板上沿下滑），退场层原地淡出后瞬时回位。
+ *   退出带 24px 迟滞；
  * - 连接线坐标取圆点中心相对树容器的位置（含 scrollTop），SVG 作为树的
  *   第一个子节点随内容一起滚，滚动树不需要重画；
  * - 折叠动画用 grid-template-rows 1fr→0fr 过渡（无需 JS 测量高度），动画期间
@@ -36,9 +41,10 @@ const MINDMAP_ZOOM_STEP = 0.2;
 /** 滚轮缩放的单档倍率与拖拽平移的触发阈值（px） */
 const MINDMAP_WHEEL_FACTOR = 1.1;
 const MINDMAP_PAN_THRESHOLD = 4;
-/* 滚动钳制：面板底边最多到正文卡（含 License/相关文章/上下篇）底部再往上这段
-   距离，越过后随文档滚走，不悬浮在评论区上 */
+/* 底边留隙：矮视口 fitTop 保护与页脚钳制共用——面板底边与屏底/页脚顶保持这段距离 */
 const RAIL_BOTTOM_GAP = 24;
+/** 目录 ↔ 相关文章转换的退出迟滞（px），避免贴边慢滚时来回切换 */
+const MODE_HYSTERESIS = 24;
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -117,12 +123,25 @@ export class ArticleTocPanelController {
 	} | null = null;
 	/** 刚完成一次拖拽时吞掉随之而来的 click，避免拖拽结束误触节点跳转 */
 	private mindmapPanDragged = false;
-	/* 停靠钳制状态：面板底边触到正文卡底后随文档滚走（top 逐渐变负） */
+	/* 停靠状态：顶部跟随（信息卡顶 → 8rem 停靠线），底部钳制在页脚顶边 */
 	private railBaseTop = 0;
 	private railHeight = 0;
+	/** 相关文章浮层的自然高度（向下溢出面板的部分），参与页脚钳制占位 */
+	private relatedHeight = 0;
 	private appliedRailTop: number | null = null;
 	/** 顶部跟随锚点（过期提示/AI 摘要/封面图信息卡）：初始与卡顶对齐，不存在则恒停靠 */
 	private introAnchor: HTMLElement | null = null;
+	/** 底部钳制锚点：面板底边触到页脚顶边后随文档滚走，不悬浮在页脚上 */
+	private footerEl: HTMLElement | null = null;
+	/* 目录 ↔ 相关文章转换状态机：仅有 [data-toc-related] 时启用（transitionEnabled）。
+	   目录视图留在文档流撑高，切换只改可见性/位移，面板几何恒定、触发线稳定 */
+	private relatedLayer: HTMLElement | null = null;
+	private licenseEl: HTMLElement | null = null;
+	private fallbackAnchorEl: HTMLElement | null = null;
+	private transitionEnabled = false;
+	private mode: "toc" | "related" = "toc";
+	/** 首次定态前不播动画（滚动恢复/前进后退落在转换区时防闪） */
+	private modeInitialized = false;
 
 	constructor(root: HTMLElement) {
 		this.root = root;
@@ -159,10 +178,17 @@ export class ArticleTocPanelController {
 		}
 
 		this.root.hidden = false;
-		const rootTop = Number.parseFloat(getComputedStyle(this.root).top);
-		this.railBaseTop = Number.isNaN(rootTop) ? 0 : rootTop;
 		// 信息卡缺省（无摘要/过期/封面）时为 null，syncDock 退化为恒停靠在 railBaseTop
 		this.introAnchor = document.querySelector(".post-intro-card");
+		// 页脚在容器外常驻，缓存引用安全（不随 Swup 换页重建）
+		this.footerEl = document.querySelector("[data-site-footer]");
+		// 相关文章视图存在才启用转换；锚点优先许可协议卡，缺省兜底正文卡底
+		this.relatedLayer = this.root.querySelector("[data-toc-related]");
+		this.transitionEnabled = !!this.relatedLayer;
+		if (this.transitionEnabled) {
+			this.licenseEl = document.querySelector(".license-container");
+			this.fallbackAnchorEl = document.querySelector("#post-container");
+		}
 		this.cachePositions();
 		this.renderRows();
 		this.bindInteractions();
@@ -194,6 +220,7 @@ export class ArticleTocPanelController {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.root.style.top = "";
+		this.root.classList.remove("is-related-mode", "is-mode-no-anim");
 		this.appliedRailTop = null;
 		if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
 		if (this.measureFrame !== null) cancelAnimationFrame(this.measureFrame);
@@ -619,11 +646,22 @@ export class ArticleTocPanelController {
 		const tree = this.tree;
 		if (!tree || !this.article) return;
 
+		/* 停靠线（CSS 的 8rem）挂在 96rem 媒体查询里，窄屏初始化时 computed top 是
+		   auto（parse 出 NaN），所以每次测量都重取，窄屏↔宽屏切换后才有正确值。
+		   先摘掉内联 top 再读：否则读到的是 syncDock 自己写上去的跟随值 */
+		const appliedTop = this.root.style.top;
+		this.root.style.top = "";
+		const rootTop = Number.parseFloat(getComputedStyle(this.root).top);
+		this.root.style.top = appliedTop;
+		this.railBaseTop = Number.isNaN(rootTop) ? 0 : rootTop;
+
 		const scrollY = window.scrollY;
 		const articleRect = this.article.getBoundingClientRect();
 		this.articleStart = articleRect.top + scrollY;
 		this.articleEnd = articleRect.bottom + scrollY;
 		this.railHeight = this.root.offsetHeight;
+		/* 相关文章浮层按自然高度向下溢出面板，页脚钳制要把它算进占位高度 */
+		this.relatedHeight = this.relatedLayer?.scrollHeight ?? 0;
 		this.headingTops = tree.nodes.map(
 			(node) => node.element.getBoundingClientRect().top + scrollY,
 		);
@@ -641,24 +679,16 @@ export class ArticleTocPanelController {
 		);
 	}
 
-	/* 每次滚动实时测正文卡底部（含 License/相关文章/上下篇），避免初始化时布局
-	   未稳导致的钳制点漂移；图片/字体加载引起的高度变化由 ResizeObserver 兜住 */
+	/* 顶部跟随：页面在顶时面板顶与信息卡顶对齐；信息卡随页面上移越过停靠线
+	   （CSS 的 8rem，即原本与标题对齐的位置）后，钳制在停靠线悬停跟随。
+	   每帧实时取视口坐标，字体加载/折叠卡片导致的位移无需额外缓存。
+	   fitTop 防止矮视口下初始位置把面板底边撑出屏幕。
+	   底部钳制：面板底边触到页脚顶边后随文档滚走，不悬浮在页脚上。占位高度取
+	   目录高与相关文章自然高的较大值——相关文章向下溢出不撑高面板，不预留就会
+	   压到页脚上；顶边贴到视口上沿即止，不再向上移出屏幕。 */
 	private syncDock(): void {
 		if (!this.railHeight) return;
-		const anchor =
-			document.querySelector<HTMLElement>("#post-container") ?? this.article;
-		if (!anchor) return;
 
-		const anchorBottom = anchor.getBoundingClientRect().bottom + window.scrollY;
-		const limit =
-			anchorBottom - this.railHeight - RAIL_BOTTOM_GAP - this.railBaseTop;
-		/* 面板底边不许越过正文卡底：正常时停在 CSS 的 top，越过后随文档滚走 */
-		const maxTop = limit + this.railBaseTop - window.scrollY;
-
-		/* 顶部跟随：页面在顶时面板顶与信息卡顶对齐；信息卡随页面上移越过停靠线
-		   （CSS 的 8rem，即原本与标题对齐的位置）后，钳制在停靠线悬停跟随。
-		   每帧实时取视口坐标，字体加载/折叠卡片导致的位移无需额外缓存。
-		   fitTop 防止矮视口下初始位置把面板底边撑出屏幕。 */
 		let followTop = this.railBaseTop;
 		const introTop = this.introAnchor?.getBoundingClientRect().top;
 		if (introTop !== undefined) {
@@ -666,11 +696,54 @@ export class ArticleTocPanelController {
 			followTop = Math.min(Math.max(this.railBaseTop, introTop), fitTop);
 		}
 
-		const nextTop = Math.min(followTop, maxTop);
-		if (nextTop === this.appliedRailTop) return;
+		if (this.footerEl) {
+			const footerTop = this.footerEl.getBoundingClientRect().top;
+			const clampHeight = Math.max(this.railHeight, this.relatedHeight);
+			const maxTop = Math.max(0, footerTop - clampHeight - RAIL_BOTTOM_GAP);
+			followTop = Math.min(followTop, maxTop);
+		}
 
-		this.appliedRailTop = nextTop;
-		this.root.style.top = `${nextTop}px`;
+		if (followTop === this.appliedRailTop) return;
+
+		this.appliedRailTop = followTop;
+		this.root.style.top = `${followTop}px`;
+	}
+
+	/* 目录 → 相关文章转换评估（每帧随 update 调用）。
+	   触发：许可协议卡（兜底：正文卡）底边上移到面板底边水平线 → 进入相关态；
+	   退出：锚点底边回落越过面板底边 + 迟滞带 → 恢复目录态。
+	   坐标全部实时读取。两层同框、面板高度不随模式变化，底边即固定触发线，
+	   切换过程中它不动，因此不会因几何漂移而反向命中条件来回振荡。 */
+	private evaluateMode(): void {
+		if (!this.transitionEnabled) return;
+		if (getComputedStyle(this.root).display === "none") return; // 窄屏面板不可见
+		const anchorEl = this.licenseEl ?? this.fallbackAnchorEl;
+		if (!anchorEl) return;
+
+		const anchorBottom = anchorEl.getBoundingClientRect().bottom;
+		const panelBottom = this.root.getBoundingClientRect().bottom;
+
+		if (this.mode === "toc") {
+			if (anchorBottom <= panelBottom) this.setMode("related");
+		} else if (anchorBottom > panelBottom + MODE_HYSTERESIS) {
+			this.setMode("toc");
+		}
+
+		if (!this.modeInitialized) {
+			this.modeInitialized = true;
+			// 首次定态不播过渡（滚动恢复/前进后退落在转换区时面板直接以正确模式出现）
+			this.root.classList.add("is-mode-no-anim");
+			requestAnimationFrame(() =>
+				this.root.classList.remove("is-mode-no-anim"),
+			);
+		}
+	}
+
+	private setMode(mode: "toc" | "related"): void {
+		if (mode === this.mode) return;
+		this.mode = mode;
+		// 只翻类：两层同框、面板高度不随模式变化，滑动与回位全由 CSS 时长控制
+		this.root.classList.toggle("is-related-mode", mode === "related");
 	}
 
 	private getActiveIndex(): number {
@@ -716,6 +789,7 @@ export class ArticleTocPanelController {
 		if (!this.tree) return;
 
 		this.syncDock();
+		this.evaluateMode();
 
 		const progressPercent = Math.round(this.getProgress() * 100);
 		if (progressPercent !== this.lastProgressPercent) {
