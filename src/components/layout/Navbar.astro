@@ -305,6 +305,38 @@ function pathMatches(currentPath: string, href: string): boolean {
 	return cp === hp || cp.startsWith(hp + '/');
 }
 
+/**
+ * 一个导航项可匹配的全部路径：自身 href、共享面板里的子菜单 href（二级激活则一级
+ * 也选中）、以及配置声明的额外前缀。
+ */
+function getItemPaths(item: HTMLElement): string[] {
+	const hrefs: string[] = [];
+	const selfLink = item.querySelector(':scope > a') as HTMLAnchorElement | null;
+	const selfHref = selfLink?.getAttribute('href');
+	if (selfHref) hrefs.push(selfHref);
+
+	const pageIndex = item.dataset.dropdownIndex;
+	const page = pageIndex !== undefined
+		? document.querySelector(`[data-navbar-dropdown-panel] [data-dropdown-page="${pageIndex}"]`)
+		: null;
+	page?.querySelectorAll('.dropdown-item[href]').forEach((el) => {
+		const href = (el as HTMLAnchorElement).getAttribute('href');
+		if (href) hrefs.push(href);
+	});
+
+	const activePathPrefixes = item.dataset.activePathPrefixes
+		?.split(/\s+/)
+		.filter(Boolean) ?? [];
+	return [...hrefs, ...activePathPrefixes];
+}
+
+/** 按路径找出应激活的导航项，无匹配返回 null。 */
+function findItemByPath(navContainer: HTMLElement, currentPath: string): HTMLElement | null {
+	return Array.from(
+		navContainer.querySelectorAll<HTMLElement>(':scope > .dropdown-container'),
+	).find((item) => getItemPaths(item).some((href) => pathMatches(currentPath, href))) ?? null;
+}
+
 function moveHighlight(navContainer: HTMLElement, hoverBorder: HTMLElement, item: HTMLElement | null) {
 	navContainer.querySelectorAll<HTMLElement>(":scope > .dropdown-container").forEach((navItem) => {
 		navItem.classList.toggle("is-highlighted", navItem === item);
@@ -544,13 +576,11 @@ function initHoverSlider(animateActiveChange = false) {
 	const navItems = Array.from(_navContainer.querySelectorAll(':scope > .dropdown-container')) as HTMLElement[];
 
 	/**
-	 * 选中判定：
-	 * - 单项导航：直接匹配自身 href
-	 * - 下拉导航：匹配自身 href 或任一子菜单 href（二级激活则一级也选中）
+	 * 选中判定：单项导航匹配自身 href，下拉导航匹配自身或任一子菜单 href，
+	 * 外加配置声明的额外前缀（见 getItemPaths）。
 	 */
 	function detectActiveItem() {
-		const currentPath = window.location.pathname;
-		let activeItem: HTMLElement | null = null;
+		const activeItem = findItemByPath(_navContainer, window.location.pathname);
 		const previousItem = _navbarActiveItem?.isConnected
 			? _navbarActiveItem
 			: _navContainer.querySelector('.nav-item-active') as HTMLElement | null;
@@ -558,33 +588,6 @@ function initHoverSlider(animateActiveChange = false) {
 		const iconSnapshot = iconParts
 			? captureNavbarIconSnapshot(iconParts)
 			: { rect: null, markup: '' };
-
-		navItems.forEach((item) => {
-			// 收集所有可匹配的路径：自身、共享面板里的子菜单页和配置声明的额外前缀。
-			const hrefs: string[] = [];
-			const selfLink = item.querySelector(':scope > a') as HTMLAnchorElement | null;
-			if (selfLink) {
-				const href = selfLink.getAttribute('href');
-				if (href) hrefs.push(href);
-			}
-			const pageIndex = item.dataset.dropdownIndex;
-			const page = pageIndex !== undefined
-				? document.querySelector(`[data-navbar-dropdown-panel] [data-dropdown-page="${pageIndex}"]`)
-				: null;
-			page?.querySelectorAll('.dropdown-item[href]').forEach((el) => {
-				const a = el as HTMLAnchorElement;
-				const href = a.getAttribute('href');
-				if (href) hrefs.push(href);
-			});
-
-			const activePathPrefixes = item.dataset.activePathPrefixes
-				?.split(/\s+/)
-				.filter(Boolean) ?? [];
-			const matched = [...hrefs, ...activePathPrefixes].some((href) =>
-				pathMatches(currentPath, href),
-			);
-			if (matched && !activeItem) activeItem = item;
-		});
 
 		navItems.forEach((item) => item.classList.toggle('nav-item-active', item === activeItem));
 		_navbarActiveItem = activeItem;
@@ -617,8 +620,10 @@ function initHoverSlider(animateActiveChange = false) {
 	});
 
 	_navContainer.addEventListener('mouseleave', () => {
-		const activeItem = _navContainer.querySelector('.nav-item-active') as HTMLElement | null;
-		moveHighlight(_navContainer, _hoverBorder, activeItem);
+		// 回落到当前页的激活项，且必须按 URL 现算：点击导航项后 swup 立刻 pushState，
+		// 但容器替换与 page:view 还没到，DOM 上的 .nav-item-active 仍是旧页的。
+		// 直接读它就会在鼠标移出时把高亮闪回原页那一项，等导航完成再跳回来。
+		moveHighlight(_navContainer, _hoverBorder, findItemByPath(_navContainer, window.location.pathname));
 		// 面板是导航行的子节点，悬停进面板不会触发 mouseleave；只有真正离开才收起
 		syncNavbarDropdownOnHover(null);
 	}, { signal: _hoverSliderAbortController.signal });
