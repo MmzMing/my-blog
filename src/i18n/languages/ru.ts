@@ -233,19 +233,11 @@ export const ru: Translation = {
 	[Key.passwordProtectedRss]:
 		"Эта статья зашифрована. Пожалуйста, посетите сайт для просмотра.",
 
-	// Виджет календаря（导航 Logo 资料卡）
-	[Key.calendarWeekRemaining]: "До конца недели",
-	[Key.calendarMonthRemaining]: "До конца месяца",
-	[Key.calendarYearRemaining]: "До конца года",
-	[Key.calendarDataUnavailable]: "Данные календаря недоступны",
-	[Key.calendarNoHoliday]: "Ближайший праздник не найден",
+	// 导航 Logo 资料卡
 	[Key.profileMonthWeek]: "{month}, неделя {week}",
 	[Key.profilePostCount]: "{count} пуб.",
 	[Key.otherSites]: "Другие сайты",
 	[Key.profileHeatmap]: "Тепловая карта публикаций",
-	[Key.profileTabHeatmap]: "Карта",
-	[Key.profileTabDates]: "Даты",
-	[Key.profileTabsLabel]: "Разделы карточки",
 	[Key.contactMe]: "Связаться",
 	[Key.qqGroup]: "QQ Группа",
 	[Key.navPosts]: "Статьи",
@@ -408,9 +400,6 @@ export const ru: Translation = {
 	[Key.musicVisualizer3D]: "3D-визуализация",
 	[Key.musicVisualizerDescription]:
 		"Откройте иммерсивную музыкальную визуализацию, где воспроизведение превращается в динамичный трёхмерный ландшафт с атмосферными эффектами.",
-
-	// ===== Виджет календаря =====
-	[Key.dayShort]: " дн",
 
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "Загрузка страницы",

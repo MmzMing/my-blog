@@ -7,25 +7,30 @@ import {
 } from "../types/config";
 import { siteConfig } from "./siteConfig";
 
-// Logo 下拉资料卡「其他站点」标签页里的站点列表（名字 + 地址）
+// Logo 资料卡底部站点面板里的站点列表（名字 + 地址 + 图标）
 // 原先挂在 LinkPreset.Feibichi 的「个人主站」外链收编为第一项，该预设已删除。
-// name 是站长自维护的站点名，展示在 CTA 上，明文即可
+// name 是站长自维护的站点名，展示在行上，明文即可
+// icon 取各站自己的 favicon 路径，图标加载失败会回落到 name 的首字符
 const personalSites: PersonalSite[] = [
 	{
 		name: "个人主站",
 		url: "https://www.mmzhiku.xyz/",
+		icon: "https://www.mmzhiku.xyz/favicon.svg",
 	},
 	{
 		name: "memos记事本",
 		url: "https://memos.mmzhiku.xyz/",
+		icon: "https://memos.mmzhiku.xyz/logo.webp",
 	},
 	{
 		name: "站点统计",
 		url: "https://stats.mmzhiku.xyz/share/HZrqqAfVdx1UEVNm",
+		icon: "https://stats.mmzhiku.xyz/favicon-32x32.png",
 	},
 	{
 		name: "工具盒子",
 		url: "https://tool.mmzhiku.xyz/",
+		icon: "https://tool.mmzhiku.xyz/images/favicon/favicon-48x48.png",
 	},
 ];
 

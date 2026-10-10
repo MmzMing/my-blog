@@ -11,39 +11,27 @@
  * 导航左段位置写入 fixed 锚点；锚点随滚动失效（左段收缩成球位移），与工具
  * 面板同一策略——滚动即收起。
  *
- * 卡片自上而下四层：横幅+头像堆叠 / 名字职业+社交 / 内容区 / 分段标签 dock。
- * 内容区三页（heatmap / dates / sites）互斥且高度跟随当前页，切换带方向感知：
- * 标签索引增大时新页从右侧滑入、旧页向左滑出，反向对称。热力图点格在同一页
- * 内联展开该周文章；日期页的入场动效（数字滚动 + 进度条重充）改由「日期页
- * 可见」触发，不再挂在面板展开上。面板关闭或 Swup 导航后回到默认页并清空
- * 选中态；数据缓存跨导航保留，仅首次展开时请求。
+ * 卡片自上而下四层：横幅+头像堆叠 / 名字职业+社交 / 热力图内容区 / 底部站点
+ * 面板。内容区自然高度、超出上限才页内滚动；打开面板时热力图按列逐格扫描入场，
+ * 月份名在扫描收尾后去模糊显现。站点面板是贴在卡片底部的浮层：折叠态只占一条
+ * 高度，展开时向上顶到卡片顶部盖住内容区，堆叠头像与列表头像按序号配对做 FLIP
+ * 位移，视觉上就是同一枚图标从堆叠飞进列表。列表用 visibility 而非 hidden 收起
+ * （见样式里的延迟切换），关闭动画期间仍占位被 overflow 裁掉，收尾才摘出可访问
+ * 性树。面板关闭或 Swup 导航后回到折叠态并清空选中；数据缓存跨导航保留，仅首次
+ * 展开时请求。
  */
 
-import {
-	formatYmd,
-	getHolidayOccurrences,
-	type Milestone,
-	milestoneFromOccurrences,
-} from "@/utils/calendar-milestones";
 import { onNavigation } from "@/utils/swup-lifecycle";
 
 interface ProfileConfig {
-	api: { holidays: string; posts: string };
+	api: { posts: string };
 	postBaseUrl: string;
 	locale: string;
-	anniversary: {
-		name: string;
-		/** 构建期展开的前后三年公历日期（YYYY-MM-DD） */
-		occurrences: string[];
-	};
 	labels: {
 		/** 「{month}第{week}周」样式模板，month 为 Intl 月份名 */
 		weekFormat: string;
 		/** 「{count}篇」样式模板 */
 		postCount: string;
-		days: string;
-		unavailable: string;
-		noHoliday: string;
 	};
 }
 
@@ -53,74 +41,45 @@ interface PostMeta {
 	published: number;
 }
 
-interface HolidayEntry {
-	date: string;
-	name: string;
-	isWorkday?: boolean;
-}
-
-interface ProfileData {
-	holidays: HolidayEntry[];
-	holidaysFailed: boolean;
-	posts: PostMeta[];
-	postsFailed: boolean;
-}
-
 interface ProfileRefs {
 	panel: HTMLElement;
 	card: HTMLElement;
 	mask: HTMLElement | null;
 	leftSeg: HTMLElement | null;
-	content: HTMLElement;
-	tablist: HTMLElement;
-	/** DOM 实际渲染出的标签顺序，方向判定与键盘循环都以它为准 */
-	tabs: ProfileTab[];
-	panes: Map<ProfileTab, HTMLElement>;
-	tabButtons: Map<ProfileTab, HTMLButtonElement>;
 	heatmap: HTMLElement | null;
 	cells: Map<string, HTMLButtonElement>;
 	weekPosts: HTMLElement | null;
-	days: { week: HTMLElement; month: HTMLElement; year: HTMLElement };
-	events: {
-		holiday: EventElements | null;
-		anniversary: EventElements | null;
-	};
 	postsTitle: HTMLElement | null;
 	postList: HTMLElement | null;
 	tooltip: HTMLElement | null;
 	bannerImg: HTMLElement | null;
-}
-
-interface EventElements {
-	title: HTMLElement | null;
-	date: HTMLElement | null;
-	progress: HTMLElement | null;
-	fill: HTMLElement | null;
-	remaining: HTMLElement | null;
-}
-
-const PROFILE_TABS = ["heatmap", "dates", "sites"] as const;
-
-type ProfileTab = (typeof PROFILE_TABS)[number];
-
-function isProfileTab(value: string | undefined): value is ProfileTab {
-	return value !== undefined && PROFILE_TABS.some((tab) => tab === value);
+	/** 站点面板整块缺位（personalSites 为空）时为 null */
+	sites: HTMLElement | null;
+	sitesBar: HTMLElement | null;
+	sitesStack: HTMLElement | null;
+	sitesList: HTMLElement | null;
+	sitesToggle: HTMLButtonElement | null;
 }
 
 /** 与样式断点（min-width: 1024px 走桌面布局）保持互补 */
 const MOBILE_MEDIA = "(max-width: 1023.98px)";
 /** 鼠标在 logo 与面板之间移动的过渡余量，避免误收起 */
 const CLOSE_DELAY = 260;
-/** 兜底默认页；模板未渲染出该页时退到实际首个标签 */
-const DEFAULT_TAB: ProfileTab = "heatmap";
-/** 标签页横向滑动时长 */
-const SLIDE_DURATION = 240;
+/** 站点面板与卡片边缘的间距，需与样式里的 --profile-sites-inset 一致 */
+const SITES_INSET = 12;
+/** 面板高度与头像飞行共用时长 */
+const SITES_DURATION = 360;
 /** 与移动端底部卡片入场同一条曲线，两处动效节奏对齐 */
-const SLIDE_EASING = "cubic-bezier(0.32, 0.72, 0.29, 1)";
+const SITES_EASING = "cubic-bezier(0.32, 0.72, 0.29, 1)";
+/** 热力图逐列扫描：单格时长与列间隔，与参考实现的节奏一致 */
+const CELL_FADE = 200;
+const COLUMN_STAGGER = 12;
+/** 月份名入场：等扫描收尾再去模糊 */
+const LABEL_BLUR = 6;
+const LABEL_REVEAL = 450;
+const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 /** 触摸手势判定主轴所需的最低位移，越过即锁定本手势轴向 */
 const SWIPE_AXIS_LOCK = 16;
-/** 移动端横向每滑动多少像素换一格标签 */
-const SWIPE_TAB_DISTANCE = 48;
 /** 移动端竖向下滑关闭阈值 */
 const SWIPE_CLOSE_DISTANCE = 64;
 
@@ -131,21 +90,14 @@ let config: ProfileConfig | null = null;
 let refs: ProfileRefs | null = null;
 let initialized = false;
 
-let data: ProfileData | null = null;
 let dataPromise: Promise<void> | null = null;
 let postsByCell = new Map<string, PostMeta[]>();
 
 let selectedCellKey: string | null = null;
-let activeTab: ProfileTab | null = null;
-let defaultTab: ProfileTab = DEFAULT_TAB;
-/** 滑动代数：每次新切换自增，过期回调据此放弃提交终态 */
-let slideRevision = 0;
-let slideAnimations: Animation[] = [];
+let sitesOpen = false;
 let closeTimer: number | null = null;
 let openedAsMobile = false;
 let previousBodyOverflow = "";
-/** 入场数字滚动的 rAF 句柄，重放/收起时取消 */
-let counterFrames: number[] = [];
 /** 浮层篇数滚动的 rAF 句柄，浮层收起或改挂别处时取消 */
 let tooltipFrames: number[] = [];
 
@@ -154,8 +106,6 @@ function cancelTooltipFrames(): void {
 	tooltipFrames = [];
 }
 
-/** 数字滚动时长，与旧日历组件的计数动画节奏一致 */
-const COUNTER_DURATION = 520;
 /** 篇数上滚时长：比面板入场的 520ms 短，悬停反馈要更跟手 */
 const TOOLTIP_COUNT_DURATION = 420;
 
@@ -188,50 +138,7 @@ function collectRefs(
 			const key = cell.dataset.profileCell;
 			if (key !== undefined) cells.set(key, cell);
 		});
-	const content = card.querySelector<HTMLElement>("[data-profile-content]");
-	const tablist = card.querySelector<HTMLElement>("[data-profile-tabs]");
-	if (!content || !tablist) return null;
-	// 标签与面板按 DOM 实际结果配对：sites 页在 personalSites 为空时整块不渲染，
-	// 收 Map 而不是 Record，方向判定与键盘循环都只认这份顺序
-	const panes = new Map<ProfileTab, HTMLElement>();
-	const tabButtons = new Map<ProfileTab, HTMLButtonElement>();
-	tablist
-		.querySelectorAll<HTMLButtonElement>("[data-profile-tab]")
-		.forEach((button) => {
-			const tab = button.dataset.profileTab;
-			if (!isProfileTab(tab)) return;
-			const pane = card.querySelector<HTMLElement>(
-				`[data-profile-pane='${tab}']`,
-			);
-			if (!pane) return;
-			tabButtons.set(tab, button);
-			panes.set(tab, pane);
-		});
-	const tabs = [...panes.keys()];
-	if (tabs.length === 0) return null;
-	const daysWeek = card.querySelector<HTMLElement>(
-		"[data-profile-days='week']",
-	);
-	const daysMonth = card.querySelector<HTMLElement>(
-		"[data-profile-days='month']",
-	);
-	const daysYear = card.querySelector<HTMLElement>(
-		"[data-profile-days='year']",
-	);
-	if (!daysWeek || !daysMonth || !daysYear) return null;
-	const readEvent = (name: string): EventElements | null => {
-		const root = card.querySelector<HTMLElement>(
-			`[data-profile-event='${name}']`,
-		);
-		if (!root) return null;
-		return {
-			title: root.querySelector("[data-profile-event-title]"),
-			date: root.querySelector("[data-profile-event-date]"),
-			progress: root.querySelector("[data-profile-event-progress]"),
-			fill: root.querySelector("[data-profile-event-progress-fill]"),
-			remaining: root.querySelector("[data-profile-event-remaining]"),
-		};
-	};
+	const sites = card.querySelector<HTMLElement>("[data-profile-sites]");
 
 	return {
 		panel,
@@ -239,74 +146,57 @@ function collectRefs(
 		mask: panel.querySelector("[data-profile-mask]"),
 		// 面板挂在 body 末尾，左段改从文档级查找（hover/focus 触发源 + 桌面端锚点）
 		leftSeg: document.querySelector("#navbar .navbar-seg--left"),
-		content,
-		tablist,
-		tabs,
-		panes,
-		tabButtons,
 		heatmap: card.querySelector("[data-profile-heatmap]"),
 		cells,
 		weekPosts: card.querySelector("[data-profile-week]"),
-		days: { week: daysWeek, month: daysMonth, year: daysYear },
-		events: {
-			holiday: readEvent("holiday"),
-			anniversary: readEvent("anniversary"),
-		},
 		postsTitle: card.querySelector("[data-profile-posts-title]"),
 		postList: card.querySelector("[data-profile-post-list]"),
 		tooltip: card.querySelector("[data-profile-tooltip]"),
 		bannerImg: card.querySelector("[data-profile-banner-img]"),
+		sites,
+		sitesBar: card.querySelector("[data-profile-sites-bar]"),
+		sitesStack: card.querySelector("[data-profile-sites-stack]"),
+		sitesList: card.querySelector("[data-profile-sites-list]"),
+		sitesToggle: card.querySelector<HTMLButtonElement>(
+			"[data-profile-sites-toggle]",
+		),
 	};
 }
 
 /* ── 数据加载 ── */
 
-async function fetchData(): Promise<ProfileData> {
-	if (!config)
-		return { holidays: [], holidaysFailed: true, posts: [], postsFailed: true };
-	const request = async (path: string): Promise<unknown> => {
-		const response = await fetch(path, {
-			headers: { Accept: "application/json" },
-		});
-		if (!response.ok)
-			throw new Error(`Profile card request failed: ${response.status}`);
-		return response.json();
-	};
-	// 两份数据相互独立：一份失败不拖垮另一份，各自降级
-	const [holidayResult, postResult] = await Promise.allSettled([
-		request(config.api.holidays),
-		request(config.api.posts),
-	]);
-	const holidays =
-		holidayResult.status === "fulfilled" && Array.isArray(holidayResult.value)
-			? (holidayResult.value as HolidayEntry[])
-			: [];
-	const posts =
-		postResult.status === "fulfilled" && Array.isArray(postResult.value)
-			? (postResult.value as PostMeta[])
-			: [];
-	return {
-		holidays,
-		holidaysFailed: holidayResult.status !== "fulfilled",
-		posts,
-		postsFailed: postResult.status !== "fulfilled",
-	};
+async function fetchData(): Promise<PostMeta[]> {
+	if (!config) return [];
+	const response = await fetch(config.api.posts, {
+		headers: { Accept: "application/json" },
+	});
+	if (!response.ok) {
+		throw new Error(
+			`Profile card request failed: ${String(response.status)} ${response.statusText}`,
+		);
+	}
+	const value: unknown = await response.json();
+	if (!Array.isArray(value)) {
+		throw new Error("Profile card posts payload is not an array");
+	}
+	return value as PostMeta[];
 }
 
 function ensureData(): void {
 	if (!config || !refs || dataPromise) return;
 	refs.card.setAttribute("aria-busy", "true");
 	dataPromise = fetchData()
-		.then((result) => {
-			data = result;
-			postsByCell = buildPostsByCell(result.posts);
-			renderHeatmapCounts();
-			renderEvents();
-			// 数据可能在用户已经切到日期页之后才到，此时补播一次入场动效
-			if (activeTab === "dates") playEntranceAnimation();
+		.then((posts) => {
+			postsByCell = buildPostsByCell(posts);
+		})
+		.catch(() => {
+			// 文章接口不可用时热力图整块留空即可，卡片其余部分不依赖它，故不额外提示
+			postsByCell = new Map();
 		})
 		.finally(() => {
-			refs?.card.setAttribute("aria-busy", "false");
+			if (!refs) return;
+			refs.card.setAttribute("aria-busy", "false");
+			renderHeatmapCounts();
 		});
 }
 
@@ -350,7 +240,7 @@ function formatWeekLabel(key: string): string {
 	if (!config) return "";
 	const [monthRaw, weekRaw] = key.split("-").map(Number);
 	const monthName = new Intl.DateTimeFormat(config.locale, {
-		month: "long",
+		month: "short",
 	}).format(new Date(2000, monthRaw, 1));
 	return config.labels.weekFormat
 		.replace("{month}", monthName)
@@ -359,136 +249,10 @@ function formatWeekLabel(key: string): string {
 
 /* ── 渲染 ── */
 
-function computeCountdownTargets(): {
-	week: number;
-	month: number;
-	year: number;
-} {
-	const now = new Date();
-	const startOfDay = (date: Date): number =>
-		new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-	const remaining = (target: Date): number =>
-		Math.max(0, Math.round((startOfDay(target) - startOfDay(now)) / 86400000));
-	// 周一为一周之首：getDay() 周日为 0，换算成周一为 0
-	const weekEnd = new Date(
-		now.getFullYear(),
-		now.getMonth(),
-		now.getDate() + (6 - ((now.getDay() + 6) % 7)),
-	);
-	return {
-		week: remaining(weekEnd),
-		month: remaining(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
-		year: remaining(new Date(now.getFullYear(), 11, 31)),
-	};
-}
-
-/** scale ∈ [0,1]：1 为终值，入场动画期间按缓动系数取中间值 */
-function applyCountdowns(scale: number): void {
-	if (!refs || !config) return;
-	const targets = computeCountdownTargets();
-	const daysSuffix = config.labels.days;
-	refs.days.week.textContent = `${Math.round(targets.week * scale)}${daysSuffix}`;
-	refs.days.month.textContent = `${Math.round(targets.month * scale)}${daysSuffix}`;
-	refs.days.year.textContent = `${Math.round(targets.year * scale)}${daysSuffix}`;
-}
-
-function cancelCounterFrames(): void {
-	for (const frame of counterFrames) cancelAnimationFrame(frame);
-	counterFrames = [];
-}
-
-/* ── 日期页入场动效：数字滚动 + 进度条重充，日期页每次可见都重放 ── */
-
-function animateCounters(): void {
-	if (!refs || !config) return;
-	const targets = computeCountdownTargets();
-	const daysSuffix = config.labels.days;
-	const start = performance.now();
-	const tick = (now: number): void => {
-		if (!refs) return;
-		const progress = Math.min(1, (now - start) / COUNTER_DURATION);
-		const eased = 1 - (1 - progress) ** 3;
-		refs.days.week.textContent = `${Math.round(targets.week * eased)}${daysSuffix}`;
-		refs.days.month.textContent = `${Math.round(targets.month * eased)}${daysSuffix}`;
-		refs.days.year.textContent = `${Math.round(targets.year * eased)}${daysSuffix}`;
-		if (progress < 1) counterFrames.push(requestAnimationFrame(tick));
-	};
-	counterFrames.push(requestAnimationFrame(tick));
-}
-
-function animateEventRemainings(): void {
-	if (!refs || !config) return;
-	const targets = [refs.events.holiday, refs.events.anniversary]
-		.map((event) => event?.remaining ?? null)
-		.filter(
-			(el): el is HTMLElement => !!el && el.dataset.profileTarget !== undefined,
-		)
-		.map((el) => ({ el, value: Number(el.dataset.profileTarget) }));
-	if (targets.length === 0) return;
-	const daysSuffix = config.labels.days;
-	const start = performance.now();
-	const tick = (now: number): void => {
-		if (!refs) return;
-		const progress = Math.min(1, (now - start) / COUNTER_DURATION);
-		const eased = 1 - (1 - progress) ** 3;
-		for (const { el, value } of targets) {
-			el.textContent = `${Math.round(value * eased)}${daysSuffix}`;
-		}
-		if (progress < 1) counterFrames.push(requestAnimationFrame(tick));
-	};
-	counterFrames.push(requestAnimationFrame(tick));
-}
-
-function replayFills(): void {
-	if (!refs) return;
-	for (const event of [refs.events.holiday, refs.events.anniversary]) {
-		if (!event?.fill || !event.progress) continue;
-		animateFillTo(
-			event.fill,
-			Number(event.progress.getAttribute("aria-valuenow") ?? 0),
-		);
-	}
-}
-
-function playEntranceAnimation(): void {
-	if (!refs) return;
-	if (prefersReducedMotion()) return;
-	cancelCounterFrames();
-	animateCounters();
-	animateEventRemainings();
-	replayFills();
-}
-
-/** 日期页可见才重放入场动效（默认页是简介，打开面板时不放） */
-function onDatesVisible(): void {
-	if (activeTab !== "dates") return;
-	playEntranceAnimation();
-}
-
-/** 把日期页的数字与进度钉在终值：动效中途切走 / 关闭面板时收口，不留半程值 */
-function finalizeDates(): void {
-	if (!refs || !config) return;
-	cancelCounterFrames();
-	applyCountdowns(1);
-	for (const event of [refs.events.holiday, refs.events.anniversary]) {
-		if (!event?.remaining) continue;
-		const target = event.remaining.dataset.profileTarget;
-		if (target !== undefined) {
-			event.remaining.textContent = `${target}${config.labels.days}`;
-		}
-		if (event.fill && event.progress) {
-			setFillWidth(
-				event.fill,
-				Number(event.progress.getAttribute("aria-valuenow") ?? 0),
-			);
-		}
-	}
-}
-
 function renderHeatmapCounts(): void {
-	if (!refs || !config || !data) return;
+	if (!refs || !config) return;
 	for (const [key, cell] of refs.cells) {
-		const count = data.postsFailed ? 0 : (postsByCell.get(key)?.length ?? 0);
+		const count = postsByCell.get(key)?.length ?? 0;
 		cell.classList.remove("is-level-1", "is-level-2", "is-level-3");
 		if (count > 0) cell.classList.add(`is-level-${Math.min(3, count)}`);
 		const label = formatWeekLabel(key);
@@ -512,238 +276,127 @@ function markCurrentWeekCell(): void {
 	cell?.classList.add("is-current");
 }
 
-function renderEventCard(
-	target: EventElements | null,
-	milestone: Milestone | null,
-	emptyLabel: string,
-): void {
-	if (!target) return;
-	if (!milestone) {
-		if (target.title) target.title.textContent = emptyLabel;
-		if (target.date) target.date.textContent = "";
-		if (target.remaining) {
-			target.remaining.textContent = "--";
-			delete target.remaining.dataset.profileTarget;
-		}
-		if (target.progress) target.progress.setAttribute("aria-valuenow", "0");
-		if (target.fill) target.fill.style.width = "0%";
-		return;
-	}
-	if (target.title) target.title.textContent = milestone.title;
-	if (target.date) {
-		target.date.textContent = formatDateKey(milestone.date);
-	}
-	if (target.remaining) {
-		// 目标值挂 dataset，供日期页每次可见时的滚动动效读取
-		target.remaining.dataset.profileTarget = String(milestone.remainingDays);
-		target.remaining.textContent = `${milestone.remainingDays}${config?.labels.days ?? ""}`;
-	}
-	if (target.progress) {
-		target.progress.setAttribute("aria-valuenow", String(milestone.progress));
-		target.progress.setAttribute("aria-valuetext", `${milestone.progress}%`);
-	}
-	// 渲染只落终值，重放统一走 playEntranceAnimation，避免双重播
-	setFillWidth(target.fill, milestone.progress);
-}
+/* ── 热力图入场：按列逐格缩放淡入，收尾后月份名去模糊 ── */
 
-function setFillWidth(fill: HTMLElement | null, progress: number): void {
-	if (fill) fill.style.width = `${progress}%`;
-}
-
-/** 进度条从 0 重新充满：入场动效重放时用 */
-function animateFillTo(fill: HTMLElement | null, progress: number): void {
-	if (!fill) return;
-	fill.style.transition = "none";
-	fill.style.width = "0%";
-	void fill.offsetWidth;
-	fill.style.removeProperty("transition");
-	fill.style.width = `${progress}%`;
-}
-
-function formatDateKey(dateKey: string): string {
-	if (!config) return dateKey;
-	const [year, month, day] = dateKey.split("-").map(Number);
-	try {
-		return new Intl.DateTimeFormat(config.locale, {
-			month: "long",
-			day: "numeric",
-		}).format(new Date(year, month - 1, day));
-	} catch {
-		return dateKey;
-	}
-}
-
-function renderEvents(): void {
-	if (!refs || !config || !data) return;
-	const currentConfig = config;
-	const todayKey = formatYmd(new Date());
-
-	renderEventCard(
-		refs.events.holiday,
-		data.holidaysFailed
-			? null
-			: milestoneFromOccurrences(
-					getHolidayOccurrences(data.holidays),
-					todayKey,
-				),
-		data.holidaysFailed
-			? currentConfig.labels.unavailable
-			: currentConfig.labels.noHoliday,
+function playHeatmapReveal(): void {
+	if (!refs || prefersReducedMotion() || !refs.heatmap) return;
+	const columns = Array.from(
+		refs.heatmap.querySelectorAll<HTMLElement>(".profile-card__heat-col"),
 	);
-
-	// 建站日事件序列在构建期内联，无网络依赖
-	renderEventCard(
-		refs.events.anniversary,
-		milestoneFromOccurrences(
-			currentConfig.anniversary.occurrences.map((date) => ({
-				title: currentConfig.anniversary.name,
-				date,
-			})),
-			todayKey,
-		),
-		currentConfig.labels.unavailable,
-	);
+	columns.forEach((column, index) => {
+		column
+			.querySelectorAll<HTMLElement>(".profile-card__heat-cell")
+			.forEach((cell) => {
+				cell.animate(
+					[
+						{ opacity: 0, transform: "scale(0.4)" },
+						{ opacity: 1, transform: "scale(1)" },
+					],
+					{
+						duration: CELL_FADE,
+						delay: index * COLUMN_STAGGER,
+						easing: EASE_OUT,
+						// 只在延迟期占住起始帧，结束后把 opacity 交还给 CSS（悬停淡出要用）
+						fill: "backwards",
+					},
+				);
+			});
+	});
+	const sweepEnd = (columns.length - 1) * COLUMN_STAGGER + CELL_FADE;
+	columns.forEach((column) => {
+		const label = column.querySelector<HTMLElement>(
+			".profile-card__heat-month",
+		);
+		label?.animate(
+			[
+				{ opacity: 0, filter: `blur(${LABEL_BLUR}px)` },
+				{ opacity: 1, filter: "blur(0px)" },
+			],
+			{
+				duration: LABEL_REVEAL,
+				delay: sweepEnd,
+				easing: EASE_OUT,
+				fill: "backwards",
+			},
+		);
+	});
 }
 
-/* ── 标签页状态机 ── */
+/* ── 站点面板开合 ── */
+
+/** 折叠态只露出头部条，展开态顶到卡片上沿盖住内容区 */
+function sitesTargetHeight(): number {
+	if (!refs?.sites || !refs.sitesBar) return 0;
+	return sitesOpen
+		? Math.max(0, refs.card.clientHeight - SITES_INSET * 2)
+		: refs.sitesBar.offsetHeight;
+}
+
+/** 把面板高度钉成具体像素：auto 与 calc 之间无法插值，过渡需要两端都是长度 */
+function syncSitesHeight(): void {
+	if (!refs?.sites) return;
+	refs.sites.style.height = `${String(sitesTargetHeight())}px`;
+}
+
+function avatarRects(scope: HTMLElement | null): Map<string, DOMRect> {
+	const rects = new Map<string, DOMRect>();
+	scope
+		?.querySelectorAll<HTMLElement>("[data-profile-avatar]")
+		.forEach((avatar) => {
+			const key = avatar.dataset.profileAvatar;
+			if (key !== undefined) rects.set(key, avatar.getBoundingClientRect());
+		});
+	return rects;
+}
 
 /**
- * 内容区高度跟随当前页。面板是绝对堆叠在容器里的，被容器夹住时 scrollHeight
- * 不会小于 clientHeight，所以先临时放开容器高度量一次自然高，再写回目标值，
- * 让高度过渡与横向滑动同步进行；超出 CSS 的 max-height 才走页内滚动。
+ * 头像飞行：按 data-profile-avatar 序号配对，把目标侧头像从源侧位置平移过来。
+ * 两侧同尺寸同圆角，只差位移，故不需要 scale；序号对不上的（站点数超过堆叠
+ * 上限）留在原地，视觉上等于列表多出的项淡入。
  */
-function syncContentHeight(): void {
-	if (!refs || !activeTab) return;
-	const pane = refs.panes.get(activeTab);
-	if (!pane) return;
-	const { content } = refs;
-	const from = content.getBoundingClientRect().height;
-	content.style.transition = "none";
-	content.style.height = "auto";
-	const natural = Math.ceil(pane.scrollHeight);
-	content.style.height = `${String(from)}px`;
-	void content.offsetWidth;
-	content.style.removeProperty("transition");
-	content.style.height = `${String(natural)}px`;
+function flipAvatars(
+	scope: HTMLElement | null,
+	from: Map<string, DOMRect>,
+): void {
+	if (!scope || prefersReducedMotion()) return;
+	scope
+		.querySelectorAll<HTMLElement>("[data-profile-avatar]")
+		.forEach((avatar) => {
+			const key = avatar.dataset.profileAvatar;
+			const source = key === undefined ? undefined : from.get(key);
+			if (!source) return;
+			const target = avatar.getBoundingClientRect();
+			const dx = source.left - target.left;
+			const dy = source.top - target.top;
+			if (dx === 0 && dy === 0) return;
+			avatar.animate(
+				[
+					{ transform: `translate(${String(dx)}px, ${String(dy)}px)` },
+					{ transform: "translate(0px, 0px)" },
+				],
+				{ duration: SITES_DURATION, easing: SITES_EASING },
+			);
+		});
 }
 
-/** 让 DOM 与 activeTab 一致：激活页可见，其余隐藏且不留内联样式 */
-function syncPaneVisibility(): void {
-	if (!refs) return;
-	for (const [tab, pane] of refs.panes) {
-		pane.hidden = tab !== activeTab;
-		pane.style.removeProperty("pointer-events");
-	}
-}
-
-function syncTabButtons(): void {
-	if (!refs) return;
-	for (const [tab, button] of refs.tabButtons) {
-		const isActive = tab === activeTab;
-		button.setAttribute("aria-selected", String(isActive));
-		// roving tabindex：整个标签条在 Tab 序列里只占一站
-		button.tabIndex = isActive ? 0 : -1;
-		button.classList.toggle("profile-card__tab--active", isActive);
-		button.classList.toggle("profile-card__tab--inactive", !isActive);
-	}
-}
-
-/** 结束进行中的滑动并收回所有非激活页：连点标签时不排队、不堆叠 */
-function settleSlides(): void {
-	slideRevision += 1;
-	for (const animation of slideAnimations) animation.cancel();
-	slideAnimations = [];
-	refs?.content.classList.remove("is-sliding");
-	syncPaneVisibility();
-}
-
-/** 索引增大 = 前进 = 新页从右侧滑入 */
-function slideDirection(from: ProfileTab, to: ProfileTab): 1 | -1 {
-	if (!refs) return 1;
-	return refs.tabs.indexOf(to) >= refs.tabs.indexOf(from) ? 1 : -1;
-}
-
-function activateTab(next: ProfileTab, withSlide: boolean): void {
-	if (!refs || next === activeTab) return;
-	const toPane = refs.panes.get(next);
-	if (!toPane) return;
-	const fromTab = activeTab;
-	const fromPane = fromTab ? refs.panes.get(fromTab) : undefined;
-
-	activeTab = next;
-	syncTabButtons();
+function setSitesOpen(next: boolean): void {
+	if (!refs?.sites || next === sitesOpen) return;
+	// 起点矩形必须在状态写入前读：展开态会 display:none 掉堆叠头像
+	const from = avatarRects(next ? refs.sitesStack : refs.sitesList);
+	sitesOpen = next;
+	refs.sites.dataset.profileSitesOpen = String(next);
+	refs.sitesToggle?.setAttribute("aria-expanded", String(next));
 	hideTooltip();
-	if (fromTab === "dates") finalizeDates();
-	// 焦点若还留在旧页内，先挪到新标签按钮：否则旧页被 hidden 时焦点掉回
-	// body，面板 focusout 会把 relatedTarget 为空的这次移动误判成离开面板
-	if (fromPane?.contains(document.activeElement)) {
-		refs.tabButtons.get(next)?.focus();
-	}
-	settleSlides();
-
-	const canSlide =
-		withSlide &&
-		!!fromPane &&
-		!!fromTab &&
-		!prefersReducedMotion() &&
-		typeof fromPane.animate === "function" &&
-		typeof toPane.animate === "function";
-	if (!canSlide || !fromPane || !fromTab) {
-		syncContentHeight();
-		onDatesVisible();
-		return;
-	}
-
-	const dir = slideDirection(fromTab, next);
-	const revision = slideRevision;
-	const options: KeyframeAnimationOptions = {
-		duration: SLIDE_DURATION,
-		easing: SLIDE_EASING,
-	};
-	// settleSlides 已把旧页收回，双向滑动要把它重新摆回轨道上
-	fromPane.hidden = false;
-	fromPane.style.pointerEvents = "none";
-	toPane.style.pointerEvents = "none";
-	refs.content.classList.add("is-sliding");
-	// outgoing 停在屏外（fill: both），incoming 结束后回到 CSS 无 transform 态
-	const outgoing = fromPane.animate(
-		[
-			{ transform: "translateX(0)" },
-			{ transform: `translateX(${-dir * 100}%)` },
-		],
-		{ ...options, fill: "both" },
-	);
-	const incoming = toPane.animate(
-		[
-			{ transform: `translateX(${dir * 100}%)` },
-			{ transform: "translateX(0)" },
-		],
-		options,
-	);
-	slideAnimations = [outgoing, incoming];
-	void Promise.all([
-		outgoing.finished.catch(() => undefined),
-		incoming.finished.catch(() => undefined),
-	]).then(() => {
-		// 已被更新的切换接管：过期回调不提交终态，否则会盖掉新页
-		if (revision !== slideRevision) return;
-		fromPane.hidden = true;
-		outgoing.cancel();
-		fromPane.style.removeProperty("pointer-events");
-		toPane.style.removeProperty("pointer-events");
-		slideAnimations = [];
-		refs?.content.classList.remove("is-sliding");
-	});
-	// 高度过渡与横向滑动同帧启动，两者共用时长与曲线
-	syncContentHeight();
-	onDatesVisible();
+	syncSitesHeight();
+	flipAvatars(next ? refs.sitesList : refs.sitesStack, from);
 }
 
-function selectTabByIndex(index: number): void {
-	if (!refs) return;
-	const bounded = Math.min(refs.tabs.length - 1, Math.max(0, index));
-	const next = refs.tabs[bounded];
-	if (next) activateTab(next, true);
+function resetSites(): void {
+	if (!refs?.sites || !sitesOpen) return;
+	sitesOpen = false;
+	refs.sites.dataset.profileSitesOpen = "false";
+	refs.sitesToggle?.setAttribute("aria-expanded", "false");
+	syncSitesHeight();
 }
 
 /* ── 热力图内联展开 ── */
@@ -930,6 +583,9 @@ function openPanel(): void {
 		previousBodyOverflow = document.body.style.overflow;
 		document.body.style.overflow = "hidden";
 	}
+	// 卡片此刻已从 display:none 切过来，头像与条高只有现在才量得准
+	syncSitesHeight();
+	playHeatmapReveal();
 }
 
 function closePanel(): void {
@@ -938,14 +594,9 @@ function closePanel(): void {
 	if (!refs.panel.classList.contains("is-open")) return;
 	refs.panel.classList.remove("is-open");
 	// 面板在 Swup 容器之外、DOM 跨导航复用，这里是唯一的状态归位点
-	settleSlides();
 	collapseWeek();
 	hideTooltip();
-	activeTab = defaultTab;
-	syncTabButtons();
-	syncPaneVisibility();
-	syncContentHeight();
-	finalizeDates();
+	resetSites();
 	if (openedAsMobile) document.body.style.overflow = previousBodyOverflow;
 	openedAsMobile = false;
 }
@@ -964,7 +615,7 @@ function focusLogo(): void {
 
 function bindEvents(): void {
 	if (!refs) return;
-	const { panel, card, mask, leftSeg, heatmap, tablist } = refs;
+	const { panel, card, mask, leftSeg, heatmap, sitesToggle } = refs;
 
 	// 移动端：点击 logo 开合面板。必须阻断冒泡——Swup 的文档级点击委托会把
 	// logo 当内部链接拦截导航，preventDefault 挡不住它；桌面端保持回主页
@@ -998,8 +649,8 @@ function bindEvents(): void {
 	});
 	panel.addEventListener("focusout", (event) => {
 		// 移动端底部卡片不随焦点移出收起：触屏点链接不会把焦点挪过去，
-		// 标签按钮失焦回 body 时 relatedTarget 为空，会被误判成焦点离开
-		// 面板，点站点 CTA 就等于把卡片关了
+		// 面板内元素失焦回 body 时 relatedTarget 为空，会被误判成焦点离开
+		// 面板，点站点链接就等于把卡片关了
 		if (openedAsMobile) return;
 		const next = event.relatedTarget;
 		if (
@@ -1028,13 +679,13 @@ function bindEvents(): void {
 		},
 		{ passive: true },
 	);
-	// 视口变化改变居中布局与高度上限，面板开着时重锚定并重新量一次内容高度
+	// 视口变化改变居中布局与卡片高度，面板开着时重锚定并按新高度重钉
 	window.addEventListener(
 		"resize",
 		() => {
 			if (!panel.classList.contains("is-open") || openedAsMobile) return;
 			positionPanel();
-			syncContentHeight();
+			syncSitesHeight();
 		},
 		{ passive: true },
 	);
@@ -1049,45 +700,8 @@ function bindEvents(): void {
 		if (focusInCard) focusLogo();
 	});
 
-	// 标签条：点击切换 + 方向键/Home/End 循环（automatic activation）
-	tablist.addEventListener("click", (event) => {
-		const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
-			"[data-profile-tab]",
-		);
-		const tab = button?.dataset.profileTab;
-		if (!isProfileTab(tab)) return;
-		activateTab(tab, true);
-	});
-	tablist.addEventListener("keydown", (event) => {
-		const current = activeTab ? (refs?.tabs.indexOf(activeTab) ?? 0) : 0;
-		const total = refs?.tabs.length ?? 0;
-		if (total === 0) return;
-		let nextIndex: number;
-		switch (event.key) {
-			case "ArrowRight": {
-				nextIndex = (current + 1) % total;
-				break;
-			}
-			case "ArrowLeft": {
-				nextIndex = (current - 1 + total) % total;
-				break;
-			}
-			case "Home": {
-				nextIndex = 0;
-				break;
-			}
-			case "End": {
-				nextIndex = total - 1;
-				break;
-			}
-			default:
-				return;
-		}
-		event.preventDefault();
-		const next = refs?.tabs[nextIndex];
-		if (next) refs?.tabButtons.get(next)?.focus();
-		selectTabByIndex(nextIndex);
-	});
+	// 站点面板：折叠条上的按钮开合，展开后列出全部站点
+	sitesToggle?.addEventListener("click", () => setSitesOpen(!sitesOpen));
 
 	// 热力图：点格内联展开该周文章，再点已选中方块收起
 	heatmap?.addEventListener("click", (event) => {
@@ -1098,8 +712,6 @@ function bindEvents(): void {
 		const same = key === selectedCellKey;
 		collapseWeek();
 		if (!same) selectCell(key);
-		// 展开/收起改变了本页自然高度，收口处统一同步一次，避免中途多段动画
-		syncContentHeight();
 	});
 
 	// 提示浮层：热力图方块与社交图标共用一套，源元素靠 data-tooltip-label 认领
@@ -1118,7 +730,7 @@ function bindEvents(): void {
 	});
 	card.addEventListener("focusout", () => hideTooltip());
 	// 页内滚动会让方块位移，浮层先收起避免悬在半空。
-	// scroll 不冒泡，靠捕获阶段一个监听同时覆盖内容页与移动端整卡滚动
+	// scroll 不冒泡，靠捕获阶段一个监听同时覆盖内容区与移动端整卡滚动
 	card.addEventListener("scroll", hideTooltip, {
 		capture: true,
 		passive: true,
@@ -1134,14 +746,24 @@ function bindEvents(): void {
 		true,
 	);
 
-	// 移动端底部卡片：竖向下滑关闭，横向滑动切标签。
-	// 页内自带滚动，故起点落在内容页里时禁用竖向关闭，否则滚一下顺手就关卡片
+	// 站点图标加载失败：撤下 img，露出底下垫底的首字符。同样只在捕获阶段接
+	card.addEventListener(
+		"error",
+		(event) => {
+			const img = event.target as HTMLElement;
+			if (img.dataset.profileSiteIcon !== undefined) {
+				img.dataset.avatarFailed = "true";
+			}
+		},
+		true,
+	);
+
+	// 移动端底部卡片：竖向下滑关闭。内容区自带滚动，故起点落在内容区或
+	// 站点面板里时禁用竖向关闭，否则滚一下顺手就关卡片
 	let touchStartX = 0;
 	let touchStartY = 0;
-	let touchStartTab = 0;
 	let touchAxis: "h" | "v" | null = null;
 	let swipeCloseEnabled = false;
-	let tabStepsApplied = 0;
 	card.addEventListener(
 		"touchstart",
 		(event) => {
@@ -1149,11 +771,9 @@ function bindEvents(): void {
 			if (!touch) return;
 			touchStartX = touch.clientX;
 			touchStartY = touch.clientY;
-			touchStartTab = activeTab ? (refs?.tabs.indexOf(activeTab) ?? 0) : 0;
 			touchAxis = null;
-			tabStepsApplied = 0;
 			swipeCloseEnabled = !(event.target as HTMLElement).closest(
-				"[data-profile-pane]",
+				"[data-profile-content], [data-profile-sites]",
 			);
 		},
 		{ passive: true },
@@ -1175,14 +795,8 @@ function bindEvents(): void {
 				}
 				touchAxis = Math.abs(deltaX) > Math.abs(deltaY) ? "h" : "v";
 			}
-			if (touchAxis === "v") {
-				if (swipeCloseEnabled && deltaY > SWIPE_CLOSE_DISTANCE) closePanel();
-				return;
-			}
-			const steps = Math.trunc(-deltaX / SWIPE_TAB_DISTANCE);
-			if (steps === tabStepsApplied) return;
-			tabStepsApplied = steps;
-			selectTabByIndex(touchStartTab + steps);
+			if (touchAxis === "h") return;
+			if (swipeCloseEnabled && deltaY > SWIPE_CLOSE_DISTANCE) closePanel();
 		},
 		{ passive: true },
 	);
@@ -1216,14 +830,8 @@ export function initNavbarProfileCard(): void {
 	config = parsedConfig;
 	refs = collectRefs(panel, card);
 	if (!refs) return;
-	// 默认页取 DOM 里的首个标签，与模板 hidden 的判据同源（模板恒以 heatmap 打头）
-	defaultTab = refs.tabs[0] ?? DEFAULT_TAB;
-	activeTab = defaultTab;
-	syncTabButtons();
-	syncPaneVisibility();
-	syncContentHeight();
-	// 倒计时只依赖本地日期，初始化即落终值，不等接口；日期页可见时的滚动另由 playEntranceAnimation 负责
-	applyCountdowns(1);
 	markCurrentWeekCell();
+	// 折叠高度先钉成像素值：面板靠 height 过渡开合，起点不能是 auto
+	syncSitesHeight();
 	bindEvents();
 }

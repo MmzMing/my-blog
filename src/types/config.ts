@@ -216,11 +216,12 @@ export type NavBarLink = {
 export type PersonalSite = {
 	name: string; // 站点名称
 	url: string; // 站点地址（外链原样使用，不走 url()）
+	icon?: string; // 站点图标 URL，缺位或加载失败时回退站点名首字符
 };
 
 export type NavBarConfig = {
 	links: (NavBarLink | LinkPreset)[];
-	// Logo 下拉资料卡「其他站点」标签页里的站点列表
+	// Logo 资料卡底部站点面板里展开的站点列表
 	personalSites: PersonalSite[];
 };
 
@@ -980,37 +981,4 @@ export type SolarOrLunarDate = {
 	type: "solar" | "lunar";
 	month: number; // 1-12
 	day: number; // 1-31，农历下范围根据月不同
-};
-
-// 节日项（按年重复，公历或农历）
-export type HolidayItem = {
-	name: string; // 节日名称
-	date: SolarOrLunarDate; // 公历或农历日期
-	icon?: string; // 可选图标（iconify 名）
-	note?: string; // 备注
-};
-
-// 建站纪念日项（按年重复，公历或农历）
-export type AnniversaryItem = {
-	name: string; // 事件名
-	date: SolarOrLunarDate;
-	icon?: string;
-	note?: string;
-};
-
-// 日历小组件配置
-export type CalendarConfig = {
-	// 节日 API（构建时拉取，失败回退仅用 builtinHolidays）
-	holidayApi: {
-		enable: boolean; // 是否启用 API
-		url: string; // API 基础 URL，按年拼接
-		fallbackOnError: boolean; // 拉取失败是否回退
-		years: number[]; // 编译期拉取哪些年份
-	};
-
-	// 内置补充节日（如农历节、节气、个性化节日）
-	builtinHolidays: HolidayItem[];
-
-	// 建站纪念日（Logo 资料卡右侧进度条展示）
-	siteAnniversary: AnniversaryItem;
 };

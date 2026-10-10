@@ -232,19 +232,11 @@ export const ja: Translation = {
 	[Key.passwordProtectedRss]:
 		"この記事は暗号化されています。ウェブサイトにアクセスしてご覧ください。",
 
-	// カレンダーツールウィジェット（导航 Logo 资料卡）
-	[Key.calendarWeekRemaining]: "週末まで",
-	[Key.calendarMonthRemaining]: "月末まで",
-	[Key.calendarYearRemaining]: "年末まで",
-	[Key.calendarDataUnavailable]: "カレンダーデータを読み込めません",
-	[Key.calendarNoHoliday]: "次の祝日がありません",
+	// 导航 Logo 资料卡
 	[Key.profileMonthWeek]: "{month}第{week}週",
 	[Key.profilePostCount]: "{count}件",
 	[Key.otherSites]: "その他サイト",
 	[Key.profileHeatmap]: "投稿ヒートマップ",
-	[Key.profileTabHeatmap]: "ヒートマップ",
-	[Key.profileTabDates]: "日付",
-	[Key.profileTabsLabel]: "カードのセクション",
 	[Key.contactMe]: "連絡",
 	[Key.qqGroup]: "QQグループ",
 	[Key.navPosts]: "記事",
@@ -406,9 +398,6 @@ export const ja: Translation = {
 	[Key.musicVisualizer3D]: "3Dビジュアライザー",
 	[Key.musicVisualizerDescription]:
 		"再生中の音楽を立体的な地形と動きで表現する没入型ビジュアライザーです。音に合わせた視覚効果とともに音楽を楽しめます。",
-
-	// ===== カレンダーツールウィジェット =====
-	[Key.dayShort]: "日",
 
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "ページ読み込み中",

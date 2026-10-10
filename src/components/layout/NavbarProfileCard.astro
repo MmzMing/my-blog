@@ -2,20 +2,14 @@
 import { Picture } from "astro:assets";
 import * as path from "node:path";
 import Icon from "@components/common/Icon.astro";
+import ProfileCardSiteAvatar from "@components/layout/ProfileCardSiteAvatar.astro";
 import type { ImageMetadata } from "astro";
-import {
-	calendarConfig,
-	footerConfig,
-	homeConfig,
-	navBarConfig,
-	siteConfig,
-} from "@/config";
+import { footerConfig, homeConfig, navBarConfig, siteConfig } from "@/config";
 import { LinkPresets } from "@/constants/link-presets";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { LinkPreset } from "@/types/config";
 import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
-import { resolveYearlyDate } from "@/utils/lunar-utils";
 import { url } from "@/utils/url-utils";
 
 const aboutLink = LinkPresets[LinkPreset.About];
@@ -82,55 +76,28 @@ const bannerLayers: BannerLayerDef[] = [
 	),
 ].filter((layer): layer is BannerLayerDef => layer !== null);
 
-// 标签页定义：顺序即滑动方向序（索引增大 = 内容从右侧滑入）。
-// 站点页沿用既有 otherSites 文案，不新增重复 key
-type ProfileTabId = "heatmap" | "dates" | "sites";
-interface ProfileTabDef {
-	id: ProfileTabId;
-	label: string;
-}
+// 底部站点面板：折叠态只堆叠前 3 个站点图标，展开后列出全部站点
+const sites = navBarConfig.personalSites;
+const STACK_LIMIT = 3;
 
-const tabs: ProfileTabDef[] = [
-	{ id: "heatmap", label: i18n(I18nKey.profileTabHeatmap) },
-	{ id: "dates", label: i18n(I18nKey.profileTabDates) },
-];
-if (navBarConfig.personalSites.length > 0) {
-	tabs.push({ id: "sites", label: i18n(I18nKey.otherSites) });
-}
-const initialTab = tabs[0].id;
-
-// 建站日事件序列：构建期展开前后三年内联进面板，客户端据此算周期进度，无运行时请求
-const currentYear = new Date().getFullYear();
-const anniversaryOccurrences = [currentYear - 1, currentYear, currentYear + 1]
-	.map((year) => resolveYearlyDate(calendarConfig.siteAnniversary.date, year))
-	.filter((date): date is string => date !== null)
-	.sort((a, b) => a.localeCompare(b));
-
-// 热力图构建期静态渲染：48 个方块 + 月份表头，
+// 热力图构建期静态渲染：12 列（月）× 4 行（月内 7 天切块）+ 顶部月份名，
 // 数据到达后控制器只补计数色阶与提示文案，不再重建 DOM
-const monthFormatter = new Intl.DateTimeFormat(locale, { month: "long" });
+const monthFormatter = new Intl.DateTimeFormat(locale, { month: "short" });
+const monthNames = Array.from({ length: 12 }, (_, month) =>
+	monthFormatter.format(new Date(2000, month, 1)),
+);
 const formatWeekLabel = (month: number, week: number): string =>
 	i18n(I18nKey.profileMonthWeek)
-		.replace("{month}", monthFormatter.format(new Date(2000, month, 1)))
+		.replace("{month}", monthNames[month])
 		.replace("{week}", String(week + 1));
 
 const profileConfig = JSON.stringify({
-	api: {
-		holidays: url("/api/holidays.json"),
-		posts: url("/api/allPostMeta.json"),
-	},
+	api: { posts: url("/api/allPostMeta.json") },
 	postBaseUrl: url("/posts/"),
 	locale,
-	anniversary: {
-		name: calendarConfig.siteAnniversary.name,
-		occurrences: anniversaryOccurrences,
-	},
 	labels: {
 		weekFormat: i18n(I18nKey.profileMonthWeek),
 		postCount: i18n(I18nKey.profilePostCount),
-		days: i18n(I18nKey.dayShort),
-		unavailable: i18n(I18nKey.calendarDataUnavailable),
-		noHoliday: i18n(I18nKey.calendarNoHoliday),
 	},
 });
 ---
@@ -138,7 +105,10 @@ const profileConfig = JSON.stringify({
 <div class="navbar-profile-dropdown" data-navbar-profile-panel>
 	<div class="navbar-profile-mask" data-profile-mask aria-hidden="true"></div>
 	<div
-		class="profile-card"
+		class:list={[
+			"profile-card",
+			sites.length > 0 && "profile-card--has-sites",
+		]}
 		data-profile-card
 		data-profile-config={profileConfig}
 		aria-busy="true"
@@ -237,154 +207,101 @@ const profileConfig = JSON.stringify({
 			})}
 		</div>
 
-		<!-- 第三层：内容区，三页互斥、高度跟随当前页、超出上限时页内滚动 -->
+		<!-- 第三层：内容区，热力图 + 点格内联展开的该周文章 -->
 		<div class="profile-card__content" data-profile-content>
-			<section
-				class="profile-card__pane"
-				data-profile-pane="heatmap"
-				id="profile-pane-heatmap"
-				role="tabpanel"
-				aria-labelledby="profile-tab-heatmap"
-				hidden={initialTab !== "heatmap"}
+			<div
+				class="profile-card__heatmap"
+				data-profile-heatmap
+				role="group"
+				aria-label={i18n(I18nKey.profileHeatmap)}
 			>
-				<div class="profile-card__heatmap" data-profile-heatmap role="group" aria-label={i18n(I18nKey.profileHeatmap)}>
-					{Array.from({ length: 12 }, (_, month) => (
-						<div class="profile-card__heat-col">
-							<span class="profile-card__heat-month" aria-hidden="true">{month + 1}</span>
-							{Array.from({ length: 4 }, (_, week) => {
-								const label = formatWeekLabel(month, week);
-								return (
-									<button
-										type="button"
-										class="profile-card__heat-cell"
-										data-profile-cell={`${month}-${week}`}
-										data-tooltip-label={label}
-										aria-label={label}
-										aria-pressed="false"
-									/>
-								);
-							})}
-						</div>
-					))}
-				</div>
+				{Array.from({ length: 12 }, (_, month) => (
+					<div class="profile-card__heat-col">
+						<span class="profile-card__heat-month" aria-hidden="true">{monthNames[month]}</span>
+						{Array.from({ length: 4 }, (_, week) => {
+							const label = formatWeekLabel(month, week);
+							return (
+								<button
+									type="button"
+									class="profile-card__heat-cell"
+									data-profile-cell={`${month}-${week}`}
+									data-tooltip-label={label}
+									aria-label={label}
+									aria-pressed="false"
+								/>
+							);
+						})}
+					</div>
+				))}
+			</div>
 
-				<!-- 点格内联展开该周文章，不再是独立面板 -->
-				<div class="profile-card__week-posts" data-profile-week hidden>
-					<p class="profile-card__posts-title" data-profile-posts-title></p>
-					<div class="profile-card__post-list" data-profile-post-list></div>
-				</div>
-			</section>
-
-			<section
-				class="profile-card__pane"
-				data-profile-pane="dates"
-				id="profile-pane-dates"
-				role="tabpanel"
-				aria-labelledby="profile-tab-dates"
-				hidden={initialTab !== "dates"}
-			>
-				<div class="profile-card__countdowns">
-					<div class="profile-card__countdown">
-						<span>{i18n(I18nKey.calendarWeekRemaining)}</span>
-						<strong data-profile-days="week">--</strong>
-					</div>
-					<div class="profile-card__countdown">
-						<span>{i18n(I18nKey.calendarMonthRemaining)}</span>
-						<strong data-profile-days="month">--</strong>
-					</div>
-					<div class="profile-card__countdown">
-						<span>{i18n(I18nKey.calendarYearRemaining)}</span>
-						<strong data-profile-days="year">--</strong>
-					</div>
-				</div>
-
-				<article class="profile-card__event" data-profile-event="holiday">
-					<div class="profile-card__event-main">
-						<strong class="profile-card__event-title" data-profile-event-title>--</strong>
-						<span class="profile-card__event-date" data-profile-event-date></span>
-					</div>
-					<div class="profile-card__progress-row">
-						<span
-							class="profile-card__progress"
-							role="progressbar"
-							aria-valuemin="0"
-							aria-valuemax="100"
-							aria-valuenow="0"
-							data-profile-event-progress
-						>
-							<span data-profile-event-progress-fill></span>
-						</span>
-						<span class="profile-card__remaining" data-profile-event-remaining>--</span>
-					</div>
-				</article>
-
-				<article class="profile-card__event" data-profile-event="anniversary">
-					<div class="profile-card__event-main">
-						<strong class="profile-card__event-title" data-profile-event-title>--</strong>
-						<span class="profile-card__event-date" data-profile-event-date></span>
-					</div>
-					<div class="profile-card__progress-row">
-						<span
-							class="profile-card__progress"
-							role="progressbar"
-							aria-valuemin="0"
-							aria-valuemax="100"
-							aria-valuenow="0"
-							data-profile-event-progress
-						>
-							<span data-profile-event-progress-fill></span>
-						</span>
-						<span class="profile-card__remaining" data-profile-event-remaining>--</span>
-					</div>
-				</article>
-			</section>
-
-			{navBarConfig.personalSites.length > 0 && (
-				<section
-					class="profile-card__pane"
-					data-profile-pane="sites"
-					id="profile-pane-sites"
-					role="tabpanel"
-					aria-labelledby="profile-tab-sites"
-					hidden={initialTab !== "sites"}
-				>
-					{navBarConfig.personalSites.map((site) => (
-						<a
-							class="profile-card__site-cta"
-							href={site.url}
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<span class="profile-card__site-cta-name">{site.name}</span>
-							<Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="profile-card__site-cta-arrow" />
-						</a>
-					))}
-				</section>
-			)}
+			<!-- 点格内联展开该周文章 -->
+			<div class="profile-card__week-posts" data-profile-week hidden>
+				<p class="profile-card__posts-title" data-profile-posts-title></p>
+				<div class="profile-card__post-list" data-profile-post-list></div>
+			</div>
 		</div>
+
+		<!-- 站点面板：贴在卡片底部的浮层，展开后向上覆盖内容区（第四层） -->
+		{sites.length > 0 && (
+			<div
+				class="profile-card__sites"
+				id="profile-sites-panel"
+				data-profile-sites
+				data-profile-sites-open="false"
+			>
+				<div class="profile-card__sites-bar" data-profile-sites-bar>
+					<span class="profile-card__sites-label">{i18n(I18nKey.otherSites)}</span>
+					<span class="profile-card__sites-stack" data-profile-sites-stack>
+						{sites.slice(0, STACK_LIMIT).map((site, index) => (
+							<ProfileCardSiteAvatar site={site} index={index} />
+						))}
+					</span>
+					<button
+						type="button"
+						class="profile-card__sites-toggle"
+						data-profile-sites-toggle
+						aria-expanded="false"
+						aria-controls="profile-sites-panel"
+						aria-label={i18n(I18nKey.otherSites)}
+					>
+						<svg
+							class="profile-card__sites-chevron"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<path d="m16 10-4 4-4-4" />
+						</svg>
+					</button>
+				</div>
+
+				<ul class="profile-card__sites-list" data-profile-sites-list>
+					{sites.map((site, index) => (
+						<li>
+							<a
+								class="profile-card__site-row"
+								href={site.url}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<ProfileCardSiteAvatar site={site} index={index} />
+								<span class="profile-card__site-name">{site.name}</span>
+								<Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="profile-card__site-arrow" />
+							</a>
+						</li>
+					))}
+				</ul>
+			</div>
+		)}
 
 		<!-- 热力图提示浮层：与内容区同级，不受页内 overflow 裁剪，由控制器定位 -->
 		<div class="profile-card__tooltip" data-profile-tooltip aria-hidden="true"></div>
-
-		<!-- 第四层：分段控件式标签 dock。外层是移动端 sticky 条，内层才是胶囊轨道 -->
-		<div class="profile-card__tabbar">
-			<div class="profile-card__tabs" data-profile-tabs role="tablist" aria-label={i18n(I18nKey.profileTabsLabel)}>
-				{tabs.map((tab) => (
-					<button
-						type="button"
-						class="profile-card__tab"
-						id={`profile-tab-${tab.id}`}
-						data-profile-tab={tab.id}
-						role="tab"
-						aria-controls={`profile-pane-${tab.id}`}
-						aria-selected={tab.id === initialTab}
-						tabindex={tab.id === initialTab ? 0 : -1}
-					>
-						{tab.label}
-					</button>
-				))}
-			</div>
-		</div>
 	</div>
 </div>
 

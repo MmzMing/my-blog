@@ -228,19 +228,11 @@ export const zh_TW: Translation = {
 	[Key.passwordError]: "密碼錯誤，請重試。",
 	[Key.passwordProtectedRss]: "本文已加密保護，請訪問網站查看。",
 
-	// 日曆工具卡片（导航 Logo 资料卡）
-	[Key.calendarWeekRemaining]: "距週末",
-	[Key.calendarMonthRemaining]: "距月底",
-	[Key.calendarYearRemaining]: "距年底",
-	[Key.calendarDataUnavailable]: "日曆資料暫時無法使用",
-	[Key.calendarNoHoliday]: "暫時找不到後續節日",
+	// 导航 Logo 资料卡
 	[Key.profileMonthWeek]: "{month}第{week}週",
 	[Key.profilePostCount]: "{count}篇",
 	[Key.otherSites]: "其他站點",
 	[Key.profileHeatmap]: "文章熱力圖",
-	[Key.profileTabHeatmap]: "熱力圖",
-	[Key.profileTabDates]: "日期",
-	[Key.profileTabsLabel]: "資料卡分區",
 	[Key.contactMe]: "聯繫",
 	[Key.qqGroup]: "QQ群",
 	[Key.navPosts]: "文章",
@@ -402,9 +394,6 @@ export const zh_TW: Translation = {
 	[Key.musicVisualizer3D]: "3D視覺化",
 	[Key.musicVisualizerDescription]:
 		"進入沉浸式音樂視覺化頁面，跟隨播放節奏觀察三維地形與動態效果，獲得更具氛圍感的聆聽體驗。",
-
-	// ===== 日曆工具卡片 =====
-	[Key.dayShort]: "天",
 
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "頁面載入中",

@@ -1,11 +1,12 @@
 /* ============================================
    导航 Logo 资料卡 — 来自 NavbarProfileCard.astro
-   单列四层：横幅+头像堆叠 / 名字职业+社交 / 内容区 / 胶囊标签条。
+   单列四层：横幅+头像堆叠 / 名字职业+社交 / 热力图内容区 / 底部站点面板。
    桌面端：hover/focus 展开的 fixed 卡片（is-open 类由控制器驱动，
    打开时实测导航左段位置写入锚点，滚动即收起）；
-   移动端：同一元素变为底部半屏卡片 + 遮罩，标签条 sticky 在卡片底部。
-   内容区三页互斥且高度跟随当前页（上限 --profile-content-max），超出才页内滚动，
-   切页只做横向滑动，卡片高度恒定不跳。
+   移动端：同一元素变为底部半屏卡片 + 遮罩。
+   内容区自然高度，超出 --profile-content-max 才页内滚动；
+   站点面板是绝对定位的浮层，折叠时只占卡片底部一条，展开时向上顶到卡片
+   上沿盖住内容区，高度两端都由控制器写成像素值以便插值过渡。
    面板挂在 body 末尾（Layout.astro）：移动端 #navbar / #top-row 整体
    display:none（mobile-dock.css），面板留在其中会被连带隐藏。
    ============================================ */
@@ -27,9 +28,17 @@
 	box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 0.16);
 	--profile-radius: 0.75rem;
 	--profile-avatar-size: 5rem;
-	/* 内容区高度上限：dates 页最高（实测约 195px），实际高度由控制器按当前页
-	   内容写入内联值，超出这个上限才走页内滚动 */
+	/* 内容区高度上限：热力图本身很矮，主要是给点格展开的文章列表兜底，
+	   实际高度由内容决定，超出这个上限才走页内滚动 */
 	--profile-content-max: 14rem;
+	/* 站点面板与卡片边缘的间距，用 px 而非 rem 与控制器里的 SITES_INSET 对齐，
+	   展开高度 = 卡片高 - 两端这份间距，两处必须同一个数 */
+	--profile-sites-inset: 12px;
+}
+
+/* 有站点面板时给底部浮层腾出折叠条的高度 */
+.profile-card--has-sites {
+	padding-bottom: 4.75rem;
 }
 
 /* ── 第一层：横幅 + 头像堆叠 ── */
@@ -212,23 +221,12 @@
 	opacity: 1;
 }
 
-/* ── 第三层：内容区，三页互斥、高度跟随当前页、超出上限才页内滚动 ── */
+/* ── 第三层：内容区，热力图 + 点格内联展开的该周文章 ── */
 .profile-card__content {
-	position: relative;
-	/* 内联高度由控制器按当前页内容写入，这里给的是首屏与上限 */
-	height: var(--profile-content-max);
-	max-height: var(--profile-content-max);
-	overflow: hidden;
-	transition: height 240ms cubic-bezier(0.32, 0.72, 0.29, 1);
-}
-
-/* 竖向不留内边距：内容区与上下层的间距完全由卡片 gap 决定，节奏才统一 */
-.profile-card__pane {
-	position: absolute;
-	inset: 0;
 	display: flex;
 	flex-direction: column;
 	gap: 0.6rem;
+	max-height: var(--profile-content-max);
 	padding: 0 0.15rem;
 	overflow-y: auto;
 	overflow-x: hidden;
@@ -236,16 +234,7 @@
 	scrollbar-width: thin;
 }
 
-.profile-card__pane[hidden] {
-	display: none;
-}
-
-/* 滑动期间两页并排，收起滚动条免得右侧抖出一条轨道 */
-.profile-card__content.is-sliding .profile-card__pane {
-	scrollbar-width: none;
-}
-
-/* ── 热力图：12 列（月）× 4 行（月内 7 天切块） ── */
+/* ── 热力图：12 列（月）× 4 行（月内 7 天切块），列头一个月份名 ── */
 .profile-card__heatmap {
 	display: grid;
 	grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -259,10 +248,11 @@
 	min-width: 0;
 }
 
+/* 月份名左对齐压在列首，允许溢出到相邻列上方——列宽只够两三个字 */
 .profile-card__heat-month {
 	font-size: 0.55rem;
 	line-height: 1;
-	text-align: center;
+	white-space: nowrap;
 	opacity: 0.55;
 	font-variant-numeric: tabular-nums;
 }
@@ -281,7 +271,7 @@
 		outline-color 0.15s ease,
 		opacity 0.15s ease;
 	outline: 1.5px solid transparent;
-	/* 内描边：pane 竖向不留边距，外描边会在末行与首末列被内容框裁掉 */
+	/* 内描边：内容区横向不留边距，外描边会在末行与首末列被内容框裁掉 */
 	outline-offset: -2px;
 }
 
@@ -309,7 +299,7 @@
 	opacity: 0.75;
 }
 
-/* 点格内联展开的该周文章，与网格同页、共用页内滚动 */
+/* 点格内联展开的该周文章，与网格同区、共用内容区滚动 */
 .profile-card__week-posts {
 	display: flex;
 	flex-direction: column;
@@ -340,7 +330,7 @@
 	opacity: 0.65;
 }
 
-/* 列表自身不滚，滚动统一交给所在页的 pane 与移动端卡片 */
+/* 列表自身不滚，滚动统一交给内容区与移动端整卡 */
 .profile-card__post-list {
 	display: flex;
 	flex-direction: column;
@@ -376,121 +366,181 @@
 	color: var(--primary);
 }
 
-/* ── 日期页：倒计时 + 节日 / 建站日进度 ── */
-.profile-card__countdowns {
+/* ── 第四层：站点面板。贴在卡片底部的浮层，展开时向上盖住内容区。
+	   height 由控制器写成像素值（折叠=头部条高，展开=卡片高减去两端间距） ── */
+.profile-card__sites {
+	position: absolute;
+	inset: auto var(--profile-sites-inset) var(--profile-sites-inset);
+	z-index: 5;
+	overflow: hidden;
+	border-radius: 0.9rem;
+	--profile-sites-bg: color-mix(in oklch, var(--deep-text) 6%, var(--float-panel-bg));
+	background: var(--profile-sites-bg);
+	transition: height 360ms cubic-bezier(0.32, 0.72, 0.29, 1);
+}
+
+.profile-card__sites-bar {
 	display: flex;
-	flex-direction: column;
-	gap: 0.45rem;
-	padding-bottom: 0.7rem;
-	border-bottom: 1px solid color-mix(in oklch, var(--deep-text) 14%, transparent);
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.7rem 0.85rem;
 }
 
-.profile-card__countdown {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 0.5rem;
-}
-
-.profile-card__countdown span {
-	font-size: 0.68rem;
-	opacity: 0.6;
-}
-
-.profile-card__countdown strong {
-	font-size: 0.88rem;
-	font-variant-numeric: tabular-nums;
-}
-
-.profile-card__event {
-	display: flex;
-	flex-direction: column;
-	gap: 0.35rem;
-}
-
-.profile-card__event-main {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 0.5rem;
+.profile-card__sites-label {
+	flex: 1;
 	min-width: 0;
-}
-
-.profile-card__event-title {
-	font-size: 0.82rem;
-	font-weight: 700;
+	font-size: 0.78rem;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
-.profile-card__event-date {
-	font-size: 0.66rem;
-	opacity: 0.6;
-	white-space: nowrap;
-}
-
-.profile-card__progress-row {
+.profile-card__sites-stack {
 	display: flex;
-	align-items: center;
-	gap: 0.5rem;
+	flex: none;
 }
 
-.profile-card__progress {
-	display: block;
-	flex: 1;
-	height: 0.38rem;
+/* 展开后堆叠让位，同一批图标由控制器 FLIP 到列表行首 */
+.profile-card__sites[data-profile-sites-open="true"] .profile-card__sites-stack {
+	display: none;
+}
+
+.profile-card__site-avatar {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	flex: none;
 	overflow: hidden;
-	border-radius: 999px;
-	background: color-mix(in oklch, var(--deep-text) 13%, transparent);
-}
-
-.profile-card__progress > span {
-	display: block;
-	width: 0;
-	height: 100%;
-	border-radius: inherit;
-	background: var(--primary);
-	transition: width 240ms ease;
-}
-
-.profile-card__remaining {
+	border-radius: 9999px;
+	background: color-mix(in oklch, var(--deep-text) 12%, var(--profile-sites-bg));
+	/* 同色分离环，把相邻两枚堆叠头像择开 */
+	box-shadow: 0 0 0 2px var(--profile-sites-bg);
+	color: color-mix(in oklch, var(--deep-text) 70%, transparent);
 	font-size: 0.66rem;
-	opacity: 0.65;
-	white-space: nowrap;
-	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+	text-transform: uppercase;
 }
 
-/* ── 站点页：站点列表（与文章列表同一套尺寸） ── */
-.profile-card__pane[data-profile-pane="sites"] {
+.profile-card__sites-stack .profile-card__site-avatar + .profile-card__site-avatar {
+	margin-left: -0.5rem;
+}
+
+/* 首字符垫底，配了 icon 才压上 img；img 加载失败由控制器标记后撤下 */
+.profile-card__site-avatar-img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.profile-card__site-avatar-img[data-avatar-failed="true"] {
+	display: none;
+}
+
+.profile-card__sites-toggle {
+	display: grid;
+	place-items: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	flex: none;
+	padding: 0;
+	border: none;
+	border-radius: 9999px;
+	background: transparent;
+	color: color-mix(in oklch, var(--deep-text) 45%, transparent);
+	cursor: pointer;
+	transition:
+		color 0.15s ease,
+		background-color 0.15s ease;
+}
+
+.profile-card__sites-toggle:hover {
+	color: var(--primary);
+	background: color-mix(in oklch, var(--primary) 12%, transparent);
+}
+
+.profile-card__sites-toggle:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.profile-card__sites-chevron {
+	width: 100%;
+	height: 100%;
+	transition: transform 360ms cubic-bezier(0.32, 0.72, 0.29, 1);
+}
+
+.profile-card__sites[data-profile-sites-open="true"] .profile-card__sites-chevron {
+	transform: rotate(180deg);
+}
+
+/* 列表靠 visibility 而非 hidden 收起：关闭动画期间仍占位、被 overflow 裁掉，
+   淡出收尾才摘出可访问性树与 Tab 序列 */
+.profile-card__sites-list {
+	display: flex;
+	flex-direction: column;
 	gap: 0.15rem;
+	margin: 0;
+	padding: 0 0.35rem 0.4rem;
+	list-style: none;
+	opacity: 0;
+	transform: translateY(1rem);
+	visibility: hidden;
+	transition:
+		opacity 200ms ease-out,
+		transform 200ms ease-out,
+		visibility 0s linear 200ms;
 }
 
-.profile-card__site-cta {
+.profile-card__sites[data-profile-sites-open="true"] .profile-card__sites-list {
+	opacity: 1;
+	transform: translateY(0);
+	visibility: visible;
+	transition:
+		opacity 200ms ease-out 90ms,
+		transform 200ms ease-out 90ms,
+		visibility 0s;
+}
+
+.profile-card__site-row {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
-	padding: 0.4rem 0.5rem;
+	gap: 0.75rem;
+	margin: 0 0.15rem;
+	padding: 0.5rem 0.55rem;
 	color: inherit;
 	text-decoration: none;
-	border-radius: 0.45rem;
+	border-radius: 0.6rem;
 	transition:
 		background-color 0.15s ease,
 		color 0.15s ease;
 }
 
-.profile-card__site-cta:hover {
+.profile-card__site-row:hover {
 	background: color-mix(in oklch, var(--deep-text) 8%, transparent);
 	color: var(--primary);
 }
 
-.profile-card__site-cta-name {
-	flex: 1;
-	font-size: 0.78rem;
-	font-weight: 500;
+.profile-card__site-row:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: -2px;
 }
 
-.profile-card__site-cta-arrow {
+.profile-card__site-name {
+	flex: 1;
+	min-width: 0;
+	font-size: 0.8rem;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.profile-card__site-arrow {
+	flex: none;
 	font-size: 0.7rem;
 	opacity: 0.6;
 }
@@ -540,64 +590,8 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* ── 第四层：分段控件式标签 dock（一整条胶囊轨道，选中段实心反相） ── */
-.profile-card__tabbar {
-	display: flex;
-	justify-content: center;
-}
-
-.profile-card__tabs {
-	display: flex;
-	gap: 0.15rem;
-	max-width: 100%;
-	padding: 0.1875rem;
-	overflow-x: auto;
-	border-radius: 9999px;
-	background: color-mix(in oklch, var(--deep-text) 10%, transparent);
-	scrollbar-width: none;
-}
-
-.profile-card__tab {
-	flex: 0 1 auto;
-	padding: 0.28rem 0.72rem;
-	border: none;
-	border-radius: 9999px;
-	background: transparent;
-	color: inherit;
-	font-family: inherit;
-	font-size: 0.7rem;
-	font-weight: 600;
-	line-height: 1.4;
-	white-space: nowrap;
-	cursor: pointer;
-	opacity: 0.66;
-	transition:
-		background-color 0.15s ease,
-		color 0.15s ease,
-		opacity 0.15s ease;
-}
-
-/* 选中段用实心反相表达，深浅色随 --deep-text / --page-bg 自动互换 */
-.profile-card__tab--active {
-	background: var(--deep-text);
-	color: var(--page-bg);
-	opacity: 1;
-}
-
-.profile-card__tab--inactive:hover {
-	color: var(--primary);
-	background: color-mix(in oklch, var(--primary) 12%, transparent);
-	opacity: 1;
-}
-
-.profile-card__tab:focus-visible {
-	outline: 2px solid var(--primary);
-	outline-offset: 2px;
-}
-
 /* ── 数据加载中：骨架脉冲 ── */
-.profile-card[aria-busy="true"] .profile-card__heat-cell,
-.profile-card[aria-busy="true"] .profile-card__event-title {
+.profile-card[aria-busy="true"] .profile-card__heat-cell {
 	animation: profile-card-pulse 1.4s ease-in-out infinite;
 }
 
@@ -646,7 +640,7 @@
 	.profile-card {
 		position: relative;
 		width: min(21rem, calc(100vw - 2rem));
-		/* 笔记本视口下卡片不顶出屏幕：内容高度上限让位给横幅与标签条 */
+		/* 笔记本视口下卡片不顶出屏幕：内容高度上限让位给横幅与站点面板 */
 		--profile-content-max: min(14rem, 38vh);
 	}
 }
@@ -690,7 +684,6 @@
 		bottom: 0.75rem;
 		max-height: min(85vh, 44rem);
 		overflow-y: auto;
-		padding-bottom: 0;
 		transform: translateY(calc(100% + 1rem));
 		transition: transform 0.3s cubic-bezier(0.32, 0.72, 0.29, 1);
 		--profile-radius: 1rem;
@@ -700,32 +693,22 @@
 	.navbar-profile-dropdown.is-open .profile-card {
 		transform: translateY(0);
 	}
-
-	/* 小视口下整张卡片可滚，标签 dock 所在的这条 sticky 在底部才不会被滚走 */
-	.profile-card__tabbar {
-		position: sticky;
-		bottom: 0;
-		margin: 0 -1.25rem;
-		padding: 0.6rem 1.25rem;
-		background: var(--float-panel-bg);
-		border-top: 1px solid color-mix(in oklch, var(--deep-text) 14%, transparent);
-	}
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.navbar-profile-dropdown,
 	.navbar-profile-mask,
 	.profile-card,
-	.profile-card__content,
 	.profile-card__avatar-mask,
-	.profile-card__progress > span,
 	.profile-card__heat-cell,
-	.profile-card__tab {
+	.profile-card__sites,
+	.profile-card__sites-chevron,
+	.profile-card__sites-list,
+	.profile-card__sites-toggle {
 		transition-duration: 0.01ms;
 	}
 
-	.profile-card[aria-busy="true"] .profile-card__heat-cell,
-	.profile-card[aria-busy="true"] .profile-card__event-title {
+	.profile-card[aria-busy="true"] .profile-card__heat-cell {
 		animation: none;
 	}
 

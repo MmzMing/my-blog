@@ -1,0 +1,30 @@
+---
+import type { PersonalSite } from "@/types/config";
+
+/**
+ * 站点图标：折叠态头像堆叠与展开态站点行共用一份实现。
+ * 首字符垫底，配了 icon 才压上 img；img 加载失败由控制器标记、CSS 撤下，
+ * 自然回落到首字符，不需要额外的占位图。
+ */
+interface Props {
+	site: PersonalSite;
+	/** 面板内序号，控制器据此把堆叠头像与列表头像配对做 FLIP 位移 */
+	index: number;
+}
+
+const { site, index } = Astro.props;
+---
+
+<span class="profile-card__site-avatar" data-profile-avatar={String(index)}>
+	<span class="profile-card__site-avatar-fallback">{site.name.slice(0, 1)}</span>
+	{site.icon && (
+		<img
+			class="profile-card__site-avatar-img"
+			data-profile-site-icon
+			src={site.icon}
+			alt=""
+			loading="lazy"
+			decoding="async"
+		/>
+	)}
+</span>

@@ -231,19 +231,11 @@ export const en: Translation = {
 	[Key.passwordProtectedRss]:
 		"This article is encrypted. Please visit the website to view it.",
 
-	// Calendar utility widget（导航 Logo 资料卡）
-	[Key.calendarWeekRemaining]: "Until week end",
-	[Key.calendarMonthRemaining]: "Until month end",
-	[Key.calendarYearRemaining]: "Until year end",
-	[Key.calendarDataUnavailable]: "Calendar data is unavailable",
-	[Key.calendarNoHoliday]: "No upcoming holiday found",
+	// 导航 Logo 资料卡
 	[Key.profileMonthWeek]: "Week {week} of {month}",
 	[Key.profilePostCount]: "{count} posts",
 	[Key.otherSites]: "Other sites",
 	[Key.profileHeatmap]: "Posting heatmap",
-	[Key.profileTabHeatmap]: "Heatmap",
-	[Key.profileTabDates]: "Dates",
-	[Key.profileTabsLabel]: "Profile card sections",
 	[Key.contactMe]: "Contact",
 	[Key.qqGroup]: "QQ Group",
 	[Key.navPosts]: "Posts",
@@ -406,9 +398,6 @@ export const en: Translation = {
 	[Key.musicVisualizer3D]: "3D visualizer",
 	[Key.musicVisualizerDescription]:
 		"Enter an immersive music visualization that turns playback into a dynamic 3D landscape, adding motion and atmosphere to every listening session.",
-
-	// ===== Calendar utility widget =====
-	[Key.dayShort]: "d",
 
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "Page loading",

@@ -218,19 +218,11 @@ enum I18nKey {
 	archiveStatsUnavailable = "archiveStatsUnavailable",
 	archiveStatsGoal = "archiveStatsGoal",
 
-	// 日历工具卡片（导航 Logo 资料卡）
-	calendarWeekRemaining = "calendarWeekRemaining",
-	calendarMonthRemaining = "calendarMonthRemaining",
-	calendarYearRemaining = "calendarYearRemaining",
-	calendarDataUnavailable = "calendarDataUnavailable",
-	calendarNoHoliday = "calendarNoHoliday",
+	// 导航 Logo 资料卡
 	profileMonthWeek = "profileMonthWeek",
 	profilePostCount = "profilePostCount",
 	otherSites = "otherSites",
 	profileHeatmap = "profileHeatmap",
-	profileTabHeatmap = "profileTabHeatmap",
-	profileTabDates = "profileTabDates",
-	profileTabsLabel = "profileTabsLabel",
 
 	contactMe = "contactMe",
 	qqGroup = "qqGroup",
@@ -387,9 +379,6 @@ enum I18nKey {
 	musicVisualizer = "musicVisualizer",
 	musicVisualizer3D = "musicVisualizer3D",
 	musicVisualizerDescription = "musicVisualizerDescription",
-
-	// ===== 日历工具卡片 =====
-	dayShort = "dayShort",
 
 	// ===== 弹窗 / 杂项 =====
 	pageLoading = "pageLoading",

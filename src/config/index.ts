@@ -3,10 +3,8 @@
 
 // 类型导出
 export type {
-	AnniversaryItem,
 	AnnouncementConfig,
 	AnnouncementItem,
-	CalendarConfig,
 	CollectionApiGroup,
 	CollectionApiItem,
 	CollectionsApiConfig,
@@ -23,7 +21,6 @@ export type {
 	GalleryConfig,
 	GuestbookAnnouncementItem,
 	GuestbookConfig,
-	HolidayItem,
 	HomeBlindsConfig,
 	HomeBlindsSceneItem,
 	HomeConfig,
@@ -44,7 +41,6 @@ export type {
 } from "../types/mermaidConfig";
 // 核心配置
 export { announcementConfig } from "./announcementConfig"; // 公告配置
-export { calendarConfig } from "./calendarConfig"; // 日历配置
 export { collectionsApiConfig } from "./collectionsApiConfig"; // 收藏API配置
 // 功能配置
 export { commentConfig } from "./commentConfig"; // 评论系统配置

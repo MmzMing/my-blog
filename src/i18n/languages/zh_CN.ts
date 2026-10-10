@@ -226,19 +226,11 @@ export const zh_CN: Translation = {
 	[Key.passwordError]: "密码错误，请重试。",
 	[Key.passwordProtectedRss]: "本文已加密保护，请访问网站查看。",
 
-	// 日历工具卡片（导航 Logo 资料卡）
-	[Key.calendarWeekRemaining]: "距周末",
-	[Key.calendarMonthRemaining]: "距月底",
-	[Key.calendarYearRemaining]: "距年底",
-	[Key.calendarDataUnavailable]: "日历数据暂时不可用",
-	[Key.calendarNoHoliday]: "暂未找到后续节日",
+	// 导航 Logo 资料卡
 	[Key.profileMonthWeek]: "{month}第{week}周",
 	[Key.profilePostCount]: "{count}篇",
 	[Key.otherSites]: "其他站点",
 	[Key.profileHeatmap]: "文章热力图",
-	[Key.profileTabHeatmap]: "热力图",
-	[Key.profileTabDates]: "日期",
-	[Key.profileTabsLabel]: "资料卡分区",
 	[Key.contactMe]: "联系",
 	[Key.qqGroup]: "QQ群",
 	[Key.navPosts]: "文章",
@@ -400,9 +392,6 @@ export const zh_CN: Translation = {
 	[Key.musicVisualizer3D]: "3D可视化",
 	[Key.musicVisualizerDescription]:
 		"进入沉浸式音乐可视化页面，跟随播放节奏观察三维地形与动态效果，获得更具氛围感的聆听体验。",
-
-	// ===== 日历工具卡片 =====
-	[Key.dayShort]: "天",
 
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "页面加载中",
