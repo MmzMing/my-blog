@@ -9,8 +9,9 @@
  *   面板底边触到页脚顶后随文档滚走，不悬浮在页脚上；
  * - 可切换面板（带 [data-toc-related] 相关文章视图时）：许可协议卡底边与面板
  *   底边对齐后切为堆叠换牌——目录留在文档流撑高（面板几何恒定，底边即固定触发
- *   线），相关文章绝对叠在同位、按自然高度向下溢出。换牌时只有入场层位移（相关
- *   文章自面板底沿上滑、目录自面板上沿下滑），退场层原地淡出后瞬时回位。
+ *   线），相关文章绝对叠在同位、按自然高度向下溢出。换牌时两层都只做淡入淡出，
+ *   位移交给层内逐项落位（按 --toc-stagger 依次下移归位，控制器按文档序编号）；
+ *   退场层原地淡出。交错入场在首次真实切换时才启用（is-mode-armed）。
  *   退出带 24px 迟滞；
  * - 连接线坐标取圆点中心相对树容器的位置（含 scrollTop），SVG 作为树的
  *   第一个子节点随内容一起滚，滚动树不需要重画；
@@ -134,7 +135,7 @@ export class ArticleTocPanelController {
 	/** 底部钳制锚点：面板底边触到页脚顶边后随文档滚走，不悬浮在页脚上 */
 	private footerEl: HTMLElement | null = null;
 	/* 目录 ↔ 相关文章转换状态机：仅有 [data-toc-related] 时启用（transitionEnabled）。
-	   目录视图留在文档流撑高，切换只改可见性/位移，面板几何恒定、触发线稳定 */
+	   目录视图留在文档流撑高，切换只改可见性与淡入淡出，面板几何恒定、触发线稳定 */
 	private relatedLayer: HTMLElement | null = null;
 	private licenseEl: HTMLElement | null = null;
 	private fallbackAnchorEl: HTMLElement | null = null;
@@ -191,6 +192,7 @@ export class ArticleTocPanelController {
 		}
 		this.cachePositions();
 		this.renderRows();
+		this.applyStagger();
 		this.bindInteractions();
 		this.resizeObserver = new ResizeObserver(() => this.scheduleMeasure());
 		this.resizeObserver.observe(this.article);
@@ -220,7 +222,11 @@ export class ArticleTocPanelController {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.root.style.top = "";
-		this.root.classList.remove("is-related-mode", "is-mode-no-anim");
+		this.root.classList.remove(
+			"is-related-mode",
+			"is-mode-armed",
+			"is-mode-no-anim",
+		);
 		this.appliedRailTop = null;
 		if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
 		if (this.measureFrame !== null) cancelAnimationFrame(this.measureFrame);
@@ -742,8 +748,32 @@ export class ArticleTocPanelController {
 	private setMode(mode: "toc" | "related"): void {
 		if (mode === this.mode) return;
 		this.mode = mode;
-		// 只翻类：两层同框、面板高度不随模式变化，滑动与回位全由 CSS 时长控制
+		/* 交错入场只在真正的切换里播：首次定态（滚动恢复/前进后退落在转换区）时
+		   modeInitialized 还是 false，面板直接以正确模式静默出现 */
+		if (this.modeInitialized) this.root.classList.add("is-mode-armed");
+		// 只翻类：两层同框、面板高度不随模式变化，淡入淡出与落位全由 CSS 时长控制
 		this.root.classList.toggle("is-related-mode", mode === "related");
+	}
+
+	/** 按文档序给两层各自的可动元素写 --toc-stagger，供 CSS 逐项落位算延迟 */
+	private applyStagger(): void {
+		const assign = (targets: NodeListOf<HTMLElement>): void => {
+			targets.forEach((el, order) => {
+				el.style.setProperty("--toc-stagger", String(order));
+			});
+		};
+		assign(
+			this.root.querySelectorAll<HTMLElement>(
+				".article-toc-panel__toolbar, .article-toc-panel__row",
+			),
+		);
+		if (this.relatedLayer) {
+			assign(
+				this.relatedLayer.querySelectorAll<HTMLElement>(
+					".related-cards__title, .related-cards__item",
+				),
+			);
+		}
 	}
 
 	private getActiveIndex(): number {

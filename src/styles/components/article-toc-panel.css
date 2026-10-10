@@ -47,7 +47,7 @@
 		pointer-events: none;
 	}
 
-	/* ---------- 目录 ↔ 相关文章双视图（堆叠换牌） ---------- */
+	/* ---------- 目录 ↔ 相关文章双视图（交错换牌） ---------- */
 
 	/* 目录层是唯一的文档流子项，面板高度只由它决定；卡片底色挂在本层
 	   （根节点恒透明），相关文章层按自然高度向下溢出，不套容器底。
@@ -63,51 +63,53 @@
 	}
 
 	.article-toc-panel {
-		--toc-switch-duration: 280ms;
-		--toc-switch-ease: cubic-bezier(0.22, 1, 0.36, 1);
-		/* 换牌规则：只有入场层位移，退场层停在原位淡出、淡完才瞬时归位（此刻已不可见）。
-		   两个方向的淡出时长不同：
+		/* 层间只做淡入淡出，位移交给层内逐项落位。两个方向的退场时长不同：
 		   - 相关文章盖目录（退场方=目录）用短淡出。相关文章不套容器底，卡片缝隙是透的，
 		     目录留太久会从缝里透出来压字；
 		   - 目录盖相关文章（退场方=相关文章）用满时长。目录是不透明整片，
-		     滑下来时确实压得住，两层同时可见才有堆叠感。 */
+		     盖上去确实压得住，两层同时可见才有堆叠感。 */
+		--toc-switch-duration: 280ms;
 		--toc-switch-out: 120ms;
+		--toc-switch-in: 120ms;
+		/* 入场层的内容项自上而下逐件落位：轻微下移 + 模糊散去，末段带一点过冲 */
+		--toc-enter-duration: 320ms;
+		--toc-enter-delay: 80ms;
+		--toc-stagger-step: 45ms;
+		/* 交错只轮到前若干项，长目录不至于让末尾等到一秒以后 */
+		--toc-stagger-cap: 6;
+		--toc-item-offset: -10px;
+		--toc-item-blur: 4px;
+		--toc-enter-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
 
-	/* 目录层：进场时从面板上沿之外滑下归位；退场时原地淡出，淡完才移到上沿之外待命 */
 	.article-toc-panel.is-mode-switchable .article-toc-panel__view {
 		position: relative;
 		z-index: 1;
+		opacity: 1;
+		visibility: visible;
 		transition:
-			transform var(--toc-switch-duration) var(--toc-switch-ease),
-			opacity 0s linear,
+			opacity var(--toc-switch-in) linear,
 			visibility 0s linear;
 	}
 
 	.article-toc-panel.is-mode-switchable.is-related-mode
 		.article-toc-panel__view {
 		z-index: 0;
-		transform: translateY(-100%);
 		opacity: 0;
 		visibility: hidden;
 		transition:
-			transform 0s linear var(--toc-switch-out),
 			opacity var(--toc-switch-out) ease,
 			visibility 0s linear var(--toc-switch-out);
 	}
 
-	/* 相关文章层：inset:0 只作定位框，内容自然高度向下溢出，不套容器底。
-	   待命时下移到面板底沿之外（位移量=面板高），进场时整片上滑盖住目录；
-	   退场时停在原位淡出，淡完才瞬时回位——不被目录推下去 */
+	/* 相关文章层：inset:0 只作定位框，内容自然高度向下溢出，不套容器底 */
 	.article-toc-panel.is-mode-switchable .article-toc-panel__related {
 		position: absolute;
 		inset: 0;
-		transform: translateY(100%);
 		opacity: 0;
 		visibility: hidden;
 		pointer-events: none;
 		transition:
-			transform 0s linear var(--toc-switch-duration),
 			opacity var(--toc-switch-duration) ease,
 			visibility 0s linear var(--toc-switch-duration);
 	}
@@ -115,14 +117,43 @@
 	.article-toc-panel.is-mode-switchable.is-related-mode
 		.article-toc-panel__related {
 		z-index: 2;
-		transform: translateY(0);
 		opacity: 1;
 		visibility: visible;
 		pointer-events: auto;
 		transition:
-			transform var(--toc-switch-duration) var(--toc-switch-ease),
-			opacity 0s linear,
+			opacity var(--toc-switch-in) linear,
 			visibility 0s linear;
+	}
+
+	/* 交错入场只挂在入场层：动画名从 none 变成关键帧就会重播，因此来回切换每次都能
+	   重新落位，退场层则停在原位跟着整层淡出。--toc-stagger 由控制器按文档序写好。
+	   is-mode-armed 在首次真实切换时才加上，首屏落在目录态不会凭空播一段。
+	   fill-mode 用 backwards 而非 both：动画结束后不留 filter，避免 blur(0) 常驻改变文字栅格化。 */
+	.article-toc-panel.is-mode-switchable.is-mode-armed:not(.is-related-mode)
+		:is(.article-toc-panel__toolbar, .article-toc-panel__row),
+	.article-toc-panel.is-mode-switchable.is-mode-armed.is-related-mode
+		:is(.related-cards__title, .related-cards__item) {
+		animation-name: article-toc-item-enter;
+		animation-duration: var(--toc-enter-duration);
+		animation-timing-function: var(--toc-enter-ease);
+		animation-fill-mode: backwards;
+		animation-delay: calc(
+			var(--toc-enter-delay) +
+				min(var(--toc-stagger, 0), var(--toc-stagger-cap)) * var(--toc-stagger-step)
+		);
+	}
+
+	@keyframes article-toc-item-enter {
+		from {
+			opacity: 0;
+			transform: translateY(var(--toc-item-offset));
+			filter: blur(var(--toc-item-blur));
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+			filter: blur(0);
+		}
 	}
 
 	/* 首次定态不播动画（滚动恢复落在转换区时防闪），下一帧由控制器摘掉 */
@@ -427,10 +458,14 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		/* 双视图的滑动时长统一走变量，改这一处即可让四个状态规则一起失效 */
+		/* 双视图的时长与节奏统一走变量，改这一处即可让层间淡入淡出与逐项落位一起失效 */
 		.article-toc-panel.is-mode-switchable {
 			--toc-switch-duration: 1ms;
 			--toc-switch-out: 1ms;
+			--toc-switch-in: 1ms;
+			--toc-enter-duration: 1ms;
+			--toc-enter-delay: 0ms;
+			--toc-stagger-step: 0ms;
 		}
 
 		.article-toc-panel__tool-btn,
