@@ -1,8 +1,9 @@
 /**
  * 右侧大纲面板（Obsidian 风格）控制器。
  *
- * 结构：工具栏（手风琴三模式 + 思维导图 + 进度%）/ 节点树（圆点 + SVG 肘形
- * 连接线）/ 思维导图弹窗。树与连接线全部由本控制器在客户端渲染。
+ * 结构：工具栏（手风琴三模式 + 思维导图 + 进度%）/ 节点树（圆点 + SVG 竖轨
+ * 主干与进度线 + 阅读位置指示器）/ 思维导图弹窗。树、竖轨与指示器全部由本
+ * 控制器在客户端渲染。
  *
  * 坑位备忘：
  * - 面板是 max-height 封顶 + 树内部滚动；底部钳制锚在页脚顶边（不再锚正文卡底）：
@@ -13,10 +14,14 @@
  *   位移交给层内逐项落位（按 --toc-stagger 依次下移归位，控制器按文档序编号）；
  *   退场层原地淡出。交错入场在首次真实切换时才启用（is-mode-armed）。
  *   退出带 24px 迟滞；
- * - 连接线坐标取圆点中心相对树容器的位置（含 scrollTop），SVG 作为树的
- *   第一个子节点随内容一起滚，滚动树不需要重画；
+ * - 竖轨取点用圆点中心相对树容器的位置（含 scrollTop），SVG 作为树的第一个
+ *   子节点随内容一起滚，滚动树不需要重画；指示器相反，它挂在外层并按视口坐标
+ *   定位（__tree 的 overflow 会裁掉起飞），所以每帧都要用 nav 矩形反算一次，
+ *   这条前提是面板祖先链上不能有 transform/filter——见 transition.css 里为
+ *   .article-toc-panel 把进出场位移退化成纯 opacity 的那段约定；
  * - 折叠动画用 grid-template-rows 1fr→0fr 过渡（无需 JS 测量高度），动画期间
- *   由 startLineAnimation 逐帧重画连接线，让线跟着行一起动；
+ *   由 startTrackAnimation 逐帧重画竖轨，让轨跟着行一起动；轨长随折叠变化，
+ *   同一阅读位置对应的弧长也变，故每次重画都重新定一次指示器目标；
  * - 手风琴的展开/收起状态挂在行容器的 is-collapsed 类上，子树隐藏交给
  *   CSS 结构（嵌套列表 + 0fr 裁剪），不再逐行打 is-hidden。
  */
@@ -31,10 +36,42 @@ import { definePageIsland } from "@/utils/swup-lifecycle";
 /** 活动行居中滚动的节流间隔（沿用旧浏览列表的节奏） */
 const READING_OFFSET = 80;
 const ACTIVE_SCROLL_THROTTLE = 120;
-/** 连接线端点与圆点边缘的留隙（px） */
-const LINE_DOT_GAP = 3;
-/** 连接线拐角处的圆弧半径（px） */
+/** 连接线拐角处的圆弧半径（px），思维导图的分支线仍在用 */
 const LINE_CORNER_RADIUS = 5;
+/** 竖轨在层级变化处的斜向台阶长度 = 两点纵向距离 × 该系数 */
+const TRACK_BEND_RATIO = 0.3;
+/** 指示器沿轨追赶阅读位置的弹簧；朝向另配一套更硬的，转向要利落 */
+const TRAVEL_SPRING = { stiffness: 140, damping: 26, mass: 0.6 };
+const TURN_SPRING = { stiffness: 260, damping: 30, mass: 1 };
+/** 反向追轨前指示器必须先多走的弧长（px），防止滚动抖动把它来回翻向 */
+const TURN_SLACK = 2;
+/** 页面贴边后继续滚够这么多像素，指示器才离轨起飞 */
+const OVERSCROLL = 720;
+/** 滚轮 deltaMode 为「行」时一行折算的像素数 */
+const WHEEL_LINE_PIXELS = 16;
+/** 起飞轨迹的水平内缩与落地余量（px） */
+const FLIGHT_EDGE_INSET = 10;
+const FLIGHT_BOTTOM_GAP = 8;
+/** 指示器贴可视框边缘时的留隙（px），取 --toc-plane-size 的半长，让它整只留在框内 */
+const PLANE_EDGE_INSET = 8;
+/** 指示器中心与圆点中心近于这个距离（px）时，圆点算被它压住 */
+const PLANE_DOT_COVER = 6;
+/** 弹簧收敛判据：位移与速度都低于阈值即视为停住（弧长按 px、朝向按度） */
+const SPRING_EPSILON = 0.05;
+/** 单帧最大步长（秒）：后台标签页回到前台时帧差会突跳，不夹住会一步跨过整条轨迹 */
+const SPRING_MAX_STEP = 0.04;
+/* 起飞轨迹的采样与形状常量（量纲是 px 与秒） */
+const FALL_STEP = 1 / 60;
+const FALL_TIMEOUT = 8;
+const THROW_SPEED = 260;
+const THROW_DECAY = 0.35;
+const THROW_SINK_MIN = 90;
+const THROW_SINK_MAX = 240;
+const SWAY = 56;
+const SWAY_PERIOD = 1.8;
+const BOB = 16;
+const SKID = 0.35;
+const SKID_INSET = 8;
 /** 导图缩放边界与步进 */
 const MINDMAP_ZOOM_MIN = 0.5;
 const MINDMAP_ZOOM_MAX = 2.5;
@@ -54,6 +91,180 @@ function clamp(value: number, minimum: number, maximum: number): number {
 
 function prefersReducedMotion(): boolean {
 	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+type TrackPoint = { x: number; y: number };
+
+/** 起飞轨迹：相对起飞点的位移序列与朝向序列，按归一化进度插值 */
+type FallTrajectory = {
+	xs: number[];
+	ys: number[];
+	angles: number[];
+	duration: number;
+};
+
+type FlightTween = {
+	from: number;
+	to: number;
+	duration: number;
+	elapsed: number;
+};
+
+/**
+ * 二阶阻尼弹簧（a = (-k·(x-target) - c·v)/m，半隐式欧拉积分）。
+ * 只服务指示器的弧长与朝向两个量，所以阈值与单位写死在内部，不做成通用件。
+ */
+class DampedSpring {
+	value: number;
+	target: number;
+	private velocity = 0;
+	private readonly stiffness: number;
+	private readonly damping: number;
+	private readonly mass: number;
+
+	constructor(initial: number, config: typeof TRAVEL_SPRING) {
+		this.value = initial;
+		this.target = initial;
+		this.stiffness = config.stiffness;
+		this.damping = config.damping;
+		this.mass = config.mass;
+	}
+
+	jump(value: number): void {
+		this.value = value;
+		this.target = value;
+		this.velocity = 0;
+	}
+
+	setTarget(value: number): void {
+		this.target = value;
+	}
+
+	/** 积分一帧，返回是否仍在运动 */
+	step(dt: number): boolean {
+		const accel =
+			(-this.stiffness * (this.value - this.target) -
+				this.damping * this.velocity) /
+			this.mass;
+		this.velocity += accel * dt;
+		this.value += this.velocity * dt;
+		if (
+			Math.abs(this.target - this.value) < SPRING_EPSILON &&
+			Math.abs(this.velocity) < SPRING_EPSILON
+		) {
+			this.value = this.target;
+			this.velocity = 0;
+			return false;
+		}
+		return true;
+	}
+}
+
+/**
+ * 竖轨路径：自上而下串联可见圆点。层级变化处插两个点做斜向台阶，
+ * 台阶的圆润交给 CSS 的 linejoin，不在 path 里写弧线。
+ */
+function buildTrackPath(points: TrackPoint[]): string {
+	if (points.length === 0) return "";
+	const nodes: TrackPoint[] = [points[0]];
+	for (let i = 1; i < points.length; i += 1) {
+		const from = points[i - 1];
+		const to = points[i];
+		if (from.x !== to.x) {
+			const bend = (to.y - from.y) * TRACK_BEND_RATIO;
+			nodes.push({ x: from.x, y: from.y + bend });
+			nodes.push({ x: to.x, y: to.y - bend });
+		}
+		nodes.push(to);
+	}
+	return nodes
+		.map((point, i) => `${i === 0 ? "M" : "L"}${point.x} ${point.y}`)
+		.join(" ");
+}
+
+/** 轨只向下走，y 沿弧长单调：二分出某个圆点纵坐标对应的弧长 */
+function lengthAtY(path: SVGPathElement, total: number, y: number): number {
+	let lo = 0;
+	let hi = total;
+	for (let i = 0; i < 24; i += 1) {
+		const mid = (lo + hi) / 2;
+		if (path.getPointAtLength(mid).y < y) {
+			lo = mid;
+		} else {
+			hi = mid;
+		}
+	}
+	return hi;
+}
+
+function sampleFall(values: number[], progress: number): number {
+	const at = clamp(progress, 0, 1) * (values.length - 1);
+	const i = Math.floor(at);
+	const next = values[Math.min(values.length - 1, i + 1)];
+	return values[i] + (next - values[i]) * (at - i);
+}
+
+/**
+ * 一条被抛出去的纸飞机轨迹：抛掷的惯性衰减成左右摆动的下滑，触地后再贴地
+ * 滑行一段并把机头摆平。左右与地面边界都是相对起飞点的位移，故传入的边界
+ * 也要在同一坐标系里。
+ */
+function planFall(
+	nose: TrackPoint,
+	left: number,
+	right: number,
+	floor: number,
+): FallTrajectory {
+	const side = nose.x < 0 ? -1 : 1;
+	const sway = Math.max(0, Math.min(SWAY, (right - left) / 2 - SKID_INSET));
+	const sink = clamp(floor / 2.6, THROW_SINK_MIN, THROW_SINK_MAX);
+	const omega = (2 * Math.PI) / SWAY_PERIOD;
+	const xs = [0];
+	const ys = [0];
+
+	for (let t = FALL_STEP; t < FALL_TIMEOUT; t += FALL_STEP) {
+		const thrown = THROW_SPEED * THROW_DECAY * (1 - Math.exp(-t / THROW_DECAY));
+		const grow = 1 - Math.exp(-t / 0.5);
+		const fx = nose.x * thrown + side * sway * grow * Math.sin(omega * t);
+		const fy =
+			nose.y * thrown +
+			sink * (t - 0.4 * (1 - Math.exp(-t / 0.4))) +
+			(BOB * grow * (Math.cos(2 * omega * t) - 1)) / 2;
+		xs.push(clamp(fx, left, right));
+		ys.push(Math.min(floor, fy));
+		if (fy >= floor) break;
+	}
+
+	const airborne = xs.length;
+	const drift = (xs[airborne - 1] - xs[airborne - 2]) / FALL_STEP;
+	for (let t = FALL_STEP; t <= SKID; t += FALL_STEP) {
+		const k = 1 - t / SKID;
+		xs.push(clamp(xs[xs.length - 1] + drift * k * FALL_STEP, left, right));
+		ys.push(floor);
+	}
+
+	const angles: number[] = [];
+	for (let i = 0; i < xs.length; i += 1) {
+		const a = Math.max(0, i - 1);
+		const b = Math.min(xs.length - 1, i + 1);
+		let angle = (Math.atan2(ys[b] - ys[a], xs[b] - xs[a]) * 180) / Math.PI + 90;
+		if (i >= airborne) {
+			const k = Math.min(1, (i - airborne + 1) / (SKID / FALL_STEP));
+			angle += (lyingAngle(drift, angle) - angle) * k;
+		}
+		const prev = angles[i - 1] ?? angle;
+		angles.push(angle + 360 * Math.round((prev - angle) / 360));
+	}
+
+	return { xs, ys, angles, duration: (xs.length - 1) * FALL_STEP };
+}
+
+/** 落地段机头躺向：还有水平漂移就朝漂移方向，否则按当前朝向就近倒下 */
+function lyingAngle(drift: number, angle: number): number {
+	if (drift !== 0) {
+		return drift < 0 ? 270 : 90;
+	}
+	return angle < 180 ? 90 : 270;
 }
 
 export class ArticleTocPanelController {
@@ -96,16 +307,50 @@ export class ArticleTocPanelController {
 		toggle: HTMLButtonElement | null;
 	}[] = [];
 	private rootDot: HTMLElement | null = null;
-	/** 连接线 path，下标对齐 tree.nodes；仅活动/悬停链上的节点持有可见 path */
-	private linePaths: (SVGPathElement | null)[] = [];
-	/** 悬停中的节点下标，-1 表示无悬停 */
-	private hoverIndex = -1;
+	/* ---------- 竖轨与指示器状态 ---------- */
+	/** 竖轨两条常驻 path：底层虚线与按弧长填充的进度线，共用同一个 d */
+	private trackBase: SVGPathElement | null = null;
+	private trackProgress: SVGPathElement | null = null;
+	/** 轨上点的弧长与对应的 tree.nodes 下标（-1 是根圆点），两数组下标互相对齐 */
+	private trackLengths: number[] = [];
+	private trackNodeIndexes: number[] = [];
+	/** 轨上点的坐标，与 trackLengths 同序，供指示器算「压住哪颗圆点」 */
+	private trackPoints: TrackPoint[] = [];
+	private trackTotal = 0;
+	/** 上一次写给圆点的已走过数量，-1 表示还没写过（重画轨后重置以强制回写） */
+	private coveredCount = -1;
+	/** 当前被指示器遮住的那颗圆点 */
+	private dotUnderPlane: HTMLElement | null = null;
+	/** 首次定轨前不让指示器从轨头弹簧爬起，直接落在当前阅读位置上 */
+	private trackPlaced = false;
+	/** 指示器挂在 __view 上按视口坐标定位；planeX/planeY 是它在树内容坐标里的锚点 */
+	private readonly planeEl: HTMLElement | null;
+	private readonly travel = new DampedSpring(0, TRAVEL_SPRING);
+	private readonly heading = new DampedSpring(180, TURN_SPRING);
+	/** 指示器朝向：沿轨向下为 1、回滚向上为 -1，换向得先攒够 TURN_SLACK */
+	private facing: 1 | -1 = 1;
+	private turnFrom = 0;
+	/** 指示器在树内容坐标里的锚点，起飞位移叠加在它上面 */
+	private planeX = 0;
+	private planeY = 0;
+	/** 起飞状态：flight 是 0..1 的归一化进度，away 记从哪端离轨（0 表示在轨上） */
+	private flight = 0;
+	private away: -1 | 0 | 1 = 0;
+	private flightTween: FlightTween | null = null;
+	private fall: FallTrajectory | null = null;
+	/** 贴边后累积的滚动量，攒够 OVERSCROLL 才起飞 */
+	private spill = 0;
+	private touchY = 0;
+	private tickFrame: number | null = null;
+	private lastTickAt = 0;
+	/** 文章标题（根圆点）的绝对纵坐标，指示器在根与首个标题之间插值用 */
+	private rootTop = 0;
 	private animationFrame: number | null = null;
 	private measureFrame: number | null = null;
-	private linesFrame: number | null = null;
-	/** 折叠动画期间逐帧重画连接线用的帧句柄与截止时刻 */
-	private lineAnimFrame: number | null = null;
-	private lineAnimUntil = 0;
+	private trackFrame: number | null = null;
+	/** 折叠动画期间逐帧重画竖轨用的帧句柄与截止时刻 */
+	private trackAnimFrame: number | null = null;
+	private trackAnimUntil = 0;
 	private activeScrollTimer: ReturnType<typeof setTimeout> | null = null;
 	private resizeObserver: ResizeObserver | null = null;
 	private mindmapNodePills: (HTMLElement | null)[] = [];
@@ -165,6 +410,7 @@ export class ArticleTocPanelController {
 		this.mindmapFullscreenButton = root.querySelector(
 			"[data-toc-mindmap-fullscreen]",
 		);
+		this.planeEl = root.querySelector("[data-toc-plane]");
 	}
 
 	public init(): boolean {
@@ -212,7 +458,9 @@ export class ArticleTocPanelController {
 		this.root.classList.remove("is-pending");
 		this.applyAutoAccordion();
 		this.syncToggleAllButton();
-		this.scheduleLines();
+		/* 竖轨必须赶在面板露出第一帧前画好：指示器是视口定位的，晚一帧就会先在
+		   屏幕左上角闪一下才跳到轨上 */
+		this.drawTrack();
 		this.update();
 		return true;
 	}
@@ -230,13 +478,15 @@ export class ArticleTocPanelController {
 		this.appliedRailTop = null;
 		if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
 		if (this.measureFrame !== null) cancelAnimationFrame(this.measureFrame);
-		if (this.linesFrame !== null) cancelAnimationFrame(this.linesFrame);
-		if (this.lineAnimFrame !== null) cancelAnimationFrame(this.lineAnimFrame);
+		if (this.trackFrame !== null) cancelAnimationFrame(this.trackFrame);
+		if (this.trackAnimFrame !== null) cancelAnimationFrame(this.trackAnimFrame);
+		if (this.tickFrame !== null) cancelAnimationFrame(this.tickFrame);
 		if (this.activeScrollTimer) clearTimeout(this.activeScrollTimer);
 		this.animationFrame = null;
 		this.measureFrame = null;
-		this.linesFrame = null;
-		this.lineAnimFrame = null;
+		this.trackFrame = null;
+		this.trackAnimFrame = null;
+		this.tickFrame = null;
 		this.activeScrollTimer = null;
 		/* 弹窗还开着时导航走人：显式关掉，避免顶层 layer 残留焦点陷阱 */
 		if (this.mindmapDialog?.open) this.mindmapDialog.close();
@@ -252,7 +502,15 @@ export class ArticleTocPanelController {
 
 		const fragment = document.createDocumentFragment();
 		this.rows = [];
-		this.linePaths = tree.nodes.map(() => null);
+		/* 两条常驻 path：之后每帧只改 d 与 dasharray，不再逐节点增删元素 */
+		this.trackBase = document.createElementNS(SVG_NAMESPACE, "path");
+		this.trackBase.classList.add("article-toc-panel__track-base");
+		this.trackProgress = document.createElementNS(SVG_NAMESPACE, "path");
+		this.trackProgress.classList.add("article-toc-panel__track-progress");
+		svg.replaceChildren(this.trackBase, this.trackProgress);
+		this.trackPlaced = false;
+		this.dotUnderPlane = null;
+		this.coveredCount = -1;
 
 		const rootRow = document.createElement("div");
 		rootRow.className = "article-toc-panel__row article-toc-panel__row--root";
@@ -350,8 +608,8 @@ export class ArticleTocPanelController {
 		this.autoButton?.setAttribute("aria-pressed", String(enabled));
 		if (!enabled) return;
 
-		if (this.applyAutoAccordion()) this.startLineAnimation();
-		this.scheduleLines();
+		if (this.applyAutoAccordion()) this.startTrackAnimation();
+		this.scheduleTrack();
 		this.syncToggleAllButton();
 	}
 
@@ -361,8 +619,8 @@ export class ArticleTocPanelController {
 	 */
 	private toggleAll(): void {
 		this.applyExpandAll(!this.isAllExpanded());
-		this.startLineAnimation();
-		this.scheduleLines();
+		this.startTrackAnimation();
+		this.scheduleTrack();
 		this.syncToggleAllButton();
 	}
 
@@ -468,7 +726,7 @@ export class ArticleTocPanelController {
 		if (this.autoEnabled) this.manualState.set(index, nextExpanded);
 		ref.row.classList.toggle("is-collapsed", !nextExpanded);
 		ref.toggle.setAttribute("aria-expanded", String(nextExpanded));
-		this.startLineAnimation();
+		this.startTrackAnimation();
 		this.syncToggleAllButton();
 	}
 
@@ -481,44 +739,44 @@ export class ArticleTocPanelController {
 		this.manualState.set(index, true);
 		ref.row.classList.remove("is-collapsed");
 		ref.toggle.setAttribute("aria-expanded", "true");
-		this.startLineAnimation();
+		this.startTrackAnimation();
 		this.syncToggleAllButton();
 	}
 
-	/* ---------- 连接线 ---------- */
+	/* ---------- 竖轨与指示器 ---------- */
 
-	private scheduleLines(): void {
-		if (this.linesFrame !== null) return;
-		this.linesFrame = requestAnimationFrame(() => {
-			this.linesFrame = null;
-			this.drawLines();
+	private scheduleTrack(): void {
+		if (this.trackFrame !== null) return;
+		this.trackFrame = requestAnimationFrame(() => {
+			this.trackFrame = null;
+			this.drawTrack();
 			if (this.mindmapDialog?.open) this.drawMindmapLines();
 		});
 	}
 
-	/** 折叠动画期间逐帧重画连接线，让线跟着行的展开/收起一起动 */
-	private startLineAnimation(durationMs = 280): void {
+	/** 折叠动画期间逐帧重画竖轨，让轨跟着行的展开/收起一起动 */
+	private startTrackAnimation(durationMs = 280): void {
 		if (prefersReducedMotion()) {
-			this.scheduleLines();
+			this.scheduleTrack();
 			return;
 		}
-		this.lineAnimUntil = Math.max(
-			this.lineAnimUntil,
+		this.trackAnimUntil = Math.max(
+			this.trackAnimUntil,
 			performance.now() + durationMs,
 		);
-		if (this.lineAnimFrame !== null) return;
+		if (this.trackAnimFrame !== null) return;
 
 		const tick = () => {
-			this.drawLines();
-			if (performance.now() < this.lineAnimUntil) {
-				this.lineAnimFrame = requestAnimationFrame(tick);
+			this.drawTrack();
+			if (performance.now() < this.trackAnimUntil) {
+				this.trackAnimFrame = requestAnimationFrame(tick);
 				return;
 			}
-			this.lineAnimFrame = null;
-			this.lineAnimUntil = 0;
-			this.drawLines();
+			this.trackAnimFrame = null;
+			this.trackAnimUntil = 0;
+			this.drawTrack();
 		};
-		this.lineAnimFrame = requestAnimationFrame(tick);
+		this.trackAnimFrame = requestAnimationFrame(tick);
 	}
 
 	/** 树容器的局部坐标：视口坐标 → 容器内容坐标（含滚动） */
@@ -532,15 +790,40 @@ export class ArticleTocPanelController {
 		};
 	}
 
+	/** 圆点中心（树内容坐标）；宽高皆 0 说明量不到（未挂载或已被裁剪） */
+	private dotCenter(dot: HTMLElement | null): { x: number; y: number } | null {
+		if (!dot) return null;
+		const rect = dot.getBoundingClientRect();
+		if (rect.width === 0 && rect.height === 0) return null;
+		const local = this.toTreeLocal(rect);
+		return { x: local.x + rect.width / 2, y: local.y + rect.height / 2 };
+	}
+
+	/** 行是否可见：任一祖先收起即被 0fr 裁剪（offsetParent 探测不到） */
+	private isNodeVisible(index: number): boolean {
+		const tree = this.tree;
+		if (!tree) return false;
+		let cursor = tree.nodes[index].parent;
+		while (cursor >= 0) {
+			if (this.rows[cursor]?.row.classList.contains("is-collapsed")) {
+				return false;
+			}
+			cursor = tree.nodes[cursor].parent;
+		}
+		return true;
+	}
+
 	/**
-	 * 连接线只在「根 → 目标节点」的路径上描绘（Obsidian 同款）：默认只有圆点，
-	 * 悬停或阅读位置变化时才画；路径从父级圆点垂下，以圆角肘形弯入子级圆点。
+	 * 竖轨：一根自上而下贯穿所有可见圆点的连续路径，上叠一条按阅读弧长填充的
+	 * 进度线。折叠掉的子树不参与取点，轨于是自动从父圆点拐向下一个可见兄弟。
 	 */
-	private drawLines(): void {
+	private drawTrack(): void {
 		const tree = this.tree;
 		const svg = this.linesSvg;
 		const nav = this.treeNav;
-		if (!tree || !svg || !nav) return;
+		const base = this.trackBase;
+		const progress = this.trackProgress;
+		if (!tree || !svg || !nav || !base || !progress) return;
 
 		/* 先归零再测量：svg 的旧高度是绝对定位溢出，会污染 scrollHeight
 		   （只涨不缩的棘轮），在树里残留大片可滚动的空白 */
@@ -552,98 +835,362 @@ export class ArticleTocPanelController {
 			String(Math.max(nav.scrollHeight, nav.clientHeight)),
 		);
 
-		const targets = new Map<number, "active" | "hover">();
-		this.getTrailIndexes(this.hoverIndex).forEach((index) => {
-			targets.set(index, "hover");
-		});
-		this.getTrailIndexes(this.activeIndex).forEach((index) => {
-			targets.set(index, "active");
-		});
-
-		const keptPaths = new Set<SVGPathElement>();
-		const dotCenter = (dot: HTMLElement | null) => {
-			if (!dot) return null;
-			const rect = dot.getBoundingClientRect();
-			if (rect.width === 0 && rect.height === 0) return null;
-			const local = this.toTreeLocal(rect);
-			return {
-				x: local.x + rect.width / 2,
-				y: local.y + rect.height / 2,
-				radius: rect.width / 2,
-			};
-		};
-
-		/** 行是否可见：任一祖先收起即被 0fr 裁剪（offsetParent 探测不到） */
-		const isVisible = (index: number): boolean => {
-			let cursor = tree.nodes[index].parent;
-			while (cursor >= 0) {
-				if (this.rows[cursor]?.row.classList.contains("is-collapsed")) {
-					return false;
-				}
-				cursor = tree.nodes[cursor].parent;
-			}
-			return true;
-		};
-
-		const rootCenter = dotCenter(this.rootDot);
-		targets.forEach((kind, index) => {
-			const node = tree.nodes[index];
-			const start =
-				node.parent >= 0
-					? dotCenter(this.rows[node.parent]?.dot ?? null)
-					: rootCenter;
-			const end = dotCenter(this.rows[index]?.dot ?? null);
-			if (!start || !end || !isVisible(index)) return;
-
-			let path = this.linePaths[index];
-			if (!path) {
-				path = document.createElementNS(SVG_NAMESPACE, "path");
-				this.linePaths[index] = path;
-				svg.appendChild(path);
-			}
-			keptPaths.add(path);
-			path.setAttribute(
-				"class",
-				`article-toc-panel__line${
-					kind === "active" ? " is-active-trail" : " is-hover-trail"
-				}`,
-			);
-
-			const corner = clamp(
-				LINE_CORNER_RADIUS,
-				0,
-				Math.max(0, end.y - start.y) / 2,
-			);
-			const hookEnd = Math.max(
-				end.x - end.radius - LINE_DOT_GAP,
-				start.x + corner,
-			);
-			path.setAttribute(
-				"d",
-				`M ${start.x} ${start.y} V ${end.y - corner} Q ${start.x} ${end.y} ${start.x + corner} ${end.y} H ${hookEnd}`,
-			);
+		const hadTrack = this.trackTotal > 0;
+		const points: TrackPoint[] = [];
+		const indexes: number[] = [];
+		const rootCenter = this.dotCenter(this.rootDot);
+		if (rootCenter) {
+			points.push(rootCenter);
+			indexes.push(-1);
+		}
+		tree.nodes.forEach((node) => {
+			if (!this.isNodeVisible(node.index)) return;
+			const center = this.dotCenter(this.rows[node.index]?.dot ?? null);
+			if (!center) return;
+			points.push(center);
+			indexes.push(node.index);
 		});
 
-		this.linePaths.forEach((path, index) => {
-			if (path && !keptPaths.has(path)) {
-				path.remove();
-				this.linePaths[index] = null;
-			}
-		});
+		const d = buildTrackPath(points);
+		if (!d) {
+			base.removeAttribute("d");
+			progress.removeAttribute("d");
+			this.trackTotal = 0;
+			this.trackLengths = [];
+			this.trackNodeIndexes = [];
+			this.trackPoints = [];
+			this.coveredCount = -1;
+			return;
+		}
+		base.setAttribute("d", d);
+		progress.setAttribute("d", d);
+		this.trackTotal = base.getTotalLength();
+		this.trackLengths = points.map((point) =>
+			lengthAtY(base, this.trackTotal, point.y),
+		);
+		this.trackNodeIndexes = indexes;
+		this.trackPoints = points;
+		/* 圆点的实心/遮蔽状态是按弧长算的，轨形一变就得整体回写一次 */
+		this.coveredCount = -1;
+
+		/* 轨从空到有（窄屏拉宽、加密文章解密出标题）时重新定一次位：
+		   已放置过的指示器会按弹簧从 0 弧长一路爬上来，那是条不存在的阅读过程 */
+		if (!hadTrack) this.trackPlaced = false;
+
+		/* 收拢/展开会整体改变轨长，同一阅读位置对应的弧长跟着变：重定目标再按当前
+		   弧长落位，否则指示器会从旧弧长一路爬过来，看着像线在追自己 */
+		this.aim(this.readingLength());
+		this.pose(this.travel.value);
 	}
 
-	/** 根到目标节点路径上的节点下标（每个节点一条入线） */
-	private getTrailIndexes(index: number): number[] {
-		const tree = this.tree;
-		if (!tree || index < 0 || index >= tree.nodes.length) return [];
+	/**
+	 * 阅读锚点（窗口滚动 + READING_OFFSET）落在轨上的弧长：在锚点上下两个轨点之间
+	 * 按标题纵坐标插值，指示器才是在两段标题之间匀滑地走，而不是逐格跳。
+	 */
+	private readingLength(): number {
+		const lengths = this.trackLengths;
+		const indexes = this.trackNodeIndexes;
+		if (lengths.length === 0 || this.trackTotal <= 0) return 0;
 
-		const indexes: number[] = [];
-		let cursor = index;
-		while (cursor >= 0) {
-			indexes.push(cursor);
-			cursor = tree.nodes[cursor].parent;
+		const anchor = window.scrollY + READING_OFFSET;
+		const topOf = (index: number): number =>
+			index < 0 ? this.rootTop : (this.headingTops[index] ?? this.rootTop);
+		if (anchor <= topOf(indexes[0])) return lengths[0];
+
+		for (let i = 1; i < indexes.length; i += 1) {
+			const fromTop = topOf(indexes[i - 1]);
+			const toTop = topOf(indexes[i]);
+			if (anchor < toTop) {
+				const span = toTop - fromTop;
+				const ratio = span > 0 ? clamp((anchor - fromTop) / span, 0, 1) : 1;
+				return lengths[i - 1] + ratio * (lengths[i] - lengths[i - 1]);
+			}
 		}
-		return indexes;
+		return lengths[lengths.length - 1];
+	}
+
+	/**
+	 * 定指示器的目标弧长。换向必须先攒够 TURN_SLACK：滚动条抖几个像素就掉头的话
+	 * 机头会来回翻转，比不动更糟。
+	 */
+	private aim(length: number): void {
+		if (!this.trackPlaced) {
+			this.trackPlaced = true;
+			this.travel.jump(length);
+			this.pose(length);
+			this.heading.jump(this.heading.target);
+			return;
+		}
+		if (prefersReducedMotion()) {
+			this.travel.jump(length);
+			this.pose(length);
+			return;
+		}
+
+		const from = this.turnFrom;
+		if ((length - from) * this.facing > 0) {
+			this.turnFrom = length;
+		} else if (Math.abs(length - from) > TURN_SLACK) {
+			this.facing = this.facing > 0 ? -1 : 1;
+			this.turnFrom = length;
+		}
+		this.travel.setTarget(length);
+		this.ensureTick();
+	}
+
+	/** 弧长、朝向、起飞进度共用一个帧循环，三者都停了就退帧，不空转 */
+	private ensureTick(): void {
+		if (this.tickFrame !== null || prefersReducedMotion()) return;
+		this.lastTickAt = performance.now();
+		this.tickFrame = requestAnimationFrame((now) => this.runTick(now));
+	}
+
+	private runTick(now: number): void {
+		const dt = clamp((now - this.lastTickAt) / 1000, 0, SPRING_MAX_STEP);
+		this.lastTickAt = now;
+		const traveling = this.travel.step(dt);
+		const turning = this.heading.step(dt);
+		const flying = this.stepFlight(dt);
+		this.pose(this.travel.value);
+		this.tickFrame =
+			traveling || turning || flying
+				? requestAnimationFrame((next) => this.runTick(next))
+				: null;
+	}
+
+	/** 把指示器放到给定弧长上：取点定朝向、按弧长写进度、重算视口位置 */
+	private pose(length: number): void {
+		const path = this.trackBase;
+		const total = this.trackTotal;
+		if (!path || !total) return;
+
+		const at = path.getPointAtLength(length);
+		const behind = path.getPointAtLength(Math.max(0, length - 1));
+		const ahead = path.getPointAtLength(Math.min(total, length + 1));
+		this.planeX = at.x;
+		this.planeY = at.y;
+		/* 起飞中不接管朝向：机头由轨迹切线说了算，这里改了会和返航打架 */
+		if (!this.flight) {
+			const tangent =
+				(Math.atan2(ahead.y - behind.y, ahead.x - behind.x) * 180) / Math.PI;
+			this.steer(tangent + 90 + (this.facing < 0 ? 180 : 0));
+		}
+
+		/* dasharray 按真实弧长写，不走 pathLength 归一——总长本来就在手上，少一层
+		   跨浏览器实现差异 */
+		const filled = clamp(length / total, 0, 1);
+		this.trackProgress?.setAttribute(
+			"stroke-dasharray",
+			`${filled * total} ${total}`,
+		);
+		this.syncTrackDots(length);
+		this.applyPlane();
+	}
+
+	/**
+	 * 圆点的两种状态，对齐参照实现里「已走过填实 + 指示器处挖孔」：
+	 * - 填实按弧长判定，轨上排在指示器之前的都算已走过；
+	 * - 挖孔在这里做不到——圆点是带实底的 HTML span，SVG 的 mask 管不着它，
+	 *   改成按 2D 距离判定「离指示器足够近就藏起来」，观感等价。
+	 */
+	private syncTrackDots(length: number): void {
+		const reached = this.trackLengths.filter((n) => n <= length + 0.5).length;
+		if (reached !== this.coveredCount) {
+			this.coveredCount = reached;
+			const covered = new Set<number>();
+			this.trackNodeIndexes.forEach((index, i) => {
+				if (i < reached && index >= 0) covered.add(index);
+			});
+			this.rows.forEach((ref, index) => {
+				ref.dot.classList.toggle("is-covered", covered.has(index));
+			});
+		}
+
+		/* 起飞后指示器已经离轨，被遮的那颗要露出来（参照实现是孔随 flight 一起缩掉） */
+		let under: HTMLElement | null = null;
+		if (this.flight < 0.125) {
+			for (let i = 0; i < this.trackPoints.length; i += 1) {
+				const point = this.trackPoints[i];
+				const near =
+					Math.hypot(point.x - this.planeX, point.y - this.planeY) <=
+					PLANE_DOT_COVER;
+				if (near) {
+					under = this.dotOfTrackPoint(this.trackNodeIndexes[i]);
+					break;
+				}
+			}
+		}
+		if (under === this.dotUnderPlane) return;
+		this.dotUnderPlane?.classList.remove("is-under-plane");
+		under?.classList.add("is-under-plane");
+		this.dotUnderPlane = under;
+	}
+
+	/** 轨上某个点对应的圆点元素（-1 是根圆点） */
+	private dotOfTrackPoint(index: number): HTMLElement | null {
+		return index < 0 ? this.rootDot : (this.rows[index]?.dot ?? null);
+	}
+
+	/** 朝向按当前值解算整圈，弹簧才走短线而不是绕 350° 的远路 */
+	private steer(angle: number): void {
+		const unwrapped =
+			angle + 360 * Math.round((this.heading.value - angle) / 360);
+		if (prefersReducedMotion()) {
+			this.heading.jump(unwrapped);
+		} else {
+			this.heading.setTarget(unwrapped);
+		}
+	}
+
+	/**
+	 * 指示器是视口定位（要越过 __tree 的 overflow 裁剪），所以每帧把树内容坐标换算
+	 * 回视口：加上树矩形的当前位置，再扣掉树自身的滚动。
+	 *
+	 * 锚点先钳进树的可视框：轨上被裁掉的那些圆点在 SVG 里本来就看不见，视口定位的
+	 * 飞机却会从面板底下钻出来。起飞位移在钳制之后才叠加，否则飞出可视框的那段会被
+	 * 一路拉回边上。
+	 */
+	private applyPlane(): void {
+		const plane = this.planeEl;
+		const nav = this.treeNav;
+		if (!plane || !nav) return;
+
+		const navRect = nav.getBoundingClientRect();
+		const anchorX = clamp(
+			navRect.left - nav.scrollLeft + this.planeX,
+			navRect.left + PLANE_EDGE_INSET,
+			navRect.right - PLANE_EDGE_INSET,
+		);
+		const anchorY = clamp(
+			navRect.top - nav.scrollTop + this.planeY,
+			navRect.top + PLANE_EDGE_INSET,
+			navRect.bottom - PLANE_EDGE_INSET,
+		);
+		const fall = this.flight ? this.fall : null;
+		const left = anchorX + (fall ? sampleFall(fall.xs, this.flight) : 0);
+		const top = anchorY + (fall ? sampleFall(fall.ys, this.flight) : 0);
+		plane.style.transform = `translate3d(${left}px, ${top}px, 0) rotate(${this.heading.value}deg)`;
+	}
+
+	/**
+	 * 推进起飞/返航的归一化进度。起飞匀速（抛出去的那一段），返航用 cubic
+	 * ease-out 沿原轨迹倒着收，机头翻成领队。
+	 */
+	private stepFlight(dt: number): boolean {
+		const tween = this.flightTween;
+		if (!tween) return false;
+		tween.elapsed += dt;
+		const ratio =
+			tween.duration > 0 ? Math.min(1, tween.elapsed / tween.duration) : 1;
+		const shaped = tween.to < tween.from ? 1 - (1 - ratio) ** 3 : ratio;
+		this.flight = tween.from + (tween.to - tween.from) * shaped;
+
+		const fall = this.fall;
+		if (fall && this.flight) {
+			/* 返航时 away 已归零，机头要翻 180° 才领得到前面 */
+			this.steer(sampleFall(fall.angles, this.flight) + (this.away ? 0 : 180));
+		}
+		if (ratio >= 1) {
+			this.flight = tween.to;
+			this.flightTween = null;
+		}
+		return this.flightTween !== null;
+	}
+
+	/** 页面是否贴在滚动两端：起飞只允许从这两端发生 */
+	private scrollEdges(): { atTop: boolean; atEnd: boolean } {
+		const doc = document.documentElement;
+		return {
+			atTop: window.scrollY <= 1,
+			atEnd: window.scrollY >= doc.scrollHeight - window.innerHeight - 1,
+		};
+	}
+
+	/** 面板不可见（窄屏）或已换成相关文章浮层时不放飞机出去 */
+	private canFly(): boolean {
+		if (this.mode === "related") return false;
+		return getComputedStyle(this.root).display !== "none";
+	}
+
+	/**
+	 * 累积贴边后的溢出滚量；方向一反向就清零，避免来回搓出起飞。
+	 * 这里不查面板可见性：窄屏下累积是惰性的，真起飞时 takeOff 会把住。
+	 */
+	private spillBy(delta: number): void {
+		if (this.away || prefersReducedMotion()) return;
+		const { atTop, atEnd } = this.scrollEdges();
+		const edge: -1 | 0 | 1 =
+			delta > 0 && atEnd ? 1 : delta < 0 && atTop ? -1 : 0;
+		if (!edge || Math.sign(this.spill) === -edge) {
+			this.spill = 0;
+		}
+		if (!edge) return;
+		this.spill += delta;
+		if (Math.abs(this.spill) > OVERSCROLL) {
+			this.takeOff(edge > 0 ? 1 : -1);
+		}
+	}
+
+	private takeOff(edge: -1 | 1): void {
+		const plane = this.planeEl;
+		if (!plane || this.away || prefersReducedMotion() || !this.canFly()) return;
+
+		this.away = edge;
+		this.facing = edge;
+		this.turnFrom = this.travel.target;
+		const started = this.flight;
+		let fall = this.fall;
+		/* 还在返航途中又被推出去：沿用上一条轨迹，否则飞机会瞬移 */
+		if (!started || !fall) {
+			this.pose(this.travel.value);
+			const rect = plane.getBoundingClientRect();
+			const angle = (this.heading.value * Math.PI) / 180;
+			/* 位移与边界同在视口坐标系里算：飞机本来就是视口定位的 */
+			const originX = rect.left + rect.width / 2;
+			const originY = rect.top + rect.height / 2;
+			fall = planFall(
+				{ x: Math.sin(angle), y: -Math.cos(angle) },
+				FLIGHT_EDGE_INSET - originX,
+				window.innerWidth - FLIGHT_EDGE_INSET - originX,
+				window.innerHeight - FLIGHT_BOTTOM_GAP - originY,
+			);
+			this.fall = fall;
+		}
+		this.flightTween = {
+			from: this.flight,
+			to: 1,
+			duration: (1 - started) * fall.duration,
+			elapsed: 0,
+		};
+		this.ensureTick();
+	}
+
+	private land(): void {
+		this.spill = 0;
+		const edge = this.away;
+		const fall = this.fall;
+		if (!edge || !fall) return;
+
+		this.away = 0;
+		this.facing = edge > 0 ? -1 : 1;
+		this.turnFrom = this.travel.target;
+		this.flightTween = {
+			from: this.flight,
+			to: 0,
+			duration: Math.max(0.6, this.flight * fall.duration * 0.45),
+			elapsed: 0,
+		};
+		this.ensureTick();
+	}
+
+	/** 离开边缘就中断起飞改走返航；中途回滚则把累积的溢出滚量清零 */
+	private syncFlightWithScroll(): void {
+		const { atTop, atEnd } = this.scrollEdges();
+		if (this.away) {
+			const stillAtEdge = this.away > 0 ? atEnd : atTop;
+			if (!stillAtEdge) this.land();
+		}
+		if (!atTop && !atEnd) this.spill = 0;
 	}
 
 	/* ---------- 滚动同步 ---------- */
@@ -671,6 +1218,11 @@ export class ArticleTocPanelController {
 		this.headingTops = tree.nodes.map(
 			(node) => node.element.getBoundingClientRect().top + scrollY,
 		);
+		/* 根圆点对应文章标题：指示器在根与首个标题之间也要走一段，量不到标题元素
+		   就退到正文卡顶 */
+		this.rootTop = tree.titleElement
+			? tree.titleElement.getBoundingClientRect().top + scrollY
+			: this.articleStart;
 	}
 
 	private getProgress(): number {
@@ -809,7 +1361,7 @@ export class ArticleTocPanelController {
 			this.measureFrame = null;
 			if (!this.tree) return;
 			this.cachePositions();
-			this.scheduleLines();
+			this.scheduleTrack();
 			this.activeIndex = -1;
 			this.update();
 		});
@@ -820,6 +1372,7 @@ export class ArticleTocPanelController {
 
 		this.syncDock();
 		this.evaluateMode();
+		this.syncFlightWithScroll();
 
 		const progressPercent = Math.round(this.getProgress() * 100);
 		if (progressPercent !== this.lastProgressPercent) {
@@ -833,9 +1386,14 @@ export class ArticleTocPanelController {
 		}
 
 		const nextActiveIndex = this.getActiveIndex();
-		if (nextActiveIndex === this.activeIndex) return;
-		this.activeIndex = nextActiveIndex;
-		this.syncActive();
+		if (nextActiveIndex !== this.activeIndex) {
+			this.activeIndex = nextActiveIndex;
+			this.syncActive();
+		}
+		/* 指示器要连续跟随锚点插值，不能只在活动行变化时才动；applyPlane 无条件跑——
+		   syncDock 刚挪过面板顶边，树也可能被读者自己滚过 */
+		this.aim(this.readingLength());
+		this.applyPlane();
 	}
 
 	private syncActive(): void {
@@ -850,10 +1408,10 @@ export class ArticleTocPanelController {
 		});
 
 		this.rebuildActiveChain();
-		if (this.applyAutoAccordion()) this.startLineAnimation();
+		if (this.applyAutoAccordion()) this.startTrackAnimation();
 		this.syncToggleAllButton();
 
-		this.scheduleLines();
+		this.scheduleTrack();
 		this.scheduleActiveRowScroll();
 	}
 
@@ -884,6 +1442,10 @@ export class ArticleTocPanelController {
 		const tree = this.tree;
 		if (!tree) return;
 
+		/* 点击跳转把飞着的指示器收回轨上（参照实现的 select 语义）。它那套 pin——点住
+		   之后定在目标上直到读者再滚——没有跟过来：本项目活动态本来就由 getActiveIndex
+		   的二分决定，多一套状态反而和它打架 */
+		this.land();
 		window.tocInternalNavigation = true;
 		let targetTop: number;
 		let hashId: string | null = null;
@@ -1062,7 +1624,7 @@ export class ArticleTocPanelController {
 		const canvas = this.mindmapCanvas;
 		if (!tree || !svg || !canvas) return;
 
-		/* 同 drawLines：先归零排除自身（与旧 path）对滚动尺寸的污染 */
+		/* 同 drawTrack：先归零排除自身（与旧 path）对滚动尺寸的污染 */
 		svg.setAttribute("width", "0");
 		svg.setAttribute("height", "0");
 		svg.replaceChildren();
@@ -1208,27 +1770,41 @@ export class ArticleTocPanelController {
 			{ signal },
 		);
 
-		this.treeNav?.addEventListener(
-			"mouseover",
+		/* 指示器挂在外层按视口定位，树内部滚动只挪 nav.scrollTop：竖轨跟着内容走，
+		   指示器却要重算一次视口位置 */
+		this.treeNav?.addEventListener("scroll", () => this.applyPlane(), {
+			passive: true,
+			signal,
+		});
+
+		/* 起飞只由用户主动滚动触发：监听挂在 window 上且一律 passive，不拦默认行为。
+		   鼠标停在面板上、由树自己消化滚动时 wheel 仍会冒泡到这里 */
+		window.addEventListener(
+			"wheel",
 			(event) => {
-				const row = (event.target as HTMLElement | null)?.closest<HTMLElement>(
-					"[data-toc-index]",
+				this.spillBy(
+					event.deltaMode === 1
+						? event.deltaY * WHEEL_LINE_PIXELS
+						: event.deltaY,
 				);
-				const index = row ? Number(row.dataset.tocIndex) : -1;
-				if (index === this.hoverIndex) return;
-				this.hoverIndex = index;
-				this.scheduleLines();
 			},
-			{ signal },
+			{ passive: true, signal },
 		);
-		this.treeNav?.addEventListener(
-			"mouseleave",
-			() => {
-				if (this.hoverIndex === -1) return;
-				this.hoverIndex = -1;
-				this.scheduleLines();
+		window.addEventListener(
+			"touchstart",
+			(event) => {
+				this.touchY = event.touches[0]?.clientY ?? 0;
 			},
-			{ signal },
+			{ passive: true, signal },
+		);
+		window.addEventListener(
+			"touchmove",
+			(event) => {
+				const next = event.touches[0]?.clientY ?? this.touchY;
+				this.spillBy(this.touchY - next);
+				this.touchY = next;
+			},
+			{ passive: true, signal },
 		);
 
 		this.mindmapCanvas?.addEventListener(

@@ -87,8 +87,23 @@ const closeLabel = i18n(I18nKey.close);
 		</div>
 
 		<nav class="article-toc-panel__tree" aria-label={outlineLabel} data-toc-tree>
+			<!-- 竖轨（虚线主干 + 进度线）的两条 path 由控制器建在这里 -->
 			<svg class="article-toc-panel__lines" data-toc-lines aria-hidden="true" focusable="false"></svg>
 		</nav>
+
+		<!-- 阅读位置指示器。挂在 __view 而不是 __tree：树的 overflow 裁剪会把起飞的
+		     飞机切成一截；纸飞机形状是内联 path，不走 pnpm icons 的图标集收集 -->
+		<span class="article-toc-panel__plane" data-toc-plane aria-hidden="true">
+			<svg class="article-toc-panel__plane-icon" viewBox="0 0 24 24" focusable="false">
+				<path
+					d="M12 2 20.5 21 12 17.5 3.5 21z"
+					fill="currentColor"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linejoin="round"
+				/>
+			</svg>
+		</span>
 	</div>
 
 	<!-- 相关文章视图（仅 switchable 时渲染；控制器探测到后启用转换） -->

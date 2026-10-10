@@ -13,6 +13,8 @@
 		--article-toc-line: rgb(0 0 0 / 28%);
 		--article-toc-dot: rgb(0 0 0 / 40%);
 		--article-toc-surface-width: 18rem;
+		--toc-plane-size: 1rem;
+		--toc-plane-shadow: rgb(0 0 0 / 35%);
 
 		position: fixed;
 		top: 8rem;
@@ -40,6 +42,7 @@
 		--article-toc-panel-hover: rgb(255 255 255 / 12%);
 		--article-toc-line: rgb(255 255 255 / 22%);
 		--article-toc-dot: rgb(255 255 255 / 40%);
+		--toc-plane-shadow: rgb(0 0 0 / 55%);
 	}
 
 	.article-toc-panel.is-pending {
@@ -283,22 +286,48 @@
 		pointer-events: none;
 	}
 
-	.article-toc-panel__line {
+	/* 竖轨：底层虚线 + 按阅读弧长填充的进度线，两条共用控制器写的同一个 d。
+	   虚线靠圆头端帽把 dash 渲染成点列；进度线的端帽必须保持默认 butt——
+	   它的 dasharray 会被写成 0，round 会把那个零长度 dash 渲染成轨头的一粒实心点。 */
+	.article-toc-panel__track-base {
 		fill: none;
 		stroke: var(--article-toc-line);
-		stroke-width: 1.5;
-		transition:
-			stroke 160ms ease,
-			opacity 160ms ease;
+		stroke-width: 1.25;
+		stroke-dasharray: 2 5;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 
-	.article-toc-panel__line.is-hover-trail {
+	.article-toc-panel__track-progress {
+		fill: none;
 		stroke: var(--article-toc-active);
-		opacity: 0.55;
+		stroke-width: 1.25;
+		stroke-linejoin: round;
 	}
 
-	.article-toc-panel__line.is-active-trail {
-		stroke: var(--article-toc-active);
+	/* 阅读位置指示器。挂在 __view 而非 __tree：树的 overflow 裁剪会把起飞切掉；
+	   目录层淡出时它跟着消失——visibility 从 __view 继承，本层不设显隐。
+	   视口定位的前提是祖先链上没有 transform/filter，见 transition.css 里为
+	   .article-toc-panel 退化进出场位移的那段约定。 */
+	.article-toc-panel__plane {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 2;
+		width: var(--toc-plane-size);
+		height: var(--toc-plane-size);
+		/* 让几何中心落在控制器 translate3d 给出的那个点上，旋转才有对的枢轴 */
+		margin: calc(var(--toc-plane-size) / -2) 0 0 calc(var(--toc-plane-size) / -2);
+		color: var(--article-toc-panel-text);
+		pointer-events: none;
+		filter: drop-shadow(0 0 2px var(--toc-plane-shadow));
+	}
+
+	.article-toc-panel__plane-icon {
+		display: block;
+		width: 100%;
+		height: 100%;
+		overflow: visible;
 	}
 
 	/* 行容器承载悬停/活动高亮、内边距与逐级缩进（含一级相对根节点的缩进）；
@@ -398,6 +427,10 @@
 		border: 1.5px solid var(--article-toc-dot);
 		border-radius: 999px;
 		background: var(--article-toc-panel-bg);
+		transition:
+			border-color 160ms ease,
+			background-color 160ms ease,
+			opacity 120ms ease;
 	}
 
 	.article-toc-panel__row[data-toc-level="2"] .article-toc-panel__dot {
@@ -417,6 +450,17 @@
 
 	.article-toc-panel__row.is-active > .article-toc-panel__link .article-toc-panel__dot {
 		border-color: var(--article-toc-active);
+	}
+
+	/* 竖轨上排在指示器之前的点填实，与进度线同色（参照实现的 covered 态） */
+	.article-toc-panel__dot.is-covered {
+		border-color: var(--article-toc-active);
+		background: var(--article-toc-active);
+	}
+
+	/* 被指示器压住的那颗让位——它是带实底的 span，没法被 SVG mask 挖掉，只能藏 */
+	.article-toc-panel__dot.is-under-plane {
+		opacity: 0;
 	}
 
 	/* 折叠箭头：展开朝下，收起朝右 */
@@ -470,8 +514,8 @@
 
 		.article-toc-panel__tool-btn,
 		.article-toc-panel__tool-btn::after,
-		.article-toc-panel__line,
 		.article-toc-panel__link,
+		.article-toc-panel__dot,
 		.article-toc-panel__toggle,
 		.article-toc-panel__toggle::before,
 		.article-toc-panel__children {
