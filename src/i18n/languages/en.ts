@@ -551,6 +551,16 @@ export const en: Translation = {
 	[Key.gbCopied]: "Copied",
 	[Key.gbCopyMessage]: "Copy message",
 	[Key.gbEditMessage]: "Edit message",
+	[Key.gbSwitchToVoice]: "Switch to voice input",
+	[Key.gbSwitchToKeyboard]: "Switch to keyboard input",
+	[Key.gbVoiceHoldToTalk]: "Hold to speak",
+	[Key.gbVoiceReleaseToSend]: "Release to send",
+	[Key.gbVoiceUnsupported]: "This browser doesn't support voice input",
+	[Key.gbVoiceMicDenied]:
+		"Microphone permission denied. Allow it in browser settings and try again.",
+	[Key.gbVoiceFailed]: "Voice recognition failed. Please try again.",
+	[Key.gbMoreTools]: "More options",
+	[Key.gbCollapseInput]: "Collapse input",
 
 	[Key.tagGraphAccessible]:
 		"Tag relation graph, {tags} tags and {links} links in total. Use arrow keys to select a tag, Enter to open.",

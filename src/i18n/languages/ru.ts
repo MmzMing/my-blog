@@ -557,6 +557,16 @@ export const ru: Translation = {
 	[Key.gbCopied]: "Скопировано",
 	[Key.gbCopyMessage]: "Копировать сообщение",
 	[Key.gbEditMessage]: "Редактировать",
+	[Key.gbSwitchToVoice]: "Переключить на голосовой ввод",
+	[Key.gbSwitchToKeyboard]: "Переключить на клавиатуру",
+	[Key.gbVoiceHoldToTalk]: "Удерживайте, чтобы говорить",
+	[Key.gbVoiceReleaseToSend]: "Отпустите, чтобы отправить",
+	[Key.gbVoiceUnsupported]: "Этот браузер не поддерживает голосовой ввод",
+	[Key.gbVoiceMicDenied]:
+		"Доступ к микрофону запрещён. Разрешите его в настройках браузера и повторите попытку.",
+	[Key.gbVoiceFailed]: "Не удалось распознать речь. Повторите попытку.",
+	[Key.gbMoreTools]: "Больше действий",
+	[Key.gbCollapseInput]: "Свернуть поле ввода",
 
 	[Key.tagGraphAccessible]:
 		"Граф связей тегов: {tags} тегов и {links} связей. Выберите тег стрелками, откройте клавишей Enter.",

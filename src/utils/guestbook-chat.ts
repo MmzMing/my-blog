@@ -3,6 +3,8 @@ import type {
 	GuestbookChatMessage,
 	GuestbookEmojiPack,
 	GuestbookImageAttachment,
+	GuestbookSpeechHandlers,
+	GuestbookSpeechSession,
 } from "@/types/guestbook-chat";
 
 const REPLY_MARKER = /^<!--guestbook-reply:(\d+):([^>]*)-->\s*/u;
@@ -333,4 +335,108 @@ export function getGuestbookInitials(name: string): string {
 		.slice(0, 2)
 		.join("")
 		.toUpperCase();
+}
+
+/* ==================== 语音输入（Web Speech API） ==================== */
+
+interface SpeechRecognitionAlternativeLike {
+	transcript: string;
+}
+
+interface SpeechRecognitionResultLike
+	extends ArrayLike<SpeechRecognitionAlternativeLike> {
+	isFinal: boolean;
+}
+
+interface SpeechRecognitionEventLike {
+	results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface SpeechRecognitionErrorEventLike {
+	error: string;
+}
+
+interface SpeechRecognitionLike {
+	lang: string;
+	continuous: boolean;
+	interimResults: boolean;
+	maxAlternatives: number;
+	onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+	onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+	onend: (() => void) | null;
+	start: () => void;
+	stop: () => void;
+	abort: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+// TS 的 lib.dom 没有 SpeechRecognition，只有未加前缀/带前缀两种私有全局，
+// 只能就地声明最小接口再收窄，不引额外 @types 包。
+function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null {
+	const globals = window as unknown as {
+		SpeechRecognition?: SpeechRecognitionConstructor;
+		webkitSpeechRecognition?: SpeechRecognitionConstructor;
+	};
+	return globals.SpeechRecognition ?? globals.webkitSpeechRecognition ?? null;
+}
+
+export function isGuestbookSpeechSupported(): boolean {
+	return getSpeechRecognitionConstructor() !== null;
+}
+
+export function startGuestbookSpeech(
+	lang: string,
+	handlers: GuestbookSpeechHandlers,
+): GuestbookSpeechSession | null {
+	const SpeechRecognition = getSpeechRecognitionConstructor();
+	if (!SpeechRecognition) return null;
+
+	const recognition = new SpeechRecognition();
+	recognition.lang = lang;
+	recognition.continuous = true;
+	recognition.interimResults = true;
+	recognition.maxAlternatives = 1;
+
+	let finalText = "";
+	let ended = false;
+	const finish = () => {
+		if (ended) return;
+		ended = true;
+		handlers.onEnd();
+	};
+
+	recognition.onresult = (event) => {
+		let interimText = "";
+		for (let index = 0; index < event.results.length; index += 1) {
+			const result = event.results[index];
+			const transcript = result?.[0]?.transcript ?? "";
+			if (result?.isFinal) finalText += transcript;
+			else interimText += transcript;
+		}
+		handlers.onText(finalText, interimText);
+	};
+	recognition.onerror = (event) => {
+		// no-speech / aborted 属于正常收尾，交给 onend 复位，不作为错误提示
+		if (event.error === "no-speech" || event.error === "aborted") return;
+		handlers.onFailure(
+			event.error === "not-allowed" ||
+				event.error === "service-not-allowed" ||
+				event.error === "audio-capture"
+				? "denied"
+				: "failed",
+		);
+	};
+	recognition.onend = finish;
+
+	try {
+		recognition.start();
+	} catch {
+		return null;
+	}
+
+	return {
+		stop: () => recognition.stop(),
+		abort: () => recognition.abort(),
+	};
 }

@@ -561,6 +561,15 @@ enum I18nKey {
 	gbCopied = "gbCopied",
 	gbCopyMessage = "gbCopyMessage",
 	gbEditMessage = "gbEditMessage",
+	gbSwitchToVoice = "gbSwitchToVoice",
+	gbSwitchToKeyboard = "gbSwitchToKeyboard",
+	gbVoiceHoldToTalk = "gbVoiceHoldToTalk",
+	gbVoiceReleaseToSend = "gbVoiceReleaseToSend",
+	gbVoiceUnsupported = "gbVoiceUnsupported",
+	gbVoiceMicDenied = "gbVoiceMicDenied",
+	gbVoiceFailed = "gbVoiceFailed",
+	gbMoreTools = "gbMoreTools",
+	gbCollapseInput = "gbCollapseInput",
 }
 
 export default I18nKey;

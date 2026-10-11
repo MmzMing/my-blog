@@ -537,6 +537,15 @@ export const zh_CN: Translation = {
 	[Key.gbCopied]: "已复制",
 	[Key.gbCopyMessage]: "复制消息",
 	[Key.gbEditMessage]: "编辑消息",
+	[Key.gbSwitchToVoice]: "切换到语音输入",
+	[Key.gbSwitchToKeyboard]: "切换到键盘输入",
+	[Key.gbVoiceHoldToTalk]: "按住 说话",
+	[Key.gbVoiceReleaseToSend]: "松开 发送",
+	[Key.gbVoiceUnsupported]: "当前浏览器不支持语音输入",
+	[Key.gbVoiceMicDenied]: "麦克风权限被拒绝，请在浏览器设置中允许后重试",
+	[Key.gbVoiceFailed]: "语音识别失败，请重试",
+	[Key.gbMoreTools]: "更多功能",
+	[Key.gbCollapseInput]: "收起输入框",
 
 	[Key.tagGraphAccessible]:
 		"标签关系图谱，共 {tags} 个标签、{links} 条关联。使用方向键选择标签，回车打开。",

@@ -561,6 +561,16 @@ export const ja: Translation = {
 	[Key.gbCopied]: "コピーしました",
 	[Key.gbCopyMessage]: "メッセージをコピー",
 	[Key.gbEditMessage]: "メッセージを編集",
+	[Key.gbSwitchToVoice]: "音声入力に切り替え",
+	[Key.gbSwitchToKeyboard]: "キーボード入力に切り替え",
+	[Key.gbVoiceHoldToTalk]: "長押しで話す",
+	[Key.gbVoiceReleaseToSend]: "離して送信",
+	[Key.gbVoiceUnsupported]: "このブラウザは音声入力に対応していません",
+	[Key.gbVoiceMicDenied]:
+		"マイクの権限が拒否されました。ブラウザの設定で許可してから再試行してください",
+	[Key.gbVoiceFailed]: "音声認識に失敗しました。もう一度お試しください",
+	[Key.gbMoreTools]: "その他の機能",
+	[Key.gbCollapseInput]: "入力欄を折りたたむ",
 
 	[Key.tagGraphAccessible]:
 		"タグ関係グラフ、タグ {tags} 個・関連 {links} 件。方向キーでタグを選択し、Enter で開きます。",

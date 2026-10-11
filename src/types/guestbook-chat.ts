@@ -28,6 +28,24 @@ export interface GuestbookImageAttachment {
 	url: string;
 }
 
+/** 语音识别失败归类：denied 为麦克风不可用，failed 为识别服务本身出错 */
+export type GuestbookSpeechFailure = "denied" | "failed";
+
+export interface GuestbookSpeechHandlers {
+	/** 每次识别结果回调，finalText 为本次按住期间累计的确定文本，interimText 为尚未定稿的片段 */
+	onText: (finalText: string, interimText: string) => void;
+	onFailure: (failure: GuestbookSpeechFailure) => void;
+	/** 识别结束（正常结束、被停止或被中止）都会回调一次，供调用方复位录音态 */
+	onEnd: () => void;
+}
+
+export interface GuestbookSpeechSession {
+	/** 收尾并让已识别内容出最终结果 */
+	stop: () => void;
+	/** 立即中止，丢弃本次识别 */
+	abort: () => void;
+}
+
 export interface GuestbookChatMessage {
 	id: string;
 	objectId?: number;

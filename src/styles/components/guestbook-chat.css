@@ -1752,11 +1752,12 @@ html:has(.guestbook-page) {
 	}
 
 	.guestbook-chat__composer-area {
-		padding-right: var(--space-2);
+		/* 左右留白取 0.75rem，与 dock 的 --mobile-dock-edge / --mobile-dock-inset-left 同值，两条才对齐 */
+		padding-right: var(--space-3);
 		padding-bottom: calc(
 			var(--guestbook-mobile-dock-clearance) + env(safe-area-inset-bottom)
 		);
-		padding-left: var(--space-2);
+		padding-left: var(--space-3);
 	}
 
 	.guestbook-composer {
@@ -1826,6 +1827,220 @@ html:has(.guestbook-page) {
 
 	.guestbook-composer__emoji-grid {
 		grid-template-columns: repeat(6, minmax(0, 1fr));
+	}
+
+	/* ── 移动端留言条：椭圆长条紧凑贴在 dock 上方，点 + 或输入撑出多行时展开成卡片 ── */
+	.guestbook-composer--mobile {
+		--gb-mobile-motion: cubic-bezier(0.22, 1, 0.36, 1);
+		display: flex;
+		flex-direction: column;
+		padding: 0;
+		border-radius: 0;
+		background: transparent;
+		box-shadow: none;
+		backdrop-filter: none;
+	}
+
+	/* 提示条排在输入面上方：composer-area 底边钉住，多出来的一行只会往上长，椭圆条不位移 */
+	.guestbook-composer--mobile .guestbook-composer__error {
+		order: -1;
+		margin: 0 0 var(--space-1);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__stage {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__shell {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		padding: var(--space-1);
+		border-radius: var(--radius-full);
+		background: var(--mobile-dock-surface);
+		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 14%);
+		/* 高度与圆角的补间都交给 setShape 的 WAAPI：两者必须同一条时间线，
+		   圆角若走 CSS transition 会和高度各算各的；padding 同理不能参与过渡，
+		   否则两套动画叠加，收缩时就会抖 */
+		transition: box-shadow 240ms ease;
+	}
+
+	:root.dark .guestbook-composer--mobile .guestbook-composer__shell {
+		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 34%);
+	}
+
+	/* 高度补间期间裁掉溢出，动画一结束就撤掉，恢复表情面板的外溢显示 */
+	.guestbook-composer--mobile .guestbook-composer__shell.is-morphing {
+		overflow: hidden;
+	}
+
+	/* 外壳内边距两态同值（不参与高度补间），卡片态多出的留白挂在各行的横向内边距上 */
+	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="card"] {
+		border-radius: var(--radius-large);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__shell.is-listening {
+		box-shadow:
+			0 0 0 0.125rem color-mix(in srgb, var(--guestbook-link) 55%, transparent),
+			0 0.65rem 1.8rem rgb(0 0 0 / 14%);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__bar {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		transition:
+			padding-left 320ms var(--gb-mobile-motion),
+			padding-right 320ms var(--gb-mobile-motion);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="card"] .guestbook-composer__bar {
+		padding-right: var(--space-1);
+		padding-left: var(--space-1);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__input {
+		min-height: var(--control-size);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="card"] .guestbook-composer__input {
+		align-items: flex-end;
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__input > :not(textarea):not(.guestbook-composer__voice):not(.guestbook-composer__send) {
+		display: grid;
+		place-items: center;
+		flex: 0 0 auto;
+		width: var(--control-size);
+		height: var(--control-size);
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--guestbook-editor-text);
+	}
+
+	/* + 与 × 是同一个图标转 45°，展开/收起时原地旋转而不是换图 */
+	.guestbook-composer--mobile .guestbook-composer__expand > svg {
+		transition: transform 320ms var(--gb-mobile-motion);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__expand.is-expanded > svg {
+		transform: rotate(45deg);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__input > button:active:not(:disabled) {
+		background: var(--guestbook-editor-hover);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__input > button.is-active {
+		background: var(--guestbook-editor-hover);
+		color: var(--guestbook-editor-text);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__input > textarea {
+		flex: 1;
+		min-width: 0;
+		width: auto;
+		height: 1.5em;
+		min-height: 1.5em;
+		max-height: 1.5em;
+		overflow: hidden;
+		padding: 0 var(--space-1);
+		background: transparent;
+		color: var(--guestbook-editor-text);
+		/* 1rem 是下限：iOS Safari 对更小字号的输入框聚焦时会自动放大整页 */
+		font-size: 1rem;
+	}
+
+	/* 卡片态的高度由 resizeTextarea 按内容写内联值，这里只给上下限 */
+	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="card"] .guestbook-composer__input > textarea {
+		height: 2.25rem;
+		min-height: 2.25rem;
+		max-height: min(32dvh, 14rem);
+		overflow-y: auto;
+		padding: var(--space-1) var(--space-2);
+		border-radius: var(--radius-medium);
+		background: var(--guestbook-editor-bg);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__voice {
+		flex: 1;
+		min-width: 0;
+		min-height: var(--control-size);
+		padding: 0 var(--space-2);
+		border: 0;
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--guestbook-editor-text);
+		font-size: 0.9rem;
+		font-weight: 650;
+		touch-action: none;
+		user-select: none;
+		-webkit-user-select: none;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__shell.is-listening .guestbook-composer__voice {
+		background: var(--guestbook-editor-hover);
+		color: var(--guestbook-link);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__tray {
+		justify-content: space-between;
+		gap: var(--space-2);
+		padding-top: var(--space-1);
+		border-top: 1px solid var(--guestbook-editor-line);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__tray .guestbook-composer__tools button {
+		width: var(--control-size);
+		height: var(--control-size);
+		border-radius: var(--radius-full);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__send {
+		width: var(--control-size);
+		height: var(--control-size);
+	}
+
+	/* 待发图片只在卡片态露出：椭圆态保持单行，附件成功时由 setShape 展开 */
+	.guestbook-composer--mobile .guestbook-composer__image-preview {
+		margin: 0 0 var(--space-1);
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="pill"] .guestbook-composer__image-preview {
+		display: none;
+	}
+
+	/* 登录态胶囊排在椭圆条正上方右侧，跟着输入面上移，不压消息流 */
+	.guestbook-composer--mobile .guestbook-composer__identity {
+		align-self: flex-end;
+		max-width: 9rem;
+		min-height: 1.75rem;
+		border: 1px solid var(--guestbook-editor-line);
+		border-radius: var(--radius-full);
+		background: var(--mobile-dock-surface);
+		font-size: 0.7rem;
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__emojis {
+		bottom: calc(100% + var(--space-2));
+	}
+
+	.guestbook-composer--mobile .guestbook-composer__reply,
+	.guestbook-composer--mobile .guestbook-composer__error {
+		border-radius: var(--radius-medium);
+	}
+
+	/* 键盘弹起时 dock 自行让位，留言条跟着贴回屏幕底，不留空档 */
+	.guestbook-chat__composer-area:has(.guestbook-composer.is-keyboard-open) {
+		padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
 	}
 }
 

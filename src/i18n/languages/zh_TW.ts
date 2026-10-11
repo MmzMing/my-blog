@@ -540,6 +540,15 @@ export const zh_TW: Translation = {
 	[Key.gbCopied]: "已複製",
 	[Key.gbCopyMessage]: "複製訊息",
 	[Key.gbEditMessage]: "編輯訊息",
+	[Key.gbSwitchToVoice]: "切換到語音輸入",
+	[Key.gbSwitchToKeyboard]: "切換到鍵盤輸入",
+	[Key.gbVoiceHoldToTalk]: "按住 說話",
+	[Key.gbVoiceReleaseToSend]: "鬆開 發送",
+	[Key.gbVoiceUnsupported]: "目前瀏覽器不支援語音輸入",
+	[Key.gbVoiceMicDenied]: "麥克風權限被拒絕，請在瀏覽器設定中允許後重試",
+	[Key.gbVoiceFailed]: "語音識別失敗，請重試",
+	[Key.gbMoreTools]: "更多功能",
+	[Key.gbCollapseInput]: "收起輸入框",
 
 	[Key.tagGraphAccessible]:
 		"標籤關係圖譜，共 {tags} 個標籤、{links} 條關聯。使用方向鍵選擇標籤，Enter 開啟。",

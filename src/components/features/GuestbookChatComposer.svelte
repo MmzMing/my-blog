@@ -2,7 +2,10 @@
 import {
 	ArrowUp,
 	ImagePlus,
+	Keyboard,
 	LoaderCircle,
+	Mic,
+	Plus,
 	Reply,
 	Smile,
 	TriangleAlert,
@@ -20,9 +23,12 @@ import type {
 	GuestbookEmojiPack,
 	GuestbookImageAttachment,
 	GuestbookProfile,
+	GuestbookSpeechSession,
 } from "@/types/guestbook-chat";
 import {
+	isGuestbookSpeechSupported,
 	loadGuestbookEmojiPacks,
+	startGuestbookSpeech,
 	uploadGuestbookImage,
 	WALINE_INLINE_IMAGE_SIZE_LIMIT,
 } from "@/utils/guestbook-chat";
@@ -74,6 +80,11 @@ const MAX_DRAFT_LENGTH = 300;
 const MAX_REMOTE_IMAGE_SIZE = 5 * 1024 * 1024;
 const MIN_MESSAGE_PANE_HEIGHT = 128;
 const RESIZE_KEYBOARD_STEP = 16;
+const TEXTAREA_MAX_HEIGHT = 144;
+// 与 CSS 里 @media (max-width: 768px) 断点保持一致，改一处要同时改另一处
+const MOBILE_MEDIA = "(max-width: 768px)";
+const MORPH_DURATION = 320;
+const MORPH_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
 const emojiSources = commentConfig.waline?.emoji ?? [];
 const imageUploadURL = commentConfig.waline?.imageUploadURL ?? "";
 const maxImageSize = imageUploadURL
@@ -107,6 +118,27 @@ let profileDialogError = $state("");
 let resizeStartY = 0;
 let resizeStartHeight = 0;
 
+type ComposerShape = "pill" | "card";
+
+let isMobile = $state(window.matchMedia(MOBILE_MEDIA).matches);
+let shape = $state<ComposerShape>("pill");
+let editorMode = $state<"text" | "voice">("text");
+let keyboardOpen = $state(false);
+let isListening = $state(false);
+let voiceInterim = $state("");
+let shellEl = $state<HTMLDivElement | null>(null);
+let voiceButton = $state<HTMLButtonElement | null>(null);
+let voiceSession: GuestbookSpeechSession | null = null;
+let voiceFinalText = "";
+let voiceDiscarded = false;
+let morphAnimations: Animation[] = [];
+let morphToken = 0;
+
+function stopMorphAnimations() {
+	for (const animation of morphAnimations) animation.cancel();
+	morphAnimations = [];
+}
+
 const inputDisabled = $derived(
 	isOffline || (loginMode === "force" && !authUser),
 );
@@ -119,6 +151,26 @@ const identityLabel = $derived(
 		: hasGuestProfile
 			? profile.nick
 			: i18n(I18nKey.gbNotLoggedIn),
+);
+const textareaPlaceholder = $derived(
+	loginMode === "force" && !authUser
+		? i18n(I18nKey.gbPlaceholderRequireLogin)
+		: i18n(I18nKey.gbPlaceholder),
+);
+const charCountLabel = $derived(
+	i18n(I18nKey.gbCharCount)
+		.replace("{count}", String(draft.length))
+		.replace("{max}", String(MAX_DRAFT_LENGTH)),
+);
+const modeToggleLabel = $derived(
+	i18n(
+		editorMode === "voice"
+			? I18nKey.gbSwitchToKeyboard
+			: I18nKey.gbSwitchToVoice,
+	),
+);
+const expandLabel = $derived(
+	i18n(shape === "pill" ? I18nKey.gbMoreTools : I18nKey.gbCollapseInput),
 );
 
 async function openGuestProfile() {
@@ -183,9 +235,26 @@ function saveGuestProfile() {
 
 function resizeTextarea() {
 	if (!textarea) return;
+	if (isMobile) {
+		if (shape === "pill") {
+			// 椭圆态由 CSS 锁死单行，内容撑出一行才展开成卡片
+			textarea.style.height = "";
+			if (textarea.scrollHeight > textarea.clientHeight + 1) {
+				void setShape("card");
+			}
+			return;
+		}
+		const cssMax = Number.parseFloat(getComputedStyle(textarea).maxHeight);
+		textarea.style.height = "auto";
+		textarea.style.height = `${Math.min(
+			textarea.scrollHeight,
+			Number.isFinite(cssMax) ? cssMax : TEXTAREA_MAX_HEIGHT,
+		)}px`;
+		return;
+	}
 	if (manualTextareaHeight !== null) return;
 	textarea.style.height = "auto";
-	textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
+	textarea.style.height = `${Math.min(textarea.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
 }
 
 function getTextareaHeightBounds() {
@@ -282,6 +351,96 @@ function handleWindowResize() {
 	}
 }
 
+function prefersReducedMotion(): boolean {
+	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * 椭圆态的 9999px 圆角直接补间会长时间"看着没变"、最后一下才收成方角，
+ * 换成实际半高后收角过程才和高度同步。
+ */
+function morphRadius(target: ComposerShape, height: number, computed: string) {
+	return target === "pill" ? `${height / 2}px` : computed;
+}
+
+/**
+ * 椭圆条 ↔ 卡片切换。两态高度都由 CSS 决定，切换时把旧高度先钉在行内样式上再换形态，
+ * 否则新形态的自然高度会先被浏览器画一帧——收缩时看到的那一下抖就是它。
+ * 高度、圆角与输入框用同一段时长和缓动一起补间，动画期间加 is-morphing 裁掉溢出。
+ */
+async function setShape(next: ComposerShape) {
+	if (next === shape) return;
+	const shell = shellEl;
+	if (!shell) {
+		shape = next;
+		return;
+	}
+	stopMorphAnimations();
+	const token = ++morphToken;
+	const fromHeight = shell.offsetHeight;
+	const fromTextareaHeight = textarea?.offsetHeight ?? 0;
+	const fromRadius = morphRadius(
+		shape,
+		fromHeight,
+		getComputedStyle(shell).borderRadius,
+	);
+	shell.style.height = `${fromHeight}px`;
+	shell.classList.add("is-morphing");
+	shape = next;
+	await tick();
+	if (textarea) {
+		if (next === "pill") textarea.style.height = "";
+		else resizeTextarea();
+	}
+	const toTextareaHeight = textarea?.offsetHeight ?? 0;
+	shell.style.height = "auto";
+	const toHeight = shell.offsetHeight;
+	shell.style.height = `${fromHeight}px`;
+	const toRadius = morphRadius(
+		next,
+		toHeight,
+		getComputedStyle(shell).borderRadius,
+	);
+
+	const finish = () => {
+		if (token !== morphToken) return;
+		shell.style.height = "";
+		shell.classList.remove("is-morphing");
+	};
+	if (prefersReducedMotion() || fromHeight === toHeight) {
+		finish();
+		return;
+	}
+
+	const timing: KeyframeAnimationOptions = {
+		duration: MORPH_DURATION,
+		easing: MORPH_EASING,
+	};
+	morphAnimations = [
+		shell.animate(
+			[
+				{ height: `${fromHeight}px`, borderRadius: fromRadius },
+				{ height: `${toHeight}px`, borderRadius: toRadius },
+			],
+			timing,
+		),
+	];
+	if (textarea && fromTextareaHeight !== toTextareaHeight) {
+		morphAnimations.push(
+			textarea.animate(
+				[
+					{ height: `${fromTextareaHeight}px` },
+					{ height: `${toTextareaHeight}px` },
+				],
+				timing,
+			),
+		);
+	}
+	void Promise.allSettled(morphAnimations.map((item) => item.finished)).then(
+		finish,
+	);
+}
+
 function handleInput(event: Event) {
 	onDraftChange((event.currentTarget as HTMLTextAreaElement).value);
 	resizeTextarea();
@@ -290,6 +449,8 @@ function handleInput(event: Event) {
 function handleKeydown(event: KeyboardEvent) {
 	if (
 		event.key !== "Enter" ||
+		// 移动端软键盘的回车留给换行（撑出一行以上即自动展开成卡片），发送交给发送按钮
+		isMobile ||
 		event.shiftKey ||
 		event.isComposing ||
 		isComposing ||
@@ -400,7 +561,12 @@ async function submitMessage() {
 		serializeEmojiShortcodes(draft.trim()),
 		pendingImage ?? undefined,
 	);
-	if (accepted) pendingImage = null;
+	if (!accepted) return;
+	pendingImage = null;
+	if (isMobile) {
+		showEmojiPicker = false;
+		void setShape("pill");
+	}
 }
 
 async function handleImageSelection(event: Event) {
@@ -430,6 +596,8 @@ async function handleImageSelection(event: Event) {
 			.replace(/[[\]]/gu, "")
 			.trim();
 		pendingImage = { name: name || i18n(I18nKey.image), url };
+		// 待发图片只在卡片态露出，附件成功后展开，避免用户看不到已选中的图
+		if (isMobile) void setShape("card");
 	} catch (error) {
 		onToolError(
 			error instanceof Error
@@ -440,6 +608,89 @@ async function handleImageSelection(event: Event) {
 		isUploadingImage = false;
 	}
 }
+
+function toggleEditorMode() {
+	if (editorMode === "voice") {
+		editorMode = "text";
+		return;
+	}
+	if (!isGuestbookSpeechSupported()) {
+		onToolError(i18n(I18nKey.gbVoiceUnsupported));
+		return;
+	}
+	editorMode = "voice";
+	keyboardOpen = false;
+	showEmojiPicker = false;
+}
+
+function handleVoicePointerdown(event: PointerEvent) {
+	if (inputDisabled || voiceSession) return;
+	event.preventDefault();
+	voiceButton?.setPointerCapture(event.pointerId);
+	voiceFinalText = "";
+	voiceInterim = "";
+	voiceDiscarded = false;
+	onToolError("");
+	// 识别语种跟随浏览器界面语言，而不是站点留言组件的展示语种
+	voiceSession = startGuestbookSpeech(navigator.language, {
+		onText: (finalText, interimText) => {
+			voiceFinalText = finalText;
+			voiceInterim = interimText;
+		},
+		onFailure: (failure) => {
+			voiceDiscarded = true;
+			onToolError(
+				i18n(
+					failure === "denied"
+						? I18nKey.gbVoiceMicDenied
+						: I18nKey.gbVoiceFailed,
+				),
+			);
+		},
+		onEnd: () => {
+			voiceSession = null;
+			isListening = false;
+			voiceInterim = "";
+			if (!voiceDiscarded && voiceFinalText) insertContent(voiceFinalText);
+			voiceFinalText = "";
+		},
+	});
+	if (!voiceSession) {
+		onToolError(i18n(I18nKey.gbVoiceUnsupported));
+		return;
+	}
+	isListening = true;
+}
+
+function handleVoicePointerup() {
+	voiceSession?.stop();
+}
+
+function handleVoicePointercancel() {
+	voiceDiscarded = true;
+	voiceSession?.abort();
+}
+
+$effect(() => {
+	const query = window.matchMedia(MOBILE_MEDIA);
+	isMobile = query.matches;
+	const handleChange = (event: MediaQueryListEvent) => {
+		isMobile = event.matches;
+		if (!event.matches) {
+			shape = "pill";
+			editorMode = "text";
+			keyboardOpen = false;
+		}
+	};
+	query.addEventListener("change", handleChange);
+	return () => query.removeEventListener("change", handleChange);
+});
+
+$effect(() => () => {
+	voiceSession?.abort();
+	voiceSession = null;
+	stopMorphAnimations();
+});
 </script>
 
 <svelte:window
@@ -448,7 +699,156 @@ async function handleImageSelection(event: Event) {
 	onresize={handleWindowResize}
 />
 
-<footer class="guestbook-composer">
+{#snippet emojiTriggerButton()}
+	<button
+		bind:this={emojiTrigger}
+		type="button"
+		class:is-active={showEmojiPicker}
+		onclick={toggleEmojiPicker}
+		aria-label={i18n(I18nKey.gbEmojiAria)}
+		aria-expanded={showEmojiPicker}
+		aria-controls="guestbook-emoji-picker"
+		title={i18n(I18nKey.emoji)}
+		disabled={inputDisabled}
+	>
+		<Smile size={20} aria-hidden="true" />
+	</button>
+{/snippet}
+
+{#snippet imageUploadButton()}
+	<button
+		type="button"
+		onclick={openImagePicker}
+		aria-label={i18n(I18nKey.gbUploadImageAria)}
+		title={i18n(I18nKey.image)}
+		disabled={inputDisabled || isUploadingImage}
+	>
+		{#if isUploadingImage}
+			<LoaderCircle class="is-spinning" size={20} aria-hidden="true" />
+		{:else}
+			<ImagePlus size={20} aria-hidden="true" />
+		{/if}
+	</button>
+	<input
+		bind:this={imageInput}
+		class="guestbook-composer__file-input"
+		type="file"
+		accept="image/png,image/jpeg,image/gif,image/webp"
+		onchange={handleImageSelection}
+		tabindex="-1"
+		aria-hidden="true"
+	/>
+{/snippet}
+
+{#snippet pendingImagePreview()}
+	{#if pendingImage}
+		<div class="guestbook-composer__image-preview">
+			<img src={pendingImage.url} alt={pendingImage.name} />
+			<span>{pendingImage.name}</span>
+			<button
+				type="button"
+				onclick={() => (pendingImage = null)}
+				aria-label={i18n(I18nKey.gbRemoveImageAria)}
+				title={i18n(I18nKey.gbRemoveImageTitle)}
+			>
+				<X size={16} aria-hidden="true" />
+			</button>
+		</div>
+	{/if}
+{/snippet}
+
+{#snippet sendButton()}
+	<button
+		class="guestbook-composer__send"
+		type="button"
+		onclick={() => void submitMessage()}
+		disabled={inputDisabled || isSending || isUploadingImage}
+		aria-busy={isSending}
+		aria-label={i18n(I18nKey.send)}
+		title={i18n(I18nKey.send)}
+	>
+		{#if isSending}
+			<LoaderCircle class="is-spinning" size={18} aria-hidden="true" />
+		{:else}
+			<ArrowUp size={18} aria-hidden="true" />
+		{/if}
+	</button>
+{/snippet}
+
+{#snippet identityChip()}
+	<button
+		class="guestbook-composer__identity"
+		type="button"
+		onclick={() => void openGuestProfile()}
+		title={i18n(I18nKey.gbGuestProfile)}
+	>
+		{#if authUser?.type === "administrator"}
+			<span class="guestbook-composer__identity-role">
+				{i18n(I18nKey.gbAdminRole)}
+			</span>
+		{/if}
+		<span class="guestbook-composer__identity-name">{identityLabel}</span>
+	</button>
+{/snippet}
+
+{#snippet emojiPickerPanel()}
+	{#if showEmojiPicker}
+		<div
+			bind:this={emojiPanel}
+			id="guestbook-emoji-picker"
+			class="guestbook-composer__emojis"
+			role="dialog"
+			aria-label={i18n(I18nKey.gbWalineEmojiAria)}
+		>
+			{#if isLoadingEmojis}
+				<div class="guestbook-composer__emoji-state" role="status">
+					<LoaderCircle class="is-spinning" size={18} aria-hidden="true" />{i18n(I18nKey.gbLoadingEmoji)}
+				</div>
+			{:else if emojiError}
+				<div class="guestbook-composer__emoji-state" role="alert">
+					<span>{emojiError}</span>
+					<button type="button" onclick={() => void loadEmojis()}>{i18n(I18nKey.retry)}</button>
+				</div>
+			{:else if activeEmojiPack}
+				<div class="guestbook-composer__emoji-tabs" role="tablist" aria-label={i18n(I18nKey.gbEmojiPacksAria)}>
+					{#each emojiPacks as pack, index}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={activeEmojiPackIndex === index}
+							class:is-active={activeEmojiPackIndex === index}
+							onclick={() => (activeEmojiPackIndex = index)}
+							title={pack.name}
+						>
+							<img src={pack.icon} alt={pack.name} loading="lazy" />
+						</button>
+					{/each}
+				</div>
+				<div class="guestbook-composer__emoji-grid">
+					{#each activeEmojiPack.items as emoji}
+						<button
+							type="button"
+							onclick={() => insertEmoji(emoji)}
+							aria-label={i18n(I18nKey.gbInsertEmojiAria).replace(
+								"{key}",
+								emoji.key,
+							)}
+							title={emoji.key}
+						>
+							<img src={emoji.url} alt="" loading="lazy" />
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
+<footer
+	class="guestbook-composer"
+	class:guestbook-composer--mobile={isMobile}
+	class:is-keyboard-open={keyboardOpen}
+>
 	{#if replyTarget}
 		<div class="guestbook-composer__reply">
 			<Reply size={16} aria-hidden="true" />
@@ -467,182 +867,151 @@ async function handleImageSelection(event: Event) {
 		</div>
 	{/if}
 
-	<div
-		class:is-resizing={resizePointerId !== null}
-		class="guestbook-composer__editor"
-	>
-		<button
-			class="guestbook-composer__resize-handle"
-			type="button"
-			onpointerdown={startTextareaResize}
-			onpointermove={moveTextareaResize}
-			onpointerup={finishTextareaResize}
-			onpointercancel={finishTextareaResize}
-			onkeydown={handleResizeKeydown}
-			aria-label={i18n(I18nKey.gbResizeAria)}
-			title={i18n(I18nKey.gbResizeTitle)}
-		></button>
-		<textarea
-			bind:this={textarea}
-			value={draft}
-			oninput={handleInput}
-			onkeydown={handleKeydown}
-			oncompositionstart={() => (isComposing = true)}
-			oncompositionend={() => (isComposing = false)}
-			rows="3"
-			maxlength="300"
-			placeholder={loginMode === "force" && !authUser
-				? i18n(I18nKey.gbPlaceholderRequireLogin)
-				: i18n(I18nKey.gbPlaceholder)}
-			aria-label={i18n(I18nKey.gbComposerAria)}
-			disabled={inputDisabled}
-		></textarea>
-
-		{#if pendingImage}
-			<div class="guestbook-composer__image-preview">
-				<img src={pendingImage.url} alt={pendingImage.name} />
-				<span>{pendingImage.name}</span>
-				<button
-					type="button"
-					onclick={() => (pendingImage = null)}
-					aria-label={i18n(I18nKey.gbRemoveImageAria)}
-					title={i18n(I18nKey.gbRemoveImageTitle)}
-				>
-					<X size={16} aria-hidden="true" />
-				</button>
-			</div>
-		{/if}
-
-		<span class="guestbook-composer__count">
-			{i18n(I18nKey.gbCharCount)
-				.replace("{count}", String(draft.length))
-				.replace("{max}", String(MAX_DRAFT_LENGTH))}
-		</span>
-
-		<div class="guestbook-composer__footer">
-			<div class="guestbook-composer__tools">
-				<button
-					bind:this={emojiTrigger}
-					type="button"
-					class:is-active={showEmojiPicker}
-					onclick={toggleEmojiPicker}
-					aria-label={i18n(I18nKey.gbEmojiAria)}
-					aria-expanded={showEmojiPicker}
-					aria-controls="guestbook-emoji-picker"
-					title={i18n(I18nKey.emoji)}
-					disabled={inputDisabled}
-				>
-					<Smile size={20} aria-hidden="true" />
-				</button>
-				<button
-					type="button"
-					onclick={openImagePicker}
-					aria-label={i18n(I18nKey.gbUploadImageAria)}
-					title={i18n(I18nKey.image)}
-					disabled={inputDisabled || isUploadingImage}
-				>
-					{#if isUploadingImage}
-						<LoaderCircle class="is-spinning" size={20} aria-hidden="true" />
-					{:else}
-						<ImagePlus size={20} aria-hidden="true" />
-					{/if}
-				</button>
-				<input
-					bind:this={imageInput}
-					class="guestbook-composer__file-input"
-					type="file"
-					accept="image/png,image/jpeg,image/gif,image/webp"
-					onchange={handleImageSelection}
-					tabindex="-1"
-					aria-hidden="true"
-				/>
-				{@render children?.()}
-			</div>
-
-			<div class="guestbook-composer__actions">
-				<button
-					class="guestbook-composer__identity"
-					type="button"
-					onclick={() => void openGuestProfile()}
-					title={i18n(I18nKey.gbGuestProfile)}
-				>
-					{#if authUser?.type === "administrator"}
-						<span class="guestbook-composer__identity-role">
-							{i18n(I18nKey.gbAdminRole)}
-						</span>
-					{/if}
-					<span class="guestbook-composer__identity-name">{identityLabel}</span>
-				</button>
-
-				<button
-					class="guestbook-composer__send"
-					type="button"
-					onclick={() => void submitMessage()}
-					disabled={inputDisabled || isSending || isUploadingImage}
-					aria-busy={isSending}
-					aria-label={i18n(I18nKey.send)}
-					title={i18n(I18nKey.send)}
-				>
-					{#if isSending}
-						<LoaderCircle class="is-spinning" size={18} aria-hidden="true" />
-					{:else}
-						<ArrowUp size={18} aria-hidden="true" />
-					{/if}
-				</button>
-			</div>
-		</div>
-
-		{#if showEmojiPicker}
+	{#if isMobile}
+		<div class="guestbook-composer__stage">
+			{@render identityChip()}
 			<div
-				bind:this={emojiPanel}
-				id="guestbook-emoji-picker"
-				class="guestbook-composer__emojis"
-				role="dialog"
-				aria-label={i18n(I18nKey.gbWalineEmojiAria)}
+				bind:this={shellEl}
+				class="guestbook-composer__shell"
+				class:is-listening={isListening}
+				data-shape={shape}
 			>
-				{#if isLoadingEmojis}
-					<div class="guestbook-composer__emoji-state" role="status">
-						<LoaderCircle class="is-spinning" size={18} aria-hidden="true" />{i18n(I18nKey.gbLoadingEmoji)}
-					</div>
-				{:else if emojiError}
-					<div class="guestbook-composer__emoji-state" role="alert">
-						<span>{emojiError}</span>
-						<button type="button" onclick={() => void loadEmojis()}>{i18n(I18nKey.retry)}</button>
-					</div>
-				{:else if activeEmojiPack}
-					<div class="guestbook-composer__emoji-tabs" role="tablist" aria-label={i18n(I18nKey.gbEmojiPacksAria)}>
-						{#each emojiPacks as pack, index}
-							<button
-								type="button"
-								role="tab"
-								aria-selected={activeEmojiPackIndex === index}
-								class:is-active={activeEmojiPackIndex === index}
-								onclick={() => (activeEmojiPackIndex = index)}
-								title={pack.name}
-							>
-								<img src={pack.icon} alt={pack.name} loading="lazy" />
-							</button>
-						{/each}
-					</div>
-					<div class="guestbook-composer__emoji-grid">
-						{#each activeEmojiPack.items as emoji}
-							<button
-								type="button"
-								onclick={() => insertEmoji(emoji)}
-								aria-label={i18n(I18nKey.gbInsertEmojiAria).replace(
-									"{key}",
-									emoji.key,
-								)}
-								title={emoji.key}
-							>
-								<img src={emoji.url} alt="" loading="lazy" />
-							</button>
-						{/each}
+				{@render pendingImagePreview()}
+
+				<div class="guestbook-composer__bar guestbook-composer__input">
+					<button
+						class="guestbook-composer__mode"
+						type="button"
+						onclick={toggleEditorMode}
+						aria-label={modeToggleLabel}
+						title={modeToggleLabel}
+						disabled={inputDisabled}
+					>
+						{#if editorMode === "voice"}
+							<Keyboard size={20} aria-hidden="true" />
+						{:else}
+							<Mic size={20} aria-hidden="true" />
+						{/if}
+					</button>
+
+					{#if editorMode === "voice"}
+						<button
+							bind:this={voiceButton}
+							class="guestbook-composer__voice"
+							type="button"
+							onpointerdown={handleVoicePointerdown}
+							onpointerup={handleVoicePointerup}
+							onpointercancel={handleVoicePointercancel}
+							oncontextmenu={(event) => event.preventDefault()}
+							disabled={inputDisabled}
+						>
+							{isListening
+								? voiceInterim || i18n(I18nKey.gbVoiceReleaseToSend)
+								: i18n(I18nKey.gbVoiceHoldToTalk)}
+						</button>
+					{:else}
+						<textarea
+							bind:this={textarea}
+							value={draft}
+							oninput={handleInput}
+							onkeydown={handleKeydown}
+							onfocus={() => (keyboardOpen = true)}
+							onblur={() => (keyboardOpen = false)}
+							oncompositionstart={() => (isComposing = true)}
+							oncompositionend={() => (isComposing = false)}
+							rows="1"
+							maxlength={MAX_DRAFT_LENGTH}
+							placeholder={textareaPlaceholder}
+							aria-label={i18n(I18nKey.gbComposerAria)}
+							disabled={inputDisabled}
+						></textarea>
+					{/if}
+
+					{@render emojiTriggerButton()}
+
+					{#if shape === "pill" && draft.trim()}
+						{@render sendButton()}
+					{:else}
+						<button
+							class="guestbook-composer__expand"
+							class:is-expanded={shape === "card"}
+							type="button"
+							onclick={() =>
+								void setShape(shape === "pill" ? "card" : "pill")}
+							aria-label={expandLabel}
+							title={expandLabel}
+							disabled={inputDisabled}
+						>
+							<Plus size={20} aria-hidden="true" />
+						</button>
+					{/if}
+				</div>
+
+				{#if shape === "card"}
+					<div class="guestbook-composer__bar guestbook-composer__tray">
+						<div class="guestbook-composer__tools">
+							{@render imageUploadButton()}
+							{@render children?.()}
+						</div>
+						<div class="guestbook-composer__actions">
+							{@render sendButton()}
+						</div>
 					</div>
 				{/if}
+
+				{@render emojiPickerPanel()}
 			</div>
-		{/if}
-	</div>
+		</div>
+	{:else}
+		<div
+			class:is-resizing={resizePointerId !== null}
+			class="guestbook-composer__editor"
+		>
+			<button
+				class="guestbook-composer__resize-handle"
+				type="button"
+				onpointerdown={startTextareaResize}
+				onpointermove={moveTextareaResize}
+				onpointerup={finishTextareaResize}
+				onpointercancel={finishTextareaResize}
+				onkeydown={handleResizeKeydown}
+				aria-label={i18n(I18nKey.gbResizeAria)}
+				title={i18n(I18nKey.gbResizeTitle)}
+			></button>
+			<textarea
+				bind:this={textarea}
+				value={draft}
+				oninput={handleInput}
+				onkeydown={handleKeydown}
+				oncompositionstart={() => (isComposing = true)}
+				oncompositionend={() => (isComposing = false)}
+				rows="3"
+				maxlength={MAX_DRAFT_LENGTH}
+				placeholder={textareaPlaceholder}
+				aria-label={i18n(I18nKey.gbComposerAria)}
+				disabled={inputDisabled}
+			></textarea>
+
+			{@render pendingImagePreview()}
+
+			<span class="guestbook-composer__count">{charCountLabel}</span>
+
+			<div class="guestbook-composer__footer">
+				<div class="guestbook-composer__tools">
+					{@render emojiTriggerButton()}
+					{@render imageUploadButton()}
+					{@render children?.()}
+				</div>
+
+				<div class="guestbook-composer__actions">
+					{@render identityChip()}
+					{@render sendButton()}
+				</div>
+			</div>
+
+			{@render emojiPickerPanel()}
+		</div>
+	{/if}
 
 	{#if composerError}
 		<div class="guestbook-composer__error" role="alert">
