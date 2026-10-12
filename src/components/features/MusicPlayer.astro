@@ -4,10 +4,10 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 
 /**
- * 桌面端左下角多态音乐组件（Swup 容器外持久存在）。
+ * 桌面端可拖拽音乐组件（Swup 容器外持久存在）。
  * 三态：disc 收起唱片 → pill 播放中胶囊（唱片 + 歌词） → bar 展开 dock；
- * bar 态分层：信息层（曲名 / 艺术家 / 进度）+ 工具栏层两张独立表面，
- * 歌单按钮再向上展一层歌单面板（信息层保持不关）。
+ * dock 上方只有一张展开卡：信息层（曲名 / 艺术家 / 进度）常驻，点歌单按钮时
+ * 同一张卡向上长出歌单 / 歌词面板，信息层随之上移，不再是两张分离的卡片。
  * 引擎为 MusicManager 单例，逻辑见 src/utils/music-player-controller.ts，
  * 样式见 src/styles/components/music-player.css。移动端（≤768px）隐藏，由 MobileDock 承担。
  */
@@ -21,49 +21,56 @@ import { i18n } from "@/i18n/translation";
 	role="region"
 	aria-label={i18n(I18nKey.music)}
 >
-	<!-- 上展面板：dock 上方独立一层，顶部可切换歌单 / 歌词 -->
-	<div class="music-player__panel">
-		<div class="music-player__panel-clip">
-			<div class="music-player__panel-body">
-				<div class="music-player__panel-tabs">
-					<button class="music-player__tab music-player__tab--playlist is-active" type="button">{i18n(I18nKey.musicPlaylist)}</button>
-					<button class="music-player__tab music-player__tab--lyrics" type="button">{i18n(I18nKey.musicLyrics)}</button>
-				</div>
-				<div class="music-player__panel-views">
-					<div class="music-player__playlist-view is-active">
-						<div class="music-player__playlist-list custom-scrollbar" role="listbox" aria-label={i18n(I18nKey.musicPlaylist)}></div>
-					</div>
-					<div class="music-player__lyrics-view">
-						<div class="music-player__lyrics-list custom-scrollbar" role="listbox" aria-label={i18n(I18nKey.musicLyrics)}>
-							<div class="music-player__lyrics-placeholder">{i18n(I18nKey.musicNoLyrics)}</div>
+	<div class="music-player__stage">
+		<!-- 展开卡：面板与信息层共用一张表面 -->
+		<div class="music-player__card">
+			<div class="music-player__panel">
+				<div class="music-player__panel-clip">
+					<div class="music-player__panel-body">
+						<div class="music-player__panel-tabs">
+							<span class="music-player__tab-indicator" aria-hidden="true"></span>
+							<button class="music-player__tab music-player__tab--playlist is-active" type="button">{i18n(I18nKey.musicPlaylist)}</button>
+							<button class="music-player__tab music-player__tab--lyrics" type="button">{i18n(I18nKey.musicLyrics)}</button>
+						</div>
+						<div class="music-player__panel-views">
+							<div class="music-player__playlist-view is-active">
+								<div class="music-player__playlist-list custom-scrollbar" role="listbox" aria-label={i18n(I18nKey.musicPlaylist)}></div>
+							</div>
+							<div class="music-player__lyrics-view">
+								<div class="music-player__lyrics-list custom-scrollbar" role="listbox" aria-label={i18n(I18nKey.musicLyrics)}>
+									<div class="music-player__lyrics-placeholder">{i18n(I18nKey.musicNoLyrics)}</div>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	</div>
 
-	<div class="music-player__stage">
-		<!-- 信息层：bar 态默认展开的独立表面 -->
-		<div class="music-player__info">
-			<div class="music-player__info-clip">
-				<div class="music-player__info-surface">
-					<p class="music-player__title">{i18n(I18nKey.musicNoPlaying)}</p>
-					<p class="music-player__artist"></p>
-					<div class="music-player__progress-row">
-						<span class="music-player__time-current">0:00</span>
-						<div
-							class="music-player__progress"
-							role="slider"
-							aria-label={i18n(I18nKey.musicProgress)}
-							aria-valuemin="0"
-							aria-valuemax="100"
-							aria-valuenow="0"
-						>
-							<div class="music-player__progress-bar"></div>
-							<div class="music-player__progress-thumb"></div>
+			<!-- 信息层：bar 态常驻在展开卡底部，唱片骑在其左下角 -->
+			<div class="music-player__info">
+				<div class="music-player__info-clip">
+					<div class="music-player__info-surface">
+						<p class="music-player__title">{i18n(I18nKey.musicNoPlaying)}</p>
+						<p class="music-player__artist"></p>
+						<div class="music-player__progress-row">
+							<span class="music-player__time-current">0:00</span>
+							<div
+								class="music-player__progress"
+								role="slider"
+								aria-label={i18n(I18nKey.musicProgress)}
+								aria-valuemin="0"
+								aria-valuemax="100"
+								aria-valuenow="0"
+							>
+								<div class="music-player__progress-bar"></div>
+								<div class="music-player__progress-thumb"></div>
+							</div>
+							<span class="music-player__time-total">0:00</span>
 						</div>
-						<span class="music-player__time-total">0:00</span>
+						<!-- 加载指示只占信息层，不再给整个组件蒙一层遮罩 -->
+						<div class="music-player__loading" aria-hidden="true">
+							<Icon name="material-symbols:sync-rounded" class="text-2xl" aria-hidden="true" />
+						</div>
 					</div>
 				</div>
 			</div>
@@ -124,13 +131,16 @@ import { i18n } from "@/i18n/translation";
 		<!-- 唱片：三态复用的圆碟，位置随形态过渡 -->
 		<button class="music-player__disc" type="button" aria-label={i18n(I18nKey.music)}>
 			<Icon name="material-symbols:music-note-rounded" class="music-player__disc-placeholder text-2xl" aria-hidden="true" />
-			<img class="music-player__disc-img is-empty" src="" alt="" />
+			<img class="music-player__disc-img is-empty" src="" alt="" draggable="false" />
 		</button>
-
-		<div class="music-player__loading" aria-hidden="true">
-			<Icon name="material-symbols:sync-rounded" class="text-2xl" aria-hidden="true" />
-		</div>
 	</div>
+
+	<!-- 尺寸探针：控制器据此读取 --mp-width / --mp-bar-h / --mp-disc-rise 的实际像素值，
+	     用于按当前形态夹取拖拽位置（根元素宽高在过渡中，量不到目标值） -->
+	<span class="music-player__probe" aria-hidden="true">
+		<span class="music-player__probe-bar"></span>
+		<span class="music-player__probe-rise"></span>
+	</span>
 </div>
 
 <template id="music-player-item-template">

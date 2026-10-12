@@ -1,8 +1,9 @@
 /* ============================================
-   桌面左下角音乐组件 — 来自 MusicPlayer.astro
-   三态 morph（disc / pill / bar）+ 分层表面（歌单 / 信息 / 工具栏）+ 音量 popover
+   桌面可拖拽音乐组件 — 来自 MusicPlayer.astro
+   三态 morph（disc / pill / bar）+ 单一展开卡（歌单面板 / 信息层）+ 音量 popover
    注意：border-radius / 高度 / grid-rows 一律用无过冲的 --mp-motion，
    弹性过冲缓动 --mp-spring 只用于宽度与唱片位移，否则圆角过冲会闪出直角。
+   位置由控制器的 --mp-x / --mp-y 驱动（left / bottom 锚点，可拖到视口任意处）。
    深浅色经 variables.styl 令牌自动适配；移动端由 MobileDock 承担
    ============================================ */
 
@@ -17,41 +18,106 @@
 	88%, 100% { transform: translate3d(var(--mp-marquee-offset, 0px), 0, 0); }
 }
 
+/* 歌单条目逐项入场：错峰时长由控制器写在条目上的 --mp-i */
+@keyframes music-player-track-in {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 0.5rem, 0);
+		filter: blur(3px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+		filter: blur(0);
+	}
+}
+
 .music-player {
-	--mp-disc: 4.5rem;
-	--mp-bar-h: 3.75rem;
-	--mp-pill-h: 4.75rem;
-	--mp-width: 23.5rem;
-	--mp-slot-pad: 5.75rem;
+	--mp-bar-h: 4rem;
+	--mp-disc: 5rem;
+	--mp-inset: 1.25rem;
+	/* 唱片距 dock 左缘：pill / bar 两态共用，展开时只做垂直位移 */
+	--mp-disc-left: 0.875rem;
+	/* 歌词（pill）态唱片距 dock 底缘的间隙，探出顶的量由它派生 */
+	--mp-disc-gap: 0.25rem;
+	--mp-disc-rise: calc(var(--mp-disc-gap) + var(--mp-disc) - var(--mp-bar-h));
+	/* 文本起排位 = 唱片右缘再让开一点，两态与唱片的净间隙恒定 */
+	--mp-slot-pad: calc(var(--mp-disc) + var(--mp-disc-left) + 0.5rem);
+	--mp-width: 25rem;
+	--mp-edge: 1.25rem;
 	--mp-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 	--mp-motion: cubic-bezier(0.22, 1, 0.36, 1);
 	--mp-border: color-mix(in oklch, var(--deep-text) 28%, transparent);
 
 	position: fixed;
-	left: 1.25rem;
-	bottom: 1.25rem;
+	left: var(--mp-x, var(--mp-edge));
+	bottom: var(--mp-y, var(--mp-edge));
 	z-index: 70;
 	width: var(--mp-disc);
 	display: flex;
 	flex-direction: column;
-	transition: width 450ms var(--mp-spring);
+	transition:
+		width 450ms var(--mp-spring),
+		left 450ms var(--mp-motion),
+		bottom 450ms var(--mp-motion);
 }
 .music-player:not([data-state="disc"]) {
 	width: var(--mp-width);
 }
+/* 拖拽中：位置实时跟随指针，关掉过渡避免手感发黏；顺手禁掉选字 */
+.music-player.is-dragging {
+	transition: none;
+	cursor: grabbing;
+	user-select: none;
+}
+
+/* 尺寸探针：不可见但参与布局，供控制器读取各形态的目标尺寸 */
+.music-player__probe {
+	position: absolute;
+	top: 0;
+	left: 0;
+	visibility: hidden;
+	pointer-events: none;
+}
+.music-player__probe > span {
+	display: block;
+	width: var(--mp-width);
+}
+.music-player__probe-bar {
+	height: var(--mp-bar-h);
+}
+.music-player__probe-rise {
+	height: var(--mp-disc-rise);
+}
 
 /* ============================================
-   上展歌单面板（dock 上方独立一层）
+   展开卡：面板 + 信息层共用一张表面
+   左右始终缩进 --mp-inset，展开歌单只向上生长，不改水平间距
+   ============================================ */
+.music-player__card {
+	position: relative;
+	margin-inline: var(--mp-inset);
+	background: color-mix(in srgb, var(--music-surface) 82%, transparent);
+	backdrop-filter: blur(1.25rem) saturate(1.4);
+	border-radius: 1.25rem;
+	box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 12%);
+	opacity: 0;
+	transition: opacity 200ms ease;
+}
+.music-player[data-state="bar"] .music-player__card {
+	opacity: 1;
+}
+
+/* ============================================
+   上展面板（歌单 / 歌词双 tab）
    ============================================ */
 .music-player__panel {
 	display: grid;
 	grid-template-rows: 0fr;
-	pointer-events: none;
 	transition: grid-template-rows 420ms var(--mp-motion);
 }
 .music-player[data-panel="open"] .music-player__panel {
 	grid-template-rows: 1fr;
-	pointer-events: auto;
 }
 .music-player__panel-clip {
 	overflow: hidden;
@@ -61,41 +127,65 @@
 	display: flex;
 	flex-direction: column;
 	height: min(18rem, 40vh);
-	margin-bottom: 0.5rem;
-	background: var(--music-surface);
-	border-radius: 1.25rem;
-	overflow: hidden;
 	opacity: 0;
-	transform: translate3d(0, 0.5rem, 0);
-	transition: opacity 200ms ease, transform 280ms var(--mp-motion);
+	transform: translate3d(0, 0.75rem, 0);
+	filter: blur(3px);
+	transition:
+		opacity 220ms ease,
+		transform 420ms var(--mp-motion),
+		filter 260ms ease;
 }
 .music-player[data-panel="open"] .music-player__panel-body {
 	opacity: 1;
 	transform: none;
-	transition-delay: 120ms;
+	filter: blur(0);
+	transition-delay: 80ms;
 }
 .music-player__panel-tabs {
+	position: relative;
 	display: flex;
 	gap: 0.25rem;
-	padding: 0.5rem 0.75rem 0;
-	border-bottom: 1px solid var(--line-divider);
+	/* 原来的 1px 下边框挪进 padding-bottom，行高不变 */
+	padding: 0.5rem 0.75rem 1px;
 	flex-shrink: 0;
+}
+/* 分隔线内缩到内容盒，不贴着卡片两侧 */
+.music-player__panel-tabs::after {
+	content: "";
+	position: absolute;
+	inset-inline: 0.75rem;
+	bottom: 0;
+	height: 1px;
+	background: var(--line-divider);
+}
+/* 活跃 tab 下划线：由控制器按 tab 实测位置写 transform / width，切换时滑动 */
+.music-player__tab-indicator {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	z-index: 1;
+	width: 0;
+	height: 2px;
+	border-radius: 9999px;
+	background: var(--primary);
+	pointer-events: none;
+	transition:
+		transform 380ms var(--mp-motion),
+		width 380ms var(--mp-motion);
 }
 .music-player__tab {
 	padding: 0.375rem 0.75rem 0.5rem;
 	font-size: 0.8125rem;
 	font-weight: 600;
 	color: var(--content-meta);
-	border-bottom: 2px solid transparent;
 	cursor: pointer;
-	transition: color 150ms ease, border-color 150ms ease;
+	transition: color 200ms ease;
 }
 .music-player__tab:hover {
 	color: var(--deep-text);
 }
 .music-player__tab.is-active {
 	color: var(--primary);
-	border-bottom-color: var(--primary);
 }
 .music-player__panel-views {
 	position: relative;
@@ -108,19 +198,34 @@
 	inset: 0;
 	opacity: 0;
 	visibility: hidden;
-	transition: opacity 180ms ease, visibility 0s linear 180ms;
+	transform: translate3d(0, 0.5rem, 0) scale(0.98);
+	filter: blur(3px);
+	transition:
+		opacity 180ms ease,
+		transform 320ms var(--mp-motion),
+		filter 200ms ease,
+		visibility 0s linear 320ms;
 }
 .music-player__playlist-view.is-active,
 .music-player__lyrics-view.is-active {
 	opacity: 1;
 	visibility: visible;
-	transition: opacity 180ms ease;
+	transform: none;
+	filter: blur(0);
+	transition:
+		opacity 200ms ease,
+		transform 360ms var(--mp-motion),
+		filter 200ms ease;
 }
 .music-player__playlist-list {
 	height: 100%;
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	padding: 0.5rem;
+}
+.music-player__playlist-list.is-entering .music-player__track {
+	animation: music-player-track-in 340ms var(--mp-motion) backwards;
+	animation-delay: calc(var(--mp-i, 0) * 26ms);
 }
 .music-player__lyrics-list {
 	height: 100%;
@@ -158,13 +263,13 @@
 }
 
 /* ============================================
-   舞台与分层表面
+   舞台与工具栏层
    ============================================ */
 .music-player__stage {
 	position: relative;
 }
 
-/* 信息层：bar 态默认展开的独立表面 */
+/* 信息层：常驻展开卡底部，唱片骑在其左下角 */
 .music-player__info {
 	display: grid;
 	grid-template-rows: 0fr;
@@ -177,23 +282,15 @@
 	overflow: hidden;
 	min-height: 0;
 }
+/* 左内边距让开唱片：曲名文本始终从 --mp-slot-pad 处起排 */
 .music-player__info-surface {
-	margin-inline: 1.25rem;
-	padding: 1rem 1.25rem 1.5rem calc(var(--mp-slot-pad) - 1.25rem);
-	background: var(--music-surface);
-	border-radius: 1.25rem;
-	box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 12%);
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: 0.125rem;
-	opacity: 0;
-	transform: translate3d(0, 0.5rem, 0);
-	transition: opacity 200ms ease, transform 280ms var(--mp-motion);
-}
-.music-player[data-state="bar"] .music-player__info-surface {
-	opacity: 1;
-	transform: none;
-	transition-delay: 80ms;
+	padding: 0.5rem var(--mp-inset) 1.5rem calc(var(--mp-slot-pad) - var(--mp-inset));
+	cursor: grab;
+	touch-action: none;
 }
 .music-player__title {
 	margin: 0;
@@ -266,12 +363,15 @@
    ============================================ */
 .music-player__bar {
 	position: relative;
-	z-index: 1;
+	/* 不设 z-index：建了层叠上下文会把按钮 tooltip 关在 dock 这一层，
+	   被唱片（z-index 2）盖住。靠 DOM 顺序在卡片之后绘制即可压住卡片底边 */
 	height: var(--mp-bar-h);
 	margin-top: 0;
 	background: var(--music-surface);
-	border-radius: 9999px;
+	border-radius: 1.25rem;
 	box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 12%);
+	cursor: grab;
+	touch-action: none;
 	transition:
 		height 450ms var(--mp-motion),
 		margin-top 450ms var(--mp-motion),
@@ -280,9 +380,6 @@
 }
 .music-player[data-state="bar"] .music-player__bar {
 	margin-top: -1.5rem;
-}
-.music-player[data-state="pill"] .music-player__bar {
-	height: var(--mp-pill-h);
 }
 .music-player[data-state="disc"] .music-player__bar {
 	opacity: 0;
@@ -328,11 +425,13 @@
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	left: var(--mp-slot-pad);
+	/* 键宽 2.25rem、图标 1.25rem 居中，两侧各空 0.5rem：
+	   左移这个内缩距，首键图标左缘才和上方曲名真正同一条竖线 */
+	left: calc(var(--mp-slot-pad) - 0.5rem);
 	right: 0.625rem;
 	display: flex;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: 0.125rem;
 	opacity: 0;
 	transform: translate3d(0, 0.375rem, 0);
@@ -490,8 +589,9 @@
 }
 
 /* ============================================
-   唱片圆碟：三态复用，位置随形态过渡
-   disc 态贴左下角；pill 态居中胶囊内；bar 态骑在信息层与工具栏层接缝
+   唱片圆碟：三态复用，两态 left 同为 --mp-disc-left，展开时只做垂直位移
+   pill 态底边留 --mp-disc-gap、圆心落在 dock 上沿之下；
+   bar 态圆心对齐 dock 上沿，上半截被信息层包住
    ============================================ */
 .music-player__disc {
 	position: absolute;
@@ -503,7 +603,8 @@
 	padding: 0;
 	border-radius: 9999px;
 	overflow: hidden;
-	cursor: pointer;
+	cursor: grab;
+	touch-action: none;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -513,11 +614,11 @@
 	transition: left 450ms var(--mp-spring), bottom 450ms var(--mp-spring);
 }
 .music-player[data-state="pill"] .music-player__disc {
-	left: 0.375rem;
-	bottom: calc(50% - var(--mp-disc) / 2);
+	left: var(--mp-disc-left);
+	bottom: var(--mp-disc-gap);
 }
 .music-player[data-state="bar"] .music-player__disc {
-	left: 0.875rem;
+	left: var(--mp-disc-left);
 	bottom: calc(var(--mp-bar-h) - var(--mp-disc) / 2);
 }
 /* 唱片中心孔 */
@@ -617,26 +718,25 @@
 }
 
 /* ============================================
-   加载遮罩
+   加载指示：只占信息层那一块，不给整个组件蒙遮罩
    ============================================ */
 .music-player__loading {
 	position: absolute;
 	inset: 0;
-	z-index: 3;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 1.25rem;
-	background: color-mix(in oklch, var(--float-panel-bg) 65%, transparent);
-	backdrop-filter: blur(2px);
 	color: var(--primary);
 	opacity: 0;
 	pointer-events: none;
-	transition: opacity 250ms ease, border-radius 450ms var(--mp-motion);
+	transition: opacity 250ms ease;
 }
-.music-player[data-state="pill"] .music-player__loading,
-.music-player[data-state="disc"] .music-player__loading {
-	border-radius: 9999px;
+/* 加载中把曲名 / 艺术家 / 进度三行淡掉，只留居中的转圈 */
+.music-player__info-surface > * {
+	transition: opacity 220ms ease;
+}
+.music-player.is-loading .music-player__info-surface > :not(.music-player__loading) {
+	opacity: 0;
 }
 .music-player.is-loading .music-player__loading {
 	opacity: 1;

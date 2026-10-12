@@ -2,16 +2,21 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 
 /**
- * 左下角桌面音乐组件的视图控制器。
+ * 桌面可拖拽音乐组件的视图控制器。
  * 播放引擎仍是 MusicManager 暴露的 window.__fireflyMusic 单例（fm:* 事件广播），
- * 本模块只负责三态形态机（disc / pill / bar）、上展歌单面板、拖拽与列表渲染。
+ * 本模块只负责三态形态机（disc / pill / bar）、展开卡（歌单 / 歌词面板 + 信息层）、
+ * 拖拽定位与列表渲染。
  *
  * 形态转移约定：
  * - 未播放：disc ⇄ bar（点击唱片切换；点击组件外收回 disc）；
  * - 播放中：默认 pill（唱片 + 胶囊歌词），悬停弹性变 bar，点击唱片展开 bar；
  *   bar 在鼠标离开组件一段延迟后自动收回 pill；暂停时 pill 收回 bar；
- * - bar 态分层显示：信息层（曲名 / 艺术家 / 进度）默认展开 + 工具栏层；
- *   歌单按钮在组件上方再展一层歌单面板，信息层保持不关。
+ * - 歌单按钮开合的是 dock 上方那一张展开卡：卡片只向上长出面板，水平缩进不变，
+ *   信息层随之上移留在卡片底部（面板在上、信息层在下，唱片始终骑在左下角接缝）。
+ *
+ * 拖拽：组件任意非交互区域按住即可拖动，位移超过阈值才判定为拖拽并抑制随后的 click，
+ * 因此唱片点击切形态与拖唱片移动互不干扰；位置写 localStorage，且始终按当前形态的
+ * 目标尺寸夹在视口内（形态或面板开合导致尺寸变化时平滑回弹）。
  */
 
 type WidgetShape = "disc" | "pill" | "bar";
@@ -40,10 +45,31 @@ interface WidgetElement extends HTMLElement {
 	__musicSync?: () => void;
 }
 
+interface DragSession {
+	pointerId: number;
+	startX: number;
+	startY: number;
+	originX: number;
+	originY: number;
+	active: boolean;
+}
+
 const BAR_COLLAPSE_DELAY = 160;
 const LYRICS_SCROLL_RESUME_DELAY = 3000;
 const PLAYLIST_BATCH_SIZE = 30;
 const PILL_LYRICS_STORAGE_KEY = "music-pill-lyrics";
+const POSITION_STORAGE_KEY = "music-player-pos";
+/** 与 CSS --mp-edge 对齐的视口安全边距 */
+const EDGE_MARGIN = 20;
+/** 超过该位移才判定为拖拽，避免与点击切形态冲突 */
+const DRAG_THRESHOLD = 4;
+/** 歌单条目逐项入场的错峰上限与步长，需与 CSS 的 animation-delay 对齐 */
+const TRACK_STAGGER_MAX = 12;
+const TRACK_STAGGER_MS = 26;
+const TRACK_ENTRANCE_MS = 340 + TRACK_STAGGER_MAX * TRACK_STAGGER_MS;
+/** 这些区域承担各自的交互，不作为拖拽起点 */
+const DRAG_EXCLUDE =
+	".music-player__btn, .music-player__progress, .music-player__volume, .music-player__tab, .music-player__playlist-list, .music-player__lyrics-list";
 
 export function setupMusicPlayerWidget(): void {
 	const rootElement = document.querySelector<WidgetElement>(
@@ -61,6 +87,11 @@ export function setupMusicPlayerWidget(): void {
 		root.querySelector<T>(selector);
 
 	const ui = {
+		probe: $(".music-player__probe"),
+		probeBar: $(".music-player__probe-bar"),
+		probeRise: $(".music-player__probe-rise"),
+		panelBody: $(".music-player__panel-body"),
+		infoSurface: $(".music-player__info-surface"),
 		disc: $(".music-player__disc"),
 		discImg: $<HTMLImageElement>(".music-player__disc-img"),
 		title: $(".music-player__title"),
@@ -93,6 +124,7 @@ export function setupMusicPlayerWidget(): void {
 		volumeThumb: $(".music-player__volume-thumb"),
 		volumeValue: $(".music-player__volume-value"),
 		playlistList: $(".music-player__playlist-list"),
+		tabIndicator: $(".music-player__tab-indicator"),
 		tabPlaylist: $(".music-player__tab--playlist"),
 		tabLyrics: $(".music-player__tab--lyrics"),
 		playlistView: $(".music-player__playlist-view"),
@@ -104,6 +136,11 @@ export function setupMusicPlayerWidget(): void {
 	};
 
 	const critical: (Element | null)[] = [
+		ui.probe,
+		ui.probeBar,
+		ui.probeRise,
+		ui.panelBody,
+		ui.infoSurface,
 		ui.disc,
 		ui.discImg,
 		ui.title,
@@ -135,6 +172,7 @@ export function setupMusicPlayerWidget(): void {
 	let isUserScrollingLyrics = false;
 	let collapseTimer: number | null = null;
 	let lyricsScrollTimer: number | null = null;
+	let entranceTimer: number | null = null;
 	let currentLrcIndex = -1;
 	let currentTrack: TrackInfo | null = null;
 	let playlistData: TrackInfo[] = [];
@@ -142,10 +180,160 @@ export function setupMusicPlayerWidget(): void {
 	let pillLyricsEnabled =
 		localStorage.getItem(PILL_LYRICS_STORAGE_KEY) !== "false";
 
+	// ── 定位与拖拽 ───────────────────────────────────────────
+	// 锚点是组件的左下角：left 向右为正、bottom 向上为正
+	let posX = EDGE_MARGIN;
+	let posY = EDGE_MARGIN;
+	let drag: DragSession | null = null;
+	let suppressClick = false;
+
+	/**
+	 * 当前形态展开到位后的尺寸。用探针与未被裁剪的信息层 / 面板实测，
+	 * 而不是读正在过渡中的根元素宽高；bar 态略高估（未扣掉 dock 压住卡片的
+	 * 负边距），夹取时保守一点比贴边上溢更安全。
+	 */
+	function footprint(): { width: number; height: number } {
+		const disc = ui.disc?.offsetWidth ?? EDGE_MARGIN;
+		if (shape === "disc") return { width: disc, height: disc };
+		// 歌词态与展开态的 dock 同高，差别只在信息层与面板是否占位
+		const infoH = shape === "bar" ? (ui.infoSurface?.offsetHeight ?? 0) : 0;
+		const stageH = (ui.probeBar?.offsetHeight ?? 0) + infoH;
+		// pill 态唱片探出舞台的量就是 --mp-disc-rise；bar 态圆心压在 dock 上沿，被信息层包住
+		const overhang =
+			shape === "pill"
+				? (ui.probeRise?.offsetHeight ?? 0)
+				: Math.max(0, disc / 2 - infoH);
+		const panelH = panelOpen ? (ui.panelBody?.offsetHeight ?? 0) : 0;
+		return {
+			width: ui.probe?.offsetWidth ?? stageH,
+			height: stageH + panelH + overhang,
+		};
+	}
+
+	function applyPosition(): void {
+		const { width, height } = footprint();
+		const maxX = Math.max(EDGE_MARGIN, window.innerWidth - width - EDGE_MARGIN);
+		const maxY = Math.max(
+			EDGE_MARGIN,
+			window.innerHeight - height - EDGE_MARGIN,
+		);
+		posX = Math.min(Math.max(posX, EDGE_MARGIN), maxX);
+		posY = Math.min(Math.max(posY, EDGE_MARGIN), maxY);
+		root.style.setProperty("--mp-x", `${Math.round(posX)}px`);
+		root.style.setProperty("--mp-y", `${Math.round(posY)}px`);
+	}
+
+	function loadPosition(): void {
+		let raw: string | null = null;
+		try {
+			raw = localStorage.getItem(POSITION_STORAGE_KEY);
+		} catch {
+			return;
+		}
+		if (!raw) return;
+		try {
+			const saved = JSON.parse(raw) as { left?: unknown; bottom?: unknown };
+			if (typeof saved.left === "number" && Number.isFinite(saved.left)) {
+				posX = saved.left;
+			}
+			if (typeof saved.bottom === "number" && Number.isFinite(saved.bottom)) {
+				posY = saved.bottom;
+			}
+		} catch {
+			// 存坏了就回默认位置，不影响播放
+		}
+	}
+
+	function savePosition(): void {
+		try {
+			localStorage.setItem(
+				POSITION_STORAGE_KEY,
+				JSON.stringify({ left: posX, bottom: posY }),
+			);
+		} catch {
+			// 隐私模式写不进去，位置只活在本次会话
+		}
+	}
+
+	root.addEventListener(
+		"pointerdown",
+		(event) => {
+			if (event.pointerType === "mouse" && event.button !== 0) return;
+			const target = event.target;
+			if (target instanceof Element && target.closest(DRAG_EXCLUDE)) return;
+			drag = {
+				pointerId: event.pointerId,
+				startX: event.clientX,
+				startY: event.clientY,
+				originX: posX,
+				originY: posY,
+				active: false,
+			};
+		},
+		{ signal },
+	);
+
+	root.addEventListener(
+		"pointermove",
+		(event) => {
+			if (!drag || drag.pointerId !== event.pointerId) return;
+			const dx = event.clientX - drag.startX;
+			const dy = event.clientY - drag.startY;
+			if (!drag.active) {
+				if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) {
+					return;
+				}
+				drag.active = true;
+				root.classList.add("is-dragging");
+				root.setPointerCapture(event.pointerId);
+			}
+			posX = drag.originX + dx;
+			posY = drag.originY - dy;
+			applyPosition();
+		},
+		{ signal },
+	);
+
+	function endDrag(event: PointerEvent): void {
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		if (drag.active) {
+			// 拖拽收尾的那次 click 既不能切形态，也不能被「点击组件外」收回去
+			suppressClick = true;
+			window.setTimeout(() => {
+				suppressClick = false;
+			}, 0);
+			savePosition();
+		}
+		root.classList.remove("is-dragging");
+		drag = null;
+	}
+
+	root.addEventListener("pointerup", endDrag, { signal });
+	root.addEventListener("pointercancel", endDrag, { signal });
+
+	root.addEventListener(
+		"click",
+		(event) => {
+			if (!suppressClick) return;
+			suppressClick = false;
+			event.preventDefault();
+			event.stopImmediatePropagation();
+		},
+		{ capture: true, signal },
+	);
+
+	// 组件内没有需要 HTML5 拖放的元素，禁掉唱片与封面被原生拖出的行为
+	root.addEventListener("dragstart", (event) => event.preventDefault(), {
+		signal,
+	});
+
 	// ── 形态机 ───────────────────────────────────────────────
 	function setShape(next: WidgetShape): void {
+		if (shape === next) return;
 		shape = next;
 		root.dataset.state = next;
+		// 形态换代会改变组件占位，尺寸变大时把位置滑回视口内
+		applyPosition();
 	}
 
 	function clearCollapseTimer(): void {
@@ -191,19 +379,50 @@ export function setupMusicPlayerWidget(): void {
 		else setShape("bar");
 	}
 
-	// ── 上展面板（歌单 / 歌词双 tab） ────────────────────────
+	// ── 展开卡面板（歌单 / 歌词双 tab） ───────────────────────
+	function moveTabIndicator(): void {
+		const indicator = ui.tabIndicator;
+		const active = root.querySelector<HTMLElement>(
+			".music-player__tab.is-active",
+		);
+		if (!indicator || !active) return;
+		indicator.style.width = `${active.offsetWidth}px`;
+		indicator.style.transform = `translate3d(${active.offsetLeft}px, 0, 0)`;
+	}
+
 	function setPanelTab(tab: PanelTab): void {
 		ui.tabPlaylist?.classList.toggle("is-active", tab === "playlist");
 		ui.tabLyrics?.classList.toggle("is-active", tab === "lyrics");
 		ui.playlistView?.classList.toggle("is-active", tab === "playlist");
 		ui.lyricsView?.classList.toggle("is-active", tab === "lyrics");
+		moveTabIndicator();
+	}
+
+	/** 面板展开时给已渲染的歌单条目补一次逐项入场 */
+	function playTrackEntrance(): void {
+		const list = ui.playlistList;
+		if (!list) return;
+		list.classList.remove("is-entering");
+		// 强制回流，连续开关面板时动画才会重放而不是被合并
+		void list.offsetWidth;
+		list.classList.add("is-entering");
+		if (entranceTimer !== null) window.clearTimeout(entranceTimer);
+		entranceTimer = window.setTimeout(() => {
+			entranceTimer = null;
+			list.classList.remove("is-entering");
+		}, TRACK_ENTRANCE_MS);
 	}
 
 	function setPanelOpen(open: boolean): void {
 		panelOpen = open;
 		root.dataset.panel = open ? "open" : "closed";
 		ui.btnPlaylist?.classList.toggle("is-active", open);
-		if (open) setPanelTab("playlist");
+		if (open) {
+			setPanelTab("playlist");
+			playTrackEntrance();
+		}
+		// 卡片向上长高，靠近顶边时整体回弹到视口内
+		applyPosition();
 	}
 
 	// ── UI 更新 ──────────────────────────────────────────────
@@ -380,6 +599,11 @@ export function setupMusicPlayerWidget(): void {
 			title.textContent = track.name;
 			artist.textContent = track.artist;
 			itemEl.dataset.index = idx.toString();
+			// 入场错峰序号，超出上限的条目同批出现
+			itemEl.style.setProperty(
+				"--mp-i",
+				String(Math.min(idx, TRACK_STAGGER_MAX)),
+			);
 			itemEl.setAttribute("aria-label", `${track.name} - ${track.artist}`);
 			itemEl.addEventListener(
 				"click",
@@ -742,6 +966,11 @@ export function setupMusicPlayerWidget(): void {
 	document.addEventListener(
 		"click",
 		(event) => {
+			// 拖拽收尾落在组件外时 click 目标是公共祖先，这次不算「点击组件外」
+			if (suppressClick) {
+				suppressClick = false;
+				return;
+			}
 			const target = event.target;
 			if (target instanceof Node && root.contains(target)) return;
 			if (panelOpen) setPanelOpen(false);
@@ -752,10 +981,15 @@ export function setupMusicPlayerWidget(): void {
 		{ signal },
 	);
 
-	window.addEventListener("resize", () => scheduleMarquee(), {
-		passive: true,
-		signal,
-	});
+	window.addEventListener(
+		"resize",
+		() => {
+			scheduleMarquee();
+			applyPosition();
+			moveTabIndicator();
+		},
+		{ passive: true, signal },
+	);
 
 	// ── 初始状态 ─────────────────────────────────────────────
 	root.__musicSync = syncAll;
@@ -763,5 +997,11 @@ export function setupMusicPlayerWidget(): void {
 	root.dataset.panel = "closed";
 	root.dataset.playing = "false";
 	updatePillLyricsButton();
+	// 首次定位不参与过渡：is-dragging 关掉根元素过渡，强制回流后再放开
+	root.classList.add("is-dragging");
+	loadPosition();
+	applyPosition();
+	void root.offsetWidth;
+	root.classList.remove("is-dragging");
 	if (mgr.getState().initialized) syncAll();
 }
