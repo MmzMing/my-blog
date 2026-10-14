@@ -650,6 +650,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "zuige's blog",
+		imgurl: "https://blog.zuiges.com/img/avatar.jpg",
+		desc: "软件开发 · 玩机折腾 · 技术随手记",
+		siteurl: "https://blog.zuiges.com",
+		image: "/assets/images/friends/zuiges.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
