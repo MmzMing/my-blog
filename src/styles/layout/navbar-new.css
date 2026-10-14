@@ -363,38 +363,53 @@
  * 右段工具按钮 + 悬停工具面板（桌面端 ≥1024px）
  * 面板挂在 .navbar-segments 下（position:relative），
  * 避开右段滚动收缩态 overflow:hidden 的裁剪；
- * 水平位置由控制器按工具按钮实测定位
+ * 水平位置由控制器实测：箱体水平中心对准工具按钮，指针落在箱体中央，
+ * 视口放不下时箱体整体内收、指针沿箱沿滑动。
+ * --tools-anchor-x = 工具按钮中心相对面板左缘的偏移，指针位移与箱体缩放
+ * 原点共用这一个值，动画只跑 opacity/transform，不触发布局
  * ============================================ */
 /* 窄屏（<1024px）无中段导航与搜索按钮，工具面板是公告/主题/搜索唯一入口，
    因此不再按断点隐藏面板；<768px 整个 #navbar 由 mobile-dock.css 隐藏 */
 .nav-tools-panel {
 	position: absolute;
 	top: 100%;
-	right: 0;
+	left: 0;
+	/* 靠左定位后右侧可视空间可能小于内容宽度，不锁 max-content 会压扁图标 */
+	width: max-content;
 	/* 与导航栏拉开距离，保留悬停过渡区防止面板收起 */
 	padding-top: 1rem;
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
-	transform: translateY(-8px);
+	transform: scale(0.95);
+	transform-origin: var(--tools-anchor-x, 6rem) top;
+	/* 收起：短促淡出内缩（快进慢出的反向口径） */
 	transition:
-		opacity 0.2s ease-out,
-		visibility 0.2s ease-out,
-		transform 0.2s ease-out;
+		opacity 0.1s cubic-bezier(0.4, 0, 1, 1),
+		transform 0.1s cubic-bezier(0.4, 0, 1, 1),
+		visibility 0.1s linear;
 	z-index: 50;
 }
 
+/* 展开：从按钮中心"长出来"的临界阻尼感缩放，约 0.3s、无回弹 */
 .nav-tools-panel.is-open {
 	opacity: 1;
 	visibility: visible;
 	pointer-events: auto;
-	transform: translateY(0);
+	transform: scale(1);
+	transition:
+		opacity 0.16s ease-out,
+		transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+		visibility 0s;
 }
 
+/* 竖排菜单箱体：relative 让行偏移与高亮药丸共用同一坐标系（padding box） */
 .nav-tools-box {
+	position: relative;
 	display: flex;
-	align-items: center;
+	flex-direction: column;
 	gap: 0.125rem;
+	min-width: 12rem;
 	padding: 0.25rem;
 	border: 1.5px solid var(--deep-text);
 	border-radius: 0.75rem;
@@ -402,69 +417,150 @@
 	color: var(--deep-text);
 }
 
-/* 指向工具按钮的箭头：箱体本身是 static，::before 以面板为定位上下文，
-   top 里补回面板 padding-top 与箱体 1.5px 上边框厚度（同下拉面板箭头口径） */
+/* 指向工具按钮的箭头：箱体改成定位上下文后，top / translateX 都以箱体
+   padding box 为原点，需各自扣掉 1.5px 上/左边框厚度（同下拉面板箭头口径）。
+   横向只改 transform，指针沿箱沿滑动不触发布局 */
 .nav-tools-box::before {
 	position: absolute;
-	top: calc(1rem - 0.45rem + 1.5px);
-	right: 0.875rem;
+	top: -0.45rem;
+	left: 0;
 	width: 0.75rem;
 	height: 0.75rem;
 	border-top: 1.5px solid var(--deep-text);
 	border-left: 1.5px solid var(--deep-text);
 	background: var(--float-panel-bg);
 	content: "";
-	transform: rotate(45deg);
+	transform: translateX(
+		calc(var(--tools-anchor-x, 6rem) - 1.5px - 0.375rem)
+	) rotate(45deg);
+}
+
+/* 悬停/聚焦高亮：整只箱体只有这一个药丸，位置与高度由控制器写成自定义属性，
+   左右内缩与行的内容盒对齐（箱体 padding 0.25rem） */
+.nav-tools-highlight {
+	position: absolute;
+	top: 0;
+	right: 0.25rem;
+	left: 0.25rem;
+	height: var(--tools-hl-h, 0);
+	opacity: 0;
+	border-radius: 0.5rem;
+	background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	pointer-events: none;
+	transform: translateY(var(--tools-hl-y, 0));
+	transition:
+		transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+		height 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 0.12s ease-out;
+}
+
+.nav-tools-highlight.is-on {
+	opacity: 1;
 }
 
 .nav-tools-item {
 	position: relative;
-	display: inline-flex;
+	display: flex;
 	align-items: center;
-	justify-content: center;
-	width: 2.25rem;
+	gap: 0.625rem;
+	width: 100%;
 	height: 2.25rem;
-	border-radius: 9999px;
+	padding: 0 0.5rem;
+	border-radius: 0.5rem;
 	color: var(--deep-text);
-	transition: background-color 0.15s ease-out, color 0.15s ease-out;
+	font-size: 0.875rem;
+	font-weight: 500;
+	text-align: start;
+	white-space: nowrap;
+	/* 行级错峰：面板展开后各自上浮淡入。延迟只挂在 opacity/transform 上，
+	   悬停变色保持即时 */
+	opacity: 0;
+	transform: translateY(3px);
+	transition:
+		color 0.15s ease-out,
+		opacity 0.2s ease-out var(--tools-row-delay, 0s),
+		transform 0.2s cubic-bezier(0.22, 1, 0.36, 1) var(--tools-row-delay, 0s);
 }
 
-/* 与导航下拉项同款悬停：灰色背景 + 主色图标（navbar-hover-highlight 同源） */
-.nav-tools-item:hover {
-	background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
+/* delayChildren 0.03s + staggerChildren 0.016s；收起态不定义该变量，
+   回落到 0s 使各行同时消失 */
+.nav-tools-panel.is-open .nav-tools-item {
+	--tools-row-delay: calc(0.03s + var(--tools-row-index, 0) * 0.016s);
+	opacity: 1;
+	transform: none;
+}
+
+.nav-tools-item__icon {
+	flex-shrink: 0;
+	font-size: 1.15rem;
+}
+
+/* 与导航下拉项同款悬停着色（navbar-hover-highlight 同源），底色交给药丸 */
+.nav-tools-item:hover,
+.nav-tools-item:focus-visible {
 	color: var(--primary);
 }
 
-.nav-tools-item:active {
-	background-color: color-mix(in oklch, var(--deep-text) 12%, transparent);
+/* 快捷键提示：与 SearchModal 的 Ctrl/Cmd+K 绑定对应，
+   修饰键文案由脚本按平台改写，这里只负责排布 */
+.nav-tools-keys {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	flex-shrink: 0;
+	font-size: 0.8125rem;
+	line-height: 1;
+	color: color-mix(in oklch, var(--deep-text) 45%, transparent);
 }
 
-/* 工具提示：图标正下方浮现（footer 的 data-tooltip 惯例，方向翻转向下） */
-.nav-tools-item::after {
-	content: attr(data-tooltip);
+/* 主题三段滑块：整行是一个组，滑块只靠 --nav-tools-seg-index 位移 */
+.nav-tools-segments {
+	position: relative;
+	display: flex;
+	flex-shrink: 0;
+	margin-left: auto;
+	padding: 2px;
+	border-radius: 9999px;
+	background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
+}
+
+.nav-tools-thumb {
 	position: absolute;
-	top: calc(100% + 0.5rem);
-	left: 50%;
-	padding: 0.25rem 0.5rem;
-	border-radius: var(--radius-small);
-	background: var(--deep-text);
-	color: var(--page-bg);
-	font-size: 0.75rem;
-	line-height: 1.3;
-	white-space: nowrap;
-	opacity: 0;
-	pointer-events: none;
-	transform: translate(-50%, -0.25rem);
-	transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
-	visibility: hidden;
-	z-index: 5;
+	top: 2px;
+	left: 2px;
+	width: calc((100% - 4px) / 3);
+	height: calc(100% - 4px);
+	border-radius: 9999px;
+	background-color: color-mix(in oklch, var(--deep-text) 18%, transparent);
+	transform: translateX(calc(var(--nav-tools-seg-index, 0) * 100%));
+	transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.nav-tools-item:hover::after,
-.nav-tools-item:focus-visible::after {
+.nav-tools-segment {
+	position: relative;
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.75rem;
+	height: 1.5rem;
+	border-radius: 9999px;
+	color: var(--deep-text);
+	opacity: 0.55;
+	transition: opacity 0.15s ease-out;
+}
+
+.nav-tools-segment:hover {
+	opacity: 0.8;
+}
+
+.nav-tools-segment[aria-checked="true"] {
 	opacity: 1;
-	visibility: visible;
-	transform: translate(-50%, 0);
+}
+
+.nav-tools-segment__icon {
+	font-size: 0.95rem;
 }
 
 /* ============================================
@@ -616,8 +712,17 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.nav-tools-panel,
-	.nav-tools-item::after {
+	.nav-tools-item,
+	.nav-tools-highlight,
+	.nav-tools-thumb,
+	.nav-tools-segment {
 		transition: none !important;
+	}
+
+	/* 只保留有无，不保留位移与缩放；药丸仍需 translate 落位，不能清掉 */
+	.nav-tools-panel,
+	.nav-tools-item {
+		transform: none !important;
 	}
 
 	.nav-announcement-backdrop,

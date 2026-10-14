@@ -268,6 +268,9 @@ export const ja: Translation = {
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "ダークモードに切替",
 	[Key.switchToLight]: "ライトモードに切替",
+	[Key.themeLight]: "ライト",
+	[Key.themeDark]: "ダーク",
+	[Key.themeSystem]: "システムに従う",
 	[Key.spineModel]: "Spineモデル",
 	[Key.toggleDock]: "ドック切替",
 	[Key.quickActions]: "クイックアクション",

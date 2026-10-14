@@ -267,6 +267,9 @@ export const en: Translation = {
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "Switch to dark mode",
 	[Key.switchToLight]: "Switch to light mode",
+	[Key.themeLight]: "Light",
+	[Key.themeDark]: "Dark",
+	[Key.themeSystem]: "System",
 	[Key.spineModel]: "Spine model",
 	[Key.toggleDock]: "Toggle dock",
 	[Key.quickActions]: "Quick actions",

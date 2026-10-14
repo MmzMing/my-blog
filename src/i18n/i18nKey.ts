@@ -256,6 +256,9 @@ enum I18nKey {
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	switchToDark = "switchToDark",
 	switchToLight = "switchToLight",
+	themeLight = "themeLight",
+	themeDark = "themeDark",
+	themeSystem = "themeSystem",
 	spineModel = "spineModel",
 	toggleDock = "toggleDock",
 	quickActions = "quickActions",

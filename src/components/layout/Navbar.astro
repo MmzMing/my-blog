@@ -2,6 +2,7 @@
 import { Picture } from "astro:assets";
 import * as path from "node:path";
 import Icon from "@components/common/Icon.astro";
+import { DARK_MODE, LIGHT_MODE, SYSTEM_MODE } from "@constants/constants";
 import type { ImageMetadata } from "astro";
 import DropdownItem from "@/components/common/DropdownItem.astro";
 import { announcementConfig, navBarConfig, siteConfig } from "@/config";
@@ -36,6 +37,21 @@ const dropdownPages: NavbarDropdownPage[] = links
 			.filter((child): child is NavBarLink => child !== null),
 	}))
 	.filter((page) => page.children.length > 0);
+
+// 工具面板主题行的三段滑块，值对应 setting-utils 的 LIGHT_DARK_MODE
+const toolsThemeOptions = [
+	{
+		value: LIGHT_MODE,
+		label: i18n(I18nKey.themeLight),
+		icon: "material-symbols:wb-sunny-outline-rounded",
+	},
+	{
+		value: DARK_MODE,
+		label: i18n(I18nKey.themeDark),
+		icon: "material-symbols:dark-mode-outline-rounded",
+	},
+	{ value: SYSTEM_MODE, label: i18n(I18nKey.themeSystem), icon: "mdi:monitor" },
+];
 
 const logoValue = siteConfig.navbar.logo?.value || "";
 const isLocalSrcLogo =
@@ -108,6 +124,11 @@ if (isLocalSrcLogo) {
 						<div class="navbar-dropdown-box">
 							{dropdownPages.map((page) => (
 								<div class="navbar-dropdown-page" data-dropdown-page={page.index}>
+									<!-- 悬停高亮：每页一个药丸，随该页一起淡换 -->
+									<span
+										aria-hidden="true"
+										class="navbar-dropdown-highlight"
+									></span>
 									{page.children.map((child, childIndex) => {
 										const isLast = childIndex === page.children.length - 1;
 										return child.action ? (
@@ -161,40 +182,63 @@ if (isLocalSrcLogo) {
 			</button>
 		</div>
 
-		<!-- 工具面板：桌面端悬停/聚焦右段工具按钮浮出（公告/主题/搜索）。
+		<!-- 工具面板：桌面端悬停/聚焦右段工具按钮浮出（搜索/公告/主题）。
 		     挂在 segments 下，避开右段滚动收缩态 overflow:hidden 对面板的裁剪 -->
 		<div class="nav-tools-panel" id="nav-tools-panel">
-			<div aria-label={i18n(I18nKey.tools)} class="nav-tools-box" role="group">
-				{announcementConfig.items.length > 0 && (
-					<button
-						aria-label={i18n(I18nKey.announcement)}
-						class="nav-tools-item"
-						data-tooltip={i18n(I18nKey.announcement)}
-						id="nav-tools-announcement"
-						type="button"
-					>
-						<Icon name="material-symbols:notifications-outline-rounded" is:inline class="text-[1.3rem]"></Icon>
-					</button>
-				)}
+			<div aria-label={i18n(I18nKey.tools)} class="nav-tools-box" role="menu">
+				<!-- 悬停高亮：整只箱体只有一个药丸，行与行之间滑动而非各自刷底 -->
+				<span class="nav-tools-highlight" aria-hidden="true"></span>
 				<button
-					aria-label={i18n(I18nKey.switchToDark)}
-					class="nav-tools-item"
-					data-tooltip={i18n(I18nKey.switchToDark)}
-					id="nav-tools-theme"
-					type="button"
-				>
-					<Icon name="material-symbols:wb-sunny-outline-rounded" is:inline class="text-[1.3rem] nav-tools-theme-icon-light"></Icon>
-					<Icon name="material-symbols:dark-mode-outline-rounded" is:inline class="text-[1.3rem] nav-tools-theme-icon-dark hidden"></Icon>
-				</button>
-				<button
-					aria-label={i18n(I18nKey.search)}
 					class="nav-tools-item"
 					data-nav-search-trigger
-					data-tooltip={i18n(I18nKey.search)}
+					data-nav-tools-stop
+					role="menuitem"
 					type="button"
 				>
-					<Icon name="material-symbols:search-rounded" is:inline class="text-[1.3rem]"></Icon>
+					<Icon name="material-symbols:search-rounded" is:inline class="nav-tools-item__icon" />
+					<span>{i18n(I18nKey.search)}</span>
+					<!-- 快捷键与 SearchModal 的 Ctrl/Cmd+K 绑定一致，修饰键由脚本按平台改写 -->
+					<kbd aria-hidden="true" class="nav-tools-keys">
+						<span data-nav-tools-modifier>Ctrl</span>
+						<span>K</span>
+					</kbd>
 				</button>
+				{announcementConfig.items.length > 0 && (
+					<button
+						class="nav-tools-item"
+						data-nav-tools-stop
+						id="nav-tools-announcement"
+						role="menuitem"
+						type="button"
+					>
+						<Icon name="material-symbols:notifications-outline-rounded" is:inline class="nav-tools-item__icon" />
+						<span>{i18n(I18nKey.announcement)}</span>
+					</button>
+				)}
+				<div class="nav-tools-item nav-tools-item--group" data-nav-tools-stop="group">
+					<Icon name="material-symbols:brightness-2-rounded" is:inline class="nav-tools-item__icon" />
+					<span>{i18n(I18nKey.theme)}</span>
+					<div
+						aria-label={i18n(I18nKey.theme)}
+						class="nav-tools-segments"
+						role="group"
+					>
+						<span class="nav-tools-thumb" aria-hidden="true"></span>
+						{toolsThemeOptions.map((option) => (
+							<button
+								aria-checked="false"
+								aria-label={option.label}
+								class="nav-tools-segment"
+								data-nav-tools-theme={option.value}
+								role="menuitemradio"
+								title={option.label}
+								type="button"
+							>
+								<Icon name={option.icon} is:inline class="nav-tools-segment__icon" />
+							</button>
+						))}
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -246,8 +290,7 @@ if (isLocalSrcLogo) {
 <!-- 样式已迁移至 src/styles/layout/navbar-new.css -->
 
 <script>
-import I18nKey from "@/i18n/i18nKey";
-import { i18n } from "@/i18n/translation";
+import { DARK_MODE, LIGHT_MODE, SYSTEM_MODE } from "@constants/constants";
 import { getStoredTheme, setTheme } from "@/utils/setting-utils";
 import { requestSearchModalToggle } from "@/utils/search-modal-controller";
 import {
@@ -773,6 +816,8 @@ const TOOLS_CLOSE_DELAY = 260;
 const toolsButton = document.getElementById("nav-tools-btn");
 const toolsPanel = document.getElementById("nav-tools-panel");
 let toolsCloseTimer: number | null = null;
+let toolsRepositionFrame = 0;
+let toolsPointerInside = false;
 
 function isToolsPanelOpen(): boolean {
 	return toolsPanel?.classList.contains("is-open") ?? false;
@@ -793,15 +838,44 @@ function scheduleToolsClose(): void {
 	}, TOOLS_CLOSE_DELAY);
 }
 
-// 面板右缘对齐工具按钮右缘：滚动收缩后右段变成吸附在导航中段旁的小球，
-// 固定 right:0 会让面板与小球脱节，所以每次展开时实测定位
+// 面板与视口左右边缘、指针与箱体左右边缘共用的最小留白
+const TOOLS_EDGE_INSET = 12;
+
+function clampValue(value: number, min: number, max: number): number {
+	return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * 面板定位：箱体水平中心对准工具按钮中心，指针落在箱体中央。
+ * 视口右侧放不下时箱体整体内收（左右各留 TOOLS_EDGE_INSET），
+ * --tools-anchor-x 记录按钮中心相对面板左缘的偏移，指针沿箱沿滑动、
+ * 缩放原点同步跟上。
+ * 滚动收缩后右段变成吸附在导航中段旁的小球，固定 right 会与小球脱节，
+ * 所以每次展开都实测。读写分组：先集中量测再一次性写入，避免反复强制同步布局。
+ */
 function positionToolsPanel(): void {
 	if (!toolsButton || !toolsPanel) return;
 	const segments = toolsButton.closest(".navbar-segments");
 	if (!segments) return;
 	const segmentsRect = segments.getBoundingClientRect();
 	const buttonRect = toolsButton.getBoundingClientRect();
-	toolsPanel.style.right = `${Math.max(0, segmentsRect.right - buttonRect.right)}px`;
+	const panelWidth = toolsPanel.offsetWidth;
+	const viewportWidth = document.documentElement.clientWidth;
+	const center = buttonRect.left + buttonRect.width / 2;
+
+	const left = clampValue(
+		center - panelWidth / 2,
+		TOOLS_EDGE_INSET,
+		viewportWidth - panelWidth - TOOLS_EDGE_INSET,
+	);
+	const anchorX = clampValue(
+		center - left,
+		TOOLS_EDGE_INSET,
+		panelWidth - TOOLS_EDGE_INSET,
+	);
+
+	toolsPanel.style.left = `${left - segmentsRect.left}px`;
+	toolsPanel.style.setProperty("--tools-anchor-x", `${anchorX}px`);
 }
 
 function openToolsPanel(): void {
@@ -819,19 +893,84 @@ function closeToolsPanel(): void {
 	if (!isToolsPanelOpen()) return;
 	toolsPanel.classList.remove("is-open");
 	toolsButton.setAttribute("aria-expanded", "false");
+	highlightToolsRow(null);
+}
+
+// ===== 工具面板悬停高亮：箱体里只有一个药丸，靠 translateY 在行之间滑动 =====
+const toolsHighlight = document.querySelector<HTMLElement>(
+	"#nav-tools-panel .nav-tools-highlight",
+);
+const toolsRows = Array.from(
+	document.querySelectorAll<HTMLElement>(
+		"#nav-tools-panel [data-nav-tools-stop]",
+	),
+);
+// 展开错峰的行序号写在内联属性上：分隔符和高亮药丸也是箱体子元素，
+// 用 nth-child 数不出来
+toolsRows.forEach((row, index) => {
+	row.style.setProperty("--tools-row-index", String(index));
+});
+
+let toolsHighlightedRow: HTMLElement | null = null;
+
+function highlightToolsRow(row: HTMLElement | null): void {
+	if (!toolsHighlight) return;
+	toolsHighlightedRow = row;
+	if (!row) {
+		toolsHighlight.classList.remove("is-on");
+		return;
+	}
+	toolsHighlight.style.setProperty("--tools-hl-y", `${row.offsetTop}px`);
+	toolsHighlight.style.setProperty("--tools-hl-h", `${row.offsetHeight}px`);
+	toolsHighlight.classList.add("is-on");
+}
+
+const toolsListBox = document.querySelector<HTMLElement>(
+	"#nav-tools-panel .nav-tools-box",
+);
+
+if (toolsListBox) {
+	const listBox = toolsListBox;
+
+	function rowOf(target: EventTarget | null): HTMLElement | null {
+		if (!(target instanceof Element)) return null;
+		return target.closest<HTMLElement>("[data-nav-tools-stop]");
+	}
+
+	// 悬停即高亮，但不抢键盘焦点：pointerover 只改药丸位置
+	listBox.addEventListener("pointerover", (event) => {
+		if (event.pointerType === "touch") return;
+		const row = rowOf(event.target);
+		if (row === toolsHighlightedRow) return;
+		highlightToolsRow(row);
+	});
+	listBox.addEventListener("pointerleave", () => highlightToolsRow(null));
+	// 键盘路径：焦点落在哪一行，药丸就跟到哪一行（含三段滑块整行）
+	listBox.addEventListener("focusin", (event) => {
+		highlightToolsRow(rowOf(event.target));
+	});
 }
 
 if (toolsButton && toolsPanel) {
 	toolsButton.addEventListener("mouseenter", openToolsPanel);
 	toolsButton.addEventListener("mouseleave", scheduleToolsClose);
 	// 面板与按钮之间有过渡区，进入面板时取消收起计时
-	toolsPanel.addEventListener("mouseenter", cancelToolsClose);
-	toolsPanel.addEventListener("mouseleave", scheduleToolsClose);
-	// 键盘路径：聚焦展开，焦点离开按钮与面板后延迟收起
+	toolsPanel.addEventListener("mouseenter", () => {
+		toolsPointerInside = true;
+		cancelToolsClose();
+	});
+	toolsPanel.addEventListener("mouseleave", () => {
+		toolsPointerInside = false;
+		scheduleToolsClose();
+	});
+	// 键盘路径：聚焦展开，焦点离开按钮与面板后延迟收起。
+	// 主题切换走视图过渡，期间可能把焦点甩回 body 冒出 focusout，
+	// 指针还停在面板里时不据此收起——移出面板由 mouseleave 负责
 	toolsButton.addEventListener("focusin", openToolsPanel);
 	toolsButton.addEventListener("focusout", (event) => {
 		const next = event.relatedTarget;
 		if (next instanceof Node && toolsPanel.contains(next)) return;
+		if (toolsPointerInside) return;
 		scheduleToolsClose();
 	});
 	toolsPanel.addEventListener("focusout", (event) => {
@@ -842,6 +981,7 @@ if (toolsButton && toolsPanel) {
 		) {
 			return;
 		}
+		if (toolsPointerInside) return;
 		scheduleToolsClose();
 	});
 	// 点击开合兜底（触屏 / 键盘 Enter）
@@ -850,16 +990,33 @@ if (toolsButton && toolsPanel) {
 		if (isToolsPanelOpen()) closeToolsPanel();
 		else openToolsPanel();
 	});
+	// 行点击的收合规则：主题三段滑块保持展开（选完要看滑块反馈），
+	// 其余行（搜索 / 公告）点完即收起
+	toolsPanel.addEventListener("click", (event) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		if (target.closest('[data-nav-tools-stop="group"]')) return;
+		if (target.closest("[data-nav-tools-stop]")) closeToolsPanel();
+	});
 	// 收缩小球随滚动位移，面板锚点会失效，滚动即收起
 	window.addEventListener(
 		"scroll",
 		() => {
+			// 主题三段滑块选完要留在面板里看滑块反馈：切换时代码主题属性跟着变，
+			// 页面高度抖动会冒出一次 scroll，此时锚点其实没动
+			if (toolsPointerInside) return;
 			if (isToolsPanelOpen()) closeToolsPanel();
 		},
 		{ passive: true },
 	);
 	window.addEventListener("resize", () => {
-		if (isToolsPanelOpen()) positionToolsPanel();
+		if (!isToolsPanelOpen()) return;
+		// 连续 resize 合并到一帧内只量测一次
+		if (toolsRepositionFrame !== 0) return;
+		toolsRepositionFrame = window.requestAnimationFrame(() => {
+			toolsRepositionFrame = 0;
+			positionToolsPanel();
+		});
 	}, { passive: true });
 	document.addEventListener("click", (event) => {
 		const target = event.target;
@@ -869,34 +1026,62 @@ if (toolsButton && toolsPanel) {
 	});
 }
 
-// 面板主题按钮：与悬浮坞同一套 setTheme + theme-change 同步逻辑
-const toolsThemeButton = document.getElementById("nav-tools-theme");
-if (toolsThemeButton) {
-	// 函数声明会被提升，null 收窄不跨函数边界，捕获到常量里用
-	const themeButton = toolsThemeButton;
-	const lightIcon = themeButton.querySelector(".nav-tools-theme-icon-light");
-	const darkIcon = themeButton.querySelector(".nav-tools-theme-icon-dark");
+// 面板主题三段滑块：与悬浮坞同一套 setTheme + theme-change 同步逻辑
+const toolsSegments = document.querySelector<HTMLElement>(
+	"#nav-tools-panel .nav-tools-segments",
+);
+const toolsThemeButtons = Array.from(
+	document.querySelectorAll<HTMLElement>("[data-nav-tools-theme]"),
+);
 
-	function updateToolsThemeState(): void {
-		const isDark = document.documentElement.classList.contains("dark");
-		lightIcon?.classList.toggle("hidden", isDark);
-		darkIcon?.classList.toggle("hidden", !isDark);
-		const label = i18n(isDark ? I18nKey.switchToLight : I18nKey.switchToDark);
-		themeButton.setAttribute("data-tooltip", label);
-		themeButton.setAttribute("aria-label", label);
+if (toolsSegments && toolsThemeButtons.length > 0) {
+	const segments = toolsSegments;
+	const themeButtons = toolsThemeButtons;
+
+	function syncToolsThemeSegments(): void {
+		const current = getStoredTheme();
+		const at = themeButtons.findIndex(
+			(button) => button.dataset.navToolsTheme === current,
+		);
+		themeButtons.forEach((button, index) => {
+			button.setAttribute("aria-checked", String(index === at));
+		});
+		// 滑块位移只改一个自定义属性，实际移动交给 transform
+		segments.style.setProperty("--nav-tools-seg-index", String(Math.max(0, at)));
 	}
 
-	themeButton.addEventListener("click", (event) => {
+	segments.addEventListener("click", (event) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		const button = target.closest<HTMLElement>("[data-nav-tools-theme]");
+		const value = button?.dataset.navToolsTheme;
+		if (
+			value !== LIGHT_MODE &&
+			value !== DARK_MODE &&
+			value !== SYSTEM_MODE
+		) {
+			return;
+		}
 		event.stopPropagation();
-		const current = getStoredTheme();
-		const resolved = current === "system"
-			? (document.documentElement.classList.contains("dark") ? "dark" : "light")
-			: current;
-		setTheme(resolved === "light" ? "dark" : "light");
+		setTheme(value);
+		// setTheme 只在外观真的改变时才动 DOM，且 theme-change 只由系统偏好触发：
+		// 从 system 点到与当前外观一致的一格时两者都不会回调，滑块必须自己同步
+		syncToolsThemeSegments();
 	});
 
-	updateToolsThemeState();
-	window.addEventListener("theme-change", updateToolsThemeState);
+	syncToolsThemeSegments();
+	window.addEventListener("theme-change", syncToolsThemeSegments);
+}
+
+// 搜索行的快捷键提示：修饰键按平台显示 ⌘ / Ctrl，与 SearchModal 的绑定一致
+const toolsSearchModifier = document.querySelector<HTMLElement>(
+	"[data-nav-tools-modifier]",
+);
+if (
+	toolsSearchModifier &&
+	/Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
+) {
+	toolsSearchModifier.textContent = "⌘";
 }
 
 // ===== 公告弹窗：水平垂直居中展示公告列表 =====

@@ -65,15 +65,18 @@ interface ProfileRefs {
 const MOBILE_MEDIA = "(max-width: 1023.98px)";
 /** 鼠标在 logo 与面板之间移动的过渡余量，避免误收起 */
 const CLOSE_DELAY = 260;
+/** 桌面端卡片与视口左右边缘的最小留白，居中放不下时按它内收 */
+const PROFILE_EDGE_INSET = 12;
 /** 站点面板与卡片边缘的间距，需与样式里的 --profile-sites-inset 一致 */
 const SITES_INSET = 12;
 /** 面板高度与头像飞行共用时长 */
 const SITES_DURATION = 360;
 /** 与移动端底部卡片入场同一条曲线，两处动效节奏对齐 */
 const SITES_EASING = "cubic-bezier(0.32, 0.72, 0.29, 1)";
-/** 热力图逐列扫描：单格时长与列间隔，与参考实现的节奏一致 */
-const CELL_FADE = 200;
-const COLUMN_STAGGER = 12;
+/** 热力图逐列扫描：单格时长与列间隔。列间隔决定扫描速率，
+    单格时长要大于「一整轮列间隔」才不会出现格子还没落定下一列就开始的抢拍感 */
+const CELL_FADE = 320;
+const COLUMN_STAGGER = 20;
 /** 月份名入场：等扫描收尾再去模糊 */
 const LABEL_BLUR = 6;
 const LABEL_REVEAL = 450;
@@ -552,13 +555,21 @@ function scheduleClose(): void {
 }
 
 /**
- * 桌面端把面板锚定到导航左段下缘。面板是 body 级 fixed 元素，
+ * 桌面端把面板锚定到导航左段下缘：卡片水平中心对准左段中心，视口放不下时
+ * 整体内收（滚动收缩后左段是小球，中心跟着走）。面板是 body 级 fixed 元素，
  * left/top 内联写入；移动端是全屏卡片，不使用该锚点
  */
 function positionPanel(): void {
 	if (!refs?.leftSeg) return;
 	const rect = refs.leftSeg.getBoundingClientRect();
-	refs.panel.style.left = `${rect.left}px`;
+	const panelWidth = refs.panel.offsetWidth;
+	const viewportWidth = document.documentElement.clientWidth;
+	const center = rect.left + rect.width / 2;
+	const left = Math.min(
+		Math.max(center - panelWidth / 2, PROFILE_EDGE_INSET),
+		viewportWidth - panelWidth - PROFILE_EDGE_INSET,
+	);
+	refs.panel.style.left = `${left}px`;
 	refs.panel.style.top = `${rect.bottom}px`;
 }
 

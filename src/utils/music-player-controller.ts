@@ -70,6 +70,26 @@ const TRACK_ENTRANCE_MS = 340 + TRACK_STAGGER_MAX * TRACK_STAGGER_MS;
 /** 这些区域承担各自的交互，不作为拖拽起点 */
 const DRAG_EXCLUDE =
 	".music-player__btn, .music-player__progress, .music-player__volume, .music-player__tab, .music-player__playlist-list, .music-player__lyrics-list";
+/**
+ * 音量条橡皮筋的越界上限（px）。约束来自滑块：轨道端点到胶囊内缘只有 31px，
+ * 半颗滑块 6.6px，20 越界后滑块右缘距胶囊还留 4px。参考实现的 26 不受这个约束。
+ */
+const VOLUME_STRETCH_PX = 20;
+/** 松手后数值气泡再停留的时长（ms），与拖拽中的常显区分开 */
+const VOLUME_BUBBLE_LINGER_MS = 700;
+
+/**
+ * iOS 式越界阻尼：每多拖一像素给的位移递减，但永远不超过 limit。
+ * 返回带符号的位移，正负由拖出的方向决定。
+ */
+function rubberBand(distance: number, limit: number): number {
+	const bounded = (Math.abs(distance) * 0.55) / limit + 1;
+	return Math.sign(distance) * (1 - 1 / bounded) * limit;
+}
+
+function prefersReducedMotion(): boolean {
+	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 export function setupMusicPlayerWidget(): void {
 	const rootElement = document.querySelector<WidgetElement>(
@@ -119,10 +139,9 @@ export function setupMusicPlayerWidget(): void {
 		btnVolume: $(".music-player__btn--volume"),
 		iconVolOn: $(".music-player__icon-vol-on"),
 		iconVolOff: $(".music-player__icon-vol-off"),
+		volumePop: $(".music-player__volume-pop"),
 		volumeTrack: $(".music-player__volume-track"),
-		volumeBar: $(".music-player__volume-bar"),
-		volumeThumb: $(".music-player__volume-thumb"),
-		volumeValue: $(".music-player__volume-value"),
+		volumeBubble: $(".music-player__volume-bubble"),
 		playlistList: $(".music-player__playlist-list"),
 		tabIndicator: $(".music-player__tab-indicator"),
 		tabPlaylist: $(".music-player__tab--playlist"),
@@ -156,8 +175,8 @@ export function setupMusicPlayerWidget(): void {
 		ui.btnPlay,
 		ui.btnNext,
 		ui.btnVolume,
+		ui.volumePop,
 		ui.volumeTrack,
-		ui.volumeBar,
 		ui.playlistList,
 		ui.itemTemplate,
 	];
@@ -476,10 +495,10 @@ export function setupMusicPlayerWidget(): void {
 
 	function updateVolumeUI(volume: number, isMuted: boolean): void {
 		const pct = isMuted ? 0 : volume * 100;
-		// 垂直音量条：填充与滑块自底向上
-		if (ui.volumeBar) ui.volumeBar.style.height = `${pct}%`;
-		if (ui.volumeThumb) ui.volumeThumb.style.bottom = `${pct}%`;
-		if (ui.volumeValue) ui.volumeValue.textContent = `${Math.round(pct)}`;
+		const label = `${Math.round(pct)}%`;
+		// 填充与滑块的位置由 CSS 从 --vol 派生（叠加 --vol-over 越界量），此处只写已提交位置
+		ui.volumePop?.style.setProperty("--vol", pct.toFixed(2));
+		if (ui.volumeBubble) ui.volumeBubble.textContent = label;
 		ui.volumeTrack?.setAttribute("aria-valuenow", Math.round(pct).toString());
 		const muted = isMuted || volume === 0;
 		ui.iconVolOn?.classList.toggle("hidden", muted);
@@ -830,40 +849,46 @@ export function setupMusicPlayerWidget(): void {
 	});
 
 	// ── 拖拽（进度 / 音量） ──────────────────────────────────
+	/**
+	 * surface 是起手并捕获指针的区域，measure 是量取比例的区域，两者可以不同：
+	 * 音量条整颗胶囊都能拖，但比值只按轨道宽度算。
+	 */
 	function bindDrag(
-		track: HTMLElement | null,
-		onRatio: (ratio: number) => void,
+		surface: HTMLElement | null,
+		onRatio: (ratio: number, rawRatio: number) => void,
 		onCommit?: (ratio: number) => void,
-		vertical = false,
+		onStart?: () => void,
+		measure?: HTMLElement | null,
 	): void {
-		if (!track) return;
-		track.addEventListener(
+		if (!surface) return;
+		const rail = measure ?? surface;
+		surface.addEventListener(
 			"pointerdown",
 			(event) => {
 				event.preventDefault();
-				track.setPointerCapture(event.pointerId);
-				const apply = (clientX: number, clientY: number): number => {
-					const rect = track.getBoundingClientRect();
-					// 垂直轴：底部为 0、顶部为 1，取纵向反比
-					const ratio = vertical
-						? 1 - Math.min(1, Math.max(0, (clientY - rect.top) / rect.height))
-						: Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-					onRatio(ratio);
+				surface.setPointerCapture(event.pointerId);
+				onStart?.();
+				const apply = (clientX: number): number => {
+					const rect = rail.getBoundingClientRect();
+					// raw 保留越界量供橡皮筋使用，夹取后的值才是真实位置
+					const raw = (clientX - rect.left) / (rect.width || 1);
+					const ratio = Math.min(1, Math.max(0, raw));
+					onRatio(ratio, raw);
 					return ratio;
 				};
-				apply(event.clientX, event.clientY);
+				apply(event.clientX);
 				const move = (moveEvent: PointerEvent): void => {
-					apply(moveEvent.clientX, moveEvent.clientY);
+					apply(moveEvent.clientX);
 				};
 				const up = (upEvent: PointerEvent): void => {
-					track.removeEventListener("pointermove", move);
-					track.removeEventListener("pointerup", up);
-					track.removeEventListener("pointercancel", up);
-					onCommit?.(apply(upEvent.clientX, upEvent.clientY));
+					surface.removeEventListener("pointermove", move);
+					surface.removeEventListener("pointerup", up);
+					surface.removeEventListener("pointercancel", up);
+					onCommit?.(apply(upEvent.clientX));
 				};
-				track.addEventListener("pointermove", move);
-				track.addEventListener("pointerup", up);
-				track.addEventListener("pointercancel", up);
+				surface.addEventListener("pointermove", move);
+				surface.addEventListener("pointerup", up);
+				surface.addEventListener("pointercancel", up);
 			},
 			{ signal },
 		);
@@ -887,13 +912,55 @@ export function setupMusicPlayerWidget(): void {
 		},
 	);
 
+	// 音量条的弹性反馈全部走 CSS 自定义属性：--vol-over 是越界位移，--vol-stretch 是越界比例
+	//（用于「拉得越紧越细」与两端图标外移）。变量写在 popover 上，轨道、滑块、气泡、图标共用一份。
+	// 位置本身仍由 fm:volume 回写，避免拖拽与状态两套真相。
+	let volumeBubbleTimer: number | null = null;
+
+	function setVolumeStretch(over: number): void {
+		ui.volumePop?.style.setProperty("--vol-over", `${over.toFixed(2)}px`);
+		ui.volumePop?.style.setProperty(
+			"--vol-stretch",
+			(Math.abs(over) / VOLUME_STRETCH_PX).toFixed(3),
+		);
+	}
+
+	function applyVolumeStretch(rawRatio: number): void {
+		const track = ui.volumeTrack;
+		if (!track || prefersReducedMotion()) {
+			setVolumeStretch(0);
+			return;
+		}
+		const width = track.getBoundingClientRect().width || 1;
+		const overshot = rawRatio > 1 ? rawRatio - 1 : rawRatio < 0 ? rawRatio : 0;
+		setVolumeStretch(rubberBand(overshot * width, VOLUME_STRETCH_PX));
+	}
+
 	bindDrag(
-		ui.volumeTrack,
-		(ratio) => {
+		ui.volumePop,
+		(ratio, rawRatio) => {
 			mgr.setVolume(ratio);
+			applyVolumeStretch(rawRatio);
 		},
-		undefined,
-		true,
+		() => {
+			// 先摘掉 data-dragging 让位置过渡回来，越界量才谈得出回弹
+			ui.volumePop?.toggleAttribute("data-dragging", false);
+			setVolumeStretch(0);
+			if (volumeBubbleTimer !== null) window.clearTimeout(volumeBubbleTimer);
+			volumeBubbleTimer = window.setTimeout(() => {
+				volumeBubbleTimer = null;
+				ui.volumePop?.toggleAttribute("data-bubble", false);
+			}, VOLUME_BUBBLE_LINGER_MS);
+		},
+		() => {
+			if (volumeBubbleTimer !== null) {
+				window.clearTimeout(volumeBubbleTimer);
+				volumeBubbleTimer = null;
+			}
+			ui.volumePop?.toggleAttribute("data-dragging", true);
+			ui.volumePop?.toggleAttribute("data-bubble", true);
+		},
+		ui.volumeTrack,
 	);
 
 	// ── 按钮与交互 ───────────────────────────────────────────

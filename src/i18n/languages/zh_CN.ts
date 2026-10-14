@@ -263,6 +263,9 @@ export const zh_CN: Translation = {
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "暗色",
 	[Key.switchToLight]: "亮色",
+	[Key.themeLight]: "浅色",
+	[Key.themeDark]: "深色",
+	[Key.themeSystem]: "跟随系统",
 	[Key.spineModel]: "Spine 模型",
 	[Key.toggleDock]: "工具坞",
 	[Key.quickActions]: "快捷入口",

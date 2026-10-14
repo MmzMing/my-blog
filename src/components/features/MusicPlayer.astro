@@ -109,19 +109,21 @@ import { i18n } from "@/i18n/translation";
 							<Icon name="material-symbols:volume-off-rounded" class="music-player__icon-vol-off text-xl hidden" aria-hidden="true" />
 						</button>
 						<div class="music-player__volume-pop">
-							<span class="music-player__volume-value">70</span>
+							<Icon name="material-symbols:volume-down-rounded" class="music-player__volume-icon music-player__volume-icon--start text-lg" aria-hidden="true" />
 							<div
 								class="music-player__volume-track"
 								role="slider"
 								aria-label={i18n(I18nKey.musicVolume)}
-								aria-orientation="vertical"
+								aria-orientation="horizontal"
 								aria-valuemin="0"
 								aria-valuemax="100"
 								aria-valuenow="70"
 							>
 								<div class="music-player__volume-bar"></div>
 								<div class="music-player__volume-thumb"></div>
+								<span class="music-player__volume-bubble" aria-hidden="true">70%</span>
 							</div>
+							<Icon name="material-symbols:volume-up-rounded" class="music-player__volume-icon music-player__volume-icon--end text-lg" aria-hidden="true" />
 						</div>
 					</div>
 				</div>

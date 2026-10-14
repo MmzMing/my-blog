@@ -269,6 +269,9 @@ export const ru: Translation = {
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "Включить тёмную тему",
 	[Key.switchToLight]: "Включить светлую тему",
+	[Key.themeLight]: "Светлая",
+	[Key.themeDark]: "Тёмная",
+	[Key.themeSystem]: "Как в системе",
 	[Key.spineModel]: "Модель Spine",
 	[Key.toggleDock]: "Панель инструментов",
 	[Key.quickActions]: "Быстрые действия",

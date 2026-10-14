@@ -138,13 +138,15 @@
 
 /* 内容页：绝对定位堆叠，仅激活页可见，切换时新旧页交叉淡换 */
 .navbar-dropdown-page {
+	/* 高亮药丸与内容项共用这份内边距，保证左右边缘对齐 */
+	--navbar-dropdown-page-pad: 0.5rem;
 	position: absolute;
 	top: 0;
 	left: 0;
 	box-sizing: border-box;
 	width: max-content;
 	min-width: 12rem;
-	padding: 0.5rem;
+	padding: var(--navbar-dropdown-page-pad);
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
@@ -157,7 +159,31 @@
 	pointer-events: auto;
 }
 
-/* 禁用 dropdown item 的 expand-animation 背景，悬停高亮由灰色背景接管 */
+/* 悬停/聚焦高亮：药丸是页内唯一的底色，位置由控制器写成自定义属性。
+   页是绝对定位的，既是内容的偏移父级也是药丸的包含块，
+   因此 item.offsetTop 可直接用作 translateY，无需换算边框厚度 */
+.navbar-dropdown-highlight {
+	position: absolute;
+	top: 0;
+	right: var(--navbar-dropdown-page-pad);
+	left: var(--navbar-dropdown-page-pad);
+	height: var(--navbar-dropdown-hl-h, 0);
+	opacity: 0;
+	border-radius: 0.75rem;
+	background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	pointer-events: none;
+	transform: translateY(var(--navbar-dropdown-hl-y, 0));
+	transition:
+		transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+		height 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 0.12s ease-out;
+}
+
+.navbar-dropdown-page.is-hovered .navbar-dropdown-highlight {
+	opacity: 1;
+}
+
+/* 禁用 dropdown item 的 expand-animation 背景，悬停高亮由药丸接管 */
 .dropdown-content-wrapper .dropdown-item::before,
 .dropdown-content-wrapper .dropdown-item:hover::before,
 .dropdown-content-wrapper .dropdown-item:active::before,
@@ -167,8 +193,13 @@
 	background-color: transparent !important;
 }
 
-.dropdown-content-wrapper .dropdown-item:active,
+/* 面板内的行不再各自刷底，底色只由滑动药丸提供（main.css 的通用 hover 在此让位） */
+.navbar-dropdown-page .dropdown-item:hover,
 .navbar-dropdown-page .dropdown-item:active {
+	background-color: transparent;
+}
+
+.dropdown-content-wrapper .dropdown-item:active {
 	background-color: color-mix(in oklch, var(--deep-text) 12%, transparent);
 }
 
@@ -189,7 +220,8 @@
 	.navbar-dropdown-panel,
 	.navbar-dropdown-box,
 	.navbar-dropdown-arrow,
-	.navbar-dropdown-page {
+	.navbar-dropdown-page,
+	.navbar-dropdown-highlight {
 		transition-duration: 0.01ms;
 	}
 }

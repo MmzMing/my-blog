@@ -25,6 +25,13 @@ interface PanelElements {
 let pinnedIndex: number | null = null;
 let delegationInitialized = false;
 
+/** 箱体与视口左右边缘、指针与箱体左右边缘的最小留白（px） */
+const PANEL_EDGE_INSET = 12;
+
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(Math.max(value, min), max);
+}
+
 function parseIndex(raw: string | undefined): number | null {
 	if (raw === undefined) return null;
 	const index = Number.parseInt(raw, 10);
@@ -63,8 +70,9 @@ function getActivePageIndex(elements: PanelElements): number | null {
 }
 
 /**
- * 面板定位：面板左缘对齐导航项左缘，箭头对齐导航项中心，
- * 箱体尺寸切换到目标内容页（left/宽高均有过渡，产生滑动效果）。
+ * 面板定位：箱体水平中心对准导航项中心，指针落在箱体中央；
+ * 视口放不下时整体内收，指针沿箱沿滑动保持指向导航项。
+ * 宽高切换到目标内容页（left/宽高均有过渡，产生滑动效果）。
  */
 function positionPanel(
 	elements: PanelElements,
@@ -75,10 +83,26 @@ function positionPanel(
 	if (!navContainer) return;
 	const navRect = navContainer.getBoundingClientRect();
 	const rect = item.getBoundingClientRect();
-	elements.panel.style.left = `${rect.left - navRect.left}px`;
-	elements.arrow.style.left = `calc(${rect.width / 2}px - 0.375rem)`;
-	elements.box.style.width = `${page.offsetWidth}px`;
-	elements.box.style.height = `${page.offsetHeight}px`;
+	const pageWidth = page.offsetWidth;
+	const pageHeight = page.offsetHeight;
+	const viewportWidth = document.documentElement.clientWidth;
+	const center = rect.left + rect.width / 2;
+	const left = clamp(
+		center - pageWidth / 2,
+		PANEL_EDGE_INSET,
+		viewportWidth - pageWidth - PANEL_EDGE_INSET,
+	);
+	const anchorX = clamp(
+		center - left,
+		PANEL_EDGE_INSET,
+		pageWidth - PANEL_EDGE_INSET,
+	);
+
+	elements.panel.style.left = `${left - navRect.left}px`;
+	// 指针方块是 0.75rem 见方，用 rem 扣一半宽度，跟样式里的尺寸同一口径
+	elements.arrow.style.left = `calc(${anchorX}px - 0.375rem)`;
+	elements.box.style.width = `${pageWidth}px`;
+	elements.box.style.height = `${pageHeight}px`;
 }
 
 function freezePanelTransitions(elements: PanelElements): void {
@@ -114,7 +138,48 @@ function activatePage(
 	elements.pages.forEach((p) => {
 		p.classList.toggle("is-active", p === page);
 	});
+	// 换页时旧的悬停药丸不该跟着淡进来
+	clearNavbarDropdownHighlights(elements.panel);
 	return page;
+}
+
+/**
+ * 悬停 / 聚焦高亮：每页只有一个药丸，靠 translateY 在行之间滑动。
+ * 页既是药丸的包含块也是内容项的偏移父级，offsetTop 可直接用。
+ */
+function highlightNavbarDropdownItem(
+	page: HTMLElement,
+	item: HTMLElement | null,
+): void {
+	const pill = page.querySelector<HTMLElement>(".navbar-dropdown-highlight");
+	if (!pill) return;
+	if (!item) {
+		page.classList.remove("is-hovered");
+		return;
+	}
+	pill.style.setProperty("--navbar-dropdown-hl-y", `${item.offsetTop}px`);
+	pill.style.setProperty("--navbar-dropdown-hl-h", `${item.offsetHeight}px`);
+	page.classList.add("is-hovered");
+}
+
+function clearNavbarDropdownHighlights(root: ParentNode): void {
+	root
+		.querySelectorAll<HTMLElement>(".navbar-dropdown-page.is-hovered")
+		.forEach((page) => {
+			page.classList.remove("is-hovered");
+		});
+}
+
+/** 由事件目标（悬停或聚焦落点）推导药丸该贴住哪一行 */
+function syncNavbarDropdownHighlightFrom(target: EventTarget | null): void {
+	if (!(target instanceof Element)) return;
+	const page = target.closest<HTMLElement>(".navbar-dropdown-page");
+	if (!page) return;
+	const item = target.closest<HTMLElement>(".dropdown-item");
+	highlightNavbarDropdownItem(
+		page,
+		item?.closest(".navbar-dropdown-page") === page ? item : null,
+	);
 }
 
 function openForItem(item: HTMLElement, index: number): void {
@@ -146,6 +211,7 @@ export function closeNavbarDropdownPanel(): void {
 	elements.pages.forEach((inactivePage) => {
 		inactivePage.classList.remove("is-active");
 	});
+	clearNavbarDropdownHighlights(elements.panel);
 	syncTriggerStates(null);
 }
 
@@ -295,6 +361,21 @@ export function initNavbarDropdownDelegation(): void {
 		) {
 			closeNavbarDropdownPanel();
 		}
+	});
+
+	// 悬停 / 键盘聚焦驱动的高亮药丸：面板与导航栏同为常驻节点，注册一次
+	const panel = document.querySelector<HTMLElement>(
+		"[data-navbar-dropdown-panel]",
+	);
+	panel?.addEventListener("pointerover", (event) => {
+		if (event.pointerType === "touch") return;
+		syncNavbarDropdownHighlightFrom(event.target);
+	});
+	panel?.addEventListener("focusin", (event) => {
+		syncNavbarDropdownHighlightFrom(event.target);
+	});
+	panel?.addEventListener("pointerleave", () => {
+		clearNavbarDropdownHighlights(panel);
 	});
 
 	onNavigation(() => closeNavbarDropdownPanel());
