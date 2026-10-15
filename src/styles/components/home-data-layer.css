@@ -1,911 +1,1747 @@
-/* 首页站点导览九宫格 */
+/* ==========================================================================
+   首页导览四卡：蓝图描线 + 虚线围合 + 点击展开重排
+
+   三条贯穿全文件的约定：
+   1. 所有笔画 pathLength="1" 归一化，于是 stroke-dasharray / stroke-dashoffset
+      恒为 1，不需要 getTotalLength() 实测路径长度。
+   2. 入场笔画用 animation（一次性，播完不重播）；详细态笔画用 transition
+      （开合两个方向都要有过程，用 animation 反向会在摘属性瞬间闪回）。
+   3. 时序全部写在 CSS 变量里，JS 只切换根节点的 3 个 data-guide-* 属性。
+      --guide-flip-duration 与 home-guide-controller.ts 的 FLIP_DURATION 必须一致。
+   ========================================================================== */
+
 .home-data-layer {
 	--guide-gap: clamp(0.7rem, 1.2vw, 1.1rem);
-	--guide-radius: 0.7rem;
-	--guide-border: var(--deep-text);
+	--guide-radius: 1.25rem;
 	--guide-bg: var(--page-bg);
 	--guide-fg: var(--deep-text);
 	--guide-muted: color-mix(in srgb, var(--guide-fg) 62%, transparent);
 	--guide-accent: #b8ff1f;
-	--guide-row-height: clamp(12rem, 14vw, 14rem);
-	--data-card-radius: clamp(1rem, 1.45vw, 1.35rem);
-	--data-card-border: var(--guide-border);
-	--data-card-bg: var(--guide-bg);
-	--data-card-fg: var(--guide-fg);
-	--data-accent: var(--guide-accent);
+
+	/* 卡片表面：从页面底色抬起一档，悬停再抬一档。
+	   用前景色往底色里混而不是写死色值，浅色主题下是「变深」，
+	   深色主题下是「变亮」，两个主题都得到和页面底色的分离感 */
+	--guide-card-surface: color-mix(in oklab, var(--guide-fg) 5%, var(--guide-bg));
+	--guide-card-surface-hover: color-mix(in oklab, var(--guide-fg) 11%, var(--guide-bg));
+	--guide-card-border: color-mix(in oklab, var(--guide-fg) 14%, transparent);
+	--guide-card-border-hover: color-mix(in oklab, var(--guide-fg) 30%, transparent);
+
+	/* 墨色分档：主轮廓 / 结构与纹理 / 虚线框。
+	   线宽用画布单位（viewBox 220×140），随插画一起缩放 —— 不能配
+	   vector-effect="non-scaling-stroke"，那个属性会把 dash 度量搬到屏幕空间，
+	   pathLength 归一化随之失效，大周长闭合图形画不到尾 */
+	--guide-ink: color-mix(in srgb, var(--guide-fg) 85%, transparent);
+	--guide-ink-faint: color-mix(in srgb, var(--guide-fg) 45%, transparent);
+	--guide-frame-ink: color-mix(in srgb, var(--guide-fg) 40%, transparent);
+	--guide-stat-side: color-mix(in oklab, var(--guide-fg) 12%, var(--guide-bg));
+
+	/* 时序 */
+	--guide-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--guide-draw-duration: 460ms;
+	--guide-detail-fade: 180ms;
+	--guide-fade-in: 260ms;
+	/* 牌堆：每张往后退 18px、缩 5%，抛出那一张的时长要和控制器里的 DECK_FLY_MS 一致。
+	   水平内缩让整摞比卡片窄一圈，不然封面铺满整格看着像横幅不像卡牌 */
+	--deck-peek: 18px;
+	--deck-shrink: 0.05;
+	--deck-inset-inline: clamp(1.5rem, 9%, 4.5rem);
+	--deck-fly-duration: 620ms;
+	/* 封面上的信息压在图片底部，靠一层近黑渐变托住，深浅主题都得是黑的 */
+	--guide-scrim: rgb(6 7 9 / 82%);
+	--guide-scrim-ink: rgb(255 255 255 / 94%);
+	--guide-scrim-muted: rgb(255 255 255 / 66%);
+	/* 分镜总谱。缩略态轮廓从入场起算；详细态纹理与详情栏淡入从
+	   data-guide-detail 置起那一刻算起，因此天然叠在 Flip 重排之后 */
+	--beat-outline: 0ms;
+	--beat-hatch: 0ms;
+	--beat-note: 60ms;
+	/* 卡间错峰：min(index * 80ms, 320ms) */
+	--enter-step: 80ms;
+	--enter-cap: 320ms;
+
+	/* 内容列与导引线的共用尺寸：收窄列宽给两侧留白，
+	   竖导引线压在列边界上，横导引线压在层的纵向内边距上 */
+	/* 井字导引线与内容列的尺寸关系：
+	   --guide-col 是两条竖线之间的宽度，比卡片列更宽，向两侧外扩
+	   --guide-col-inset 是卡片列与竖线之间的水平留白
+	   --guide-row-inset 是卡片列与横线之间的垂直留白
+	   横线通满整层宽度，竖线通满整层高度 */
+	--guide-col: clamp(20rem, 94%, 84rem);
+	--guide-col-inset: clamp(2rem, 4vw, 4rem);
+	--guide-row-inset: clamp(1.25rem, 3vh, 2.5rem);
+	--layer-pad-block: clamp(1.5rem, 4.5vh, 3.25rem);
+	--layer-pad-inline: clamp(1rem, 4vw, 4.5rem);
+
 	position: relative;
+	box-sizing: border-box;
 	width: 100vw;
 	margin-inline: calc(50% - 50vw);
-	padding: clamp(4rem, 7vh, 6rem) clamp(1rem, 4vw, 4.5rem);
+	padding: var(--layer-pad-block) var(--layer-pad-inline);
 	background: var(--page-bg);
 	color: var(--guide-fg);
 	overflow: clip;
 }
 
-.home-data-layer__inner {
-	width: min(100%, 92rem);
-	margin: 0 auto;
-}
-
-@media (min-width: 769px) {
-	.home-data-layer {
-		--guide-row-height: clamp(9rem, min(14vw, 18svh), 14rem);
-		box-sizing: border-box;
-		display: flex;
-		align-items: center;
-		min-height: 100vh;
-		min-height: 100svh;
-	}
-}
-
-.home-data-layer__heading {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 0.15rem;
-	margin-bottom: clamp(1.5rem, 2.5vw, 2.5rem);
-}
-
-.home-data-layer__kicker,
-.guide-card__eyebrow {
-	margin: 0;
-	font-size: 0.7rem;
-	font-weight: 900;
-	line-height: 1;
-	letter-spacing: 0.14em;
-	color: var(--guide-muted);
-}
-
-.home-data-layer__title-main {
-	margin: 0;
-	font-size: clamp(1rem, 1.6vw, 1.7rem);
-	line-height: 1.1;
-	font-weight: 850;
-	color: color-mix(in srgb, var(--guide-fg) 72%, transparent);
-}
-
-.home-data-layer__title-matrix {
-	margin: 0;
-	font-size: clamp(2.4rem, 5.5vw, 6rem);
-	line-height: 0.95;
-	font-weight: 950;
-	letter-spacing: 0;
-}
-
-@media (min-width: 769px) and (prefers-reduced-motion: no-preference) {
-	.home-data-layer[data-guide-opening="pending"] .home-data-layer__kicker,
-	.home-data-layer[data-guide-opening="pending"] .home-data-layer__title-main,
-	.home-data-layer[data-guide-opening="pending"] .home-data-layer__title-matrix,
-	.home-data-layer[data-guide-opening="pending"] .home-data-layer__top-grid > .data-card,
-	.home-data-layer[data-guide-opening="pending"] .home-guide-grid > .guide-card {
-		visibility: hidden;
-	}
-}
-
-.home-data-layer[data-guide-opening="playing"] .home-data-layer__kicker,
-.home-data-layer[data-guide-opening="playing"] .home-data-layer__title-main,
-.home-data-layer[data-guide-opening="playing"] .home-data-layer__title-matrix {
-	will-change: opacity, filter;
-}
-
-.home-data-layer[data-guide-opening="playing"] .data-card,
-.home-data-layer[data-guide-opening="playing"] .guide-card {
-	will-change: transform, opacity;
-}
-
-.home-data-layer[data-guide-opening="playing"] .guide-card {
-	transition: none;
-}
-
-.home-guide-grid {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	/* 行高只作为最小值：标签/分类卡片内容随视口比例压缩时允许撑高，
-	   避免第二排标签胶囊被 overflow: hidden 裁掉 */
-	grid-template-rows: repeat(2, minmax(var(--guide-row-height), auto));
-	gap: var(--guide-gap);
-	min-height: 0;
-}
-
-.home-data-layer__top-grid {
-	display: grid;
-	grid-template-columns: 1fr 2fr;
-	gap: var(--guide-gap);
-	height: var(--guide-row-height);
-	margin-bottom: var(--guide-gap);
-}
-
-.data-card {
-	position: relative;
-	display: grid;
-	min-width: 0;
-	min-height: 0;
-	height: 100%;
-	border-radius: var(--data-card-radius);
-	color: var(--data-card-fg);
-	overflow: hidden;
-	isolation: isolate;
-	container-type: inline-size;
-}
-
-.data-card__frame { position: absolute; inset: 0; z-index: 1; border: 2px solid var(--data-card-border); border-radius: inherit; pointer-events: none; }
-.data-card__visual { position: absolute; inset: 0; z-index: 2; opacity: 0.18; pointer-events: none; overflow: hidden; border-radius: inherit; }
-.data-card--wide .data-card__visual { inset: 0 0 0 auto; width: auto; aspect-ratio: 1; }
-.data-card__visual-img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
-
-.data-card__content { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; min-height: 100%; padding: clamp(1rem, 1.8vw, 1.7rem); }
-.data-card__eyebrow { margin: 0 0 0.35rem; font-size: 0.72rem; font-weight: 900; line-height: 1; letter-spacing: 0.14em; color: color-mix(in srgb, var(--data-card-fg) 58%, transparent); }
-.data-card__title { margin: 0; font-size: clamp(1.25rem, 2vw, 2rem); line-height: 1.05; font-weight: 950; }
-.data-card__detail { max-width: 30rem; margin: 0.55rem 0 0; font-size: clamp(0.82rem, 1vw, 0.95rem); line-height: 1.45; font-weight: 750; color: color-mix(in srgb, var(--data-card-fg) 66%, transparent); }
-
-.data-card__hover { position: absolute; inset: 0; z-index: 4; border-radius: inherit; overflow: hidden; opacity: 0; visibility: hidden; pointer-events: none; color: var(--data-card-bg); }
-.data-card__hover-orb { position: absolute; left: 0; top: 100%; width: 280cqw; aspect-ratio: 1; border-radius: 50%; background: var(--data-card-fg); transform: translate(-50%, -50%) scale(0.18); }
-.data-card--wide .data-card__hover-orb { width: 140cqw; }
-.data-card__hover-header { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: clamp(1rem, 1.6vw, 1.45rem) clamp(1rem, 1.8vw, 1.7rem) 0; opacity: 0; }
-.data-card__hover-code { display: inline-grid; place-items: center; min-width: 2.8rem; height: 1.65rem; padding-inline: 0.8rem; border: 2px solid currentColor; border-radius: 999px; font-size: 0.78rem; font-weight: 950; }
-.data-card__hover-system { font-size: 0.78rem; font-weight: 950; letter-spacing: 0.08em; opacity: 0.66; }
-/* 文章档案卡右上角 SYSTEM 标识使用黑色 */
-.data-card[data-stat-kind="articles"] .data-card__hover-system { color: #000; }
-.data-card__hover-title { position: relative; z-index: 2; margin: clamp(1.3rem, 2vw, 2.15rem) clamp(1rem, 1.8vw, 1.7rem) 0; font-size: clamp(1.35rem, 8cqw, 4.2rem); line-height: 0.95; font-weight: 950; opacity: 0; }
-.data-card__hover-title span { color: var(--data-accent); }
-.data-card__hover-pills { position: absolute; inset: auto 0 0; z-index: 5; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.35rem; padding: clamp(0.6rem, 1.2vw, 1rem); }
-.data-card__hover-pill { position: relative; display: inline-flex; align-items: center; gap: 0.4rem; width: max-content; max-width: 100%; padding: clamp(0.4rem, 1cqw, 0.65rem) clamp(0.55rem, 1.2cqw, 1rem); border: 2px solid currentColor; border-radius: 999px; font-size: clamp(0.65rem, 1.8cqw, 0.88rem); font-weight: 900; line-height: 1; white-space: nowrap; box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16); opacity: 0; transform: rotate(var(--pill-rotate, 0deg)); }
-.data-card__hover-pill:nth-child(1) { --pill-rotate: -6deg; }
-.data-card__hover-pill:nth-child(2) { --pill-rotate: 5deg; }
-.data-card__hover-pill:nth-child(3) { --pill-rotate: -4deg; }
-.data-card__hover-pill:nth-child(4) { --pill-rotate: 8deg; }
-.data-card__hover-pill--solid, .data-card__hover-pill--dark { background: var(--data-card-fg); color: var(--data-card-bg); border: 0; }
-.data-card__hover-pill--light { background: var(--data-card-bg); color: var(--data-card-fg); }
-.data-card__hover-pill--outline { color: var(--data-card-bg); }
-
-.guide-card {
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	min-height: 0;
-	padding: clamp(1rem, 1.7vw, 1.45rem);
-	border: 2px solid var(--guide-border);
-	border-radius: var(--guide-radius);
-	background: var(--guide-bg);
-	color: var(--guide-fg);
-	overflow: hidden;
-	isolation: isolate;
-	text-decoration: none;
-	transition: transform 200ms ease, background-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
-}
-
-.guide-card::after {
-	content: "";
+/* 「地图指南」从左上角大标题降级为仅供辅助技术识别的区域锚点 */
+.home-data-layer__sr-heading {
 	position: absolute;
-	inset: 0;
-	z-index: -1;
-	background: var(--guide-fg);
-	clip-path: inset(100% 0 0 0);
-	transition: clip-path 220ms ease;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
 }
 
-.guide-card--motion::after {
-	z-index: 0;
-	clip-path: circle(0 at 0 100%);
-	transition: clip-path 580ms cubic-bezier(0.16, 1, 0.3, 1);
-}
+/* --------------------------------------------------------------------------
+   网格：默认 2×2，展开后主卡通栏在上、其余 3 卡缩成底部一行
+   -------------------------------------------------------------------------- */
 
-.guide-card--motion > :not(.guide-card__visual) {
+/* 卡片列比导引线方框再收一圈，四边都不贴线 */
+.home-guide {
 	position: relative;
 	z-index: 1;
+	display: grid;
+	width: calc(var(--guide-col) - 2 * var(--guide-col-inset));
+	height: calc(100% - 2 * var(--guide-row-inset));
+	margin-inline: auto;
+	gap: var(--guide-gap);
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 
-.guide-card:hover,
-.guide-card:focus-within {
-	box-shadow: none;
-}
-
-.guide-card--motion:hover,
-.guide-card--motion:focus-within {
-	color: var(--guide-bg);
-	outline: none;
-}
-
-.guide-card--motion:hover::after,
-.guide-card--motion:focus-within::after {
-	clip-path: circle(150% at 0 100%);
-}
-
-.guide-card:focus-visible,
-.guide-card a:focus-visible,
-.guide-card button:focus-visible {
-	outline: 3px solid var(--guide-accent);
-	outline-offset: 3px;
-}
-
-.guide-card__visual {
+/* 井字导引线：容器通满整层，四条线各自贴到容器边界 */
+.home-guide__guides {
 	position: absolute;
 	inset: 0;
-	z-index: -2;
-	opacity: 0.16;
+	z-index: 0;
 	pointer-events: none;
+}
+
+/* 竖线容器宽度 = 内容列宽，水平居中，于是两条竖线正好压在列的左右边界上，
+   并且沿整层上下贯通 */
+.home-guide__guide--v {
+	position: absolute;
+	top: 0;
+	left: 50%;
+	width: var(--guide-col);
+	height: 100%;
+	transform: translateX(-50%);
+}
+
+/* 横线容器通满整层宽度，上下端点落在纵向内边距处，与内容列的上下边对齐 */
+.home-guide__guide--h {
+	position: absolute;
+	top: var(--layer-pad-block);
+	left: 0;
+	width: 100%;
+	height: calc(100% - 2 * var(--layer-pad-block));
+}
+
+.home-guide__guide {
+	overflow: visible;
+}
+
+/* 井字导引线：纯静态虚线，不参与任何动效 */
+.g-guide {
+	fill: none;
+	stroke: var(--guide-frame-ink);
+	stroke-width: 1.5px;
+	stroke-dasharray: 6 6;
+}
+
+.home-data-layer[data-guide-expanded] .home-guide {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	/* 主卡必须明显压过底部三张小卡：1.15fr 时主卡只比缩略态的 2×2 格子高几个点，
+	   展开看起来只变了宽度，读起来像「没展开」。1.8fr 让主卡占到整列高六成以上 */
+	grid-template-rows: minmax(0, 1.8fr) minmax(0, 1fr);
+}
+
+/* 非选中卡显式压到第 2 行。不写的话自动落位会按 DOM 顺序先把排在前面的卡
+   塞进第 1 行，再被通栏的选中卡挤开，Flip 会读到一次中间态 */
+.home-data-layer[data-guide-expanded] .guide-card {
+	grid-row: 2;
+}
+
+.home-data-layer[data-guide-expanded] .guide-card--active {
+	grid-row: 1;
+	grid-column: 1 / -1;
+}
+
+/* --------------------------------------------------------------------------
+   卡片外壳
+   -------------------------------------------------------------------------- */
+
+.guide-card {
+	--enter-delay: min(
+		calc(var(--enter-index, 0) * var(--enter-step)),
+		var(--enter-cap)
+	);
+
+	position: relative;
+	z-index: 1;
+	display: grid;
+	grid-template-rows: minmax(0, 1fr) auto;
+	min-width: 0;
+	min-height: 0;
+	padding: clamp(1.1rem, 1.8vw, 1.75rem);
+	border: 1px solid var(--guide-card-border);
+	border-radius: var(--guide-radius);
+	background: var(--guide-card-surface);
+	color: var(--guide-fg);
+	overflow: hidden;
+	cursor: pointer;
+	transition: background-color 220ms ease, border-color 220ms ease;
+}
+
+.guide-card--active {
+	border-color: color-mix(in oklab, var(--guide-accent) 45%, var(--guide-card-border));
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.guide-card:hover {
+		background: var(--guide-card-surface-hover);
+		border-color: var(--guide-card-border-hover);
+	}
+}
+
+.guide-card__stage {
+	position: relative;
+	z-index: 2;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	/* 必须显式给行高：隐式行是 auto，插画里的 height:100% 就没有确定基准，
+	   百分比容器查询单位会跟着塌成一条，整格插画缩成几个像素 */
+	grid-template-rows: minmax(0, 1fr);
+	min-height: 0;
+	/* 开成尺寸容器，插画盒才能同时按宽和高两个方向取交集，
+	   做到与 SVG 的 xMidYMid meet 完全等位，端点标注才不会飘 */
+	container-type: size;
+}
+
+.home-data-layer[data-guide-expanded] .guide-card--active .guide-card__stage {
+	grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+	gap: clamp(0.8rem, 2vw, 2rem);
+	/* 必须盖过站点数据那格的 align-items: center：居中会让详情栏按内容长高，
+	   于是读数卡的 1fr 行没有基准，六张卡缩成一条贴在右上 */
+	align-items: stretch;
+}
+
+/* 站点数据这格缩略态是「一整摞居中 + 右侧按层对齐的读数」，照的是 Layer Stack
+   原稿的构图，不是展开才出现详情。所以缩略态只有一列，插画独占整幅宽度并水平
+   居中，读数栏绝对定位压在右侧，两栏布局只在展开态才出现 */
+.guide-card[data-guide-card="stats"] .guide-card__stage {
+	grid-template-columns: minmax(0, 1fr);
+	align-items: stretch;
+}
+
+/* 两条类名抬过后面 .guide-card__detail 的隐藏态，否则被它盖回去 */
+.guide-card .guide-card__detail--always {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	/* 读数卡是绝对定位叠放的，hidden auto 会显出一条没内容的滚动条，
+	   visible 又会让展开态的网格顶出舞台 —— 用 hidden 只裁不滚 */
 	overflow: hidden;
 }
 
-.guide-card__visual img {
+/* 缩略态让插画与详情占同一个格子。详情虽然 visibility:hidden，
+   但仍是一个栅格项，单列布局下它会被推到第二行独占高度，
+   于是插画那一行被压成几十像素，整格图形塌成一团 */
+.guide-card__art,
+.guide-card__detail {
+	grid-area: 1 / 1;
+}
+
+.home-data-layer[data-guide-expanded] .guide-card--active .guide-card__detail {
+	grid-area: 1 / 2;
+}
+
+.home-data-layer[data-guide-expanded] .guide-card--active .guide-card__art,
+.guide-card[data-guide-card="stats"] .guide-card__art {
+	grid-area: 1 / 1;
+}
+
+/* 插画容器的 100cqw 量的是整个舞台（两栏之和），用在单格里会溢出到卡片外。
+   站点数据与订阅两格都没有要对着画布定位的 HTML 标注，直接按格子铺满，
+   让 meet / 百分比布局自己去留白 */
+.guide-card[data-guide-card="stats"] .guide-card__art,
+.guide-card[data-guide-card="contact"] .guide-card__art,
+.guide-card[data-guide-card="posts"] .guide-card__art {
 	width: 100%;
 	height: 100%;
-	object-fit: cover;
-	transition: transform 240ms ease, opacity 240ms ease;
 }
 
-.guide-card:hover .guide-card__visual img {
-	transform: scale(1.06) translateX(1.5%);
-	opacity: 0.7;
-}
+/* 内容索引的剧场要按自己画布的 3:2 比例摆进插画盒，所以把插画盒本身开成尺寸
+   容器：剧场的 --u 由盒子的宽高交集算出，展开态换成两栏后也不会按整幅舞台去缩放 */
+.guide-card[data-guide-card="index"] .guide-card__art {
+	container-type: size;
 
-/* 订阅与联系卡片背景图悬停时不缩放 */
-.guide-card--contact:hover .guide-card__visual img,
-.guide-card--contact:focus-within .guide-card__visual img {
-	transform: none;
-}
-
-.guide-card__icon {
 	display: grid;
+	width: 100%;
+	height: 100%;
 	place-items: center;
-	width: 2.4rem;
-	height: 2.4rem;
-	margin-bottom: auto;
-	border: 2px solid currentColor;
-	border-radius: 50%;
-	font-size: 1.35rem;
 }
 
-.guide-card h3 {
-	margin: 0.45rem 0 0;
-	font-size: clamp(1.25rem, 2vw, 2rem);
-	line-height: 1.05;
-	font-weight: 950;
-	letter-spacing: 0;
+/* 缩略态的读数不是居中的一块方阵，而是「跟着层走的一行字」：行心对齐它那一层
+   菱形面的中心。层中心在 viewBox 里是 106 + 11i，定住的那层再抬 14，支点 130，
+   画布高 232 —— 于是行心 = 50% + 层缩放比例 × (11i − 38)。菱形右顶点离画布中心
+   恒为 72 × 缩放比例，即 31cqh，读数栏从它外面开始。
+   两处都只跟 --deck-scale 有关，改缩放不用重算对齐 */
+.guide-card[data-guide-card="stats"] {
+	--deck-scale: 1.45;
 }
 
-.guide-card__detail {
-	margin: 0.55rem 0 0;
-	font-size: 0.85rem;
-	font-weight: 750;
-	line-height: 1.45;
+.stat-readout {
+	position: relative;
+	height: 100%;
+	min-height: 0;
+}
+
+.stat-card {
+	position: absolute;
+	top: calc(50% + var(--deck-scale) * (11 * var(--stat-i) - 38) * 100% / 232);
+	right: 0;
+	left: calc(50% + (var(--deck-scale) * 31 + 1) * 1cqh);
+	transform: translateY(-50%);
+	display: grid;
+	align-content: center;
+	justify-items: center;
+	gap: 0.3rem;
+	text-align: center;
+	opacity: 0;
+	translate: 0 0.5rem;
+	pointer-events: none;
+	/* 层间距只有 18px 上下，一行字却有三行高，两行同时可见会糊成一团。
+	   先让旧的淡出、再让新的淡入，交接期间刻不留重叠 */
+	transition:
+		opacity 110ms linear,
+		translate 110ms var(--guide-ease);
+}
+
+.stat-card[data-on] {
+	opacity: 1;
+	translate: 0 0;
+	transition:
+		opacity 220ms var(--guide-ease) 110ms,
+		translate 220ms var(--guide-ease) 110ms;
+}
+
+.stat-card__label {
+	margin: 0;
+	font-size: clamp(0.72rem, 0.9vw, 0.85rem);
+	font-weight: 800;
 	color: var(--guide-muted);
 }
 
-.guide-card--motion:hover .guide-card__detail,
-.guide-card--motion:hover .guide-rotator__meta,
-.guide-card--motion:hover .guide-rotator__desc,
-.guide-card--motion:focus-within .guide-card__detail,
-.guide-card--motion:focus-within .guide-rotator__meta,
-.guide-card--motion:focus-within .guide-rotator__desc {
-	color: color-mix(in srgb, var(--guide-bg) 72%, transparent);
-}
-
-.guide-card--pinned {
-	grid-column: span 2;
-}
-
-.guide-card--article h3 {
+.stat-card__value {
 	margin: 0;
-	font-size: clamp(1.65rem, 2.7vw, 2.55rem);
-}
-
-.guide-card__article-heading {
-	display: flex;
-	align-items: center;
-	gap: 0.65rem;
-	min-height: 2.7rem;
-	transition: transform 200ms ease;
-}
-
-.guide-card__article-action {
-	display: inline-flex;
-	align-items: center;
-	justify-content: flex-start;
-	flex: 0 0 2.75rem;
-	width: 2.75rem;
-	height: 2.75rem;
-	margin: 0;
-	padding: 0;
-	border: 0;
-	border-radius: 0;
-	background: transparent;
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: clamp(1.5rem, 2.5vw, 2.05rem);
+	font-weight: 900;
+	line-height: 1.05;
 	color: var(--guide-fg);
-	font-size: 1.45rem;
-	line-height: 1;
-	text-decoration: none;
-	opacity: 0;
-	transform: translateX(-0.25rem);
-	pointer-events: none;
-	cursor: pointer;
-	transition: opacity 180ms ease, transform 180ms ease, color 180ms ease;
-}
-
-.guide-rotator__slide:hover .guide-rotator__title-row,
-.guide-rotator__title-row:focus-within {
-	transform: translateY(-0.3rem);
-}
-
-.guide-rotator__slide:hover .guide-card__article-action,
-.guide-rotator__title-row:focus-within .guide-card__article-action {
-	opacity: 1;
-	transform: translateX(0);
-	pointer-events: auto;
-}
-
-.guide-card__article-action:hover {
-	color: color-mix(in srgb, var(--guide-fg) 58%, var(--guide-accent));
-}
-
-.guide-card--article .guide-rotator__slides {
-	overflow: hidden;
-}
-
-.guide-card--article .guide-rotator__slide {
-	position: absolute;
-	inset: 0;
-	justify-content: center;
-	cursor: pointer;
-}
-
-.guide-card--pinned .guide-rotator__slides {
-	padding-right: 2.5rem;
-}
-
-.guide-card--pinned .guide-rotator__dots {
-	position: absolute;
-	top: 50%;
-	right: clamp(0.9rem, 1.35vw, 1.3rem);
-	flex-direction: column;
-	margin: 0;
-	transform: translateY(-50%);
-}
-
-.guide-card--pinned .guide-rotator__dots button {
-	width: 0.5rem;
-	height: 0.5rem;
-}
-
-.guide-card--pinned .guide-rotator__dots button[aria-current="true"] {
-	width: 0.5rem;
-	height: 1.45rem;
-}
-
-/* 置顶卡：封面缩略图位于文字左侧，随轮播整体切换 */
-.guide-card--pinned .guide-rotator__slide {
-	flex-direction: row;
-	align-items: center;
-	gap: clamp(0.9rem, 1.5vw, 1.4rem);
-}
-
-.guide-rotator__body {
-	display: flex;
-	flex-direction: column;
-	gap: 0.4rem;
-	flex: 1 1 auto;
-	min-width: 0;
-}
-
-.guide-rotator__cover {
-	position: relative;
-	flex: 0 0 auto;
-	align-self: stretch;
-	width: clamp(7rem, 11vw, 10.5rem);
-	overflow: hidden;
-	border: 2px solid var(--guide-border);
-	border-radius: calc(var(--guide-radius) - 0.15rem);
-}
-
-.guide-rotator__cover img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
-
-/* 最新更新卡：当前文章封面作为整卡背景，随轮播淡入淡出 */
-.guide-card__bg {
-	position: absolute;
-	inset: 0;
-	z-index: -2;
-	pointer-events: none;
-}
-
-.guide-card__bg-item {
-	position: absolute;
-	inset: 0;
-	opacity: 0;
-	transition: opacity 480ms ease;
-}
-
-.guide-card__bg-item.is-active {
-	opacity: 0.18;
-}
-
-.guide-card__bg-img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	object-position: center;
-}
-
-.guide-card__topline {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
-}
-
-.guide-card__index {
-	display: grid;
-	place-items: center;
-	width: 1.8rem;
-	height: 1.8rem;
-	border: 2px solid currentColor;
-	border-radius: 50%;
-	font-family: var(--font-mono, monospace);
-	font-size: 0.68rem;
-	font-weight: 900;
-}
-
-.guide-rotator__slides {
-	position: relative;
-	flex: 1;
-	min-height: 6rem;
-	margin-top: 0.75rem;
-}
-
-.guide-rotator__slide {
-	display: flex;
-	flex-direction: column;
-	gap: 0.4rem;
-	color: inherit;
-	text-decoration: none;
-	animation: guide-slide-in 260ms ease both;
-}
-
-.guide-rotator__slide strong {
-	font-size: clamp(1rem, 1.5vw, 1.45rem);
-	line-height: 1.2;
-	font-weight: 900;
 	overflow-wrap: anywhere;
 }
 
-.guide-rotator__title-row {
-	display: flex;
-	align-items: center;
-	gap: 0.15rem;
-	width: 100%;
-	transition: transform 200ms ease;
-}
+/* 缩略态看缩写值，展开态看完整值 */
+.stat-card__full { display: none; }
 
-.guide-rotator__article-link {
-	flex: 0 1 auto;
-	max-width: calc(100% - 2.9rem);
-	min-width: 0;
-	overflow: hidden;
-	color: inherit;
-	text-decoration: none;
-}
+.home-data-layer[data-guide-expanded] .guide-card--active .stat-card__compact { display: none; }
+.home-data-layer[data-guide-expanded] .guide-card--active .stat-card__full { display: inline; }
 
-.guide-rotator__article-link strong {
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.guide-rotator__slide > span:last-child,
-.guide-rotator__desc {
-	font-size: 0.84rem;
-	font-weight: 700;
-	line-height: 1.4;
-	color: var(--guide-muted);
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.guide-rotator__meta {
-	font-size: 0.72rem;
-	font-weight: 850;
-	color: var(--guide-muted);
-}
-
-.guide-rotator__dots {
-	display: flex;
-	gap: 0.4rem;
-	margin-top: auto;
-}
-
-/* 分页圆点：默认纯色小圆点（无边框），当前项动效延展为小长条 */
-.guide-rotator__dots button {
-	width: 0.5rem;
-	height: 0.5rem;
-	padding: 0;
-	border: 0;
-	border-radius: 999px;
-	background: var(--guide-fg);
-	opacity: 0.32;
-	cursor: pointer;
-	transition:
-		width 280ms cubic-bezier(0.16, 1, 0.3, 1),
-		height 280ms cubic-bezier(0.16, 1, 0.3, 1),
-		opacity 180ms ease;
-}
-
-.guide-rotator__dots button:hover {
-	opacity: 0.6;
-}
-
-.guide-rotator__dots button[aria-current="true"],
-.guide-rotator__dots button[aria-current="true"]:hover {
-	opacity: 1;
-}
-
-.guide-rotator__dots button[aria-current="true"] {
-	width: 1.45rem;
-}
-
-.guide-card--categories,
-.guide-card--tags {
-	padding-bottom: 1rem;
-}
-
-/* 标签胶囊的散落姿态带向下的位移与旋转，会超出布局盒被裁切，底部多留余量 */
-.guide-card--tags {
-	padding-bottom: 3rem;
-}
-
-.guide-link-list {
-	display: grid;
-	/* 均匀分布占满卡片剩余高度，避免底部留白 */
-	flex: 1;
-	gap: 0.2rem;
-	align-content: space-evenly;
-	margin-top: 0.75rem;
-}
-
-.guide-link-list a {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.5rem;
-	color: inherit;
-	font-size: 0.9rem;
-	font-weight: 800;
-	line-height: 1.3;
-	text-decoration: none;
-}
-
-.guide-link-list a {
-	padding: 0.5rem 0;
-	transition: color 240ms ease, transform 240ms ease;
-}
-
-.guide-card--categories .guide-link-list a {
-	padding-inline: 0.55rem;
-	transition: none;
-}
-
-.guide-link-list a:hover {
-	color: color-mix(in srgb, var(--guide-fg) 62%, var(--guide-accent));
-}
-
-.guide-link-list strong {
-	font-family: var(--font-mono, monospace);
-	font-size: 0.78rem;
-}
-
-.guide-tag-list {
+.home-data-layer[data-guide-expanded] .guide-card--active .stat-readout {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 0.5rem;
-	margin-top: 0.75rem;
+	/* 行高封顶而不是 1fr 铺满：主卡加高后 1fr 会把六张卡拉成两排空匣子，
+	   标题与数值之间出现一大片没内容的死区，居中后才是「一摞小卡」 */
+	grid-template-rows: repeat(2, minmax(0, 8.75rem));
+	align-content: center;
+	gap: clamp(0.45rem, 0.9vw, 0.8rem);
+	min-height: 0;
+	height: 100%;
+	/* 不锁死的话卡牌行高按内容长，整块会顶出舞台、压到卡片上沿之外 */
+	overflow: hidden;
 }
 
-.guide-tag-list a {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 0.3rem;
-	min-height: 3.1rem;
-	padding: 0.45rem 0.35rem;
-	border: 2px solid var(--guide-fg);
-	border-radius: 0.8rem;
-	background: var(--guide-bg);
-	color: inherit;
-	font-size: 0.78rem;
-	font-weight: 800;
-	line-height: 1.2;
-	text-decoration: none;
-	box-shadow: 0 0.4rem 0.9rem color-mix(in srgb, var(--guide-fg) 16%, transparent);
-	transition: background-color 280ms ease, color 280ms ease, border-color 280ms ease;
-}
-
-.guide-tag-list a:hover {
-	border-color: var(--guide-fg);
-	background: var(--guide-fg);
-	color: var(--guide-bg);
-}
-
-/* 计数徽章 */
-.guide-tag-list a span {
-	padding: 0.06rem 0.5rem;
-	border: 1px solid color-mix(in srgb, var(--guide-fg) 28%, transparent);
-	border-radius: 999px;
-	background: transparent;
-	font-size: 0.66rem;
-	font-weight: 900;
-	transition: background-color 200ms ease, border-color 200ms ease;
-}
-
-.guide-tag-list a:hover span {
-	border-color: transparent;
-	background: color-mix(in srgb, var(--guide-bg) 24%, transparent);
-}
-
-/* 索引卡仅保留颜色反馈，避免 Swup 回到首页时重放遮罩动效。 */
-.guide-card--index::after {
-	display: none;
-}
-
-.guide-card--index:hover .guide-link-list a,
-.guide-card--index:focus-within .guide-link-list a {
-	color: var(--guide-fg);
+.home-data-layer[data-guide-expanded] .guide-card--active .stat-card {
+	position: static;
+	inset: auto;
+	/* 缩略态靠 translateY(-50%) 把行心对准层中心，网格项不需要 */
 	transform: none;
-	transition-delay: 0;
-}
-
-.guide-card--index:hover .guide-link-list a:hover,
-.guide-card--index:focus-within .guide-link-list a:hover,
-.guide-card--index .guide-link-list a:focus-visible {
-	background: var(--guide-fg);
-	color: var(--guide-bg);
-	transform: none;
-}
-
-/* 分类行悬停直接显示高亮背景，不做遮罩过渡动画，避免行间切换时的消失/重绘开销。 */
-.guide-card--categories .guide-link-list a {
-	border-radius: 0.65rem;
-}
-
-/* 书本目录式点状引导线：连接名称与数量 */
-.guide-card--categories .guide-link-list a > span {
-	display: flex;
-	align-items: center;
-	flex: 1;
+	/* 缩略态靠 data-on 只显一张，展开态六张全显，定住的那张只是描边高亮 */
+	opacity: 1;
+	translate: none;
+	pointer-events: auto;
 	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	padding: clamp(0.55rem, 1.1vw, 1rem);
+	border: 1px solid var(--guide-card-border);
+	border-radius: 0.8rem;
+	background: color-mix(in oklab, var(--guide-fg) 4%, transparent);
+	/* 标题顶左、数值底右 */
+	grid-template-rows: auto minmax(0, 1fr);
+	align-content: space-between;
+	justify-items: start;
+	text-align: left;
+	transition:
+		border-color 240ms ease,
+		background-color 240ms ease;
 }
 
-.guide-card--categories .guide-link-list a > span::after {
-	content: "";
-	flex: 1;
-	min-width: 1rem;
-	height: 0;
-	margin-left: 0.45rem;
-	border-bottom: 2px dotted color-mix(in srgb, var(--guide-fg) 32%, transparent);
+.home-data-layer[data-guide-expanded] .guide-card--active .stat-card[data-on] {
+	border-color: color-mix(in oklab, var(--guide-accent) 50%, var(--guide-card-border));
+	background: color-mix(in oklab, var(--guide-accent) 10%, transparent);
 }
 
-.guide-tag-list {
-	gap: 0.5rem;
-	margin-top: 0.9rem;
+.home-data-layer[data-guide-expanded] .guide-card--active .stat-card__label {
+	font-size: clamp(0.95rem, 1.4vw, 1.35rem);
+	line-height: 1.15;
+	color: var(--guide-fg);
 }
 
-.guide-tag-list a.guide-tag-list__all {
-	flex-direction: row;
-	justify-content: center;
+.home-data-layer[data-guide-expanded] .guide-card--active .stat-card__value {
+	justify-self: end;
+	align-self: end;
+	font-size: clamp(0.9rem, 1.25vw, 1.2rem);
+	line-height: 1.2;
+	color: var(--guide-muted);
+}
+
+.home-data-layer[data-guide-expanded] .guide-card--active .stat-card[data-on] .stat-card__value {
+	color: var(--guide-fg);
+}
+
+/* --------------------------------------------------------------------------
+   插画与端点标注
+   -------------------------------------------------------------------------- */
+
+/* 用 min() 同时受宽高两个方向约束，算出的盒子正好等于 meet 缩放后的实际绘制区。
+   若只靠 aspect-ratio + max-width，被夹住的那个方向会破坏比例，SVG 转而留白，
+   按百分比定位的端点标注就会和它对应的节点错开。
+   第三个约束 --art-max-w 是插画上限：不封顶的话展开态主卡会把线条放到整屏大 */
+.guide-card__art {
+	--art-max-w: 26rem;
+
+	position: relative;
+	justify-self: center;
+	align-self: center;
+	width: min(100cqw, calc(100cqh * 220 / 140), var(--art-max-w));
+	height: min(
+		100cqh,
+		calc(100cqw * 140 / 220),
+		calc(var(--art-max-w) * 140 / 220)
+	);
+}
+
+/* 订阅那格用的是 HTML 图标轮播，不受 220×140 画幅约束，直接铺满舞台 */
+.guide-card__art--fill {
+	width: min(calc(100cqw - 1.4rem), 26rem);
+	height: min(calc(100cqh - 1.4rem), 18rem);
+}
+
+/* --------------------------------------------------------------------------
+   站点数据：等距层叠，缩略态压成一摞，展开态逐层抬开
+   -------------------------------------------------------------------------- */
+
+/* 每层是一张菱形卡，读数不在画布里 —— 已经挪到右侧的 HTML 读数卡 */
+/* 缩略态整摞放大：viewBox 要装下展开态散开的距离，堆起来时只占画布一半多，
+   不放大在卡里就是个指甲盖。缩放中心就是 viewBox 正中 (110,130)，
+   与摞的几何中心重合，所以不必用 transform-box: fill-box —— 那玩意在 g 上不稳 */
+.stat-deck {
+	/* SVG 元素的 transform-origin 初始值是 0 0 而不是 50% 50%，不写死就会以
+	   viewBox 左上角为支点，整摞被推到右下、压住卡片下方的标题。
+	   百分比是相对 viewBox 的宽高而非它的位置，所以这里用画布单位写死支点 */
+	transform-origin: 110px 130px;
+	transform: scale(var(--deck-scale));
+	transition: transform 560ms var(--guide-ease);
+}
+
+.guide-card[data-guide-card="stats"].guide-card--active .stat-deck {
+	transform: none;
+}
+
+/* 抬升：定住的那层抬起 --stat-gap，它之上（屏幕更高、DOM 里排在它后面）
+   的层再多抬 --stat-above，否则抬起来的那层会被上面的层盖住看不见。
+   层按 index 倒序渲染，所以 ~ 选中的正是视觉上更靠上的那几层 */
+.stat-layer {
+	--stat-gap: 14px;
+	--stat-above: 10px;
+	--lift: 0px;
+
+	transform: translate(var(--stat-cx, 110px), calc(var(--y-rest) - var(--lift)));
+	transition: transform 560ms var(--guide-ease), opacity 360ms ease;
+}
+
+/* 展开态层距本来就拉开了一倍多，抬升相应放小，避免顶层被推出画幅 */
+.guide-card--active .stat-layer {
+	--stat-gap: 10px;
+	--stat-above: 7px;
+
+	transform: translate(var(--stat-cx, 110px), calc(var(--y-open) - var(--lift)));
+}
+
+.stat-layer[data-on] {
+	--lift: var(--stat-gap);
+}
+
+/* 被定住那层「之上」的层（DOM 里排在它后面）抬得更多，同时虚化成半透明 ——
+   照 Layer Stack 的 data-above：不虚化的话抬起来那层的颜色被上面挡住看不出来 */
+.stat-layer[data-on] ~ .stat-layer {
+	--lift: calc(var(--stat-gap) + var(--stat-above));
+	opacity: 0.42;
+}
+
+/* 强调色只在展开态出现，缩略态整摞保持黑白配色 */
+.home-data-layer[data-guide-expanded]
+	.guide-card--active
+	.stat-layer[data-on]
+	.g-card-face {
+	stroke: var(--guide-accent);
+	fill: color-mix(in oklab, var(--guide-accent) 14%, var(--guide-card-surface));
+}
+
+.home-data-layer[data-guide-expanded]
+	.guide-card--active
+	.stat-layer[data-on]
+	.stat-side {
+	fill: color-mix(in oklab, var(--guide-accent) 52%, var(--guide-bg));
+	stroke: var(--guide-accent);
+}
+
+.stat-layer[data-on] .g-hatch {
+	stroke-dashoffset: 0;
+	transition: stroke-dashoffset var(--guide-draw-duration) var(--guide-ease) 120ms;
+}
+
+.home-data-layer[data-guide-expanded]
+	.guide-card--active
+	.stat-layer[data-on]
+	.g-hatch {
+	stroke: var(--guide-accent);
+}
+
+/* --------------------------------------------------------------------------
+   博客文章：封面牌堆，缩略态自动翻牌，展开态压平只留封面
+   -------------------------------------------------------------------------- */
+
+/* --depth 由控制器按「相对顶牌的距离」写入，CSS 只负责把它换算成位移与缩放。
+   下沿留出两张的 peek，否则最后那张会探到卡片外面 */
+.post-deck {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.post-card {
+	position: absolute;
+	top: 0;
+	right: var(--deck-inset-inline);
+	bottom: calc(var(--deck-peek) * 2);
+	left: var(--deck-inset-inline);
+	overflow: hidden;
+	border: 1px solid var(--guide-card-border);
+	border-radius: calc(var(--guide-radius) - 0.35rem);
+	background: var(--guide-stat-side);
+	translate: 0 calc(var(--depth, 0) * var(--deck-peek));
+	scale: calc(1 - var(--depth, 0) * var(--deck-shrink));
+	/* depth 0/1/2 → 1，depth 3 起为 0（属性自身把负值夹到 0） */
+	opacity: calc(3 - var(--depth, 0));
+	z-index: calc(var(--deck-n, 8) - var(--depth, 0));
+	box-shadow: 0 12px 28px -18px rgb(0 0 0 / 70%);
+	transition:
+		translate var(--deck-fly-duration) var(--guide-ease),
+		scale var(--deck-fly-duration) var(--guide-ease),
+		opacity 380ms linear;
+}
+
+/* 抛出去的那张：往左下翻出去。它同时被排到栈底，靠这条盖回栈顶的姿态 */
+.post-card[data-flying] {
+	translate: -118% 14%;
+	scale: 1;
+	rotate: -9deg;
+	opacity: 0;
+	z-index: calc(var(--deck-n, 8) + 1);
+}
+
+/* 封面铺满整张卡，信息浮在上面 —— 不能再各占一行，那样图被挤到上半截，
+   下半截成了一整块实心板，看着不像遮罩 */
+.post-card__media {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+}
+
+/* 没有封面的文章：留一块纯色底，信息照样压在下面读得到，不至于塌成一条 */
+.post-card__media--empty {
+	background:
+		radial-gradient(
+			120% 90% at 20% 10%,
+			color-mix(in oklab, var(--guide-fg) 12%, transparent),
+			transparent 60%
+		),
+		var(--guide-stat-side);
+}
+
+.post-card__media picture,
+.post-card__img {
+	width: 100%;
+	height: 100%;
+}
+
+.post-card__img {
+	display: block;
+	object-fit: cover;
+}
+
+/* 信息层：贴在卡底的透明渐变，顶端完全透到封面，越往下越实。
+   起点必须留够高度，否则两行标题会正好压在还没暗下来的地方读不清 */
+.post-card__body {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	display: grid;
 	gap: 0.3rem;
-	min-height: 3.1rem;
-	padding: 0.5rem 0.72rem;
-	font-size: 0.82rem;
+	padding: clamp(2.4rem, 6cqh, 3.6rem) clamp(0.9rem, 1.6vw, 1.3rem)
+		clamp(0.75rem, 1.3vw, 1rem);
+	background: linear-gradient(
+		to top,
+		var(--guide-scrim) 0%,
+		color-mix(in srgb, rgb(6 7 9 / 72%) 42%, transparent) 55%,
+		transparent 100%
+	);
+	color: var(--guide-scrim-ink);
 }
 
-.guide-tag-list__all svg {
-	font-size: 0.9rem;
+.post-card__title {
+	margin: 0;
+	font-size: clamp(0.95rem, 1.35vw, 1.3rem);
+	font-weight: 900;
+	line-height: 1.25;
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
 }
 
-.guide-tag-list a:focus-visible {
-	border-color: var(--guide-fg);
-	background: var(--guide-fg);
-	color: var(--guide-bg);
+.post-card__meta {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	margin: 0;
+	font-size: 0.72rem;
+	font-weight: 750;
+	color: var(--guide-scrim-muted);
 }
 
-.guide-card--contact {
-	position: relative;
-	cursor: default;
+.post-card__badge {
+	padding: 0.12rem 0.45rem;
+	border: 1px solid color-mix(in srgb, var(--guide-accent) 60%, transparent);
+	border-radius: 999px;
+	font-size: 0.66rem;
+	letter-spacing: 0.04em;
+	color: var(--guide-accent);
 }
 
-/* 标题等文字浮于覆盖层之上，且不拦截区域点击 */
-.guide-card--contact > .guide-card__eyebrow,
-.guide-card--contact > h3,
-.guide-contact__static-icons {
-	position: relative;
-	z-index: 4;
-	pointer-events: none;
+.post-card__date {
+	font-family: var(--font-mono, ui-monospace, monospace);
 }
 
-/* 覆盖层激活时标题与眉标让位给左上区域图标 */
-.guide-card--contact > h3,
-.guide-card--contact > .guide-card__eyebrow,
-.guide-contact__static-icons {
-	transition: opacity 200ms ease;
-}
-
-.guide-card--contact.has-overlay > h3,
-.guide-card--contact.has-overlay > .guide-card__eyebrow,
-.guide-card--contact.has-overlay .guide-contact__static-icons {
+/* 展开态：牌堆压平成一张封面，只显当前那张。这里必须整图可见 ——
+   缩略态是裁满的卡牌背景，展开态换成 contain 并内缩留边，
+   宁可上下留白也不把封面里的字切掉 */
+.home-data-layer[data-guide-expanded] .guide-card--active .post-card {
+	inset: 0;
+	translate: none;
+	scale: none;
+	border-color: transparent;
+	box-shadow: none;
+	background: transparent;
 	opacity: 0;
 }
 
-/* 仅用于品牌展示，和标题同层，不承载链接或交互。 */
-.guide-contact__static-icons {
-	display: flex;
-	align-items: center;
-	gap: 0.6rem;
-	margin-top: auto;
-	margin-left: auto;
-	padding-top: 0.9rem;
-	font-size: clamp(1.15rem, 1.8vw, 1.45rem);
-	line-height: 1;
-	color: var(--guide-fg);
+.home-data-layer[data-guide-expanded] .guide-card--active .post-card[data-on] {
+	opacity: 1;
 }
 
-.guide-contact__static-icons svg {
+.home-data-layer[data-guide-expanded] .guide-card--active .post-card__media {
+	inset: clamp(0.5rem, 2%, 1.5rem);
+}
+
+.home-data-layer[data-guide-expanded] .guide-card--active .post-card__img {
+	object-fit: contain;
+}
+
+.home-data-layer[data-guide-expanded]
+	.guide-card--active
+	.post-card
+	.post-card__body {
+	display: none;
+}
+
+/* --------------------------------------------------------------------------
+   内容索引：提示框打字 → 分支虚线揭示 → 三个分类圆盘错峰弹出，循环播放
+   相位由 home-index-scene-controller.ts 写在 [data-scene-phase] 上，这里只按
+   相位开关；节奏常量与那边一一对应，改一处要同步另一处
+   -------------------------------------------------------------------------- */
+
+/* --u 是 600×400 布局网格的一个单位，取插画盒宽高与 3:2 的交集，
+   于是剧场永远等比铺满可用空间，不需要 JS 参与 */
+.index-scene {
+	--u: calc(min(100cqw, 150cqh) / 600);
+	--scene-spread: 700ms;
+	--scene-stagger: 160ms;
+	--scene-ease: cubic-bezier(0.7, 0, 0.25, 1);
+	--scene-pop: cubic-bezier(0.34, 1.4, 0.64, 1);
+	--scene-shadow: 0 calc(10 * var(--u)) calc(24 * var(--u)) rgb(0 0 0 / 18%),
+		0 calc(2 * var(--u)) calc(5 * var(--u)) rgb(0 0 0 / 12%);
+	/* 缩略态整幅保持黑白灰，强调色只在展开时才上 —— 和站点数据那摞同一套约定 */
+	--scene-ink: var(--guide-fg);
+
+	position: relative;
+	width: calc(600 * var(--u));
+	height: calc(400 * var(--u));
+	overflow: hidden;
+}
+
+.home-data-layer[data-guide-expanded]
+	.guide-card--active
+	.index-scene {
+	--scene-ink: var(--guide-accent);
+}
+
+.index-scene :is(*) {
+	box-sizing: border-box;
+}
+
+/* ---------- 分支虚线：靠 mask 里那条归一化笔画从上往下揭示 ---------- */
+
+.index-scene__lines {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+
+.index-scene__line {
+	fill: none;
+	stroke: var(--guide-frame-ink);
+	stroke-width: 2.4;
+	stroke-linecap: round;
+	stroke-dasharray: 6 7.23;
+}
+
+/* 遮罩里的颜色不是设计色，白色 = 完全露出 */
+.index-scene__reveal {
+	fill: none;
+	stroke: #fff;
+	stroke-width: 8;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	transition: stroke-dashoffset var(--scene-spread) var(--scene-ease);
+}
+
+.index-scene:is([data-scene-phase="sent"], [data-scene-phase="team"])
+	.index-scene__reveal {
+	stroke-dashoffset: 0;
+}
+
+.index-scene[data-scene-phase="reset"] .index-scene__lines {
+	opacity: 0;
+	transition: opacity 500ms ease;
+}
+
+/* ---------- 发送时从提示框后面晕开的一层光 ---------- */
+
+.index-scene__halo {
+	position: absolute;
+	top: calc(52 * var(--u));
+	left: 50%;
+	width: calc(400 * var(--u));
+	height: calc(68 * var(--u));
+	translate: -50% 0;
+	scale: 0.9;
+	border-radius: 999px;
+	background: linear-gradient(
+		90deg,
+		color-mix(in oklab, var(--scene-ink) 26%, transparent),
+		color-mix(in oklab, var(--guide-fg) 18%, transparent)
+	);
+	filter: blur(calc(22 * var(--u)));
+	opacity: 0;
+	transition:
+		opacity 700ms ease,
+		scale 900ms var(--scene-ease);
+}
+
+.index-scene:is([data-scene-phase="sent"], [data-scene-phase="team"])
+	.index-scene__halo {
+	opacity: 1;
+	scale: 1;
+}
+
+/* ---------- 提示框 ---------- */
+
+.index-scene__prompt {
+	position: absolute;
+	top: calc(60 * var(--u));
+	left: 50%;
+	display: flex;
+	align-items: center;
+	gap: calc(12 * var(--u));
+	width: calc(380 * var(--u));
+	height: calc(52 * var(--u));
+	padding: 0 calc(8 * var(--u)) 0 calc(20 * var(--u));
+	translate: -50% 0;
+	border-radius: 999px;
+	background: var(--guide-card-surface);
+	box-shadow:
+		0 0 0 calc(1 * var(--u)) var(--guide-card-border), var(--scene-shadow);
+}
+
+.index-scene__text {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	color: var(--guide-fg);
+	font-size: calc(15 * var(--u));
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+	white-space: nowrap;
+}
+
+.index-scene__caret {
+	display: inline-block;
+	width: calc(1.6 * var(--u));
+	height: calc(17 * var(--u));
+	margin-left: calc(2 * var(--u));
+	vertical-align: calc(-3 * var(--u));
+	border-radius: 1px;
+	background: currentcolor;
+	animation: index-scene-blink 1s steps(1) infinite;
+}
+
+.index-scene__send {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: calc(36 * var(--u));
+	height: calc(36 * var(--u));
+	border-radius: 50%;
+	background: var(--scene-ink);
+	color: var(--guide-bg);
+}
+
+.index-scene__send svg {
+	width: calc(18 * var(--u));
+	height: calc(18 * var(--u));
+	fill: none;
+	stroke: currentcolor;
+	stroke-width: 2.2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.index-scene[data-scene-phase="sent"] .index-scene__send {
+	animation: index-scene-press 380ms var(--scene-ease);
+}
+
+.index-scene[data-scene-phase="reset"] .index-scene__text {
+	opacity: 0;
+	transition: opacity 400ms ease;
+}
+
+/* ---------- 三个分类：圆盘 + 角色胶囊 ---------- */
+
+.index-scene__agent {
+	position: absolute;
+	top: calc(196 * var(--u));
+	left: calc(var(--agent-x) * var(--u));
+	display: grid;
+	justify-items: center;
+	gap: calc(14 * var(--u));
+	translate: -50% 0;
+}
+
+.index-scene__node,
+.index-scene__role {
+	opacity: 0;
+	translate: 0 calc(10 * var(--u));
+	scale: 0.92;
+	transition:
+		opacity 360ms ease,
+		translate 520ms var(--scene-pop),
+		scale 520ms var(--scene-pop);
+}
+
+.index-scene[data-scene-phase="team"] .index-scene__node {
+	opacity: 1;
+	translate: none;
+	scale: 1;
+	transition-delay: calc(var(--i) * var(--scene-stagger));
+}
+
+.index-scene[data-scene-phase="team"] .index-scene__role {
+	opacity: 1;
+	translate: none;
+	scale: 1;
+	transition-delay: calc(var(--i) * var(--scene-stagger) + 120ms);
+}
+
+/* 回场只淡出，位移留在终点，否则下一张卡会先弹回原位再消失 */
+.index-scene[data-scene-phase="reset"] :is(.index-scene__node, .index-scene__role) {
+	translate: none;
+	scale: 1;
+	transition: opacity 500ms ease;
+}
+
+.index-scene__node {
+	position: relative;
+	width: calc(84 * var(--u));
+	height: calc(84 * var(--u));
+	padding: calc(5 * var(--u));
+	border-radius: 50%;
+	background: var(--guide-card-surface);
+	box-shadow:
+		inset 0 0 0 calc(1 * var(--u)) var(--guide-card-border), var(--scene-shadow);
+}
+
+.index-scene__face {
+	display: grid;
+	place-items: center;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	border-radius: 50%;
+	background: var(--guide-stat-side);
+}
+
+.index-scene__face picture,
+.index-scene__img {
+	width: 100%;
+	height: 100%;
+}
+
+.index-scene__img {
 	display: block;
+	object-fit: cover;
+}
+
+/* 该分类最新一篇没封面时，拿分类首字顶上，不留一个空盘子 */
+.index-scene__initial {
+	color: var(--guide-muted);
+	font-size: calc(30 * var(--u));
+	font-weight: 900;
+}
+
+.index-scene__dot {
+	position: absolute;
+	right: calc(1 * var(--u));
+	bottom: calc(3 * var(--u));
+	width: calc(24 * var(--u));
+	height: calc(24 * var(--u));
+	border: calc(7 * var(--u)) solid var(--guide-card-surface);
+	border-radius: 50%;
+	background: var(--scene-ink);
+	box-shadow: 0 0 0 calc(2 * var(--u))
+		color-mix(in srgb, var(--scene-ink) 14%, transparent);
+	scale: 0;
+	transition: scale 420ms var(--scene-pop);
+}
+
+.index-scene[data-scene-phase="team"] .index-scene__dot {
+	scale: 1;
+	transition-delay: calc(var(--i) * var(--scene-stagger) + 360ms);
+}
+
+.index-scene__role {
+	display: flex;
+	align-items: center;
+	gap: calc(10 * var(--u));
+	height: calc(42 * var(--u));
+	padding: 0 calc(15 * var(--u)) 0 calc(7 * var(--u));
+	border-radius: 999px;
+	background: var(--guide-card-surface);
+	box-shadow:
+		0 0 0 calc(1 * var(--u)) var(--guide-card-border), var(--scene-shadow);
+	color: var(--guide-fg);
+	font-size: calc(12.5 * var(--u));
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	white-space: nowrap;
+}
+
+.index-scene__tools {
+	display: flex;
+}
+
+/* 参考稿这里放的是工具 logo 圆，本站放该分类的篇数 */
+.index-scene__tool {
+	display: grid;
+	place-items: center;
+	width: calc(26 * var(--u));
+	height: calc(26 * var(--u));
+	border-radius: 50%;
+	background: var(--guide-stat-side);
+	box-shadow: 0 0 0 calc(1 * var(--u)) var(--guide-card-border);
+	color: var(--guide-fg);
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: calc(11 * var(--u));
+	font-weight: 900;
+}
+
+@keyframes index-scene-blink {
+	50% {
+		opacity: 0;
+	}
+}
+
+@keyframes index-scene-press {
+	0% {
+		scale: 1;
+	}
+	40% {
+		scale: 0.86;
+	}
+	100% {
+		scale: 1;
+	}
+}
+
+/* --------------------------------------------------------------------------
+   订阅联系：3D 环形旋转的图标轮播
+   -------------------------------------------------------------------------- */
+
+/* 展开系数：注册成 <number> 才能被 transition 补间。
+   入场从 0.42 推到 1（气泡从中心爆开），展开态再推到 1.22 往外散开。
+   用自定义属性而不是关键帧，是为了让它同时服务入场与展开两个触发点 */
+@property --orbit-spread {
+	syntax: "<number>";
+	inherits: true;
+	initial-value: 1;
+}
+
+.orbit {
+	--orbit-spin-duration: 42s;
+	--orbit-spread: 0.42;
+
+	position: relative;
+	width: 100%;
+	height: 100%;
+	container-type: size;
+	transition: --orbit-spread 620ms var(--guide-ease);
+}
+
+.home-data-layer[data-guide-entered] .orbit {
+	--orbit-spread: 1;
+}
+
+.home-data-layer[data-guide-expanded] .guide-card--active .orbit {
+	--orbit-spread: 1.18;
+}
+
+/* 悬停整张卡就把气泡推出去：这是这格的主动效，不等到展开才发生 */
+@media (hover: hover) and (pointer: fine) {
+	.guide-card[data-guide-card="contact"]:hover .orbit {
+		--orbit-spread: 1.2;
+	}
+
+	.orbit__face:hover {
+		scale: 1.12;
+		box-shadow: 0 0 0 1px var(--guide-card-border);
+	}
+}
+
+/* 1 单位 = 260 格子的 1 份，取宽高较小的一边，气泡怎么摆都不会被裁。
+   除数比参考原稿的 320 小一档，整簇因此放大 23%，铺满这一格 */
+.orbit__field {
+	--u: calc(min(100cqw, 100cqh) / 260);
+
+	position: absolute;
+	inset: 0;
+	animation: orbit-spin var(--orbit-spin-duration) linear infinite;
+}
+
+/* 槽位只负责定位：按 x/y 偏移推出，尺寸由 --s 决定 */
+.orbit__slot {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: calc(var(--u) * var(--s));
+	height: calc(var(--u) * var(--s));
+	translate: calc(var(--u) * var(--x) * var(--orbit-spread))
+		calc(var(--u) * var(--y) * var(--orbit-spread));
+	margin: calc(var(--u) * var(--s) / -2);
+}
+
+/* face 反向转回外场的旋转量，图标因此始终正立；它同时是气泡的外观 */
+.orbit__face {
+	display: grid;
+	place-items: center;
+	width: 100%;
+	height: 100%;
+	border: 1px solid var(--guide-card-border);
+	border-radius: 50%;
+	background: var(--guide-card-surface);
+	color: var(--guide-fg);
+	font-size: calc(var(--u) * var(--s) * 0.46);
+	animation: orbit-spin var(--orbit-spin-duration) linear infinite reverse;
+	transition: scale 260ms var(--guide-ease), box-shadow 260ms ease;
+}
+
+.orbit__face svg {
 	width: 1em;
 	height: 1em;
 }
 
-/* 十字实线划分的四角与中央五区覆盖层 */
-.guide-contact__overlay {
-	position: absolute;
-	inset: 0;
-	z-index: 3;
-	border-radius: inherit;
-	overflow: hidden;
-}
+/* 中心：主平台图标，比任何气泡都大一档 */
+.orbit__hub {
+	--u: calc(min(100cqw, 100cqh) / 260);
 
-.guide-contact__overlay-svg {
 	position: absolute;
-	inset: 0;
-	z-index: 1;
-	width: 100%;
-	height: 100%;
+	top: 50%;
+	left: 50%;
+	display: grid;
+	place-items: center;
+	width: calc(var(--u) * 150);
+	height: calc(var(--u) * 150);
+	margin: calc(var(--u) * -75);
+	border: 1px solid var(--guide-card-border);
+	border-radius: 50%;
+	background: var(--guide-card-surface);
+	color: var(--guide-fg);
+	font-size: calc(var(--u) * 72);
 	pointer-events: none;
 }
 
-.guide-contact__overlay-line {
+.orbit__hub svg {
+	width: 1em;
+	height: 1em;
+}
+
+/* 展开态只给图标本身染色，气泡的底与边保持中性 —— 缩略态沿用上面的灰白。
+   色取自 homeConfig.links[].color，没配的那条退回主题强调色 */
+.home-data-layer[data-guide-expanded]
+	.guide-card--active
+	:is(.orbit__face, .orbit__hub) {
+	color: var(--brand, var(--guide-accent));
+}
+
+@keyframes orbit-spin {
+	to { transform: rotate(360deg); }
+}
+
+.guide-art {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.guide-art .g-outline,
+.guide-art .g-hatch {
 	fill: none;
-	stroke: var(--guide-fg);
-	stroke-width: 2px;
-	stroke-linecap: round;
+	stroke: var(--guide-ink);
+	/* 与页脚签名同一套：pathLength="1" 归一化后，1 个 dash 单位就是整条路径 */
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
 }
 
-.guide-contact__region {
-	position: absolute;
-	inset: 0;
+.guide-art .g-outline {
+	stroke-width: 1.5;
+	stroke-linejoin: round;
+}
+
+.guide-art .g-hatch {
+	stroke-width: 0.8;
+	stroke: var(--guide-ink-faint);
+	transition: stroke-dashoffset var(--guide-detail-fade) linear;
+}
+
+/* 堆叠卡的正面：填上卡片底色把后两张与侧壁挡住，堆叠关系才成立。
+   描线默认 fill:none，不填就变成一组互相穿线的透明轮廓 */
+.guide-art .g-card-face {
+	fill: var(--guide-card-surface);
+}
+
+/* 层叠的侧壁：比正面再深一档，露出的那一条就是厚度 */
+.guide-art .stat-side {
+	fill: var(--guide-stat-side);
+	stroke: var(--guide-ink-faint);
+}
+
+/* --------------------------------------------------------------------------
+   左下角标题区与展开按钮
+   -------------------------------------------------------------------------- */
+
+.guide-card__meta {
+	position: relative;
+	z-index: 2;
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding-top: clamp(0.35rem, 0.7vw, 0.6rem);
+}
+
+.guide-card__meta-text {
+	min-width: 0;
+}
+
+.guide-card__title {
+	margin: 0;
+	font-size: clamp(1.35rem, 2.3vw, 2.3rem);
+	line-height: 1.05;
+	font-weight: 950;
+	letter-spacing: 0.01em;
+}
+
+.guide-card__hint {
+	margin: 0.3rem 0 0;
+	font-size: clamp(0.8rem, 1vw, 1rem);
+	font-weight: 700;
+	line-height: 1.4;
+	color: var(--guide-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.guide-card:focus-visible,
+.guide-card a:focus-visible {
+	outline: 3px solid var(--guide-accent);
+	outline-offset: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   详细栏：缩略态完全隐藏且不接收点击，展开后以右侧栏淡入
+   -------------------------------------------------------------------------- */
+
+.guide-card__detail {
+	min-height: 0;
+	overflow: hidden auto;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition:
+		opacity var(--guide-detail-fade) linear,
+		visibility 0s linear var(--guide-detail-fade);
+}
+
+.home-data-layer[data-guide-detail] .guide-card--active .guide-card__detail {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transition:
+		opacity var(--guide-fade-in) var(--guide-ease) var(--beat-note),
+		visibility 0s;
+}
+
+/* ==========================================================================
+   手风琴：一次只开一项，开口那项从整摞里「裂」出来
+   收起的项首尾相连成一整块，只有最外两端是圆角；一旦某项打开，它与左右
+   邻接的边都补上边框和圆角，并让出 10px 的上下间隙，于是看着像一张卡从
+   牌堆里被抽出来。参考实现用 framer-motion 逐帧算 border 与 radius，
+   这里全部交给 CSS 选择器 + 一条 grid-template-rows 过渡，不需要测高。
+   ========================================================================== */
+
+.acc {
+	--acc-radius: 20px;
+	--acc-gap: 10px;
+	/* 参考稿是 stiffness 600 / damping 50 的近临界弹簧，用一点轻微过冲去逼近 */
+	--acc-spring: cubic-bezier(0.34, 1.26, 0.64, 1);
+
+	display: grid;
+	align-content: center;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.acc__item {
+	overflow: hidden;
+	border: solid var(--guide-card-border);
+	border-width: 0 1px;
+	background: var(--guide-card-surface);
+	transition:
+		border-radius 380ms var(--acc-spring),
+		margin 380ms var(--acc-spring),
+		border-color 220ms ease;
+}
+
+/* 整摞的两端永远带边框与圆角 */
+.acc__item:first-child {
+	border-top-width: 1px;
+	border-start-start-radius: var(--acc-radius);
+	border-start-end-radius: var(--acc-radius);
+}
+
+.acc__item:last-child {
+	border-bottom-width: 1px;
+	border-end-start-radius: var(--acc-radius);
+	border-end-end-radius: var(--acc-radius);
+}
+
+/* 开口项的上一项：补下边与下圆角 */
+.acc__item:has(+ .acc__item[data-open]) {
+	border-bottom-width: 1px;
+	border-end-start-radius: var(--acc-radius);
+	border-end-end-radius: var(--acc-radius);
+}
+
+/* 开口项的下一项：补上边与上圆角 */
+.acc__item[data-open] + .acc__item {
+	border-top-width: 1px;
+	border-start-start-radius: var(--acc-radius);
+	border-start-end-radius: var(--acc-radius);
+}
+
+/* 开口项：四边齐全、四角全圆，并让出上下间隙 */
+.acc__item[data-open] {
+	border-width: 1px;
+	border-radius: var(--acc-radius);
+	margin-block: var(--acc-gap);
+	border-color: color-mix(in oklab, var(--guide-fg) 22%, var(--guide-card-border));
+}
+
+.acc__head {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	width: 100%;
+	padding: 0.6rem 0.75rem;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.acc__icon {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 1.6rem;
+	height: 1.6rem;
+	border-radius: 50%;
+	background: color-mix(in oklab, var(--guide-fg) 9%, transparent);
 	color: var(--guide-fg);
-	font-size: 1.9rem;
+	font-size: 0.95rem;
+}
+
+.acc__icon svg {
+	width: 1em;
+	height: 1em;
+}
+
+.acc__title {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.9rem;
+	font-weight: 900;
+	letter-spacing: 0.01em;
+}
+
+.acc__count {
+	flex: none;
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: 0.72rem;
+	font-weight: 900;
+	color: var(--guide-muted);
+}
+
+.acc__chevron {
+	flex: none;
+	width: 0.5rem;
+	height: 0.5rem;
+	border-right: 2px solid var(--guide-muted);
+	border-bottom: 2px solid var(--guide-muted);
+	rotate: 45deg;
+	transition: rotate 380ms var(--acc-spring);
+}
+
+.acc__item[data-open] .acc__chevron {
+	rotate: 225deg;
+}
+
+.acc__head:focus-visible {
+	outline: 2px solid var(--guide-accent);
+	outline-offset: -3px;
+	border-radius: calc(var(--acc-radius) - 4px);
+}
+
+/* 折叠面板：0fr → 1fr 过渡，省掉参考稿里 useMeasure 量高度那一步。
+   收起时补一个 visibility 延时，否则里面的链接还能被 Tab 与鼠标命中 */
+.acc__panel {
+	display: grid;
+	grid-template-rows: 0fr;
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		grid-template-rows 380ms var(--acc-spring),
+		opacity 220ms linear,
+		visibility 0s linear 380ms;
+}
+
+.acc__item[data-open] .acc__panel {
+	grid-template-rows: 1fr;
+	opacity: 1;
+	visibility: visible;
+	transition:
+		grid-template-rows 380ms var(--acc-spring),
+		opacity 260ms linear 90ms,
+		visibility 0s;
+}
+
+.acc__content {
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* ---- 面板内容之一：文章行 ---- */
+
+.acc__rows {
+	display: grid;
+	margin: 0;
+	padding: 0 0.85rem 0.7rem;
+	list-style: none;
+}
+
+.acc__row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 0.7rem;
+	align-items: baseline;
+	padding: 0.4rem 0;
+	color: inherit;
+	font-size: 0.86rem;
+	font-weight: 850;
+	line-height: 1.3;
 	text-decoration: none;
-	background: var(--guide-bg);
-	transition: background-color 180ms ease, color 180ms ease;
+	border-top: 1px dotted color-mix(in srgb, var(--guide-fg) 22%, transparent);
+	transition: color 180ms ease;
 }
 
-.guide-contact__region--top-left { --region-x: 22%; --region-y: 22%; clip-path: polygon(0% 0%, 50% 0%, 50% 26%, 32% 26%, 32% 50%, 0% 50%); }
-.guide-contact__region--top-right { --region-x: 78%; --region-y: 22%; clip-path: polygon(50% 0%, 100% 0%, 100% 50%, 68% 50%, 68% 26%, 50% 26%); }
-.guide-contact__region--bottom-left { --region-x: 22%; --region-y: 78%; clip-path: polygon(0% 50%, 32% 50%, 32% 74%, 50% 74%, 50% 100%, 0% 100%); }
-.guide-contact__region--bottom-right { --region-x: 78%; --region-y: 78%; clip-path: polygon(100% 50%, 100% 100%, 50% 100%, 50% 74%, 68% 74%, 68% 50%); }
-.guide-contact__region--center {
-	--region-x: 50%;
-	--region-y: 50%;
-	inset: auto;
-	left: 32%;
-	top: 26%;
-	width: 36%;
-	height: 48%;
-	clip-path: none;
-	border: 2px solid currentColor;
+.acc__row:hover,
+.acc__row:focus-visible {
+	color: var(--guide-accent);
 }
 
-/* 图标定位到所在区域重心 */
-.guide-contact__region svg {
-	position: absolute;
-	left: var(--region-x, 50%);
-	top: var(--region-y, 50%);
-	transform: translate(-50%, -50%);
+.acc__row-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-/* 选中反馈：浅色主题区域变黑图标变白，暗色反之（变量自动互换） */
-.guide-contact__region:hover,
-.guide-contact__region:focus-visible {
-	background: var(--guide-fg);
-	color: var(--guide-bg);
+.acc__row-date {
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: 0.7rem;
+	font-weight: 750;
+	color: var(--guide-muted);
 }
 
-@keyframes guide-slide-in {
-	from { opacity: 0; transform: translateY(0.6rem); }
-	to { opacity: 1; transform: translateY(0); }
+/* ---- 面板内容之二：一行四张的索引卡，窄了就自动换行 ---- */
+
+.acc__cards {
+	display: grid;
+	/* 7rem 是按展开态右栏约 500px 定的：正好四列，再窄就退成三列两列 */
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+	gap: 0.45rem;
+	margin: 0;
+	padding: 0 0.7rem 0.75rem;
+	list-style: none;
 }
+
+.acc__card {
+	display: grid;
+	align-content: space-between;
+	gap: 0.4rem;
+	min-height: 3.6rem;
+	padding: 0.5rem 0.6rem;
+	border: 1px solid var(--guide-card-border);
+	border-radius: 0.8rem;
+	background: color-mix(in oklab, var(--guide-fg) 4%, transparent);
+	color: inherit;
+	text-decoration: none;
+	transition:
+		border-color 200ms ease,
+		background-color 200ms ease,
+		translate 200ms var(--guide-ease);
+}
+
+.acc__card:hover,
+.acc__card:focus-visible {
+	border-color: color-mix(in oklab, var(--guide-accent) 55%, var(--guide-card-border));
+	background: color-mix(in oklab, var(--guide-accent) 9%, transparent);
+	translate: 0 -2px;
+}
+
+.acc__card-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.78rem;
+	font-weight: 850;
+}
+
+.acc__card-count {
+	justify-self: end;
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: 1rem;
+	font-weight: 900;
+	line-height: 1;
+	color: var(--guide-fg);
+}
+
+/* 「查看全部」那张靠边线虚实区分，不另配色 */
+.acc__card--all {
+	border-style: dashed;
+	background: none;
+}
+
+.acc__card--all .acc__card-count {
+	font-size: 0.66rem;
+	font-weight: 750;
+	color: var(--guide-muted);
+}
+
+/* 联系方式：一颗靠左一颗靠右地交错，越往下越往外撇 —— 收成圣诞树那样
+   上窄下宽。每层用 --link-inset 把自己往中线收一档，第 1 层收最多、
+   第 3 层贴边；倾角左右相反，整摞看着是斜着长出来的 */
+.guide-links {
+	display: grid;
+	gap: 0.75rem;
+	align-content: center;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* 层号 = ceil(序号 / 2)：1、2 同一层，3、4 同一层，以此类推 */
+.guide-links li:nth-child(-n + 2) {
+	--link-inset: 27%;
+}
+
+.guide-links li:nth-child(n + 3):nth-child(-n + 4) {
+	--link-inset: 13%;
+}
+
+.guide-links li:nth-child(n + 5) {
+	--link-inset: 0%;
+}
+
+.guide-links li:nth-child(odd) {
+	justify-self: start;
+	margin-inline-start: var(--link-inset, 0%);
+	--link-tilt: -2.4deg;
+}
+
+.guide-links li:nth-child(even) {
+	justify-self: end;
+	margin-inline-end: var(--link-inset, 0%);
+	--link-tilt: 2.4deg;
+}
+
+.guide-links a {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	width: max-content;
+	max-width: 100%;
+	padding: 0.6rem 1.15rem 0.6rem 0.6rem;
+	border: 1.5px solid var(--guide-card-border);
+	border-radius: 999px;
+	background: var(--guide-card-surface);
+	color: inherit;
+	font-size: 0.95rem;
+	font-weight: 900;
+	line-height: 1.15;
+	text-decoration: none;
+	box-shadow: 0 10px 22px -18px rgb(0 0 0 / 70%);
+	rotate: var(--link-tilt, 0deg);
+	transition:
+		rotate 260ms var(--guide-ease),
+		translate 260ms var(--guide-ease),
+		border-color 200ms ease,
+		background-color 200ms ease;
+}
+
+/* 悬停把贴纸摆正并抬起来，比只换个边框色更像「被拿起来看」 */
+.guide-links a:hover,
+.guide-links a:focus-visible {
+	--link-tilt: 0deg;
+	translate: 0 -3px;
+	border-color: color-mix(in oklab, var(--guide-accent) 55%, var(--guide-card-border));
+	background: color-mix(in oklab, var(--guide-accent) 10%, var(--guide-card-surface));
+}
+
+.guide-links svg {
+	display: block;
+	flex: 0 0 auto;
+	width: 1.05rem;
+	height: 1.05rem;
+}
+
+/* 图标单独占一颗小圆片，胶囊的头部就和文字分层了。
+   只给图标染品牌色，圆片底保持中性 —— 和左侧轮播那圈一个规矩 */
+.guide-links__icon {
+	display: grid;
+	place-items: center;
+	flex: 0 0 auto;
+	width: 2rem;
+	height: 2rem;
+	border-radius: 50%;
+	background: color-mix(in oklab, var(--guide-fg) 9%, transparent);
+	color: var(--brand, var(--guide-fg));
+}
+
+/* --------------------------------------------------------------------------
+   关键帧
+   -------------------------------------------------------------------------- */
+
+@keyframes g-ink-draw {
+	to { stroke-dashoffset: 0; }
+}
+
+/* 悬停重绘专用：必须带 from，否则没有起始关键帧时只能从当前计算值起算，
+   而入场动画的 both 填充已经把 dashoffset 钉在 0 上 */
+@keyframes g-ink-redraw {
+	from { stroke-dashoffset: 1; }
+	to { stroke-dashoffset: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   入场闸门：未滚到视口内时所有笔画停在 dashoffset 1。
+   只冻结插画与标注，卡片的标题、副标题和按钮始终可见 —— 万一 JS 没跑起来，
+   这一层退化成四张纯文字卡，而不是四张空白卡。
+   -------------------------------------------------------------------------- */
+
+.home-data-layer:not([data-guide-entered]) .guide-art .g-outline,
+.home-data-layer:not([data-guide-entered]) .guide-art .g-hatch {
+	stroke-dashoffset: 1;
+	animation: none;
+}
+
+@media (min-width: 769px) {
+	.home-data-layer {
+		display: flex;
+		align-items: center;
+		/* 整层锁一个视口：两态共用同一高度，换态时页面不跳版。
+		   视口过矮时靠 min-height 让整层长出来自然滚动，不压缩内容 */
+		height: 100svh;
+		min-height: 34rem;
+	}
+
+	/* 缩略态：一次性描绘 */
+	.home-data-layer[data-guide-entered] .guide-art .g-outline {
+		animation: g-ink-draw var(--guide-draw-duration) var(--guide-ease)
+			calc(var(--beat-outline) + var(--enter-delay)) both;
+	}
+
+	/* 详细态：重排落定后追加。用 transition 而不是 animation，
+	   摘掉 data-guide-detail 时才会反向收回去。
+	   必须限定在 .guide-card--active 内 —— data-guide-detail 挂在层根节点上，
+	   不限定会让收起的三张卡一起露出纹理 */
+	.home-data-layer[data-guide-entered][data-guide-detail] .guide-card--active .guide-art .g-hatch {
+		stroke-dashoffset: 0;
+		transition: stroke-dashoffset var(--guide-draw-duration) var(--guide-ease)
+			calc(var(--beat-hatch) + var(--enter-delay));
+	}
+}
+
+/* 悬停把这张卡的线条重描一遍 */
+@media (min-width: 769px) and (hover: hover) and (pointer: fine) {
+	/* 入场那条原样留在列表里：同名同时长的动画会被复用而不是重建，
+	   所以它保持已完成的填充态；追加的 g-ink-redraw 排在后面，
+	   同一属性上后声明者优先，于是每次进 hover 都从 dashoffset 1 重描。
+	   离开 hover 时列表缩回一条，不会反过来再播一次入场 */
+	.home-data-layer[data-guide-entered] .guide-card:hover .guide-art .g-outline {
+		animation:
+			g-ink-draw var(--guide-draw-duration) var(--guide-ease)
+				calc(var(--beat-outline) + var(--enter-delay)) both,
+			g-ink-redraw var(--guide-draw-duration) var(--guide-ease)
+				var(--beat-outline) both;
+	}
+
+}
+
+/* --------------------------------------------------------------------------
+   断点与降级
+   -------------------------------------------------------------------------- */
 
 @media (max-width: 900px) {
-	.home-guide-grid {
-		grid-template-rows: repeat(2, minmax(var(--guide-row-height), auto));
-	}
-
-	.home-data-layer__top-grid {
-		display: flex;
-		flex-direction: column;
-		height: auto;
-		min-height: 0;
-	}
-
-	.data-card {
-		min-height: 12rem;
-	}
-
-	.guide-card {
-		padding: 1rem;
-	}
+	.guide-card__art { height: min(100%, 14rem); }
+	.guide-card__hint { display: none; }
 }
 
-@media (max-width: 768px) {
-	.home-data-layer {
-		padding-block: 3rem;
+/* 窄一点的桌面窗口里，等距摞按高度铺满后已经顶到卡片左右边界，右侧根本没有
+   一条留给读数的竖列。这时缩小整摞、放弃「按层对齐」，把读数钉在右下角 ——
+   那里是菱形下顶点之外的空白，两个方向都不会压线 */
+@media (max-width: 1179px) {
+	.guide-card[data-guide-card="stats"] {
+		--deck-scale: 1.15;
 	}
 
-	.home-guide-grid {
-		grid-template-columns: 1fr;
-		grid-template-rows: none;
-		min-height: 0;
-	}
-
-	.home-data-layer__top-grid {
-		display: flex;
-		flex-direction: column;
-		min-height: 0;
-	}
-
-	.data-card { min-height: 12rem; }
-
-	.guide-card {
-		min-height: 11.5rem;
-	}
-
-	.guide-card--pinned {
-		grid-column: auto;
-	}
-
-	.guide-card--pinned,
-	.guide-card--latest {
-		min-height: 13.5rem;
-	}
-
-	.guide-card--contact {
-		min-height: 12rem;
-	}
-}
-
-@media (hover: none) {
-	.guide-card__article-action {
-		opacity: 1;
+	.home-data-layer .stat-card {
+		top: auto;
+		bottom: 0;
+		left: 50%;
 		transform: none;
-		pointer-events: auto;
 	}
-
 }
+
+/* 移动端整层由 home-mobile.css 的 `section.home-data-layer { display: none }`
+   隐藏，这里不再重复布局规则 */
 
 @media (prefers-reduced-motion: reduce) {
-	.guide-card,
-	.guide-card::after,
-	.guide-card__visual img,
-	.guide-card__bg-item,
-	.guide-rotator__slide,
-	.guide-rotator__dots button,
-	.guide-contact__region {
+	/* 笔画直接落定、虚线框到位不流动；重排由 home-guide-controller 跳过 Flip */
+	.home-data-layer .guide-art .g-outline,
+	.home-data-layer .guide-art .g-hatch {
+		stroke-dashoffset: 0 !important;
 		animation: none !important;
 		transition: none !important;
+	}
+
+	.home-data-layer .guide-card__detail {
+		transition: none !important;
+	}
+
+	/* 图标轮播与层叠抬升都是位移型动效，降级时停在静止姿态 */
+	.home-data-layer .orbit__field,
+	.home-data-layer .orbit__face {
+		animation: none !important;
+	}
+
+	.home-data-layer .orbit {
+		--orbit-spread: 1 !important;
+		transition: none !important;
+	}
+
+	.home-data-layer .stat-layer,
+	.home-data-layer .stat-deck {
+		transition: none !important;
+	}
+
+	/* 控制器在降级下不起轮播，这里只需要保证手动切换时不飞 */
+	.home-data-layer .post-card {
+		transition: none !important;
+	}
+
+	/* 分类剧场停在成图：控制器直接写 [data-scene-phase="team"]，这里关掉过渡与光标闪烁 */
+	.index-scene *,
+	.index-scene ::before,
+	.index-scene ::after {
+		transition: none !important;
+		animation: none !important;
 	}
 }

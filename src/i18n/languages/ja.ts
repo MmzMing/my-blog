@@ -274,7 +274,6 @@ export const ja: Translation = {
 	[Key.spineModel]: "Spineモデル",
 	[Key.toggleDock]: "ドック切替",
 	[Key.quickActions]: "クイックアクション",
-	[Key.announcementTicker]: "お知らせティッカー",
 	[Key.viewAnnouncement]: "お知らせを見る",
 
 	// ===== 搜索弹窗 =====
@@ -332,6 +331,12 @@ export const ja: Translation = {
 	[Key.contactMethods]: "主な連絡先",
 	[Key.viewsLabel]: "閲覧数",
 	[Key.viewsBrowseLabel]: "閲覧",
+	[Key.siteDataSubtitle]: "訪問者・記事・コンテンツ規模",
+	[Key.blogPosts]: "ブログ記事",
+	[Key.blogPostsSubtitle]: "固定記事と最新記事を入れ替え表示",
+	[Key.contentIndexSubtitle]: "記事数順のカテゴリとタグ",
+	[Key.categoryCountPrompt]: "このブログには {count} 個のカテゴリがあります",
+	[Key.subscribeContactSubtitle]: "展開してすべての連絡先を表示",
 
 	// ===== 页脚 =====
 	[Key.privacyPolicy]: "プライバシーポリシー",

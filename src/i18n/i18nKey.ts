@@ -262,7 +262,6 @@ enum I18nKey {
 	spineModel = "spineModel",
 	toggleDock = "toggleDock",
 	quickActions = "quickActions",
-	announcementTicker = "announcementTicker",
 	viewAnnouncement = "viewAnnouncement",
 
 	// ===== 搜索弹窗 =====
@@ -317,6 +316,13 @@ enum I18nKey {
 	contactMethods = "contactMethods",
 	viewsLabel = "viewsLabel",
 	viewsBrowseLabel = "viewsBrowseLabel",
+	// 首页导览四卡的副标题，与各自的标题 key 同名前缀
+	siteDataSubtitle = "siteDataSubtitle",
+	blogPosts = "blogPosts",
+	blogPostsSubtitle = "blogPostsSubtitle",
+	contentIndexSubtitle = "contentIndexSubtitle",
+	categoryCountPrompt = "categoryCountPrompt",
+	subscribeContactSubtitle = "subscribeContactSubtitle",
 
 	// ===== 页脚 =====
 	privacyPolicy = "privacyPolicy",

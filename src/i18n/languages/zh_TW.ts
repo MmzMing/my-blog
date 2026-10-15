@@ -270,7 +270,6 @@ export const zh_TW: Translation = {
 	[Key.spineModel]: "Spine 模型",
 	[Key.toggleDock]: "工具列",
 	[Key.quickActions]: "快捷入口",
-	[Key.announcementTicker]: "公告跑馬燈",
 	[Key.viewAnnouncement]: "查看公告",
 
 	// ===== 搜索弹窗 =====
@@ -329,6 +328,12 @@ export const zh_TW: Translation = {
 	[Key.contactMethods]: "常用聯絡方式",
 	[Key.viewsLabel]: "訪問量",
 	[Key.viewsBrowseLabel]: "瀏覽",
+	[Key.siteDataSubtitle]: "訪客、文章與內容規模",
+	[Key.blogPosts]: "部落格文章",
+	[Key.blogPostsSubtitle]: "置頂與最新更新輪流翻牌",
+	[Key.contentIndexSubtitle]: "按文章數排序的分類與標籤",
+	[Key.categoryCountPrompt]: "這個部落格有 {count} 個分類",
+	[Key.subscribeContactSubtitle]: "展開檢視全部聯絡入口",
 
 	// ===== 页脚 =====
 	[Key.privacyPolicy]: "隱私政策",

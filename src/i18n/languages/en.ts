@@ -273,7 +273,6 @@ export const en: Translation = {
 	[Key.spineModel]: "Spine model",
 	[Key.toggleDock]: "Toggle dock",
 	[Key.quickActions]: "Quick actions",
-	[Key.announcementTicker]: "Announcement ticker",
 	[Key.viewAnnouncement]: "View announcement",
 
 	// ===== 搜索弹窗 =====
@@ -331,6 +330,12 @@ export const en: Translation = {
 	[Key.contactMethods]: "Contact",
 	[Key.viewsLabel]: "Views",
 	[Key.viewsBrowseLabel]: "Views",
+	[Key.siteDataSubtitle]: "Visitors, posts and content scale",
+	[Key.blogPosts]: "Blog Posts",
+	[Key.blogPostsSubtitle]: "Pinned and latest, one at a time",
+	[Key.contentIndexSubtitle]: "Categories and tags ranked by post count",
+	[Key.categoryCountPrompt]: "This blog has {count} categories",
+	[Key.subscribeContactSubtitle]: "Expand to reveal every contact channel",
 
 	// ===== 页脚 =====
 	[Key.privacyPolicy]: "Privacy Policy",

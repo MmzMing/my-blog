@@ -269,7 +269,6 @@ export const zh_CN: Translation = {
 	[Key.spineModel]: "Spine 模型",
 	[Key.toggleDock]: "工具坞",
 	[Key.quickActions]: "快捷入口",
-	[Key.announcementTicker]: "公告跑马灯",
 	[Key.viewAnnouncement]: "查看公告",
 
 	// ===== 搜索弹窗 =====
@@ -327,6 +326,12 @@ export const zh_CN: Translation = {
 	[Key.contactMethods]: "常用联系方式",
 	[Key.viewsLabel]: "访问量",
 	[Key.viewsBrowseLabel]: "浏览",
+	[Key.siteDataSubtitle]: "访客、文章与内容规模",
+	[Key.blogPosts]: "博客文章",
+	[Key.blogPostsSubtitle]: "置顶与最新更新轮流翻牌",
+	[Key.contentIndexSubtitle]: "按文章数排序的分类与标签",
+	[Key.categoryCountPrompt]: "这个博客有 {count} 个分类",
+	[Key.subscribeContactSubtitle]: "展开查看全部联系入口",
 
 	// ===== 页脚 =====
 	[Key.privacyPolicy]: "隐私政策",

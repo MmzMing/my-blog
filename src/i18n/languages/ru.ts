@@ -275,7 +275,6 @@ export const ru: Translation = {
 	[Key.spineModel]: "Модель Spine",
 	[Key.toggleDock]: "Панель инструментов",
 	[Key.quickActions]: "Быстрые действия",
-	[Key.announcementTicker]: "Бегущая строка объявлений",
 	[Key.viewAnnouncement]: "Открыть объявление",
 
 	// ===== 搜索弹窗 =====
@@ -333,6 +332,12 @@ export const ru: Translation = {
 	[Key.contactMethods]: "Контакты",
 	[Key.viewsLabel]: "Просмотры",
 	[Key.viewsBrowseLabel]: "Просмотры",
+	[Key.siteDataSubtitle]: "Посетители, статьи и объём контента",
+	[Key.blogPosts]: "Записи блога",
+	[Key.blogPostsSubtitle]: "Закреплённые и последние статьи по очереди",
+	[Key.contentIndexSubtitle]: "Категории и теги по числу статей",
+	[Key.categoryCountPrompt]: "В этом блоге {count} категорий",
+	[Key.subscribeContactSubtitle]: "Разверните, чтобы увидеть все контакты",
 
 	// ===== 页脚 =====
 	[Key.privacyPolicy]: "Политика конфиденциальности",

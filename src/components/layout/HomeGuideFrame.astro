@@ -1,0 +1,24 @@
+---
+/**
+ * 井字导引线：2 条竖线通到层的上下边、2 条横线通到 100vw 的左右边，
+ * 交叠成 # 字，像设计工具里的参考线 —— 不是围着卡片的一个圆角方框。
+ *
+ * 竖线容器的宽度等于内容列宽（--guide-col），所以两条竖线正好压在内容列的
+ * 左右边界上；横线容器通满整层宽度，上下位置取层的纵向内边距。
+ *
+ * 用 SVG 而不是 CSS dashed border：CSS 的 dashed 无法做蚂蚁线流动。
+ * 不写 viewBox，此时 1 用户单位 = 1px，虚线段长按像素给；
+ * 坐标用百分比，由各自的容器尺寸决定端点。
+ */
+---
+
+<div class="home-guide__guides" aria-hidden="true">
+	<svg class="home-guide__guide home-guide__guide--v" preserveAspectRatio="none">
+		<line class="g-guide" x1="0" y1="0" x2="0" y2="100%" />
+		<line class="g-guide" x1="100%" y1="0" x2="100%" y2="100%" />
+	</svg>
+	<svg class="home-guide__guide home-guide__guide--h" preserveAspectRatio="none">
+		<line class="g-guide" x1="0" y1="0" x2="100%" y2="0" />
+		<line class="g-guide" x1="0" y1="100%" x2="100%" y2="100%" />
+	</svg>
+</div>

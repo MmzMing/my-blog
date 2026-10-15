@@ -1,0 +1,184 @@
+---
+/**
+ * 首页导览四卡的蓝图插画。纯静态标记，零 JS —— 描线动画全部由
+ * home-data-layer.css 里的 stroke-dashoffset 关键帧承担。
+ *
+ * 描线手法与页脚签名同源（FooterSignature.astro + footer.css）：
+ * pathLength="1" 把每条路径归一化成 1，于是 stroke-dasharray / dashoffset
+ * 恒为 1，不需要实测长度。
+ *
+ * 关键：这里一律不加 vector-effect="non-scaling-stroke"。那个属性会把虚线
+ * 度量搬到屏幕空间，pathLength 的归一化就对不上了 —— 表现是菱形、圆环这类
+ * 周长较大的闭合图形永远画不到尾，看着断断续续。线宽因此用画布单位（viewBox
+ * 220×140）表达，随插画一起缩放。
+ *
+ * 两个变体：
+ *   stats   等距层叠（照搬 Layer Stack 的厚度+面+右侧读数行），缩略态压成一摞，展开态逐层抬开
+ *   contact 3D 环形图标轮播，中心是主平台图标
+ *
+ * 另外两张卡不在这个文件里：博客文章是真实封面牌堆（.post-deck），内容索引是
+ * 提示词分支剧场（.index-scene），两者都在 HomeDataLayer.astro 里直接标记
+ *
+ * 层级 class 与 CSS 动画层的对应：
+ *   g-outline  主轮廓，缩略态一次性描绘
+ *   g-hatch    纹理与面内字形，详细态
+ */
+
+import Icon from "@components/common/Icon.astro";
+
+type Variant = "stats" | "contact";
+
+/** 层叠只用得到 mod（取面内字形），读数在卡片右侧的列表里 */
+interface StatBox {
+	mod: string;
+}
+
+interface ContactLink {
+	name: string;
+	icon: string;
+	/** 品牌色，来自 homeConfig.links[].color，只有展开态才上色 */
+	color?: string;
+}
+
+interface Props {
+	variant: Variant;
+	/** stats 变体的四层数据 */
+	statBoxes?: StatBox[];
+	/** contact 变体的轮播图标 */
+	links?: ContactLink[];
+	/** contact 变体中心图标用的平台 */
+	primary?: ContactLink;
+}
+
+const {
+	variant,
+	statBoxes = [],
+	links = [],
+	primary = undefined,
+} = Astro.props;
+
+/* ---- 等距层叠几何 ----
+   画布按展开态的实际描边范围裁过：x 38–182、y 16–234，再加一圈余量。
+   不裁的话 220×260 的画布只有一半多被图形占住，缩略态那摞在卡里就成了
+   指甲盖。纵向必须容纳展开后的散开距离，横向跟着菱形宽度走。
+   viewBox 的中心 (110, 130) 与堆叠的几何中心重合，CSS 的 scale 才不用另配原点 */
+const VB_X = 34;
+const VB_Y = 14;
+const VB_W = 152;
+const VB_H = 232;
+const SIZE = 72; // 层边长，投影后菱形 144 × 72
+const THICK = 6; // 层厚度
+const CX = 110; // 摞的中心 x
+const STEP_REST = 11; // 堆叠时的层距
+const STEP_OPEN = 26; // 展开时的层距，是堆叠态的两倍多，散开才看得出来
+// 顶位要留出最大抬升量：底层被定住时，上面五层各抬 gap+above
+const TOP_REST = 70;
+const TOP_OPEN = 26;
+/** 面内字形画在 24 网格上，按层边长等比放大后居中 */
+const GLYPH_SCALE = 1.45;
+
+/**
+ * 订阅轮播的气泡位：相对中心的 x / y 偏移与直径，都在 320 见方的格子里取值。
+ * 直径拉开到 34–68、中心 104 —— 参考图那种大小不一、部分压在中心下面的层次，
+ * 尺寸差太小就退化成等距圆环。
+ */
+const slots = [
+	{ x: -76, y: -60, s: 96 },
+	{ x: 84, y: -34, s: 64 },
+	{ x: 64, y: 80, s: 84 },
+	{ x: -68, y: 72, s: 50 },
+];
+/** 主平台占中心，其余绕着转 */
+const satellites = primary
+	? links.filter((l) => l.icon !== primary.icon)
+	: links;
+
+/** 站点数据六层的面内字形，24 网格路径 */
+const glyphs: Record<string, string[]> = {
+	uv: [
+		"M12 6.6a3.1 3.1 0 1 1 0-.1",
+		"M6.4 18.6c0-3.2 2.5-5 5.6-5s5.6 1.8 5.6 5",
+	],
+	pv: [
+		"M4 12c2.6-3.4 13.4-3.4 16 0-2.6 3.4-13.4 3.4-16 0Z",
+		"M12 9.6a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z",
+	],
+	posts: ["M7 4h7l3 3v13H7Z", "M10 11h7", "M10 15h7"],
+	cats: ["M4 6h6l2 2h8v10H4Z", "M4 11h16"],
+	tags: ["M5 5h6l8 8-6 6-8-8Z", "M8.5 8.5h.1"],
+	words: ["M5 7h14", "M5 12h14", "M5 17h9"],
+};
+---
+
+{variant === "stats" && (
+	<svg
+		class="guide-art"
+		viewBox={`${VB_X} ${VB_Y} ${VB_W} ${VB_H}`}
+		preserveAspectRatio="xMidYMid meet"
+		fill="none"
+		overflow="visible"
+		aria-hidden="true"
+		style={`--stat-cx:${CX}px`}
+	>
+		{/* 整摞包一层：缩略态靠 .stat-deck 的 scale 把堆起来的一摞放大到铺满卡片 */}
+		<g class="stat-deck">
+			{/* 倒序渲染：y 最小的顶层卡最后绘制才压在下层之上。
+			    data-stat-index 保留原始序号，供右侧读数卡联动 */}
+			{statBoxes
+				.map((box, index) => ({ box, index }))
+				.reverse()
+				.map(({ box, index: i }) => (
+					<g
+						class="stat-layer"
+						data-stat-index={i}
+						data-on={i === 0 ? "" : undefined}
+						style={`--y-rest:${TOP_REST + i * STEP_REST}px;--y-open:${TOP_OPEN + i * STEP_OPEN}px`}
+					>
+						<!-- 厚度：同一个菱形往下挪一档，先画，露出的下沿就是侧壁 -->
+						<g transform={`translate(0 ${THICK}) matrix(1 0.5 -1 0.5 0 0)`}>
+							<rect class="g-outline stat-side" pathLength="1" width={SIZE} height={SIZE} rx="7" />
+						</g>
+						<g transform="matrix(1 0.5 -1 0.5 0 0)">
+							<rect class="g-outline g-card-face" pathLength="1" width={SIZE} height={SIZE} rx="7" />
+							<g class="g-hatch" transform={`translate(${SIZE / 2 - 12 * GLYPH_SCALE} ${SIZE / 2 - 12 * GLYPH_SCALE}) scale(${GLYPH_SCALE})`}>
+								{(glyphs[box.mod] ?? []).map((d) => <path pathLength="1" d={d} />)}
+							</g>
+						</g>
+					</g>
+				))}
+		</g>
+	</svg>
+)}
+
+{variant === "contact" && (
+	<div class="orbit" aria-hidden="true">
+		<!-- 外场整体缓转，槽位只负责按 x/y 偏移定位，内层 face 反向转回，
+		     图标因此始终正立。偏移量乘 --orbit-spread：入场从中心爆开，
+		     展开时再往外推一档 -->
+		<div class="orbit__field">
+			{satellites.map((link, i) => {
+				const slot = slots[i % slots.length];
+				return (
+					<div
+						class="orbit__slot"
+						style={`--x:${slot.x};--y:${slot.y};--s:${slot.s}${
+							link.color ? `;--brand:${link.color}` : ""
+						}`}
+					>
+						<div class="orbit__face">
+							<Icon name={link.icon} is:inline />
+						</div>
+					</div>
+				);
+			})}
+		</div>
+		{primary && (
+			<div
+				class="orbit__hub"
+				style={primary.color ? `--brand:${primary.color}` : undefined}
+			>
+				<Icon name={primary.icon} is:inline />
+			</div>
+		)}
+	</div>
+)}

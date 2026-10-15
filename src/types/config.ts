@@ -423,6 +423,8 @@ export type HomeConfig = {
 		name: string;
 		url: string;
 		icon: string;
+		/** 品牌色，用于首页「订阅与联系」的图标染色；留空则回退到主题强调色 */
+		color?: string;
 		showName?: boolean;
 	}[];
 };
