@@ -605,7 +605,9 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			if (generation !== mobileGeneration || !root.isConnected) return;
 			gsap.registerPlugin(ScrollTrigger);
 			const q = gsap.utils.selector(root);
-			const ctx = gsap.context(undefined, root);
+			// gsap 3.15 起 context() 首参为空时返回 ambient context 而非新建实例，
+			// 必须传函数；与 home-hero-controller 的写法保持一致。
+			const ctx = gsap.context(() => {}, root);
 			revertEntrance = () => ctx.revert();
 			// 先登记清理，初始化中途失败也能撤销已创建的动画和 ScrollTrigger。
 			cleanups.push(revertEntrance);
