@@ -23,18 +23,13 @@ export function requestScrollTriggerRefresh(
 	// hero 与影像层拿到的是同一个 ScrollTrigger 单例，后写覆盖前写没有副作用
 	pending = ScrollTrigger;
 	if (frame) return;
-	frame = requestAnimationFrame(() => {
-		frame = 0;
-		const target = pending;
-		pending = null;
-		target?.refresh();
-	});
+	frame = requestAnimationFrame(flushScrollTriggerRefresh);
 }
 
-/** 首页整层被拆掉时调用，避免 refresh 落在已经没有 pin 的文档上白跑一次 */
-export function cancelScrollTriggerRefresh(): void {
-	if (!frame) return;
-	cancelAnimationFrame(frame);
+export function flushScrollTriggerRefresh(): void {
+	if (frame) cancelAnimationFrame(frame);
 	frame = 0;
+	const target = pending;
 	pending = null;
+	target?.refresh();
 }

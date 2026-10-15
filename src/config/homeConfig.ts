@@ -30,9 +30,8 @@ export const homeConfig: HomeConfig = {
 			rows: 4,
 			columns: 6,
 			idleVisible: 6,
-			idleInterval: 900,
 			seed: 20260814,
-			// 首屏六块碎片按 reveal rank 放置；滚动或轮换后的随机布局不受影响。
+			// 首屏六块碎片按 reveal rank 放置，入场后停在这套布局上不再轮换。
 			initialLayout: [
 				{ x: 0.14, y: 0.305, width: 0.104, height: 0.205 },
 				{ x: 0.435, y: 0.18, width: 0.068, height: 0.13, blur: 5.5 },

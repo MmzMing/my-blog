@@ -10,10 +10,33 @@ interface Props {
 
 const { index, item, composite = false } = Astro.props;
 
-// 五幕统一为明信片版式：双数幕挂高（垂直中心落在视口上 1/3 处），
+// 五幕统一为明信片版式：双数幕挂高（垂直中心落在视口 42% 处），
 // 单数幕垂直居中，左右两张错落排布
 const isRaised = index % 2 === 1;
-const captionChars = Array.from(item.description);
+
+const CN_DIGITS = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+
+/**
+ * 配置里的落款是 "2026 / 06 / 10"，底栏要拆成两行：
+ * 上行中文年（二零二六年），下行月日数字（06 / 10）。
+ * 年份不是纯数字时原样保留，不猜写法。
+ */
+function splitSceneDate(date: string | undefined) {
+	if (!date) return null;
+	const [year, ...rest] = date.split("/");
+	const monthDay = rest.map((part) => part.trim()).join(" / ");
+	if (!year || !monthDay) return null;
+	const digits = year.trim().split("");
+	const isAllDigits = digits.every((d) => d >= "0" && d <= "9");
+	return {
+		yearText: isAllDigits
+			? `${digits.map((d) => CN_DIGITS[Number(d)]).join("")}年`
+			: year.trim(),
+		monthDay,
+	};
+}
+
+const sceneDate = splitSceneDate(item.date);
 ---
 
 <article
@@ -52,75 +75,38 @@ const captionChars = Array.from(item.description);
 			<div class="home-blinds-scene__frame" data-scene-frame>
 				<img
 					class="home-blinds-scene__image"
-					src={item.image}
+					src={index === 0 ? undefined : item.image}
+					data-home-blinds-src={index === 0 ? item.image : undefined}
 					alt={item.alt}
-					loading={index === 0 ? "eager" : "lazy"}
+					loading={index === 0 ? undefined : "lazy"}
 					decoding="async"
 				/>
 			</div>
 
+			<!-- 底部介绍区：左列中文年 + 月日数字，竖杠分隔，右栏说明最多两行 -->
 			<div class="home-blinds-scene__band">
-				<svg
-					class="home-blinds-scene__doodles"
-					viewBox="0 0 720 96"
-					fill="none"
-					preserveAspectRatio="none"
-					aria-hidden="true"
-				>
-					<path class="home-blinds-scene__doodle-pencil" d="M42 74q12-9 24 0t24 0t24 0" />
-					<circle class="home-blinds-scene__doodle-pencil" cx="196" cy="30" r="8" />
-					<path class="home-blinds-scene__doodle-pencil" d="M560 78l26-6m8-4 18-4" />
-					<path
-						class="home-blinds-scene__doodle-accent"
-						d="M664 20l4.5 11 11 4.5-11 4.5-4.5 11-4.5-11-11-4.5 11-4.5z"
-					/>
-				</svg>
-				<p class="home-blinds-scene__caption" data-scene-caption>
-					{
-						captionChars.map((char) => (
-							<span class="home-blinds-scene__caption-char" data-scene-caption-char>
-								{char}
-							</span>
-						))
-					}
-				</p>
 				{
-					item.date && (
-						<span
-							class="home-blinds-scene__date"
-							aria-hidden="true"
-							data-scene-date
-						>
-							<span class="home-blinds-scene__date-text">
-								{
-									Array.from(item.date).map((char) => (
-										<span
-											class="home-blinds-scene__date-char"
-											data-scene-date-char
-										>
-											{char}
-										</span>
-									))
-								}
-							</span>
-							<svg
-								class="home-blinds-scene__date-art"
-								viewBox="0 0 272 24"
-								fill="none"
-							>
-								<path
-									class="home-blinds-scene__date-flourish"
-									data-scene-date-flourish
-									d="M4 12C44 22 100 2 152 10S234 20 268 4"
-									pathLength="1"
-									stroke="currentColor"
-									stroke-width="3.2"
-									stroke-linecap="round"
-								/>
-							</svg>
-						</span>
+					sceneDate && (
+						<>
+							<div class="home-blinds-scene__band-id" data-scene-band>
+								<p class="home-blinds-scene__band-year">
+									{sceneDate.yearText}
+								</p>
+								<p class="home-blinds-scene__band-date">
+									{sceneDate.monthDay}
+								</p>
+							</div>
+							<span
+								class="home-blinds-scene__band-divider"
+								data-scene-band-divider
+								aria-hidden="true"
+							></span>
+						</>
 					)
 				}
+				<p class="home-blinds-scene__band-note" data-scene-note>
+					{item.description}
+				</p>
 			</div>
 		</div>
 	</div>

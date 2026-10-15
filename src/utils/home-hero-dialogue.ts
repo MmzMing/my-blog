@@ -108,17 +108,30 @@ function updateAdvanceLabel(state: DialogueState) {
 	}
 }
 
+function finishCurrentLine(state: DialogueState) {
+	clearTypeTimer(state);
+	state.elements.text.textContent = state.lines[state.lineIndex]?.text ?? "";
+	state.typing = false;
+	state.elements.box.dataset.typing = "false";
+	setAdvanceReady(state, true);
+	updateAdvanceLabel(state);
+}
+
 function scheduleAutoAdvance(state: DialogueState, advance: () => void) {
 	clearAutoTimer(state);
 	if (
 		!state.auto ||
 		!state.sceneVisible ||
 		state.closed ||
+		state.typing ||
 		state.mode === "menu"
 	) {
 		return;
 	}
-	state.autoTimer = window.setTimeout(advance, state.config.autoDelay);
+	state.autoTimer = window.setTimeout(() => {
+		state.autoTimer = null;
+		advance();
+	}, state.config.autoDelay);
 }
 
 function syncDialogueAccessibility(state: DialogueState) {
@@ -253,15 +266,19 @@ export function initHomeHeroDialogue(
 			label.textContent = topic.title;
 			button.appendChild(particles);
 			button.appendChild(label);
-			button.addEventListener("click", (event) => {
-				event.stopPropagation();
-				state.mode = "topic";
-				state.topicIndex = topicIndex;
-				state.lines = topic.lines;
-				state.lineIndex = 0;
-				state.elements.menu.hidden = true;
-				playLine(0);
-			});
+			button.addEventListener(
+				"click",
+				(event) => {
+					event.stopPropagation();
+					state.mode = "topic";
+					state.topicIndex = topicIndex;
+					state.lines = topic.lines;
+					state.lineIndex = 0;
+					state.elements.menu.hidden = true;
+					playLine(0);
+				},
+				{ signal: abortController.signal },
+			);
 			item.appendChild(button);
 			state.elements.menu.appendChild(item);
 		});
@@ -276,13 +293,7 @@ export function initHomeHeroDialogue(
 	const advance = () => {
 		if (!state.sceneVisible || state.closed || state.mode === "menu") return;
 		if (state.typing) {
-			clearTypeTimer(state);
-			state.elements.text.textContent =
-				state.lines[state.lineIndex]?.text ?? "";
-			state.typing = false;
-			state.elements.box.dataset.typing = "false";
-			setAdvanceReady(state, true);
-			updateAdvanceLabel(state);
+			finishCurrentLine(state);
 			scheduleAutoAdvance(state, advance);
 			return;
 		}
@@ -314,15 +325,11 @@ export function initHomeHeroDialogue(
 		let characterIndex = 0;
 		const typeNextCharacter = () => {
 			if (!state.sceneVisible || state.closed) {
-				state.typeTimer = null;
+				finishCurrentLine(state);
 				return;
 			}
 			if (characterIndex >= characters.length) {
-				state.typing = false;
-				state.typeTimer = null;
-				state.elements.box.dataset.typing = "false";
-				setAdvanceReady(state, true);
-				updateAdvanceLabel(state);
+				finishCurrentLine(state);
 				scheduleAutoAdvance(state, advance);
 				return;
 			}
@@ -346,6 +353,22 @@ export function initHomeHeroDialogue(
 		state.mode = "intro";
 		state.lines = state.config.intro;
 		playLine(0);
+	};
+
+	const syncPlayback = () => {
+		if (!state.sceneVisible || state.closed) {
+			clearTimers(state);
+			// 隐藏时补全当前句，恢复后直接可继续，不能留下无定时器的 typing 状态。
+			if (state.typing) finishCurrentLine(state);
+			return;
+		}
+		start();
+		scheduleAutoAdvance(state, advance);
+	};
+
+	const setClosed = (closed: boolean) => {
+		setClosedState(state, closed);
+		syncPlayback();
 	};
 
 	const back = () => {
@@ -386,27 +409,41 @@ export function initHomeHeroDialogue(
 	});
 	root
 		.querySelector<HTMLButtonElement>('[data-dialogue-action="hide"]')
-		?.addEventListener("click", () => setClosedState(state, true), {
+		?.addEventListener("click", () => setClosed(true), {
 			signal: abortController.signal,
 		});
 	state.elements.restoreButton?.addEventListener(
 		"click",
-		() => setClosedState(state, false),
+		() => setClosed(false),
 		{ signal: abortController.signal },
 	);
 	document.addEventListener(
 		"keydown",
 		(event) => {
 			if (event.key === "Escape" && state.sceneVisible && !state.closed) {
-				setClosedState(state, true);
+				setClosed(true);
 			}
 		},
 		{ signal: abortController.signal },
 	);
 
-	setSpeaker(state, "host");
-	setAdvanceReady(state, false);
-	setClosedState(state, false);
+	const resetView = () => {
+		state.sceneVisible = false;
+		state.typing = false;
+		state.auto = false;
+		root.dataset.sceneVisible = "false";
+		box.dataset.typing = "false";
+		box.dataset.auto = "false";
+		text.textContent = "";
+		menu.replaceChildren();
+		menu.hidden = true;
+		state.elements.autoButton?.setAttribute("aria-pressed", "false");
+		if (state.elements.footer) state.elements.footer.dataset.end = "false";
+		setSpeaker(state, "host");
+		setAdvanceReady(state, false);
+		setClosedState(state, false);
+	};
+	resetView();
 
 	return {
 		setSceneVisible(visible) {
@@ -420,23 +457,12 @@ export function initHomeHeroDialogue(
 				syncRestoreButton(state);
 				syncDialogueAccessibility(state);
 			}
-			if (visible) {
-				start();
-				if (state.started && state.typing && state.typeTimer === null) {
-					state.elements.text.textContent =
-						state.lines[state.lineIndex]?.text ?? "";
-					state.typing = false;
-					state.elements.box.dataset.typing = "false";
-					setAdvanceReady(state, true);
-					updateAdvanceLabel(state);
-				}
-				return;
-			}
-			clearTimers(state);
+			syncPlayback();
 		},
 		destroy() {
 			clearTimers(state);
 			abortController.abort();
+			resetView();
 		},
 	};
 }

@@ -116,6 +116,8 @@ export function createFlyText(
 		...options,
 	};
 
+	const originalNodes = Array.from(host.childNodes);
+	const hadFlyHostClass = host.classList.contains("home-hero__fly-host");
 	let raw = "";
 	let placeholder: HTMLSpanElement | null = null;
 	let overlay: HTMLSpanElement | null = null;
@@ -310,6 +312,14 @@ export function createFlyText(
 			window.clearTimeout(resizeTimer);
 			layoutListeners.clear();
 			observer.disconnect();
+			if (placeholder) {
+				// 保留原节点而非归一化后的 raw，重挂载不能累积无障碍副本或丢失原始结构。
+				host.replaceChildren(...originalNodes);
+				host.classList.toggle("home-hero__fly-host", hadFlyHostClass);
+			}
+			placeholder = null;
+			overlay = null;
+			chars = [];
 		},
 	};
 }

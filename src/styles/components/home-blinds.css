@@ -15,7 +15,10 @@
 	z-index: 2;
 }
 
-.home-blinds[data-home-blinds-enabled="false"] {
+/* 初始化失败或动效停用时整层折叠，不能只藏舞台、留下两屏空白占位。 */
+.home-blinds[data-home-blinds-enabled="false"],
+.home-blinds[data-home-blinds-ready="fallback"],
+.home-blinds[data-home-blinds-ready="inactive"] {
 	display: none;
 }
 
@@ -721,7 +724,9 @@
 	--home-blinds-scene-edge: 2px;
 	/* 明信片四周的厚纸边 */
 	--home-blinds-scene-pad: clamp(1rem, 1.9vw, 1.6rem);
-	--home-blinds-scene-band-height: clamp(4.6rem, 10vh, 6.4rem);
+	/* 底栏预留高度：按「中文年 + 月日」两行与说明两行的实际占高给，
+	   多留一行就是一屏里那条空带，所以贴着内容给 */
+	--home-blinds-scene-band-height: clamp(2.9rem, 5vh, 3.6rem);
 	--home-blinds-scene-photo-width: min(
 		44vw,
 		52rem,
@@ -746,14 +751,7 @@
 	/* 纸面与墨色不随主题翻转：明信片在深浅色底上都是同一张纸 */
 	--home-blinds-postcard-paper: #f9f3e4;
 	--home-blinds-postcard-ink: #4c4536;
-	/* 底部涂鸦的浅铅笔色 */
-	--home-blinds-postcard-pencil: color-mix(
-		in srgb,
-		var(--home-blinds-postcard-ink) 32%,
-		transparent
-	);
 	--home-blinds-scene-rail-gap: clamp(1.1rem, 2.2vw, 2.5rem);
-	--home-blinds-scene-band-gap: 0.55rem;
 	/* 吊线长度 = 视窗顶到卡顶，另加 8rem 余量（超出视口的部分被裁掉），
 	   100vh 与 100dvh 的差值因此不影响接线。
 	   注意：该变量会在双数幕上被覆盖，凡引用它必须在「使用它的元素」上
@@ -776,11 +774,12 @@
 	will-change: transform, opacity;
 }
 
-/* 双数幕挂高：垂直中心落在视口上 1/3 处，与单数幕错落 */
+/* 双数幕挂高：垂直中心落在视口 42% 处，与单数幕（50%）错落。
+   卡顶因此离视窗顶约 12vh —— 卡片高度按 60vh 定尺，再往上就会贴到导航栏 */
 .home-blinds-scene--raised {
-	top: calc(100% / 3);
+	top: 42%;
 	--home-blinds-scene-string-length: calc(
-		100vh / 3 - var(--home-blinds-scene-height) / 2 + 8rem
+		42vh - var(--home-blinds-scene-height) / 2 + 8rem
 	);
 }
 
@@ -813,6 +812,9 @@
 	flex-direction: column;
 	box-sizing: border-box;
 	padding: var(--home-blinds-scene-pad);
+	/* 底边不另外留白：整条底部纸面交给底栏，文字在其中垂直居中，
+	   于是「照片→文字」与「文字→卡边」两段间距天然等宽 */
+	padding-bottom: 0;
 	border: var(--home-blinds-scene-edge) solid var(--deep-text);
 	background: var(--home-blinds-postcard-paper);
 	box-shadow:
@@ -850,14 +852,16 @@
 	z-index: 2;
 	width: clamp(3.6rem, 4.8vw, 4.8rem);
 	height: clamp(1.25rem, 1.9vw, 1.6rem);
-	background: repeating-linear-gradient(
-		-45deg,
-		color-mix(in srgb, #00a29b 34%, var(--home-blinds-postcard-paper)) 0
-			0.42rem,
-		color-mix(in srgb, #e26d5a 30%, var(--home-blinds-postcard-paper)) 0.42rem
-			0.84rem
-	);
-	box-shadow: 0 2px 5px rgb(0 0 0 / 0.16);
+	border-radius: 0.4rem;
+	/* 蓝白半透明贴纸：白色斜纹压在淡蓝底上，能透出后面的吊线与背景 */
+	background:
+		repeating-linear-gradient(
+			-45deg,
+			rgb(255 255 255 / 0.62) 0 0.42rem,
+			rgb(255 255 255 / 0.14) 0.42rem 0.84rem
+		),
+		color-mix(in srgb, #3f6fd0 46%, transparent);
+	box-shadow: 0 2px 5px rgb(0 0 0 / 0.14);
 	transform: translateX(-50%) rotate(-2.5deg);
 }
 
@@ -883,23 +887,24 @@
 		0 0.45rem 1rem rgb(0 0 0 / 0.24);
 }
 
-/* ---------- 共用进度条：整层只有一条，常驻水平中间、贴居中卡下沿 ----------
-   宽度对齐图框，随横移进度连续增减，不做出场动效（显隐由控制器按阶段切换） */
+/* ---------- 共用进度条：整层只有一条，压在立牌身前、贴住视窗底边 ----------
+   立牌槽位公式是 (index + 0.5) * 25%，第一张的中心在 12.5%，电池与它同一条竖线，
+   z-index 高于立牌层（5）所以叠在人物身前 */
 
 .home-blinds-scenes__meter {
 	/* 点亮色沿用站内既有的青色强调色，不再走三色渐变 */
 	--home-blinds-meter-lit: #00a29b;
-	--home-blinds-meter-line: color-mix(in srgb, var(--deep-text) 70%, transparent);
+	/* 边框与未点亮格固定中性灰：影像层是同一张纸，不随深浅色主题翻转 */
+	--home-blinds-meter-line: rgb(158 158 158 / 0.9);
+	--home-blinds-meter-idle: rgb(158 158 158 / 0.26);
 	position: absolute;
-	top: calc(
-		50% + var(--home-blinds-scene-height) / 2 +
-			var(--home-blinds-scene-band-gap)
-	);
-	left: 50%;
-	z-index: 4;
+	bottom: 0;
+	left: 12.5%;
+	z-index: 6;
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	gap: 0.12rem;
+	gap: 0.3rem;
 	width: min(15rem, calc(100vw - 3rem));
 	color: var(--deep-text);
 	opacity: 1;
@@ -908,16 +913,32 @@
 	pointer-events: none;
 }
 
+/* 充电状态字：未满写「正在充电」，满格时由控制器换成「充电完毕」 */
+.home-blinds-scenes__meter-label {
+	font-size: clamp(0.62rem, 0.8vw, 0.74rem);
+	font-weight: 700;
+	letter-spacing: 0.22em;
+	line-height: 1;
+	white-space: nowrap;
+	color: var(--home-blinds-meter-lit);
+}
+
+.home-blinds-scenes__meter-row {
+	display: flex;
+	align-items: center;
+	gap: 0.12rem;
+	width: 100%;
+}
+
 /* 右端正极小凸起：整条读起来就是一块电池 */
 .home-blinds-scenes__meter-cap {
 	flex: none;
 	width: 0.26rem;
 	height: 0.6rem;
-	border-radius: 0 0.16rem 0.16rem 0;
 	background: var(--home-blinds-meter-line);
 }
 
-/* 圆角胶囊外框：2px 闭合边框，内部留出小方块的呼吸位 */
+/* 方框外框：2px 闭合边框，内部半透明底衬托住小方块（叠在人物身前时靠它分清格子） */
 .home-blinds-scenes__meter-track {
 	position: relative;
 	flex: 1 1 auto;
@@ -926,8 +947,7 @@
 	box-sizing: border-box;
 	padding: 0.3rem 0.42rem;
 	border: 2px solid var(--home-blinds-meter-line);
-	border-radius: 999px;
-	background: transparent;
+	background: rgb(16 16 16 / 0.4);
 }
 
 /* 进度不再是一条连续长条，而是一排等宽小方块，逐块点亮 */
@@ -941,8 +961,7 @@
 .home-blinds-scenes__meter-block {
 	flex: 1 1 0;
 	min-width: 0;
-	border-radius: 0.18rem;
-	background: color-mix(in srgb, var(--deep-text) 16%, transparent);
+	background: var(--home-blinds-meter-idle);
 	transition: background-color 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
@@ -1000,7 +1019,8 @@
 }
 
 /* ============================================
-   明信片底部介绍区：照片说明居中，浅色涂鸦垫在字后，五幕统一版式
+   明信片底部介绍区：左列中文标题 + 数字日期，竖杠分隔，右栏说明最多两行。
+   扁平排版，不再垫手绘涂鸦；垂直间距按单行高度收紧
    ============================================ */
 
 .home-blinds-scene__band {
@@ -1008,91 +1028,62 @@
 	display: flex;
 	flex: 1 1 auto;
 	align-items: center;
-	justify-content: center;
+	gap: clamp(0.6rem, 1.2vw, 0.95rem);
 	min-height: 0;
-	margin-top: calc(var(--home-blinds-scene-pad) * 0.72);
+	margin-top: 0;
 }
 
-/* 手绘涂鸦：横向拉满介绍区，随宽度做少量形变，颜色取浅铅笔色 */
-.home-blinds-scene__doodles {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	pointer-events: none;
-}
-
-.home-blinds-scene__doodle-pencil {
-	stroke: var(--home-blinds-postcard-pencil);
-	stroke-width: 2.4;
-	stroke-linecap: round;
-}
-
-.home-blinds-scene__doodle-accent {
-	fill: color-mix(in srgb, #00a29b 52%, transparent);
-}
-
-.home-blinds-scene__caption {
-	position: relative;
-	z-index: 1;
-	margin: 0;
-	padding: 0 clamp(2.4rem, 5vw, 4.5rem);
-	text-align: center;
-	color: var(--home-blinds-postcard-ink);
-	font-size: clamp(0.78rem, 1vw, 0.98rem);
-	font-weight: 600;
-	letter-spacing: 0.12em;
-	line-height: 1.7;
-}
-
-/* 逐字节点数量五幕合计上百个，不在此常驻 will-change：
-   由 playSceneIntro 在入场期间临时写入、播完清成 auto */
-.home-blinds-scene__caption-char {
-	display: inline-block;
-	white-space: pre;
-}
-
-/* 右下角落款日期：日期逐字打字亮起，下方曲线自左往右快速描绘；
-   显隐与描线进度归控制器 */
-.home-blinds-scene__date {
-	position: absolute;
-	right: 0.72rem;
-	bottom: 0.3rem;
-	z-index: 1;
+/* 左列：中文年压月日，两行之间不留额外空隙 */
+.home-blinds-scene__band-id {
+	flex: 0 0 auto;
 	display: flex;
 	flex-direction: column;
-	align-items: flex-end;
 	gap: 0.14rem;
-	color: color-mix(in srgb, var(--home-blinds-postcard-ink) 82%, transparent);
-	transform: rotate(-1.6deg);
-	pointer-events: none;
 }
 
-.home-blinds-scene__date-text {
-	line-height: 1;
-	font-size: 0.86rem;
-	font-style: italic;
+.home-blinds-scene__band-year {
+	margin: 0;
+	color: var(--home-blinds-postcard-ink);
+	font-size: clamp(0.92rem, 1.25vw, 1.18rem);
 	font-weight: 800;
-	letter-spacing: 0.06em;
+	letter-spacing: 0.1em;
+	line-height: 1.15;
+}
+
+.home-blinds-scene__band-date {
+	margin: 0;
+	color: color-mix(in srgb, var(--home-blinds-postcard-ink) 58%, transparent);
+	font-size: clamp(0.6rem, 0.78vw, 0.72rem);
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	line-height: 1;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 
-.home-blinds-scene__date-char {
-	display: inline-block;
-	white-space: pre;
+/* 分隔竖杠：随左右两列中较高的一根拉满，不额外占宽 */
+.home-blinds-scene__band-divider {
+	flex: 0 0 1px;
+	align-self: stretch;
+	background: color-mix(in srgb, var(--home-blinds-postcard-ink) 22%, transparent);
 }
 
-.home-blinds-scene__date-art {
-	display: block;
-	width: clamp(5.6rem, 8vw, 7.6rem);
-	height: auto;
-}
-
-/* pathLength=1，故 1 1 即「整条实线 + 等长空白」，偏移从 1 收到 0 就是画出来 */
-.home-blinds-scene__date-flourish {
-	stroke-dasharray: 1 1;
-	stroke-dashoffset: 1;
+/* 右栏说明：固定两行，超出以省略号截断 */
+.home-blinds-scene__band-note {
+	margin: 0;
+	flex: 1 1 auto;
+	min-width: 0;
+	color: color-mix(in srgb, var(--home-blinds-postcard-ink) 86%, transparent);
+	font-size: clamp(0.7rem, 0.88vw, 0.84rem);
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	line-height: 1.5;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	text-overflow: ellipsis;
+	overflow: hidden;
 }
 
 /* ---------- 底部立牌（保持原有皮影戏效果） ---------- */
@@ -1102,15 +1093,16 @@
 	pointer-events: none;
 }
 
-/* 立牌钉在起始横位、底边落在视窗下方 8% 处，不再随横移滑动，只保留原地蹦跳。
-   高度略小于视窗 1/3；宽度给得比高度宽，保证 object-fit: contain 由高度定尺。
+/* 立牌钉在起始横位、底边贴住视窗底边，不再随横移滑动，只做待机压扁。
+   高度由 --home-blinds-stand-height 定尺，宽度按图片自身宽高比撑开 ——
+   不再套一个固定比例的盒子把原图缩掉。
    定位一律用 top/bottom/left，transform 整个留给控制器。 */
 .home-blinds-scenes__stand {
-	--home-blinds-stand-height: 30vh;
+	--home-blinds-stand-height: 46vh;
 	position: absolute;
-	bottom: 8%;
+	bottom: 0;
 	left: calc((var(--home-blinds-stand-index) + 0.5) * 25%);
-	width: calc(var(--home-blinds-stand-height) * 1.15);
+	width: auto;
 	height: var(--home-blinds-stand-height);
 	opacity: 0;
 	visibility: hidden;
@@ -1118,34 +1110,15 @@
 	will-change: transform, opacity;
 }
 
+/* 图片按高度定尺、宽度随原始比例走；待机压扁以脚底（自身底边）为锚点。 */
 .home-blinds-scenes__stand-image {
 	display: block;
-	width: 100%;
+	width: auto;
 	height: 100%;
-	object-fit: contain;
-	object-position: center bottom;
+	max-width: 60vw;
 	user-select: none;
 	-webkit-user-drag: none;
-	will-change: transform;
-}
-
-/* 皮影戏木杆：接在立牌底边正下方，跟着立牌图一起做跳跃位移。
-   长度 = 立牌底边到视窗底的 8vh + 最大跳跃高度的余量，多出来的部分由
-   .home-blinds-scenes__viewport 的 overflow: hidden 裁掉，所以跳到最高点时
-   下端依旧越过视窗底边，不会露出杆尾。
-   跳跃高度（控制器 startBounce 的 jumpHeights，当前最高 95px）若调大，这里的
-   140px 余量要同步加大。木杆是立牌的子元素，进出场的 autoAlpha 与立起的
-   rotationX 都直接继承，无需单独补间。 */
-.home-blinds-scenes__stand-pole {
-	position: absolute;
-	top: 100%;
-	left: 50%;
-	display: block;
-	width: 6px;
-	height: calc(8vh + 140px);
-	margin-left: -3px;
-	border-radius: 3px;
-	background: #9e8d76;
+	transform-origin: 50% 100%;
 	will-change: transform;
 }
 

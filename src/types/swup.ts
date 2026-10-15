@@ -23,6 +23,8 @@ export type SwupHookName =
 	| "page:view"
 	| "content:replace"
 	| "content:scroll"
+	| "scroll:top"
+	| "scroll:anchor"
 	| "history:popstate";
 
 export interface SwupPageData {
@@ -39,6 +41,13 @@ export interface SwupVisit {
 	readonly from: SwupVisitLocation;
 	readonly to: SwupVisitLocation;
 	readonly done: boolean;
+	readonly history: { popstate: boolean };
+	readonly scroll: { reset: boolean; target?: string | false };
+}
+
+export interface NavigationScrollPosition {
+	left: number;
+	top: number;
 }
 
 /** 钩子第二个入参的形状。未列出的钩子没有额外入参。 */
@@ -48,6 +57,8 @@ interface SwupHookArgsMap {
 	"page:preload": { url: string; page?: SwupPageData };
 	"page:view": { url: string; title: string };
 	"content:replace": { page: SwupPageData };
+	"scroll:top": { options: ScrollToOptions };
+	"scroll:anchor": { hash: string; options: ScrollIntoViewOptions };
 	"history:popstate": { event: PopStateEvent };
 }
 
@@ -57,7 +68,7 @@ export type SwupHookArgs<T extends SwupHookName> =
 export type SwupHookHandler<T extends SwupHookName> = (
 	visit: SwupVisit,
 	args: SwupHookArgs<T>,
-) => void;
+) => void | Promise<void>;
 
 export interface SwupHookOptions {
 	/** 在钩子的默认逻辑之前执行 */
@@ -101,6 +112,7 @@ export interface SwupInstance {
 	readonly hooks: SwupHooks;
 	readonly visit: SwupVisit;
 	navigate(url: string, options?: SwupNavigateOptions): void;
+	getAnchorElement(hash?: string): Element | null;
 	/** 由 `@swup/preload-plugin` 提供，未启用时不存在 */
 	preload?(url: string): Promise<unknown>;
 }

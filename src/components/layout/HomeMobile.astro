@@ -83,14 +83,14 @@ const statsShareId = umamiConfig?.shareId ?? "";
 						formats={getImageFormats()}
 						fallbackFormat={getFallbackFormat()}
 						widths={[96, 160, 256]}
-						loading="eager"
+						loading="lazy"
 					/>
 				) : (
 					<img
 						src={avatarValue}
 						alt={displayName}
 						class="home-mobile-hero__avatar-img"
-						loading="eager"
+						loading="lazy"
 					/>
 				)}
 			</div>
@@ -291,14 +291,13 @@ const statsShareId = umamiConfig?.shareId ?? "";
 	type Cleanup = () => void;
 	type ShareData = { websiteId: string; token: string };
 
-	const shareCache = createCache<ShareData>({
-		key: "umami_share_data",
-		ttl: 3_600_000,
-	});
 	let cleanups: Cleanup[] = [];
+	let mobileGeneration = 0;
 
 	function cleanupHomeMobile() {
-		cleanups.forEach((cleanup) => cleanup());
+		// 同一 DOM 的断点重建也必须立即作废尚未完成的 import。
+		mobileGeneration += 1;
+		cleanups.reverse().forEach((cleanup) => cleanup());
 		cleanups = [];
 	}
 
@@ -308,15 +307,24 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		if (!statsBaseUrl || !statsShareId) return;
 		const valueNodes = root.querySelectorAll<HTMLElement>("[data-mobile-stat]");
 		if (valueNodes.length === 0) return;
+		const controller = new AbortController();
+		const { signal } = controller;
+		cleanups.push(() => controller.abort());
+		// 持久缓存仍跨挂载共享；进行中的请求只属于本次挂载，避免复用已中止的 Promise。
+		const shareCache = createCache<ShareData>({
+			key: "umami_share_data",
+			ttl: 3_600_000,
+		});
 		shareCache
 			.fetch(async () => {
-				const response = await fetch(`${statsBaseUrl}/api/share/${statsShareId}`);
+				const response = await fetch(`${statsBaseUrl}/api/share/${statsShareId}`, { signal });
 				if (!response.ok) throw new Error("获取 Umami 分享信息失败");
-				const share = await response.json() as {
+				const share: {
 					websiteId?: string;
 					entityId?: string;
 					token?: string;
-				};
+				} = await response.json();
+				signal.throwIfAborted();
 				const websiteId = share.websiteId || share.entityId;
 				if (!websiteId) throw new Error("Umami 分享信息缺少 websiteId");
 				return { websiteId, token: share.token || statsShareId };
@@ -325,6 +333,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				fetch(
 					`${statsBaseUrl}/api/websites/${websiteId}/stats?startAt=0&endAt=${Date.now()}`,
 					{
+						signal,
 						headers: {
 							"x-umami-share-token": token,
 							"x-umami-share-context": "1",
@@ -333,10 +342,14 @@ const statsShareId = umamiConfig?.shareId ?? "";
 					},
 				),
 			)
-			.then((response) => response.json())
+			.then((response) => {
+				if (!response.ok) throw new Error("获取 Umami 统计信息失败");
+				return response.json();
+			})
 			.then((data: { uv?: number; visitors?: number; pv?: number; pageviews?: number }) => {
-				const uvRaw = data.uv || data.visitors || 0;
-				const pvRaw = data.pv || data.pageviews || 0;
+				if (signal.aborted || !root.isConnected) return;
+				const uvRaw = data.uv ?? data.visitors ?? 0;
+				const pvRaw = data.pv ?? data.pageviews ?? 0;
 				valueNodes.forEach((node) => {
 					const isUv = node.dataset.mobileStat === "UV";
 					const raw = isUv ? uvRaw : pvRaw;
@@ -348,8 +361,11 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				});
 			})
 			.catch(() => {
+				if (signal.aborted || !root.isConnected) return;
 				valueNodes.forEach((node) => {
 					node.textContent = "--";
+					const button = node.closest<HTMLElement>("[data-stat-key]");
+					if (button) button.dataset.popupValue = "--";
 				});
 			});
 	}
@@ -403,6 +419,8 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			root.removeEventListener("click", onStatClick);
 			document.removeEventListener("click", onOutsideClick);
 			document.removeEventListener("keydown", onKeyDown);
+			close();
+			popup.getAnimations().forEach((animation) => animation.cancel());
 		});
 	}
 
@@ -416,9 +434,14 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		const SWIPE_THRESHOLD = 56;
 		const CYCLE_MS = 420;
 		const AUTO_INTERVAL = 5000;
-		let order = cards.slice();
+		const order = cards.slice();
 		let busy = false;
 		let autoTimer = 0;
+		let cycleTimer: number | undefined;
+		let isDisposed = false;
+		let isInView = false;
+		let isHovered = window.matchMedia("(hover: hover)").matches && deck.matches(":hover");
+		let isFocused = deck.contains(document.activeElement);
 
 		const topCard = () => order[0];
 
@@ -430,7 +453,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 
 		/** 翻页（传送带循环）：顶部卡沉到堆底 z 轴，沿堆叠路径向下滑入底层，其余卡上移补位 */
 		const advance = () => {
-			if (busy) return;
+			if (busy || isDisposed) return;
 			busy = true;
 			const top = topCard();
 			const lastIndex = order.length - 1;
@@ -441,23 +464,27 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			order.slice(1).forEach((card, index) => {
 				card.style.setProperty("--deck-index", String(index));
 			});
-			window.setTimeout(() => {
+			const finishCycle = () => {
+				cycleTimer = undefined;
 				top.classList.remove("is-cycling");
-				order.push(order.shift() as HTMLElement);
+				order.shift();
+				order.push(top);
 				busy = false;
-			}, reduceMotion ? 0 : CYCLE_MS);
+			};
+			if (reduceMotion) finishCycle();
+			else cycleTimer = window.setTimeout(finishCycle, CYCLE_MS);
 		};
 
 		const stopAuto = () => {
 			window.clearInterval(autoTimer);
 			autoTimer = 0;
 		};
-		const startAuto = () => {
-			stopAuto();
-			if (reduceMotion) return;
-			autoTimer = window.setInterval(() => {
-				if (!document.hidden) advance();
-			}, AUTO_INTERVAL);
+		const syncAuto = () => {
+			if (isDisposed || reduceMotion || !isInView || document.visibilityState !== "visible" || isHovered || isFocused || dragging) {
+				stopAuto();
+				return;
+			}
+			if (!autoTimer) autoTimer = window.setInterval(advance, AUTO_INTERVAL);
 		};
 
 		// —— 拖拽翻页 ——
@@ -501,7 +528,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				suppressClick = true;
 				advance();
 			}
-			startAuto();
+			syncAuto();
 		};
 		const onClickCapture = (event: MouseEvent) => {
 			if (!suppressClick) return;
@@ -509,34 +536,80 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			if ((event.target as Element).closest("a")) event.preventDefault();
 		};
 
+		const onPointerEnter = (event: PointerEvent) => {
+			if (event.pointerType === "touch") return;
+			isHovered = true;
+			syncAuto();
+		};
+		const onPointerLeave = (event: PointerEvent) => {
+			if (event.pointerType === "touch") return;
+			isHovered = false;
+			syncAuto();
+		};
+		const onFocusIn = () => { isFocused = true; syncAuto(); };
+		const onFocusOut = (event: FocusEvent) => {
+			isFocused = event.relatedTarget instanceof Node && deck.contains(event.relatedTarget);
+			syncAuto();
+		};
+		const visibilityObserver = new IntersectionObserver((entries) => {
+			if (isDisposed) return;
+			for (const entry of entries) isInView = entry.isIntersecting;
+			syncAuto();
+		});
+
 		deck.addEventListener("touchstart", onTouchStart, { passive: true });
 		deck.addEventListener("touchmove", onTouchMove, { passive: false });
 		deck.addEventListener("touchend", onTouchEnd);
 		deck.addEventListener("touchcancel", onTouchEnd);
 		deck.addEventListener("click", onClickCapture, true);
+		deck.addEventListener("pointerenter", onPointerEnter);
+		deck.addEventListener("pointerleave", onPointerLeave);
+		deck.addEventListener("focusin", onFocusIn);
+		deck.addEventListener("focusout", onFocusOut);
+		document.addEventListener("visibilitychange", syncAuto);
 		applyLayout();
-		startAuto();
+		visibilityObserver.observe(deck);
 		cleanups.push(() => {
+			isDisposed = true;
 			stopAuto();
+			if (cycleTimer !== undefined) window.clearTimeout(cycleTimer);
+			visibilityObserver.disconnect();
+			document.removeEventListener("visibilitychange", syncAuto);
 			deck.removeEventListener("touchstart", onTouchStart);
 			deck.removeEventListener("touchmove", onTouchMove);
 			deck.removeEventListener("touchend", onTouchEnd);
 			deck.removeEventListener("touchcancel", onTouchEnd);
 			deck.removeEventListener("click", onClickCapture, true);
+			deck.removeEventListener("pointerenter", onPointerEnter);
+			deck.removeEventListener("pointerleave", onPointerLeave);
+			deck.removeEventListener("focusin", onFocusIn);
+			deck.removeEventListener("focusout", onFocusOut);
+			cards.forEach((card, index) => {
+				card.classList.remove("is-cycling");
+				card.style.transform = "";
+				card.style.transition = "";
+				card.style.setProperty("--deck-index", String(index));
+				card.getAnimations().forEach((animation) => animation.cancel());
+			});
 		});
 	}
 
 	/** 入场动效：开场遮罩 + 依次分层进场；滚动分区标题/卡片/时间线 reveal + 轻视差 */
-	async function initEntrance(root: HTMLElement) {
+	async function initEntrance(root: HTMLElement, generation: number): Promise<void> {
+		let revertEntrance: Cleanup | undefined;
 		try {
 			const [{ gsap }, { ScrollTrigger }] = await Promise.all([
 				import("gsap"),
 				import("gsap/ScrollTrigger"),
 			]);
+			if (generation !== mobileGeneration || !root.isConnected) return;
 			gsap.registerPlugin(ScrollTrigger);
 			const q = gsap.utils.selector(root);
-
-			const ctx = gsap.context(() => {
+			const ctx = gsap.context(undefined, root);
+			revertEntrance = () => ctx.revert();
+			// 先登记清理，初始化中途失败也能撤销已创建的动画和 ScrollTrigger。
+			cleanups.push(revertEntrance);
+			ctx.add(() => {
 				// CSS 预隐藏的百分比位移在 computed 中会解析为 px，先归一到 GSAP 的百分比状态
 				gsap.set(q(".home-mobile-hero__name-char"), { yPercent: 120, y: 0 });
 				gsap.set(q(".home-mobile-head__en"), { yPercent: 110, y: 0, skewY: 4 });
@@ -651,32 +724,36 @@ const statsShareId = umamiConfig?.shareId ?? "";
 						scrollTrigger: { trigger: timeline, start: "top 85%", once: true },
 					});
 				}
-			}, root);
-			cleanups.push(() => ctx.revert());
+			});
 		} catch {
-			// GSAP 加载失败时解除隐藏，保证内容可见
+			if (generation !== mobileGeneration || !root.isConnected) return;
+			// GSAP 加载或初始化失败时撤销半成品并解除隐藏，不影响下一次挂载。
+			revertEntrance?.();
 			root.classList.remove("is-anim");
 		}
 	}
 
-	function initHomeMobile() {
+	async function initHomeMobile(): Promise<void> {
 		cleanupHomeMobile();
 		const root = document.getElementById("home-mobile");
 		if (!root) return;
-		if (!window.matchMedia("(max-width: 768px)").matches) return;
+		const generation = mobileGeneration;
+		cleanups.push(() => {
+			root.classList.remove("is-anim");
+			root.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
+		});
 		const reduceMotion = window.matchMedia(
 			"(prefers-reduced-motion: reduce)",
 		).matches;
-		if (!reduceMotion) {
-			root.classList.add("is-anim");
-			initEntrance(root);
-		}
+		root.classList.toggle("is-anim", !reduceMotion);
 		initVisitStats(root);
 		initStatPopups(root);
 		initDeck(root);
+		// 只等待模块加载与动画登记，不等待入场时间轴或滚动动画播放结束。
+		if (!reduceMotion) await initEntrance(root, generation);
 	}
 
 	// 同 HomeDataLayer：容器替换前清理（bindHomeLayer 内部走 astro:before-swap），
 	// 旧的 swup:willReplaceContent 是 swup 3 的名字，在 swup 4 下不会触发
-	bindHomeLayer("mobile", { boot: initHomeMobile, teardown: cleanupHomeMobile });
+	bindHomeLayer("mobile", { media: "(max-width: 768px)", boot: initHomeMobile, teardown: cleanupHomeMobile });
 </script>

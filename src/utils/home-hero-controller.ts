@@ -6,11 +6,12 @@ import { createFlyText, type FlyTextHandle } from "@/utils/home-hero-fly-text";
 import { getHeroPinEndDistance } from "@/utils/home-hero-motion";
 import { initHomeHeroRain } from "@/utils/home-hero-rain";
 import { initHomeHeroSticker } from "@/utils/home-hero-sticker";
-import { navigateToPage } from "@/utils/navigation-utils";
 import {
-	cancelScrollTriggerRefresh,
-	requestScrollTriggerRefresh,
-} from "@/utils/scroll-trigger-refresh";
+	type HomeHeroWordmarkController,
+	initHomeHeroWordmark,
+} from "@/utils/home-hero-wordmark";
+import { navigateToPage } from "@/utils/navigation-utils";
+import { requestScrollTriggerRefresh } from "@/utils/scroll-trigger-refresh";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -21,14 +22,16 @@ const DIALOGUE_REVEAL_END_TIME =
 	DIALOGUE_REVEAL_TIME + DIALOGUE_REVEAL_DURATION;
 const QUICK_ACTIONS_REVEAL_TIME = 1.14;
 const INTERACTION_HOLD_START = 1.31;
+/** 标题从这一刻开始淡出，字标的 canvas 动画同步停摆 */
+const TITLE_EXIT_TIME = 0.72;
+/** 标题淡出时向上抬的距离（px），与整图离场同向 */
+const TITLE_EXIT_LIFT = 46;
 let initialReloadHandled = false;
 
 /**
  * navigation.type 描述的是「当前 document 是怎么来的」，Swup 导航不会改它：
  * 在别的页面按了 F5，之后再跳进首页，这里读到的仍然是 "reload"。而本模块恰好是在
- * 「进首页」那次导航里才第一次执行，于是 hero 的首次挂载会误判成「刚刷新了首页」，
- * 多做一轮 scrollTo(0,0) + progress(0) + ScrollTrigger.refresh()，正好落在
- * 影像层 pin 刚插入、首页高度还在变的时候，第二幕的滚动进度因此对不上。
+ * 「进首页」那次导航里才第一次执行，于是 hero 的首次挂载会误判成「刚刷新了首页」。
  * 用 navigation.name（document 首次加载的 URL）与当前路径比对即可排除这种情况。
  */
 function isInitialDocumentPath(navigationName: string) {
@@ -41,6 +44,11 @@ function isInitialDocumentPath(navigationName: string) {
 	}
 }
 
+/**
+ * 刷新首页要从第一帧重播入场编排，所以把滚动位置按回顶部。
+ * 这一步必须由持有 ScrollTrigger 的本模块做：ScrollTrigger 初始化时会记住
+ * 加载时的滚动位置并在首帧后回灌，只 scrollTo(0,0) 会被它盖回去。
+ */
 function resetHeroScrollOnReload() {
 	if (initialReloadHandled) return false;
 	initialReloadHandled = true;
@@ -120,14 +128,6 @@ function getTileStates(hero: HTMLElement): TileState[] {
 	);
 }
 
-function createSeededRandom(seed: number) {
-	let value = seed >>> 0;
-	return () => {
-		value = (Math.imul(value, 1664525) + 1013904223) >>> 0;
-		return value / 4294967296;
-	};
-}
-
 function bindQuickActions(hero: HTMLElement, abortController: AbortController) {
 	hero.addEventListener(
 		"click",
@@ -196,6 +196,8 @@ export function mountHomeHero() {
 	// hero.dataset.heroMounted —— 那个标记会被下一次挂载重新写成 "true"，
 	// 上一次挂载的回调于是照样往下走，把 contact 拆成两套字符节点。
 	let disposed = false;
+	// revert 既回收动画也恢复挂载前样式，断点切换会在同一批 DOM 上重新挂载。
+	const animationContext = gsap.context(() => {}, hero);
 	const abortController = new AbortController();
 	const dialogue = initHomeHeroDialogue(hero);
 	const destroySticker = initHomeHeroSticker(hero);
@@ -219,92 +221,14 @@ export function mountHomeHero() {
 	let timeline: ReturnType<typeof gsap.timeline> | null = null;
 	let heroScrollTrigger: ReturnType<typeof ScrollTrigger.create> | null = null;
 	let scrollDriver: ReturnType<typeof gsap.to> | null = null;
-	let idleTimer = 0;
-	let idleTween: ReturnType<typeof gsap.timeline> | null = null;
 	let tilesIntroTimeline: ReturnType<typeof gsap.timeline> | null = null;
 	let textIntroTimeline: ReturnType<typeof gsap.timeline> | null = null;
-	let tilesIntroDone = false;
 	let flyHandles: FlyTextHandle[] = [];
 	let contactScatterTimeline: ReturnType<typeof gsap.timeline> | null = null;
+	let wordmark: HomeHeroWordmarkController | null = null;
 	let flyLayoutTimer = 0;
-	let activeTiles = new Set(
-		tiles.filter((tile) => tile.initiallyVisible).map((tile) => tile.element),
-	);
-	const random = createSeededRandom(config.mosaic.seed ^ 0x9e3779b9);
 
 	bindQuickActions(hero, abortController);
-
-	const stopIdleRotation = () => {
-		window.clearInterval(idleTimer);
-		idleTimer = 0;
-		idleTween?.kill();
-		idleTween = null;
-	};
-
-	const startIdleRotation = () => {
-		if (idleTimer || reducedMotionQuery.matches) return;
-		idleTimer = window.setInterval(() => {
-			const visible = tiles.filter((tile) => activeTiles.has(tile.element));
-			const hidden = tiles.filter((tile) => !activeTiles.has(tile.element));
-			if (visible.length === 0 || hidden.length === 0) return;
-			const leaving = visible[Math.floor(random() * visible.length)];
-			const entering = hidden[Math.floor(random() * hidden.length)];
-			const enteringTransform = getTileIdleTransform(entering);
-			activeTiles.delete(leaving.element);
-			activeTiles.add(entering.element);
-			idleTween?.kill();
-			idleTween = gsap.timeline();
-			idleTween.to(
-				leaving.element,
-				{
-					autoAlpha: 0,
-					duration: 0.38,
-					ease: "power2.inOut",
-				},
-				0,
-			);
-			idleTween.fromTo(
-				entering.element,
-				{
-					x: enteringTransform.x,
-					y: enteringTransform.y,
-					rotation: enteringTransform.rotation,
-					scaleX: enteringTransform.scaleX * 0.88,
-					scaleY: enteringTransform.scaleY * 0.88,
-					filter: `blur(${enteringTransform.blur}px)`,
-					autoAlpha: 0,
-				},
-				{
-					autoAlpha: 1,
-					scaleX: enteringTransform.scaleX,
-					scaleY: enteringTransform.scaleY,
-					duration: 0.48,
-					ease: "power3.out",
-				},
-				0.12,
-			);
-		}, config.mosaic.idleInterval);
-	};
-
-	const resetIdleTiles = () => {
-		activeTiles = new Set(
-			tiles.filter((tile) => tile.initiallyVisible).map((tile) => tile.element),
-		);
-		tiles.forEach((tile) => {
-			const transform = tile.initiallyVisible
-				? getTileInitialTransform(tile)
-				: getTileEntranceTransform(tile);
-			gsap.set(tile.element, {
-				x: transform.x,
-				y: transform.y,
-				rotation: transform.rotation,
-				scaleX: transform.scaleX,
-				scaleY: transform.scaleY,
-				filter: `blur(${transform.blur}px)`,
-				autoAlpha: tile.initiallyVisible ? 1 : 0,
-			});
-		});
-	};
 
 	// 用户开始滚动时立即完成进行中的入场动画，交由 scrub 时间线接管
 	const completePendingIntros = () => {
@@ -340,6 +264,7 @@ export function mountHomeHero() {
 	heroVisibility.observe(hero);
 
 	const updateSceneState = (progress: number) => {
+		if (disposed) return;
 		const timelineTime = progress * (timeline?.duration() ?? 1);
 		const rainActive = timelineTime >= RAIN_ACTIVATE_TIME;
 		const dialogueVisible = timelineTime >= DIALOGUE_REVEAL_TIME;
@@ -352,13 +277,10 @@ export function mountHomeHero() {
 		});
 		rainWanted = rainActive;
 		syncRain();
-		if (progress > 0.002) {
-			stopIdleRotation();
-			completePendingIntros();
-		} else if (!idleTimer && tilesIntroDone) {
-			resetIdleTiles();
-			startIdleRotation();
-		}
+		wordmark?.setActive(timelineTime < TITLE_EXIT_TIME);
+		// 碎片默认停在初始布局上，不再自动轮换，所以只有开始滚动时才需要
+		// 把仍在播的入场补间推到终帧，交给 scrub 时间线接管。
+		if (progress > 0.002) completePendingIntros();
 	};
 
 	const getMosaicTransform = () => {
@@ -542,10 +464,14 @@ export function mountHomeHero() {
 		if (!title || !mosaic || !backdrop || tiles.length === 0) return;
 
 		gsap.set(mosaic, { xPercent: -50, y: 0, scale: 1 });
-		gsap.set(mosaicComplete, { autoAlpha: 0 });
+		if (mosaicComplete) gsap.set(mosaicComplete, { autoAlpha: 0 });
 		gsap.set(backdrop, { autoAlpha: 0 });
-		gsap.set(dialogueRoot, { autoAlpha: 0, y: 16, scale: 0.96 });
-		gsap.set(quickActions, { autoAlpha: 0, y: 38, scale: 0.42 });
+		if (dialogueRoot) {
+			gsap.set(dialogueRoot, { autoAlpha: 0, y: 16, scale: 0.96 });
+		}
+		if (quickActions.length) {
+			gsap.set(quickActions, { autoAlpha: 0, y: 38, scale: 0.42 });
+		}
 		for (const tile of tiles) {
 			const transform = tile.initiallyVisible
 				? getTileInitialTransform(tile)
@@ -637,18 +563,19 @@ export function mountHomeHero() {
 			);
 		}
 
-		// 淡出段只动 autoAlpha：yPercent 已由上一段补间锚定，若这里再显式给
-		// yPercent 起点，进度归零的回滚渲染会按时间序先后渲染两段，后渲染的
-		// 这段把 yPercent 又写回自己的起点，标题会停在 -20% 偏移上。
+		// 淡出段只加 y 位移，不碰 yPercent：yPercent 已由上一段补间锚定，若这里再显式给
+		// yPercent 起点，进度归零的回滚渲染会按时间序先后渲染两段，后渲染的这段把
+		// yPercent 又写回自己的起点，标题会停在 -20% 偏移上。
 		timeline.fromTo(
 			title,
-			{ autoAlpha: 1 },
+			{ autoAlpha: 1, y: 0 },
 			{
 				autoAlpha: 0,
+				y: -TITLE_EXIT_LIFT,
 				duration: 0.08,
 				ease: "power2.in",
 			},
-			0.72,
+			TITLE_EXIT_TIME,
 		);
 
 		if (dialogueRoot) {
@@ -666,6 +593,8 @@ export function mountHomeHero() {
 			);
 		}
 
+		// 拼合完成后整图放大到铺满全屏，与背景大图无缝交接：背景大图是同一张图的
+		// 全幅版本，所以这里只补到「刚好盖住视口」的缩放，不再额外放大或抬出画。
 		timeline.fromTo(
 			mosaic,
 			{ y: 0, scale: 1 },
@@ -748,24 +677,13 @@ export function mountHomeHero() {
 		requestScrollTriggerRefresh(ScrollTrigger);
 	};
 
-	// 初始可见碎片改为渐入，完成后进入常规 idle 轮换
+	// 初始可见碎片的渐入；完成后碎片就停在初始布局上，不再有其它自动动画
 	const playTilesIntro = () => {
 		const idleTiles = tiles.filter((tile) => tile.initiallyVisible);
-		if (!idleTiles.length) {
-			tilesIntroDone = true;
-			return;
-		}
+		if (!idleTiles.length) return;
 		tilesIntroTimeline = gsap.timeline({
 			onComplete: () => {
 				tilesIntroTimeline = null;
-				tilesIntroDone = true;
-				if (
-					(heroScrollTrigger?.progress ?? 0) <= 0.002 &&
-					!reducedMotionQuery.matches &&
-					!idleTimer
-				) {
-					startIdleRotation();
-				}
 			},
 		});
 		for (const tile of idleTiles) {
@@ -796,9 +714,7 @@ export function mountHomeHero() {
 
 	// 右下角 contact：Scatter random 入场；下滑时字符风散退场
 	const prepareFlyText = () => {
-		const titleHost = hero.querySelector<HTMLElement>(
-			".home-hero__title > span:first-child",
-		);
+		const titleHost = hero.querySelector<HTMLElement>("[data-hero-wordmark]");
 		const contactHosts = (
 			contact
 				? [
@@ -824,7 +740,7 @@ export function mountHomeHero() {
 
 		const mountContactScatter = () => {
 			if (!timeline || !flyHandles.length) return;
-			if (contactScatterTimeline) timeline.remove(contactScatterTimeline);
+			contactScatterTimeline?.kill();
 			const scatter = gsap.timeline();
 			for (const handle of flyHandles) {
 				const tl = handle.buildScatter(0.12);
@@ -838,63 +754,83 @@ export function mountHomeHero() {
 			window.clearTimeout(flyLayoutTimer);
 			flyLayoutTimer = window.setTimeout(() => {
 				if (disposed) return;
-				for (const handle of flyHandles) handle.rebuild();
-				mountContactScatter();
+				textIntroTimeline?.kill();
+				textIntroTimeline = null;
+				contactScatterTimeline?.kill();
+				contactScatterTimeline = null;
+				animationContext.add(() => {
+					for (const handle of flyHandles) handle.rebuild();
+					mountContactScatter();
+				});
 			}, 200);
 		};
 
 		document.fonts.ready.then(() => {
 			if (disposed) return;
-			flyHandles = contactHosts.map((host) => createFlyText(host));
-			for (const handle of flyHandles) {
-				handle.prepare();
-				handle.onLayoutChange(handleFlyLayoutChange);
-			}
-			contactHosts.forEach((host) => {
-				gsap.set(host, { autoAlpha: 1 });
+			// Promise 回调不继承同步 context，必须显式登记，包括 identity 的延迟补间。
+			animationContext.add(() => {
+				flyHandles = contactHosts.map((host) => createFlyText(host));
+				for (const handle of flyHandles) {
+					handle.prepare();
+					handle.onLayoutChange(handleFlyLayoutChange);
+				}
+				contactHosts.forEach((host) => {
+					gsap.set(host, { autoAlpha: 1 });
+				});
+
+				mountContactScatter();
+
+				const progress = heroScrollTrigger?.progress ?? 0;
+				if (progress <= 0.01) {
+					const intro = gsap.timeline();
+					const contactEntrances = flyHandles
+						.map((handle) => handle.buildEntrance(0.8))
+						.filter(
+							(tl): tl is ReturnType<typeof gsap.timeline> => tl !== null,
+						);
+					contactEntrances.forEach((tl, index) => {
+						intro.add(tl, 0.22 + index * 0.05);
+					});
+					textIntroTimeline = intro;
+				} else {
+					for (const handle of flyHandles) handle.setNatural();
+				}
+
+				if (identityText.length) {
+					gsap.to(identityText, {
+						autoAlpha: 1,
+						y: 0,
+						duration: 0.7,
+						ease: "power2.out",
+						delay: 0.5,
+					});
+				}
 			});
-
-			mountContactScatter();
-
-			const progress = heroScrollTrigger?.progress ?? 0;
-			if (progress <= 0.01) {
-				const intro = gsap.timeline();
-				const contactEntrances = flyHandles
-					.map((handle) => handle.buildEntrance(0.8))
-					.filter((tl): tl is ReturnType<typeof gsap.timeline> => tl !== null);
-				contactEntrances.forEach((tl, index) => {
-					intro.add(tl, 0.22 + index * 0.05);
-				});
-				textIntroTimeline = intro;
-			} else {
-				for (const handle of flyHandles) handle.setNatural();
-			}
-
-			if (identityText.length) {
-				gsap.to(identityText, {
-					autoAlpha: 1,
-					y: 0,
-					duration: 0.7,
-					ease: "power2.out",
-					delay: 0.5,
-				});
-			}
 		});
 	};
 
-	if (reducedMotionQuery.matches) {
-		setReducedMotionState(hero, dialogue);
-	} else {
-		buildTimeline();
-		playTilesIntro();
-		prepareFlyText();
-	}
+	animationContext.add(() => {
+		if (reducedMotionQuery.matches) {
+			setReducedMotionState(hero, dialogue);
+		} else {
+			// 字标要在 buildTimeline 之前建好：时间线首轮渲染会立刻 setActive 驱动它
+			wordmark = initHomeHeroWordmark(hero);
+			buildTimeline();
+			playTilesIntro();
+			prepareFlyText();
+		}
+	});
 	document
 		.querySelector(".home-page--motion-pending")
 		?.classList.remove("home-page--motion-pending");
 
+	// 复位要等 pin 与时间线都建好之后的那一帧，且必须可被卸载取消：
+	// 快速离开首页时这一帧若还跑着，会在新页面上 scrollTo(0,0) 并改全局恢复模式。
+	let reloadResetFrame = 0;
 	if (resetAfterReload) {
-		requestAnimationFrame(() => {
+		reloadResetFrame = requestAnimationFrame(() => {
+			reloadResetFrame = 0;
+			if (disposed) return;
 			window.scrollTo(0, 0);
 			timeline?.progress(0);
 			scrollDriver?.progress(0);
@@ -905,29 +841,30 @@ export function mountHomeHero() {
 	}
 
 	return () => {
+		if (disposed) return;
 		disposed = true;
-		cancelScrollTriggerRefresh();
-		stopIdleRotation();
+		if (reloadResetFrame) cancelAnimationFrame(reloadResetFrame);
+		// 合并刷新是跨层共享的，不能在 Hero 单独卸载时取消其它层的请求。
 		window.clearTimeout(flyLayoutTimer);
-		tilesIntroTimeline?.kill();
-		tilesIntroTimeline = null;
-		textIntroTimeline?.kill();
-		textIntroTimeline = null;
-		for (const handle of flyHandles) handle.destroy();
-		flyHandles = [];
-		contactScatterTimeline = null;
 		heroVisibility.disconnect();
 		rain.destroy();
 		dialogue.destroy();
 		destroySticker();
 		abortController.abort();
-		heroScrollTrigger?.kill();
+		animationContext.revert();
 		heroScrollTrigger = null;
-		scrollDriver?.kill();
 		scrollDriver = null;
-		timeline?.kill();
 		timeline = null;
+		tilesIntroTimeline = null;
+		textIntroTimeline = null;
+		contactScatterTimeline = null;
+		// 先回退字符动画，再还原宿主 DOM，避免同节点重挂载时重复拆字。
+		for (const handle of flyHandles) handle.destroy();
+		flyHandles = [];
+		wordmark?.destroy();
+		wordmark = null;
 		delete hero.dataset.heroMounted;
 		delete hero.dataset.layerActive;
+		delete hero.dataset.reducedMotion;
 	};
 }

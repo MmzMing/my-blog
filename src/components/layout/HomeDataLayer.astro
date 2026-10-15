@@ -277,22 +277,17 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		zIndex: number;
 	};
 
-	const shareCache = createCache<ShareData>({ key: "umami_share_data", ttl: 3_600_000 });
 	let cleanups: Cleanup[] = [];
 	let guideOpeningToken = 0;
 
 	function cleanupHomeDataLayer() {
 		guideOpeningToken += 1;
-		cleanups.forEach((cleanup) => cleanup());
+		cleanups.reverse().forEach((cleanup) => cleanup());
 		cleanups = [];
 	}
 
 	function prefersReducedMotion() {
 		return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-	}
-
-	function isDesktopGuideOpening() {
-		return window.matchMedia("(min-width: 769px)").matches;
 	}
 
 	function getGuideOpeningTargets(layer: HTMLElement): GuideOpeningTargets | null {
@@ -383,7 +378,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 	}
 
 	async function initGuideOpening(layer: HTMLElement, token: number) {
-		if (prefersReducedMotion() || !isDesktopGuideOpening()) {
+		if (prefersReducedMotion()) {
 			layer.dataset.guideOpening = "complete";
 			return;
 		}
@@ -429,7 +424,7 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		let timeline: ReturnType<typeof gsap.timeline> | null = null;
 		let started = false;
 		const start = () => {
-			if (started) return;
+			if (started || token !== guideOpeningToken || !layer.isConnected) return;
 			started = true;
 			layer.dataset.guideOpening = "playing";
 			const layerRect = layer.getBoundingClientRect();
@@ -624,18 +619,29 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		if (!statsBaseUrl || !statsShareId) return;
 		const detail = layer.querySelector<HTMLElement>(".data-card[data-stat-kind='visits'] .data-card__detail");
 		const valueNodes = layer.querySelectorAll<HTMLElement>("[data-stat-value]");
+		const controller = new AbortController();
+		const { signal } = controller;
+		cleanups.push(() => controller.abort());
+		// 保留持久缓存键和 TTL，但不让新挂载复用上一挂载已中止的 in-flight。
+		const shareCache = createCache<ShareData>({ key: "umami_share_data", ttl: 3_600_000 });
 		shareCache.fetch(async () => {
-			const response = await fetch(`${statsBaseUrl}/api/share/${statsShareId}`);
+			const response = await fetch(`${statsBaseUrl}/api/share/${statsShareId}`, { signal });
 			if (!response.ok) throw new Error("获取 Umami 分享信息失败");
-			const share = await response.json() as { websiteId?: string; entityId?: string; token?: string };
+			const share: { websiteId?: string; entityId?: string; token?: string } = await response.json();
+			signal.throwIfAborted();
 			const websiteId = share.websiteId || share.entityId;
 			if (!websiteId) throw new Error("Umami 分享信息缺少 websiteId");
 			return { websiteId, token: share.token || statsShareId };
 		}).then(({ websiteId, token }) => fetch(`${statsBaseUrl}/api/websites/${websiteId}/stats?startAt=0&endAt=${Date.now()}`, {
+			signal,
 			headers: { "x-umami-share-token": token, "x-umami-share-context": "1", "Content-Type": "application/json" },
-		})).then((response) => response.json()).then((data: { uv?: number; visitors?: number; pv?: number; pageviews?: number }) => {
-			const uvRaw = data.uv || data.visitors || 0;
-			const pvRaw = data.pv || data.pageviews || 0;
+		})).then((response) => {
+			if (!response.ok) throw new Error("获取 Umami 统计信息失败");
+			return response.json();
+		}).then((data: { uv?: number; visitors?: number; pv?: number; pageviews?: number }) => {
+			if (signal.aborted || !layer.isConnected) return;
+			const uvRaw = data.uv ?? data.visitors ?? 0;
+			const pvRaw = data.pv ?? data.pageviews ?? 0;
 			const uvCompact = formatCompactNumber(uvRaw);
 			const pvCompact = formatCompactNumber(pvRaw);
 			if (detail) detail.textContent = `${i18n(I18nKey.siteStatsVisitors)} ${uvCompact} · ${i18n(I18nKey.viewsBrowseLabel)} ${pvCompact}`;
@@ -649,7 +655,14 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				node.textContent = node.dataset.compactValue;
 			});
 		}).catch(() => {
+			if (signal.aborted || !layer.isConnected) return;
 			if (detail) detail.textContent = `${i18n(I18nKey.siteStatsVisitors)} -- · ${i18n(I18nKey.viewsBrowseLabel)} --`;
+			valueNodes.forEach((node) => {
+				if (node.dataset.statValue !== "UV" && node.dataset.statValue !== "PV") return;
+				node.dataset.compactValue = "--";
+				node.dataset.fullValue = "--";
+				node.textContent = "--";
+			});
 		});
 	}
 
@@ -670,7 +683,12 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			const leave = () => timeline.reverse();
 			card.addEventListener("pointerenter", enter);
 			card.addEventListener("pointerleave", leave);
-			cleanups.push(() => { card.removeEventListener("pointerenter", enter); card.removeEventListener("pointerleave", leave); timeline.kill(); });
+			cleanups.push(() => {
+				card.removeEventListener("pointerenter", enter);
+				card.removeEventListener("pointerleave", leave);
+				timeline.revert();
+				visitValues.forEach((node) => { if (node.dataset.compactValue) node.textContent = node.dataset.compactValue; });
+			});
 		});
 	}
 
@@ -740,7 +758,9 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		const enter = () => scheduleIntent(true, 70);
 		const leave = () => scheduleIntent(false, 140);
 		const focusIn = () => scheduleIntent(true, 0);
-		const focusOut = () => { window.setTimeout(() => { if (!card.contains(document.activeElement)) scheduleIntent(false, 80); }, 0); };
+		const focusOut = (event: FocusEvent) => {
+			if (!(event.relatedTarget instanceof Node) || !card.contains(event.relatedTarget)) scheduleIntent(false, 80);
+		};
 
 		card.addEventListener("pointerenter", enter);
 		card.addEventListener("pointerleave", leave);
@@ -772,34 +792,45 @@ const statsShareId = umamiConfig?.shareId ?? "";
 			if (slides.length === 0) return;
 			let activeIndex = 0;
 			let intervalId: number | undefined;
-			let transitionId = 0;
+			let transitionTimer: number | undefined;
+			let isDisposed = false;
+			let isInView = false;
+			let isHovered = window.matchMedia("(hover: hover)").matches && rotator.matches(":hover");
+			let isFocused = rotator.contains(document.activeElement);
 			const axis = rotator.dataset.guideAxis === "vertical" ? "vertical" : "horizontal";
 			const nextButtons = Array.from(rotator.querySelectorAll<HTMLButtonElement>("[data-guide-next]"));
 
+			// 每次接管先收敛全部 slide，不能只跳过旧收尾，否则第三张会残留可见。
+			const settleSlides = () => {
+				if (transitionTimer !== undefined) window.clearTimeout(transitionTimer);
+				transitionTimer = undefined;
+				slides.forEach((slide, index) => {
+					slide.hidden = index !== activeIndex;
+					slide.setAttribute("aria-hidden", String(index !== activeIndex));
+					slide.getAnimations().forEach((animation) => animation.cancel());
+				});
+				syncBackground(activeIndex);
+				dots.forEach((dot, index) => dot.setAttribute("aria-current", String(index === activeIndex)));
+			};
 			const setActive = (nextIndex: number) => {
+				if (isDisposed) return;
+				settleSlides();
+				rotator.getAnimations().forEach((animation) => animation.cancel());
 				const resolvedIndex = (nextIndex + slides.length) % slides.length;
 				if (resolvedIndex === activeIndex) {
-					rotator.animate([{ transform: "translateY(0)" }, { transform: "translateY(-0.2rem)" }, { transform: "translateY(0)" }], { duration: 240, easing: "ease-out" });
+					if (!reduceMotion) rotator.animate([{ transform: "translateY(0)" }, { transform: "translateY(-0.2rem)" }, { transform: "translateY(0)" }], { duration: 240, easing: "ease-out" });
 					return;
 				}
 				const currentSlide = slides[activeIndex];
 				const nextSlide = slides[resolvedIndex];
 				if (!currentSlide || !nextSlide) return;
-				const currentTransition = ++transitionId;
-				currentSlide.getAnimations().forEach((animation) => animation.cancel());
-				nextSlide.getAnimations().forEach((animation) => animation.cancel());
 				activeIndex = resolvedIndex;
-				syncBackground(resolvedIndex);
-				nextSlide.hidden = false;
-				nextSlide.setAttribute("aria-hidden", "false");
-				dots.forEach((dot, index) => dot.setAttribute("aria-current", String(index === activeIndex)));
+				settleSlides();
 
-				if (reduceMotion) {
-					currentSlide.hidden = true;
-					currentSlide.setAttribute("aria-hidden", "true");
-					return;
-				}
-
+				if (reduceMotion) return;
+				// 退场卡仅用于视觉过渡，辅助技术只暴露新卡。
+				currentSlide.hidden = false;
+				currentSlide.getAnimations().forEach((animation) => animation.cancel());
 				const vertical = axis === "vertical";
 				const incoming = vertical
 					? [{ transform: "translateY(110%)" }, { transform: "translateY(0)" }]
@@ -810,35 +841,47 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				const options: KeyframeAnimationOptions = { duration: 520, easing: "cubic-bezier(0.65, 0, 0.35, 1)", fill: "both" };
 				currentSlide.animate(outgoing, options);
 				nextSlide.animate(incoming, options);
-				// 后台标签页会节流 rAF，WAAPI 长时间不推进导致 finished 不落定、
-				// 旧 slide 滞留在原位叠加；用固定超时兜底收敛到终态
-				window.setTimeout(() => {
-					if (currentTransition !== transitionId) return;
-					currentSlide.hidden = true;
-					currentSlide.setAttribute("aria-hidden", "true");
-					currentSlide.getAnimations().forEach((animation) => animation.cancel());
-					nextSlide.getAnimations().forEach((animation) => animation.cancel());
-					nextSlide.style.transform = "";
-				}, 540);
+				// 后台会节流动画；保留固定收尾，并在下一次切换和卸载时取消。
+				transitionTimer = window.setTimeout(settleSlides, 540);
 			};
 			const stop = () => {
 				if (intervalId !== undefined) window.clearInterval(intervalId);
 				intervalId = undefined;
 			};
-			const start = () => {
-				if (reduceMotion || slides.length < 2 || intervalId !== undefined) return;
-				intervalId = window.setInterval(() => setActive(activeIndex + 1), 5000);
+			const syncAuto = () => {
+				if (isDisposed || reduceMotion || slides.length < 2 || !isInView || document.visibilityState !== "visible" || isHovered || isFocused) {
+					stop();
+					return;
+				}
+				if (intervalId === undefined) intervalId = window.setInterval(() => setActive(activeIndex + 1), 5000);
 			};
-			const pause = () => stop();
-			const resume = () => start();
+			const enter = (event: PointerEvent) => {
+				if (event.pointerType === "touch") return;
+				isHovered = true;
+				syncAuto();
+			};
+			const leave = (event: PointerEvent) => {
+				if (event.pointerType === "touch") return;
+				isHovered = false;
+				syncAuto();
+			};
+			const focusIn = () => { isFocused = true; syncAuto(); };
 			const focusOut = (event: FocusEvent) => {
-				if (!rotator.contains(event.relatedTarget as Node | null)) start();
+				isFocused = event.relatedTarget instanceof Node && rotator.contains(event.relatedTarget);
+				syncAuto();
 			};
+			const visibilityObserver = new IntersectionObserver((entries) => {
+				if (isDisposed) return;
+				for (const entry of entries) isInView = entry.isIntersecting;
+				syncAuto();
+			});
 
-			rotator.addEventListener("pointerenter", pause);
-			rotator.addEventListener("pointerleave", resume);
-			rotator.addEventListener("focusin", pause);
+			rotator.addEventListener("pointerenter", enter);
+			rotator.addEventListener("pointerleave", leave);
+			rotator.addEventListener("focusin", focusIn);
 			rotator.addEventListener("focusout", focusOut);
+			document.addEventListener("visibilitychange", syncAuto);
+			visibilityObserver.observe(rotator);
 			const dotHandlers = dots.map((dot, index) => {
 				const handler = () => setActive(index);
 				dot.addEventListener("click", handler);
@@ -859,12 +902,18 @@ const statsShareId = umamiConfig?.shareId ?? "";
 				slide.addEventListener("click", handler);
 				return [slide, handler] as const;
 			});
-			start();
+			settleSlides();
 			cleanups.push(() => {
+				isDisposed = true;
 				stop();
-				rotator.removeEventListener("pointerenter", pause);
-				rotator.removeEventListener("pointerleave", resume);
-				rotator.removeEventListener("focusin", pause);
+				visibilityObserver.disconnect();
+				document.removeEventListener("visibilitychange", syncAuto);
+				activeIndex = 0;
+				settleSlides();
+				rotator.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
+				rotator.removeEventListener("pointerenter", enter);
+				rotator.removeEventListener("pointerleave", leave);
+				rotator.removeEventListener("focusin", focusIn);
 				rotator.removeEventListener("focusout", focusOut);
 				dotHandlers.forEach(([dot, handler]) => dot.removeEventListener("click", handler));
 				nextButtons.forEach((button) => button.removeEventListener("click", nextHandler));
@@ -1041,13 +1090,11 @@ const statsShareId = umamiConfig?.shareId ?? "";
 		cleanupHomeDataLayer();
 		const layer = document.getElementById("home-data-layer");
 		if (!layer) return;
-		// 移动端首页由 HomeMobile 渲染，桌面数据层隐藏时跳过初始化
-		if (
-			document.getElementById("home-mobile") &&
-			window.matchMedia("(max-width: 768px)").matches
-		) {
-			return;
-		}
+		layer.dataset.guideOpening = "pending";
+		cleanups.push(() => {
+			layer.dataset.guideOpening = "complete";
+			layer.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
+		});
 		const token = ++guideOpeningToken;
 		initVisitStats(layer);
 		initMetricCards(layer);
@@ -1061,5 +1108,5 @@ const statsShareId = umamiConfig?.shareId ?? "";
 	// swup 4 的 DOM 事件名是冒号分段的（swup:content:replace），旧的 swup:willReplaceContent
 	// 永远不会触发；而 @swup/astro 派发的 astro:before-swap 挂在
 	// hooks.before("content:replace") 上，正是要的那个时机
-	bindHomeLayer("data-layer", { boot: initHomeDataLayer, teardown: cleanupHomeDataLayer });
+	bindHomeLayer("data-layer", { media: "(min-width: 769px)", boot: initHomeDataLayer, teardown: cleanupHomeDataLayer });
 </script>

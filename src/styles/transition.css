@@ -86,6 +86,12 @@ html.is-rendering:has(.article-toc-panel) .transition-swup-main {
     animation-name: fade-in-only;
 }
 
+/* 历史位置与跨页锚点须等固定占位就绪，避免先显示错误位置。 */
+html.is-scroll-restoring #swup-container {
+    animation: none;
+    opacity: 0;
+}
+
 /* 无障碍：减少动画 */
 @media (prefers-reduced-motion: reduce) {
     html.is-leaving .transition-swup-main,

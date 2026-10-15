@@ -91,3 +91,98 @@ export function getHeroPinEndDistance(
 	const viewport = Number.isFinite(viewportHeight) ? viewportHeight : 0;
 	return Math.max(0, configured, Math.round(viewport * minimumViewports));
 }
+
+const PUZZLE_COLUMNS = 18;
+const PUZZLE_ROWS = 12;
+const PUZZLE_SEED = 20261015;
+/** 用户单位：viewBox 网格边长，渲染时由 preserveAspectRatio 统一缩放 */
+export const PUZZLE_CELL = 100;
+/** 榫头凸起的底宽与凸出深度（用户单位），约 3.5:1 的平缓圆丘而非蘑菇头 */
+const PUZZLE_TAB_WIDTH = 46;
+const PUZZLE_TAB_DEPTH = 13;
+/** 半余弦丘的三次贝塞尔逼近常数：控制点沿锚点切线内缩这个比例，
+    起终点切线与接缝线共线，接出去 G1 连续，不会留圆弧那种尖角 */
+const PUZZLE_TAB_TANGENT = 0.3642;
+
+export type HeroPuzzleLayout = {
+	viewBox: string;
+	width: number;
+	height: number;
+	seams: string[];
+};
+
+const round = (value: number): number => Number(value.toFixed(2));
+
+/**
+ * 一条接缝线：沿直线走，每格中点起一个半余弦凸起再回到线上。
+ * 凸起用两段三次贝塞尔拼成，四个控制点全部落在锚点切线方向上，
+ * 所以接缝、丘脚、丘顶之间都是切线连续的，只有横竖两种朝向由 point 折叠。
+ */
+function createPuzzleSeam(options: {
+	line: number;
+	length: number;
+	count: number;
+	horizontal: boolean;
+	random: () => number;
+}): string {
+	const { line, length, count, horizontal, random } = options;
+	const half = PUZZLE_TAB_WIDTH / 2;
+	const tangent = half * PUZZLE_TAB_TANGENT;
+	const point = (along: number, across: number) =>
+		horizontal
+			? `${round(along)} ${round(across)}`
+			: `${round(across)} ${round(along)}`;
+
+	let d = `M ${point(0, line)}`;
+	for (let index = 0; index < count; index += 1) {
+		const center = (index + 0.5) * PUZZLE_CELL;
+		const apex = line + (random() < 0.5 ? -1 : 1) * PUZZLE_TAB_DEPTH;
+		const start = center - half;
+		const end = center + half;
+		d += ` L ${point(start, line)}`;
+		d += ` C ${point(start + tangent, line)} ${point(center - tangent, apex)} ${point(center, apex)}`;
+		d += ` C ${point(center + tangent, apex)} ${point(end - tangent, line)} ${point(end, line)}`;
+	}
+	return `${d} L ${point(length, line)}`;
+}
+
+/**
+ * 首屏拼图底层的构建期几何：只出「缝线」，不出色块。
+ * 每条内部网格线合成一条 path，凸向由种子随机决定，构建期算完即固定。
+ */
+export function createHeroPuzzleLayout(): HeroPuzzleLayout {
+	const random = createSeededRandom(PUZZLE_SEED);
+	const width = PUZZLE_COLUMNS * PUZZLE_CELL;
+	const height = PUZZLE_ROWS * PUZZLE_CELL;
+	const seams: string[] = [];
+
+	for (let row = 0; row < PUZZLE_ROWS - 1; row += 1) {
+		seams.push(
+			createPuzzleSeam({
+				line: (row + 1) * PUZZLE_CELL,
+				length: width,
+				count: PUZZLE_COLUMNS,
+				horizontal: true,
+				random,
+			}),
+		);
+	}
+	for (let column = 0; column < PUZZLE_COLUMNS - 1; column += 1) {
+		seams.push(
+			createPuzzleSeam({
+				line: (column + 1) * PUZZLE_CELL,
+				length: height,
+				count: PUZZLE_ROWS,
+				horizontal: false,
+				random,
+			}),
+		);
+	}
+
+	return {
+		viewBox: `0 0 ${width} ${height}`,
+		width,
+		height,
+		seams,
+	};
+}

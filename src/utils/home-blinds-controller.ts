@@ -60,7 +60,6 @@ const SCENE_ENTER_DISTANCE = 0.42;
 let activeRoot: HTMLElement | null = null;
 let activeCleanup: (() => void) | null = null;
 let bootGeneration = 0;
-let mediaWatchersBound = false;
 
 /** 一幕之内需要分层显示的所有元素 */
 type SceneRefs = {
@@ -71,10 +70,10 @@ type SceneRefs = {
 	railLine: HTMLElement;
 	railTitle: HTMLElement;
 	sticker: HTMLElement;
-	captionChars: HTMLElement[];
-	/** 右下角日期落款：逐字节点与收笔曲线；配置里没写 date 的幕为空/ null */
-	dateChars: HTMLElement[];
-	dateFlourish: Element | null;
+	/** 底栏：左列（中文年 + 月日）与竖杠只在配置写了 date 时渲染，故可空 */
+	band: HTMLElement | null;
+	bandDivider: HTMLElement | null;
+	bandNote: HTMLElement;
 	intro: GsapTimeline | null;
 	active: boolean;
 };
@@ -108,25 +107,7 @@ function canInitialize(root: HTMLElement) {
 	);
 }
 
-function bindMediaWatchers() {
-	if (mediaWatchersBound) return;
-	mediaWatchersBound = true;
-
-	const desktopQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
-	const reducedMotionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
-	// 先整层拆掉再重建：teardown 会作废仍在飞的异步初始化并复位 activeRoot，
-	// 因此紧随其后的 boot 一定会走完整流程（越过 nextRoot === activeRoot 的短路）
-	const restart = () => {
-		teardownHomeBlinds();
-		bootHomeBlinds();
-	};
-
-	desktopQuery.addEventListener("change", restart);
-	reducedMotionQuery.addEventListener("change", restart);
-}
-
 function collectScene(card: HTMLElement): SceneRefs {
-	const caption = selectRequired<HTMLElement>(card, "[data-scene-caption]");
 	return {
 		card,
 		swing: selectRequired<HTMLElement>(card, "[data-scene-swing]"),
@@ -135,13 +116,9 @@ function collectScene(card: HTMLElement): SceneRefs {
 		railLine: selectRequired<HTMLElement>(card, "[data-scene-rail-line]"),
 		railTitle: selectRequired<HTMLElement>(card, "[data-scene-rail-title]"),
 		sticker: selectRequired<HTMLElement>(card, "[data-scene-sticker]"),
-		captionChars: Array.from(
-			caption.querySelectorAll<HTMLElement>("[data-scene-caption-char]"),
-		),
-		dateChars: Array.from(
-			card.querySelectorAll<HTMLElement>("[data-scene-date-char]"),
-		),
-		dateFlourish: card.querySelector("[data-scene-date-flourish]"),
+		band: card.querySelector<HTMLElement>("[data-scene-band]"),
+		bandDivider: card.querySelector<HTMLElement>("[data-scene-band-divider]"),
+		bandNote: selectRequired<HTMLElement>(card, "[data-scene-note]"),
 		intro: null,
 		active: false,
 	};
@@ -158,15 +135,14 @@ function hideSceneChrome(gsap: Gsap, scene: SceneRefs) {
 		clipPath: "inset(0% 0% 100% 0%)",
 	});
 	gsap.set(scene.sticker, { autoAlpha: 0, scale: 0, rotation: -26 });
-	gsap.set(scene.captionChars, { autoAlpha: 0, y: -10, rotation: 5 });
-	if (scene.dateChars.length > 0) {
-		gsap.set(scene.dateChars, { autoAlpha: 0 });
-	}
-	if (scene.dateFlourish) gsap.set(scene.dateFlourish, { strokeDashoffset: 1 });
+	if (scene.band) gsap.set(scene.band, { autoAlpha: 0, x: -10 });
+	if (scene.bandDivider)
+		gsap.set(scene.bandDivider, { autoAlpha: 0, scaleY: 0 });
+	gsap.set(scene.bandNote, { autoAlpha: 0, y: 8 });
 }
 
 /**
- * 分层显示：竖排题名 → 左上角序号贴纸 → 底部明信片介绍 → 右下角日期落款。
+ * 分层显示：竖排题名 → 左上角序号贴纸 → 底栏（左列标题与日期、竖杠、右栏说明）。
  * 只在图框收缩到位（阶段已进入 scenes）且该幕居中时调用，
  * 因此文字永远不会与背景收缩动画抢镜。
  */
@@ -176,9 +152,11 @@ function playSceneIntro(gsap: Gsap, scene: SceneRefs) {
 	scene.intro?.kill();
 	hideSceneChrome(gsap, scene);
 
-	// 字幕与落款逐字节点不在 CSS 里常驻 will-change：
-	// 入场期间临时挂上，播完立刻清成 auto
-	const boosted = [...scene.captionChars, ...scene.dateChars];
+	// 底栏三件不在 CSS 里常驻 will-change：入场期间临时挂上，播完立刻清成 auto。
+	// 左列与竖杠只在配置写了 date 时存在，这里按实际渲染结果收集
+	const boosted = [scene.band, scene.bandDivider, scene.bandNote].filter(
+		(element): element is HTMLElement => element !== null,
+	);
 	const timeline = gsap.timeline({
 		onStart: () =>
 			gsap.set(boosted, {
@@ -224,40 +202,28 @@ function playSceneIntro(gsap: Gsap, scene: SceneRefs) {
 				ease: "back.out(2.4)",
 			},
 			0.42,
-		)
-		.to(
-			scene.captionChars,
-			{
-				autoAlpha: 1,
-				y: 0,
-				rotation: 0,
-				duration: 0.42,
-				ease: "back.out(1.6)",
-				stagger: 0.02,
-			},
-			0.55,
 		);
 
-	// 右下角日期落款：日期逐字打字亮起，打完紧跟一条自左往右的快速描线
-	if (scene.dateChars.length > 0) {
+	// 左列与竖杠只在配置写了 date 的幕里存在，缺了就直接播右栏说明
+	if (scene.band) {
 		timeline.to(
-			scene.dateChars,
-			{
-				autoAlpha: 1,
-				duration: 0.06,
-				ease: "none",
-				stagger: 0.05,
-			},
-			0.9,
+			scene.band,
+			{ autoAlpha: 1, x: 0, duration: 0.46, ease: "power2.out" },
+			0.55,
 		);
 	}
-	if (scene.dateFlourish) {
+	if (scene.bandDivider) {
 		timeline.to(
-			scene.dateFlourish,
-			{ strokeDashoffset: 0, duration: 0.32, ease: "power2.out" },
-			">",
+			scene.bandDivider,
+			{ autoAlpha: 1, scaleY: 1, duration: 0.34, ease: "power2.inOut" },
+			0.62,
 		);
 	}
+	timeline.to(
+		scene.bandNote,
+		{ autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" },
+		0.66,
+	);
 
 	scene.intro = timeline;
 }
@@ -282,6 +248,11 @@ function setupScenes(context: SetupContext) {
 	// 序号与百分比文本已去掉，进度只靠方块表达，数值仅保留在 aria-valuenow 上
 	const meterBlocks = Array.from(
 		meter.querySelectorAll<HTMLElement>("[data-scenes-meter-block]"),
+	);
+	// 电池上方的状态字：未满写「正在充电」，满格写「充电完毕」
+	const meterLabel = selectRequired<HTMLElement>(
+		meter,
+		"[data-scenes-meter-label]",
 	);
 	const portal = selectRequired<HTMLElement>(root, "[data-scenes-portal]");
 	const portalImage = selectRequired<HTMLImageElement>(
@@ -312,16 +283,10 @@ function setupScenes(context: SetupContext) {
 		section.querySelectorAll<HTMLElement>("[data-scene-stand]"),
 	);
 	const stand = stands[0] ?? null;
+	// 待机的压扁只作用在立牌图上：容器留给入场（rotationX）与横位（xPercent），
+	// 图片底边即脚底，压扁以它为锚点，脚不会离地。
 	const standImage =
 		stand?.querySelector<HTMLElement>("[data-scene-stand-image]") ?? null;
-	// 木杆改成立牌的子元素：横位恒定、只随立牌图一起上下动，
-	// 因此不再需要每帧按 getBoundingClientRect 重算两端坐标
-	const standPole =
-		stand?.querySelector<HTMLElement>("[data-scene-stand-pole]") ?? null;
-	// 立牌图与木杆同步做跳跃位移，避免抬起时杆头与鞋底脱开
-	const standJumpTargets = [standImage, standPole].filter(
-		(element): element is HTMLElement => element !== null,
-	);
 	const cycleStage = selectRequired<HTMLElement>(
 		section,
 		"[data-scenes-cycle]",
@@ -350,7 +315,24 @@ function setupScenes(context: SetupContext) {
 	let shrinkTrigger: ScrollTriggerInstance | null = null;
 	let pinTrigger: ScrollTriggerInstance | null = null;
 	let actVisible = false;
-	let bounceTimeline: GsapTimeline | null = null;
+	let squashTimeline: GsapTimeline | null = null;
+	let cycleTransition: GsapTween | null = null;
+	let standTransition: GsapTween | null = null;
+	/**
+	 * 三组判据各管各的，混用会做出「退场段动画被掐掉」这类怪事：
+	 * - `isStageInView`：固定舞台（全屏背景与收缩门）该不该露出，滚过影像层就隐藏。
+	 * - `isLayerLive`：影像层本身还在屏幕上，**含横移结束后的退场段** —— 跑马灯、立牌
+	 *   跳动、字幕入场与横移姿态都要继续跟着 section 一起离场，不能在 done 阶段停下。
+	 * - `loopsShouldRun`：在 `isLayerLive` 之上再让开后台标签页，只用于暂停无限循环。
+	 * 文档可见性不得参与显隐判断，否则页面被判定不可见时整块舞台会消失。
+	 */
+	const isStageInView = () => !signal.aborted && rootInView && phase !== "done";
+	const isLayerLive = () =>
+		!signal.aborted && rootInView && (phase === "scenes" || phase === "done");
+	const isScrubActive = () =>
+		!signal.aborted && rootInView && phase === "scenes";
+	const loopsShouldRun = () =>
+		isLayerLive() && document.visibilityState === "visible";
 	// 背景跑马灯：两份等长列表首尾相接，xPercent 从 0 走到 -50 正好换过一整轮，
 	// 即画面持续左移；因为两份内容一致，接缝处画面完全重合，循环看不出跳帧。
 	const cycleLoop = gsap.timeline({ repeat: -1, paused: true });
@@ -432,42 +414,48 @@ function setupScenes(context: SetupContext) {
 		);
 	}
 
-	const stopBounce = () => {
-		bounceTimeline?.kill();
-		bounceTimeline = null;
-		if (standJumpTargets.length === 0) return;
-		gsap.killTweensOf(standJumpTargets);
-		gsap.set(standJumpTargets, { y: 0, scaleX: 1, scaleY: 1 });
+	/** 压扁峰值：纵向压下的同时横向反向鼓起，保持体积感 */
+	const SQUASH_SCALE_Y = 0.86;
+	const SQUASH_SCALE_X = 1.06;
+	const REBOUND_SCALE_Y = 1.04;
+	const REBOUND_SCALE_X = 0.97;
+
+	const stopSquash = () => {
+		squashTimeline?.kill();
+		squashTimeline = null;
+		if (!standImage) return;
+		gsap.killTweensOf(standImage);
+		gsap.set(standImage, { scale: 1 });
 	};
 
 	/**
-	 * 跳跃循环：只有单纯的上下位移，不带蓄力下蹲、拉伸压缩等形变。
+	 * 待机压扁：以脚底为锚点把立牌图压扁、回弹、归位，一轮约 1s 且中间不停。
+	 * 三段都用 sine.inOut，首尾同为原始比例，衔接处速度归零，循环看不出接缝。
 	 */
-	const startBounce = () => {
-		if (!actVisible || standJumpTargets.length === 0) return;
-		stopBounce();
-		const timeline = gsap.timeline({ repeat: -1 });
-		// 最高一跳 95px：CSS 里木杆的长度余量按这个值给，改这里要同步改
-		// .home-blinds-scenes__stand-pole 的 height
-		const jumpHeights = [-95, -78];
-
-		for (let jump = 0; jump < 2; jump += 1) {
-			timeline
-				// 上升
-				.to(standJumpTargets, {
-					y: jumpHeights[jump],
-					duration: 0.29,
-					ease: "power2.out",
-				})
-				// 下落
-				.to(standJumpTargets, {
-					y: 0,
-					duration: 0.29,
-					ease: "power2.in",
-				});
-		}
-
-		bounceTimeline = timeline;
+	const startSquash = () => {
+		if (signal.aborted || !actVisible || !standImage) return;
+		stopSquash();
+		const timeline = gsap.timeline({ repeat: -1, paused: !loopsShouldRun() });
+		timeline
+			.to(standImage, {
+				scaleY: SQUASH_SCALE_Y,
+				scaleX: SQUASH_SCALE_X,
+				duration: 0.34,
+				ease: "sine.inOut",
+			})
+			.to(standImage, {
+				scaleY: REBOUND_SCALE_Y,
+				scaleX: REBOUND_SCALE_X,
+				duration: 0.28,
+				ease: "sine.inOut",
+			})
+			.to(standImage, {
+				scaleY: 1,
+				scaleX: 1,
+				duration: 0.34,
+				ease: "sine.inOut",
+			});
+		squashTimeline = timeline;
 	};
 
 	/**
@@ -481,27 +469,26 @@ function setupScenes(context: SetupContext) {
 		if (actVisible) return;
 		actVisible = true;
 
-		gsap.killTweensOf(cycleStage);
-		gsap.to(cycleStage, {
+		cycleTransition?.kill();
+		cycleTransition = gsap.to(cycleStage, {
 			autoAlpha: 1,
 			rotationX: 0,
 			duration: 0.78,
 			ease: "power4.out",
 			overwrite: "auto",
 		});
-		cycleLoop.play();
 
 		if (!stand) return;
-		gsap.killTweensOf(stand);
+		standTransition?.kill();
 		gsap.set(stand, { xPercent: -50, rotation: 0 });
 		// 木杆是立牌的子元素，autoAlpha 与 rotationX 直接继承，无需单独补间
-		gsap.to(stand, {
+		standTransition = gsap.to(stand, {
 			autoAlpha: 1,
 			rotationX: 0,
 			duration: 0.72,
 			ease: "back.out(1.4)",
 			overwrite: "auto",
-			onComplete: startBounce,
+			onComplete: startSquash,
 		});
 	};
 
@@ -513,10 +500,10 @@ function setupScenes(context: SetupContext) {
 	const hideAct = () => {
 		if (!actVisible) return;
 		actVisible = false;
-		stopBounce();
+		stopSquash();
 
-		gsap.killTweensOf(cycleStage);
-		gsap.to(cycleStage, {
+		cycleTransition?.kill();
+		cycleTransition = gsap.to(cycleStage, {
 			autoAlpha: 0,
 			duration: 0.5,
 			ease: "power2.in",
@@ -526,8 +513,8 @@ function setupScenes(context: SetupContext) {
 		cycleLoop.pause();
 
 		if (!stand) return;
-		gsap.killTweensOf(stand);
-		gsap.to(stand, {
+		standTransition?.kill();
+		standTransition = gsap.to(stand, {
 			autoAlpha: 0,
 			duration: 0.46,
 			ease: "power2.in",
@@ -536,8 +523,31 @@ function setupScenes(context: SetupContext) {
 		});
 	};
 
+	// 不用 hideAct 处理离屏：它会杀掉并复位跳跃，回来就不再是离开时的那一帧。
+	const syncAnimationPlayback = () => {
+		const layerLive = isLayerLive();
+		const loopsRun = loopsShouldRun();
+		// 立牌与跑马灯的进离场补间不在这里暂停：它们的 onComplete 负责把姿态复位到
+		// rotationX 88，暂停会让复位永不发生，下次进场就只剩淡入而不再从后方立起。
+		// 两条无限循环额外让开后台标签页；退场段（done）仍属影像层，照常跑。
+		cycleLoop.paused(!loopsRun || !actVisible);
+		squashTimeline?.paused(!loopsRun || !actVisible);
+		for (const scene of scenes) {
+			if (scene.intro && scene.intro.progress() < 1) {
+				scene.intro.paused(!layerLive);
+			}
+		}
+		for (const setRotation of rotationSetters) {
+			if (setRotation.tween.progress() < 1) {
+				setRotation.tween.paused(!layerLive);
+			}
+		}
+	};
+
 	const resetWind = () => {
+		if (signal.aborted) return;
 		for (const setRotation of rotationSetters) setRotation(0);
+		syncAnimationPlayback();
 	};
 
 	// 上一帧已写入的取整值：百分比、点亮块数与显隐取整后大多数帧并无变化，
@@ -545,6 +555,7 @@ function setupScenes(context: SetupContext) {
 	let lastMeterPercentage = -1;
 	let lastMeterLit = -1;
 	let lastMeterVisible: boolean | null = null;
+	let lastMeterFull: boolean | null = null;
 
 	/** 共用电池进度：按当前居中的连续幕索引逐块点亮，不播放额外入场动画。 */
 	const renderMeter = (sceneProgress: number, isVisible: boolean) => {
@@ -568,6 +579,14 @@ function setupScenes(context: SetupContext) {
 			}
 			lastMeterLit = litCount;
 		}
+		// 电池上方的状态字只在满格与否翻转时写一次，不在每帧碰 DOM
+		const full = meterBlocks.length > 0 && litCount === meterBlocks.length;
+		if (full !== lastMeterFull) {
+			const stateText = full ? "充电完毕" : "正在充电";
+			meterLabel.textContent = stateText;
+			meter.setAttribute("aria-valuetext", stateText);
+			lastMeterFull = full;
+		}
 		// 数值本身不再显示，只同步给读屏
 		if (percentage !== lastMeterPercentage) {
 			meter.setAttribute("aria-valuenow", String(percentage));
@@ -582,6 +601,7 @@ function setupScenes(context: SetupContext) {
 	const renderScenes = (sceneProgress: number, isVisible: boolean) => {
 		renderMeter(sceneProgress, isVisible);
 		const step = cachedSceneStep;
+		const layerLive = isLayerLive();
 		let moving = false;
 
 		for (let index = 0; index < sceneCount; index += 1) {
@@ -605,11 +625,11 @@ function setupScenes(context: SetupContext) {
 
 			// 图片就位（isVisible）且该幕居中后，文字与 UI 才开始分层显示；
 			// playSceneIntro 内部有 active 短路，所以每幕只播一次，之后一直留在画面上
-			if (isVisible && distance < SCENE_ENTER_DISTANCE) {
+			if (isVisible && layerLive && distance < SCENE_ENTER_DISTANCE) {
 				playSceneIntro(gsap, scene);
 			}
 
-			if (Number.isFinite(previousX)) {
+			if (layerLive && Number.isFinite(previousX)) {
 				const deltaX = x - previousX;
 				if (Math.abs(deltaX) > 0.08) {
 					rotationSetters[index](clamp(deltaX * 0.16, -9, 9));
@@ -630,7 +650,7 @@ function setupScenes(context: SetupContext) {
 	};
 
 	function applyPhase() {
-		gsap.set(stage, { autoAlpha: rootInView && phase !== "done" ? 1 : 0 });
+		gsap.set(stage, { autoAlpha: isStageInView() ? 1 : 0 });
 		gsap.set([stageBackground, stageForegroundWindow, stageHeadlineWindow], {
 			autoAlpha: phase === "reveal" ? 1 : 0,
 		});
@@ -649,22 +669,23 @@ function setupScenes(context: SetupContext) {
 
 	/** 舞台显隐与各幕位置的唯一入口 */
 	function syncStage() {
+		if (signal.aborted) return;
 		phase = resolvePhase();
 		applyPhase();
 
-		if (phase === "scenes") {
-			const progress = pinTrigger?.progress ?? 0;
-			horizontalEnabled = progress < 0.999;
-			renderScenes(progress * Math.max(0, sceneCount - 1), true);
-			return;
-		}
-
-		horizontalEnabled = false;
-		// 影像层滚过后保留最后一幕，随 section 一起离场
+		const progress = pinTrigger?.progress ?? 0;
+		horizontalEnabled = isScrubActive() && progress < 0.999;
+		viewport.classList.toggle("is-horizontal", horizontalEnabled);
+		// done 保留最后一幕随 section 离场，但不再启动或继续任何循环。
 		renderScenes(
-			phase === "done" ? Math.max(0, sceneCount - 1) : 0,
-			phase === "done",
+			phase === "scenes"
+				? progress * lastSceneIndex
+				: phase === "done"
+					? lastSceneIndex
+					: 0,
+			phase === "scenes" || phase === "done",
 		);
+		syncAnimationPlayback();
 	}
 
 	// 尺寸恒等于视口（inset:0），收缩由 clip-path 收窗完成，故这里不再写 width / height，
@@ -769,12 +790,7 @@ function setupScenes(context: SetupContext) {
 		invalidateOnRefresh: true,
 		onToggle: syncStage,
 		onUpdate: (self) => {
-			if (!self.isActive) return;
-			phase = "scenes";
-			applyPhase();
-			horizontalEnabled = self.progress < 0.999;
-			viewport.classList.toggle("is-horizontal", horizontalEnabled);
-			renderScenes(self.progress * Math.max(0, sceneCount - 1), true);
+			if (self.isActive) syncStage();
 		},
 	});
 
@@ -786,7 +802,7 @@ function setupScenes(context: SetupContext) {
 		invalidateOnRefresh: true,
 		onToggle: (self) => {
 			rootInView = self.isActive;
-			applyPhase();
+			syncStage();
 		},
 	});
 	rootInView = rootTrigger.isActive;
@@ -794,10 +810,12 @@ function setupScenes(context: SetupContext) {
 	// refresh 事件在所有触发器重新测量之后触发，是缩放后唯一可靠的补偿时机。
 	// 必须先按新视口量一遍图框尺寸，再按新尺寸同步各幕位置，顺序不能颠倒。
 	const handleRefresh = () => {
+		rootInView = rootTrigger.isActive;
 		measureScene();
 		syncStage();
 	};
 	ScrollTrigger.addEventListener("refresh", handleRefresh);
+	document.addEventListener("visibilitychange", syncStage, { signal });
 
 	// 不支持鼠标拖拽横移：横向推进只跟随滚轮/触控板，避免与页面滚动抢手感
 	viewport.addEventListener(
@@ -837,19 +855,33 @@ function setupScenes(context: SetupContext) {
 		window.clearTimeout(resetWindTimer);
 		window.clearTimeout(resizeTimer);
 		ScrollTrigger.removeEventListener("refresh", handleRefresh);
-		stopBounce();
+		cycleTransition?.kill();
+		standTransition?.kill();
+		// stopSquash 已经把立牌图的缩放复位到 1，不必再进下面的 killTweensOf 清单
+		stopSquash();
 		cycleLoop.kill();
+		for (const setRotation of rotationSetters) setRotation.tween.kill();
 		for (const scene of scenes) {
 			scene.intro?.kill();
 			scene.intro = null;
 			scene.active = false;
+			gsap.set(
+				[scene.band, scene.bandDivider, scene.bandNote].filter(
+					(element): element is HTMLElement => element !== null,
+				),
+				{ clearProps: "willChange" },
+			);
 		}
 		renderMeter(0, false);
+		viewport.classList.remove("is-horizontal");
 		gsap.killTweensOf([
 			...cards,
 			...swings,
 			...stands,
-			...standJumpTargets,
+			cycleStage,
+			cycleTrack,
+			meter,
+			stage,
 			portal,
 			portalImage,
 			stageBackground,
@@ -986,6 +1018,8 @@ function setupReveal(context: SetupContext) {
 	);
 
 	return () => {
+		setPointerX.tween.kill();
+		setPointerY.tween.kill();
 		gsap.killTweensOf([foreground, headline]);
 		revealTimeline.scrollTrigger?.kill();
 		revealTimeline.kill();
@@ -1109,7 +1143,7 @@ function setupHeadline(context: SetupContext) {
 	};
 
 	const scheduleNext = () => {
-		if (messages.length < 2) return;
+		if (signal.aborted || messages.length < 2) return;
 		cycleCall?.kill();
 		cycleCall = gsap.delayedCall(holdSpan, advance);
 		if (!awake) cycleCall.pause();
@@ -1117,6 +1151,7 @@ function setupHeadline(context: SetupContext) {
 
 	/** 祝福语换页：旧句逐字翻出，新句逐字翻入，循环到底再回第一条 */
 	function advance() {
+		if (signal.aborted) return;
 		const outgoing = messages[current];
 		current = (current + 1) % messages.length;
 		const incoming = messages[current];
@@ -1308,16 +1343,27 @@ function setupHeadline(context: SetupContext) {
 			);
 	};
 
+	/**
+	 * `awake` 表示标题区在视口内，决定入场补间该不该跑；
+	 * 祝福语的换页循环（cycleCall + flip）额外让开后台标签页，
+	 * 但可见性不参与入场与显隐判断，否则页面被判定不可见时标题会停在不可读状态。
+	 */
+	const applyAwake = () => {
+		const looping = awake && document.visibilityState === "visible";
+		if (enter && enter.progress() < 1) enter.paused(!awake);
+		if (flip && flip.progress() < 1) flip.paused(!looping);
+		if (cycleCall && cycleCall.progress() < 1) cycleCall.paused(!looping);
+	};
+
 	const setAwake = (next: boolean) => {
-		if (awake === next) return;
 		awake = next;
-		if (next) {
-			cycleCall?.play();
-			flip?.play();
-			return;
-		}
-		cycleCall?.pause();
-		flip?.pause();
+		applyAwake();
+	};
+
+	const syncVisibility = (isActive: boolean) => {
+		if (signal.aborted) return;
+		setAwake(isActive);
+		if (awake) play();
 	};
 
 	reset();
@@ -1328,27 +1374,24 @@ function setupHeadline(context: SetupContext) {
 		start: "top 66.666%",
 		end: "bottom top",
 		invalidateOnRefresh: true,
-		onToggle: (self) => {
-			setAwake(self.isActive);
-			if (self.isActive) play();
-		},
+		onToggle: (self) => syncVisibility(self.isActive),
 	});
 
 	// onToggle 在 refresh 时不补发，所以缩放视口后要按当前滚动位置补一次
-	const syncFromScroll = () => {
-		setAwake(trigger.isActive);
-		if (trigger.isActive) play();
-	};
+	const syncFromScroll = () => syncVisibility(trigger.isActive);
 	ScrollTrigger.addEventListener("refresh", syncFromScroll);
+	document.addEventListener("visibilitychange", syncFromScroll, { signal });
 	syncFromScroll();
 
 	// 视口变化后重新量标题宽度：未播则复位起点，播完则直接落到终态重新对齐
 	const relayout = () => {
+		if (signal.aborted) return;
 		if (!played) {
 			reset();
 			return;
 		}
-		if (enter?.isActive()) return;
+		// 离屏或后台暂停的入场也尚未完成，不能因 fonts.ready 把它跳到终态。
+		if (enter && enter.progress() < 1) return;
 		settle();
 	};
 	window.addEventListener(
@@ -1359,9 +1402,9 @@ function setupHeadline(context: SetupContext) {
 		},
 		{ signal },
 	);
-	// 自定义字体晚于首帧就绪，标题宽度会变，中缝宽度需要重新量
+	// 断点重建会复用同一个 DOM，isConnected 不足以判断这次挂载是否还活着。
 	void document.fonts.ready.then(() => {
-		if (headline.isConnected) relayout();
+		if (!signal.aborted && headline.isConnected) relayout();
 	});
 
 	return () => {
@@ -1382,8 +1425,41 @@ function setupHeadline(context: SetupContext) {
 			...bands,
 			...messages.flat(),
 		]);
+		gsap.set(messages.flat(), { clearProps: "willChange" });
 		gsap.set(headline, { autoAlpha: 0 });
 	};
+}
+
+/** 固定且隐藏的图片不能依赖原生 lazy 的几何判断，改为观察正常文档流中的整层。 */
+function setupStageImages({
+	root,
+	signal,
+	ScrollTrigger,
+}: SetupContext): () => void {
+	const images = root.querySelectorAll<HTMLImageElement>(
+		"img[data-home-blinds-src]",
+	);
+	const observer = new IntersectionObserver(
+		(entries) => {
+			if (signal.aborted || !entries.some((entry) => entry.isIntersecting))
+				return;
+			observer.disconnect();
+			let assigned = false;
+			for (const image of images) {
+				const source = image.dataset.homeBlindsSrc;
+				if (!source) continue;
+				image.src = source;
+				delete image.dataset.homeBlindsSrc;
+				assigned = true;
+			}
+			// 图片补进来后文档高度可能变化，攒到下一帧统一重量 pin 起止点。
+			if (assigned) requestScrollTriggerRefresh(ScrollTrigger);
+		},
+		// 提前一屏启用，历史坐标直接落进舞台时也会立即收到相交回调。
+		{ rootMargin: `${window.innerHeight}px 0px` },
+	);
+	observer.observe(root);
+	return () => observer.disconnect();
 }
 
 async function initializeHomeBlinds(root: HTMLElement, generation: number) {
@@ -1424,6 +1500,7 @@ async function initializeHomeBlinds(root: HTMLElement, generation: number) {
 		cleanups.push(setupReveal(context));
 		cleanups.push(setupHeadline(context));
 		cleanups.push(setupScenes(context));
+		cleanups.push(setupStageImages(context));
 	} catch (error) {
 		teardown();
 		throw error;
@@ -1449,15 +1526,14 @@ async function initializeHomeBlinds(root: HTMLElement, generation: number) {
  * repeat: -1 的时间线还在跑。递增 generation 同时作废仍在飞的异步初始化。
  * 复位 activeRoot 后，下一次 bootHomeBlinds 会照常重建（非首页时两者同为 null，直接短路）。
  */
-export function teardownHomeBlinds() {
+export function teardownHomeBlinds(): void {
 	bootGeneration += 1;
 	activeCleanup?.();
 	activeCleanup = null;
 	activeRoot = null;
 }
 
-export function bootHomeBlinds() {
-	bindMediaWatchers();
+export async function bootHomeBlinds(): Promise<void> {
 	const nextRoot = document.getElementById("home-blinds");
 	if (nextRoot === activeRoot) return;
 
@@ -1471,19 +1547,30 @@ export function bootHomeBlinds() {
 		return;
 	}
 
+	// 断点重启或失败后再启用时，先恢复占位，ScrollTrigger 才能量到真实尺寸。
+	delete nextRoot.dataset.homeBlindsReady;
 	const generation = bootGeneration;
-	void initializeHomeBlinds(nextRoot, generation)
-		.then((cleanup) => {
-			if (!cleanup) return;
-			if (generation !== bootGeneration || activeRoot !== nextRoot) {
-				cleanup();
-				return;
-			}
-			activeCleanup = cleanup;
-		})
-		.catch(() => {
-			if (generation === bootGeneration && nextRoot.isConnected) {
-				nextRoot.dataset.homeBlindsReady = "fallback";
-			}
-		});
+	try {
+		// 只等 pin 建立，不等入场动画与无限循环播放，供导航恢复历史坐标使用。
+		const cleanup = await initializeHomeBlinds(nextRoot, generation);
+		if (!cleanup) return;
+		if (
+			generation !== bootGeneration ||
+			activeRoot !== nextRoot ||
+			!nextRoot.isConnected
+		) {
+			cleanup();
+			return;
+		}
+		activeCleanup = cleanup;
+	} catch {
+		// 初始化已逆序回滚；CSS 折叠整层，不让故障留下空白滚动区。
+		if (
+			generation === bootGeneration &&
+			activeRoot === nextRoot &&
+			nextRoot.isConnected
+		) {
+			nextRoot.dataset.homeBlindsReady = "fallback";
+		}
+	}
 }

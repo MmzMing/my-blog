@@ -13,8 +13,14 @@ html:has(.home-hero) #top-row {
 	--home-hero-surface: oklch(0.075 0 0);
 	--home-hero-border: color-mix(in oklch, var(--home-hero-ink) 32%, transparent);
 	--home-hero-border-soft: color-mix(in oklch, var(--home-hero-ink) 20%, transparent);
-	--home-hero-overlay: color-mix(in oklch, var(--home-hero-surface) 72%, transparent);
 	--home-hero-shadow: color-mix(in oklch, var(--home-hero-surface) 78%, transparent);
+	/* 首屏拼图底层：纯色 page-bg + 发丝榫头缝线，两端颜色全取主题令牌，
+	   所以亮暗切换自动反相，不需要 :root.dark 分支。这一层常驻不淡出，
+	   第二层的背景大图是全幅版本，直接盖在它上面，过渡全程底色不变。 */
+	--home-hero-puzzle-line: color-mix(in oklch, var(--deep-text) 13%, transparent);
+	/* 左上标题与右下 contact 都压在纯色底上，统一用正文色 */
+	--home-hero-title-ink: var(--deep-text);
+	--home-hero-contact-ink: var(--deep-text);
 	position: relative;
 	width: 100vw;
 	height: 100svh;
@@ -38,14 +44,34 @@ html:has(.home-hero) #top-row {
 
 /* hero 固定使用自身的近黑舞台（oklch(0.075)）+ 纯白墨水字，不随主题切换：
    亮色页面里它是全屏对比区，暗色下与页面底色仅差 #0d0d0d→#101010 一档，肉眼无断层；
-   绑定 --page-bg 的旧方案反而把 ink 褪成浅灰、叠 72% 蒙版后整体发灰，已废弃 */
+   绑定 --page-bg 的旧方案反而把 ink 褪成浅灰，已废弃 */
 
 .home-hero__visual,
 .home-hero__backdrop,
-.home-hero__shade,
+.home-hero__puzzle,
 .home-hero__rain {
 	position: absolute;
 	inset: 0;
+}
+
+/* 首屏拼图底层：纯色底 + 榫头缝线（几何见 utils/home-hero-motion.ts），
+   常驻在影像之下，不参与任何淡出 */
+.home-hero__puzzle {
+	z-index: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+.home-hero__puzzle-bg {
+	fill: var(--page-bg);
+}
+
+.home-hero__puzzle-seam {
+	fill: none;
+	stroke: var(--home-hero-puzzle-line);
+	stroke-width: 1;
+	stroke-linecap: round;
 }
 
 .home-hero__visual {
@@ -127,12 +153,6 @@ html:has(.home-hero) #top-row {
 	object-fit: fill;
 }
 
-.home-hero__shade {
-	z-index: 1;
-	pointer-events: none;
-	background: var(--home-hero-overlay);
-}
-
 .home-hero__rain {
 	z-index: 20;
 	pointer-events: none;
@@ -156,6 +176,7 @@ html:has(.home-hero) #top-row {
 	justify-content: center;
 	margin: 0;
 	will-change: transform, opacity;
+	color: var(--home-hero-title-ink);
 }
 
 .home-hero__filter {
@@ -176,28 +197,40 @@ html:has(.home-hero) #top-row {
 	overflow: visible;
 }
 
-.home-hero__title > span:first-child {
-	--home-hero-melt-size: 1.35rem;
-	--home-hero-melt-width: 0.72rem;
-	--home-hero-melt-gap: 0.34rem;
+/* 左上角字标：canvas 矢量描边动画（见 utils/home-hero-wordmark.ts）。
+   占位文字负责撑出与静态版式一致的盒子并兜底无 JS / 减弱动效场景，
+   挂载后由 canvas 接手；padding 给选择框与闪烁小方块留出画布余量，
+   等值负 margin 把多出来的尺寸从布局里扣掉，视觉位置不变。 */
+.home-hero__wordmark {
+	position: relative;
 	display: inline-block;
-	padding: 0.08em 0.18em 0.18em;
-	margin: -0.08em -0.18em -0.18em;
+	padding: 4rem 6rem;
+	margin: -4rem -6rem;
+	color: var(--home-hero-title-ink);
+	touch-action: pan-y;
+	user-select: none;
+}
+
+.home-hero__wordmark-canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.home-hero__wordmark.is-mounted .home-hero__wordmark-text {
 	color: transparent;
-	background-image: repeating-linear-gradient(
-		45deg,
-		var(--home-hero-ink) 0 var(--home-hero-melt-width),
-		transparent var(--home-hero-melt-width) calc(var(--home-hero-melt-width) + var(--home-hero-melt-gap))
-	);
-	background-clip: text;
-	background-size: var(--home-hero-melt-size) var(--home-hero-melt-size);
-	filter: url("#home-hero-gooey");
-	animation: home-hero-melt 1.25s linear infinite;
+}
+
+.home-hero__wordmark.is-mounted .home-hero__wordmark-canvas {
+	opacity: 1;
 }
 
 .home-hero__occupation {
 	margin: var(--space-4) 0 0;
-	color: color-mix(in oklch, var(--home-hero-ink) 64%, transparent);
+	color: color-mix(in oklch, var(--home-hero-title-ink) 64%, transparent);
 	font-size: 2rem;
 	font-weight: 500;
 	letter-spacing: 0;
@@ -239,7 +272,7 @@ html:has(.home-hero) #top-row {
 	margin: -0.08em -0.12em -0.16em;
 	background-image: repeating-linear-gradient(
 		45deg,
-		var(--home-hero-ink) 0 var(--home-hero-melt-width),
+		var(--home-hero-contact-ink) 0 var(--home-hero-melt-width),
 		transparent var(--home-hero-melt-width) calc(var(--home-hero-melt-width) + var(--home-hero-melt-gap))
 	);
 	background-clip: text;
@@ -263,7 +296,7 @@ html:has(.home-hero) #top-row {
 }
 
 .home-hero__contact-link[href]:focus-visible {
-	outline: 2px solid var(--home-hero-ink);
+	outline: 2px solid var(--home-hero-contact-ink);
 	outline-offset: 0.5rem;
 }
 
@@ -358,7 +391,6 @@ html:has(.home-hero) #top-row {
 }
 
 /* 风吹散落文字（Scatter random）：拆字后宿主只负责占位，字符承载渐变与 gooey 效果 */
-.home-hero__title > span:first-child.home-hero__fly-host,
 .home-hero__contact-platform.home-hero__fly-host,
 .home-hero__contact-handle.home-hero__fly-host {
 	position: relative;
@@ -390,7 +422,7 @@ html:has(.home-hero) #top-row {
 	white-space: nowrap;
 	background-image: repeating-linear-gradient(
 		45deg,
-		var(--home-hero-ink) 0 var(--home-hero-melt-width),
+		var(--home-hero-contact-ink) 0 var(--home-hero-melt-width),
 		transparent var(--home-hero-melt-width) calc(var(--home-hero-melt-width) + var(--home-hero-melt-gap))
 	);
 	background-clip: text;
@@ -423,10 +455,6 @@ html:has(.home-hero) #top-row {
 
 	.home-hero__mosaic-tile-image {
 		background-image: var(--home-hero-mosaic-image-mobile);
-	}
-
-	.home-hero__shade {
-		background: var(--home-hero-overlay);
 	}
 
 	.home-hero__identity {
@@ -495,13 +523,6 @@ html:has(.home-hero) #top-row {
 	.home-hero__backdrop {
 		opacity: 1;
 		visibility: visible;
-	}
-
-	.home-hero__title > span:first-child {
-		animation: none;
-		filter: none;
-		background-image: none;
-		color: var(--home-hero-ink);
 	}
 
 	.home-hero__quick-action {

@@ -67,9 +67,9 @@
   }
 }
 
-/* 确保平滑滚动，防止全屏元素溢出 */
+/* 跨页定位不使用平滑滚动，页内交互按需显式开启。 */
 html {
-    scroll-behavior: smooth;
+    scroll-behavior: auto;
     overflow-x: hidden;
 }
 

@@ -6,8 +6,10 @@ import HeroQuickActions from "@components/layout/HeroQuickActions.astro";
 import { homeConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+import { createHeroPuzzleLayout } from "@/utils/home-hero-motion";
 
 const { hero } = homeConfig;
+const puzzle = createHeroPuzzleLayout();
 const dialogueEnabled =
 	hero.dialogue?.enabled !== false && Boolean(hero.dialogue);
 const runtimeConfig = {
@@ -26,13 +28,33 @@ const runtimeConfig = {
 	data-home-hero
 	data-hero-config={JSON.stringify(runtimeConfig)}
 >
+	<svg
+		class="home-hero__puzzle"
+		viewBox={puzzle.viewBox}
+		preserveAspectRatio="xMidYMid slice"
+		aria-hidden="true"
+	>
+		<rect
+			class="home-hero__puzzle-bg"
+			width={puzzle.width}
+			height={puzzle.height}
+		/>
+		{
+			puzzle.seams.map((d) => (
+				<path
+					class="home-hero__puzzle-seam"
+					d={d}
+					vector-effect="non-scaling-stroke"
+				/>
+			))
+		}
+	</svg>
+
 	<HeroMosaic
 		desktopImage={hero.backgroundImage}
 		mobileImage={hero.backgroundImage}
 		config={hero.mosaic}
 	/>
-
-	<div class="home-hero__shade" aria-hidden="true"></div>
 
 	<header class="home-hero__identity" data-hero-title>
 		<svg class="home-hero__filter" aria-hidden="true" focusable="false">
@@ -58,8 +80,11 @@ const runtimeConfig = {
 			</defs>
 		</svg>
 		<h1 class="home-hero__title">
-			<span>{homeConfig.displayName || homeConfig.name}</span>
-				<span class="sr-only">{i18n(I18nKey.techBlogSuffix)}</span>
+			<span class="home-hero__wordmark" data-hero-wordmark>
+				<span class="home-hero__wordmark-text">{homeConfig.displayName || homeConfig.name}</span>
+				<canvas class="home-hero__wordmark-canvas" aria-hidden="true"></canvas>
+			</span>
+			<span class="sr-only">{i18n(I18nKey.techBlogSuffix)}</span>
 		</h1>
 		{homeConfig.occupation && (
 			<p class="home-hero__occupation">{homeConfig.occupation}</p>
@@ -90,6 +115,7 @@ const runtimeConfig = {
 	// 挂载时机与去重全部交给 bindHomeLayer：顶层自启和 astro:page-load 谁先谁后都只挂一次，
 	// 否则第二次挂载会把第一次那条 document.fonts.ready 回调放进来，contact 被拆成两套字符节点
 	bindHomeLayer("hero", {
+		media: "(min-width: 769px)",
 		boot: () => {
 			cleanupHomeHero?.();
 			cleanupHomeHero = mountHomeHero();

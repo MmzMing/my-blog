@@ -344,7 +344,6 @@ export type HeroMosaicConfig = {
 	rows: number;
 	columns: number;
 	idleVisible: number;
-	idleInterval: number;
 	seed: number;
 	scrub: number;
 	desktopScrollDistance: number;

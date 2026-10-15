@@ -8,11 +8,21 @@
  */
 
 import { expressiveCodeConfig, siteConfig } from "@/config";
+import type { NavigationScrollPosition } from "@/types/swup";
+import { waitForHomeLayout } from "@/utils/home-lifecycle";
 import { finishProgressBar, startProgressBar } from "@/utils/progress-bar";
-import { onSwupHook } from "@/utils/swup-lifecycle";
+import { flushScrollTriggerRefresh } from "@/utils/scroll-trigger-refresh";
+import { getSwup, onSwupHook, onSwupReady } from "@/utils/swup-lifecycle";
 
-/** 移动端回顶会和换入动画打架，只在桌面宽度做即时回顶 */
-const SMOOTH_SCROLL_MIN_WIDTH = 768;
+function getHistoryIndex(): number | null {
+	const state: unknown = history.state;
+	return state &&
+		typeof state === "object" &&
+		"index" in state &&
+		typeof state.index === "number"
+		? state.index
+		: null;
+}
 /** 切页动画结束后再放开 TOC 内部导航标记的延时 */
 const TOC_FLAG_RESET_DELAY = 400;
 
@@ -60,20 +70,130 @@ function syncExpressiveCodeTheme(): void {
 
 /** 注册 Swup 切页钩子。实例就绪时序由 `onSwupHook` 处理。 */
 export function setupSwupTransitions(): void {
-	// content:replace 时 URL 已更新，此刻同步显隐即可，page:view 不必再来一遍
-	onSwupHook("content:replace", updateSidebarWidgetVisibility);
+	const positions = new Map<number, NavigationScrollPosition>();
+	let activeIndex = getHistoryIndex();
+	onSwupReady(() => {
+		activeIndex = getHistoryIndex();
+	});
+	let pendingPosition: NavigationScrollPosition | undefined;
+	let pendingAnchor = "";
+	let restoration = new AbortController();
+	const root = document.documentElement;
+	const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+	history.scrollRestoration = "auto";
 
-	onSwupHook("visit:start", () => {
-		clearTocFlagResetTimer();
-		startProgressBar();
-		if (window.innerWidth >= SMOOTH_SCROLL_MIN_WIDTH) {
-			window.scrollTo({ top: 0, behavior: "auto" });
+	const restorePosition = async (): Promise<void> => {
+		const signal = restoration.signal;
+		const position = pendingPosition;
+		const anchor = pendingAnchor;
+		if (!position && !anchor) return;
+		await waitForHomeLayout(signal);
+		if (signal.aborted) return;
+		flushScrollTriggerRefresh();
+		if (position) {
+			window.scrollTo({ ...position, behavior: "instant" });
+		} else {
+			getSwup()?.getAnchorElement(anchor)?.scrollIntoView({
+				behavior: "instant",
+				block: "start",
+			});
 		}
+		pendingPosition = undefined;
+		pendingAnchor = "";
+		root.classList.remove("is-scroll-restoring");
+		releaseManualRestoration();
+	};
+
+	/**
+	 * 刷新时浏览器在 load 之后还会按 `scrollRestoration` 恢复一次滚动位置。
+	 * 提前改回 auto 会让这次恢复盖掉我们刚设好的位置（表现为刷新首页仍停在原处），
+	 * 因此等 load 之后再交还给浏览器。SPA 内导航不涉及原生恢复，直接交还。
+	 */
+	const releaseManualRestoration = (): void => {
+		if (document.readyState === "complete") {
+			history.scrollRestoration = "auto";
+			return;
+		}
+		window.addEventListener(
+			"load",
+			() => {
+				history.scrollRestoration = "auto";
+			},
+			{ once: true },
+		);
+	};
+
+	// 刷新首页时从第一帧重播入场编排，由持有 ScrollTrigger 的 hero 层负责复位：
+	// ScrollTrigger 会记住加载时的滚动位置并在首帧后回灌，导航层不引 gsap 就压不住它。
+
+	onSwupHook("content:replace", () => {
+		updateSidebarWidgetVisibility();
+		root.classList.toggle(
+			"is-scroll-restoring",
+			Boolean(pendingPosition || pendingAnchor),
+		);
 	});
 
-	onSwupHook("page:view", syncExpressiveCodeTheme);
+	onSwupHook("visit:start", (visit) => {
+		restoration.abort();
+		restoration = new AbortController();
+		clearTocFlagResetTimer();
+		startProgressBar();
+		if (activeIndex !== null) {
+			positions.set(activeIndex, { left: window.scrollX, top: window.scrollY });
+		}
+		const targetIndex = getHistoryIndex();
+		pendingPosition =
+			visit.history.popstate && targetIndex !== null
+				? positions.get(targetIndex)
+				: undefined;
+		pendingAnchor = !visit.history.popstate ? (visit.to.hash ?? "") : "";
+		const restoring = Boolean(pendingPosition || pendingAnchor);
+		root.classList.remove("is-scroll-restoring");
+		history.scrollRestoration = restoring ? "manual" : "auto";
+		// 锚点要等首页 pin 建好再定位，不能在临时文档高度上计算目标。
+		if (pendingAnchor) visit.scroll.target = false;
+	});
+
+	onSwupHook(
+		"scroll:top",
+		(visit, args) => {
+			args.options.behavior =
+				getSwup()?.visit !== visit && !reducedMotion.matches
+					? "smooth"
+					: "instant";
+		},
+		{ before: true },
+	);
+	onSwupHook(
+		"scroll:anchor",
+		(visit, args) => {
+			args.options.behavior =
+				getSwup()?.visit !== visit && !reducedMotion.matches
+					? "smooth"
+					: "instant";
+		},
+		{ before: true },
+	);
+
+	onSwupHook("page:view", async (visit) => {
+		activeIndex = getHistoryIndex();
+		if (!visit.history.popstate && activeIndex !== null)
+			positions.delete(activeIndex);
+		syncExpressiveCodeTheme();
+		await restorePosition();
+	});
+
+	onSwupHook("visit:abort", () => {
+		restoration.abort();
+		pendingPosition = undefined;
+		pendingAnchor = "";
+		root.classList.remove("is-scroll-restoring");
+		history.scrollRestoration = "auto";
+	});
 
 	onSwupHook("visit:end", () => {
+		history.scrollRestoration = "auto";
 		finishProgressBar();
 		tocFlagResetTimer = setTimeout(() => {
 			tocFlagResetTimer = null;

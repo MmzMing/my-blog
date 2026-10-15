@@ -74,9 +74,8 @@ const runtimeConfig = {
 	<div class="home-blinds__fixed-stage" data-blinds-stage aria-hidden="true">
 		<img
 			class="home-blinds__background"
-			src={background}
+			data-home-blinds-src={background}
 			alt=""
-			loading="eager"
 			decoding="async"
 			data-blinds-background
 		/>
@@ -84,9 +83,8 @@ const runtimeConfig = {
 		<div class="home-blinds__foreground-window" data-reveal-window>
 			<img
 				class="home-blinds__foreground"
-				src={config.reveal.foregroundImage}
+				data-home-blinds-src={config.reveal.foregroundImage}
 				alt=""
-				loading="eager"
 				decoding="async"
 				data-reveal-foreground
 			/>
@@ -177,7 +175,7 @@ const runtimeConfig = {
 		<div class="home-blinds__portal" data-scenes-portal>
 			<img
 				class="home-blinds__portal-image"
-				src={background}
+				data-home-blinds-src={background}
 				alt=""
 				decoding="async"
 				data-scenes-portal-image
@@ -236,22 +234,30 @@ const runtimeConfig = {
 				aria-valuemax="100"
 				aria-valuenow={sceneInitialPercent}
 			>
-				<span class="home-blinds-scenes__meter-track">
-					<span class="home-blinds-scenes__meter-blocks" data-scenes-meter-blocks>
-						{
-							meterBlocks.map((_, blockIndex) => (
-								<span
-									class:list={[
-										"home-blinds-scenes__meter-block",
-										{ "is-lit": blockIndex < meterInitialLit },
-									]}
-									data-scenes-meter-block
-								/>
-							))
-						}
+				<span class="home-blinds-scenes__meter-label" data-scenes-meter-label
+					>正在充电</span
+				>
+				<span class="home-blinds-scenes__meter-row">
+					<span class="home-blinds-scenes__meter-track">
+						<span
+							class="home-blinds-scenes__meter-blocks"
+							data-scenes-meter-blocks
+						>
+							{
+								meterBlocks.map((_, blockIndex) => (
+									<span
+										class:list={[
+											"home-blinds-scenes__meter-block",
+											{ "is-lit": blockIndex < meterInitialLit },
+										]}
+										data-scenes-meter-block
+									/>
+								))
+							}
+						</span>
 					</span>
+					<span class="home-blinds-scenes__meter-cap" aria-hidden="true"></span>
 				</span>
-				<span class="home-blinds-scenes__meter-cap" aria-hidden="true"></span>
 			</div>
 
 			<div class="home-blinds-scenes__stands" aria-hidden="true">
@@ -271,9 +277,6 @@ const runtimeConfig = {
 								decoding="async"
 								data-scene-stand-image
 							/>
-							<span
-								class="home-blinds-scenes__stand-pole"
-								data-scene-stand-pole></span>
 						</div>
 					))
 				}
@@ -298,5 +301,9 @@ const runtimeConfig = {
 
 	// 这一层带 pin 与两条无限循环时间线，必须在 Swup 替换容器之前拆掉，
 	// 否则 kill() 会落在已经脱离文档的节点上（同 HomeHero）
-	bindHomeLayer("blinds", { boot: bootHomeBlinds, teardown: teardownHomeBlinds });
+	bindHomeLayer("blinds", {
+		media: "(min-width: 769px)",
+		boot: bootHomeBlinds,
+		teardown: teardownHomeBlinds,
+	});
 </script>
