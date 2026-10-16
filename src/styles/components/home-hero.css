@@ -16,7 +16,7 @@ html:has(.home-hero) #top-row {
 	--home-hero-shadow: color-mix(in oklch, var(--home-hero-surface) 78%, transparent);
 	/* 首屏拼图底层：纯色 page-bg + 发丝榫头缝线，两端颜色全取主题令牌，
 	   所以亮暗切换自动反相，不需要 :root.dark 分支。这一层常驻不淡出，
-	   第二层的背景大图是全幅版本，直接盖在它上面，过渡全程底色不变。 */
+	   拼合后的整图直接覆盖在它上面并持续放大，过渡全程底色不变。 */
 	--home-hero-puzzle-line: color-mix(in oklch, var(--deep-text) 13%, transparent);
 	/* 左上标题与右下 contact 都压在纯色底上，统一用正文色 */
 	--home-hero-title-ink: var(--deep-text);
@@ -47,7 +47,6 @@ html:has(.home-hero) #top-row {
    绑定 --page-bg 的旧方案反而把 ink 褪成浅灰，已废弃 */
 
 .home-hero__visual,
-.home-hero__backdrop,
 .home-hero__puzzle,
 .home-hero__rain {
 	position: absolute;
@@ -79,34 +78,22 @@ html:has(.home-hero) #top-row {
 	overflow: hidden;
 }
 
-.home-hero__backdrop {
-	z-index: 0;
-	opacity: 0;
-	visibility: hidden;
-}
-
-.home-hero__backdrop-image {
-	display: block;
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	object-position: center;
-}
-
 .home-hero__mosaic-frame {
 	position: absolute;
-	left: 50%;
+	left: 0;
+	right: 0;
 	bottom: clamp(1rem, 3vh, 2.75rem);
 	z-index: 1;
 	width: min(84vw, 90rem);
-	aspect-ratio: 2 / 1;
-	transform: translateX(-50%);
+	/* 布局负责居中，整图的自然比例负责高度；transform 只交给滚动动画。 */
+	margin-inline: auto;
 	transform-origin: 50% 50%;
-	will-change: transform, opacity;
+	will-change: transform;
 }
 
 .home-hero__mosaic-grid {
-	position: relative;
+	position: absolute;
+	inset: 0;
 	z-index: 0;
 	width: 100%;
 	height: 100%;
@@ -123,7 +110,7 @@ html:has(.home-hero) #top-row {
 		0
 	) rotate(var(--home-hero-tile-rotation)) scale(var(--home-hero-tile-scale));
 	filter: blur(var(--home-hero-tile-blur));
-	will-change: transform, opacity, filter;
+	will-change: transform, opacity;
 }
 
 .home-hero__mosaic-tile-image {
@@ -137,8 +124,7 @@ html:has(.home-hero) #top-row {
 }
 
 .home-hero__mosaic-complete {
-	position: absolute;
-	inset: 0;
+	position: relative;
 	z-index: 1;
 	display: block;
 	opacity: 0;
@@ -149,8 +135,7 @@ html:has(.home-hero) #top-row {
 .home-hero__mosaic-complete img {
 	display: block;
 	width: 100%;
-	height: 100%;
-	object-fit: fill;
+	height: auto;
 }
 
 .home-hero__rain {
@@ -450,7 +435,6 @@ html:has(.home-hero) #top-row {
 	.home-hero__mosaic-frame {
 		bottom: max(var(--space-5), 5svh);
 		width: min(86vw, 28rem);
-		aspect-ratio: 9 / 16;
 	}
 
 	.home-hero__mosaic-tile-image {
@@ -517,12 +501,25 @@ html:has(.home-hero) #top-row {
 	}
 
 	.home-hero__mosaic-frame {
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		will-change: auto;
+	}
+
+	.home-hero__mosaic-grid {
 		display: none;
 	}
 
-	.home-hero__backdrop {
+	.home-hero__mosaic-complete {
+		height: 100%;
 		opacity: 1;
 		visibility: visible;
+	}
+
+	.home-hero__mosaic-complete img {
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.home-hero__quick-action {

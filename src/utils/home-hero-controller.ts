@@ -170,7 +170,7 @@ function setReducedMotionState(
 	clearMotionPending();
 }
 
-export function mountHomeHero() {
+export function mountHomeHero(): () => void {
 	const hero = document.querySelector<HTMLElement>("[data-home-hero]");
 	if (!hero || hero.dataset.heroMounted === "true") return () => undefined;
 
@@ -212,12 +212,14 @@ export function mountHomeHero() {
 	const mosaicComplete = hero.querySelector<HTMLElement>(
 		"[data-hero-mosaic-complete]",
 	);
-	const backdrop = hero.querySelector<HTMLElement>("[data-hero-backdrop]");
+	const mosaicGrid = hero.querySelector<HTMLElement>("[data-hero-mosaic-grid]");
+	const mosaicImage = mosaicComplete?.querySelector("img");
 	const dialogueRoot = hero.querySelector<HTMLElement>("[data-hero-dialogue]");
 	const quickActions = Array.from(
 		hero.querySelectorAll<HTMLElement>("[data-hero-action]"),
 	);
 	const tiles = getTileStates(hero);
+	const tileElements = tiles.map((tile) => tile.element);
 	let timeline: ReturnType<typeof gsap.timeline> | null = null;
 	let heroScrollTrigger: ReturnType<typeof ScrollTrigger.create> | null = null;
 	let scrollDriver: ReturnType<typeof gsap.to> | null = null;
@@ -227,6 +229,15 @@ export function mountHomeHero() {
 	let contactScatterTimeline: ReturnType<typeof gsap.timeline> | null = null;
 	let wordmark: HomeHeroWordmarkController | null = null;
 	let flyLayoutTimer = 0;
+	let hasPlayedTilesIntro = false;
+	const mosaicGeometry = {
+		heroWidth: 0,
+		heroHeight: 0,
+		width: 1,
+		height: 1,
+		y: 0,
+		scale: 1,
+	};
 
 	bindQuickActions(hero, abortController);
 
@@ -270,11 +281,13 @@ export function mountHomeHero() {
 		const dialogueVisible = timelineTime >= DIALOGUE_REVEAL_TIME;
 		const layerActive = timelineTime >= QUICK_ACTIONS_REVEAL_TIME;
 		dialogue.setSceneVisible(dialogueVisible);
-		hero.dataset.layerActive = String(layerActive);
-		quickActions.forEach((action) => {
-			action.tabIndex = layerActive ? 0 : -1;
-			action.setAttribute("aria-hidden", String(!layerActive));
-		});
+		if (hero.dataset.layerActive !== String(layerActive)) {
+			hero.dataset.layerActive = String(layerActive);
+			quickActions.forEach((action) => {
+				action.tabIndex = layerActive ? 0 : -1;
+				action.setAttribute("aria-hidden", String(!layerActive));
+			});
+		}
 		rainWanted = rainActive;
 		syncRain();
 		wordmark?.setActive(timelineTime < TITLE_EXIT_TIME);
@@ -283,31 +296,40 @@ export function mountHomeHero() {
 		if (progress > 0.002) completePendingIntros();
 	};
 
-	const getMosaicTransform = () => {
-		if (!mosaic) return { y: 0, scale: 1 };
+	// computed width / height 不受 transform 影响且保留小数；只在挂载和 refresh 时读布局。
+	const measureMosaic = (): boolean => {
+		if (!mosaic) return false;
+		const style = getComputedStyle(mosaic);
 		const heroWidth = hero.clientWidth;
 		const heroHeight = hero.clientHeight;
-		const mosaicWidth = mosaic.offsetWidth;
-		const mosaicHeight = mosaic.offsetHeight;
-		const mosaicCenterY = mosaic.offsetTop + mosaicHeight / 2;
-		return {
-			y: heroHeight / 2 - mosaicCenterY,
-			scale:
-				Math.max(
-					heroWidth / Math.max(1, mosaicWidth),
-					heroHeight / Math.max(1, mosaicHeight),
-				) * 1.015,
-		};
+		const width = Math.max(1, Number.parseFloat(style.width));
+		const height = Math.max(1, Number.parseFloat(style.height));
+		const y = Number.parseFloat(style.bottom) + height / 2 - heroHeight / 2;
+		const hasChanged =
+			heroWidth !== mosaicGeometry.heroWidth ||
+			heroHeight !== mosaicGeometry.heroHeight ||
+			width !== mosaicGeometry.width ||
+			height !== mosaicGeometry.height ||
+			y !== mosaicGeometry.y;
+		Object.assign(mosaicGeometry, {
+			heroWidth,
+			heroHeight,
+			width,
+			height,
+			y,
+			scale: Math.max(heroWidth / width, heroHeight / height),
+		});
+		return hasChanged;
 	};
 
 	const getTileEntranceTransform = (tile: TileState): TileEntranceTransform => {
 		const horizontalRange = Math.max(
-			hero.clientWidth * (mobileQuery.matches ? 0.22 : 0.29),
-			mosaic?.offsetWidth ? mosaic.offsetWidth * 0.48 : 0,
+			mosaicGeometry.heroWidth * (mobileQuery.matches ? 0.22 : 0.29),
+			mosaicGeometry.width * 0.48,
 		);
 		const verticalRange = Math.max(
-			hero.clientHeight * (mobileQuery.matches ? 0.16 : 0.24),
-			mosaic?.offsetHeight ? mosaic.offsetHeight * 0.78 : 0,
+			mosaicGeometry.heroHeight * (mobileQuery.matches ? 0.16 : 0.24),
+			mosaicGeometry.height * 0.78,
 		);
 		const blurBase = mobileQuery.matches ? 8 : 13;
 		const blurRange = mobileQuery.matches ? 6 : 10;
@@ -329,8 +351,8 @@ export function mountHomeHero() {
 	};
 
 	const getTileIdleTransform = (tile: TileState): TileIdleTransform => {
-		const mosaicWidth = mosaic?.offsetWidth ?? hero.clientWidth * 0.84;
-		const mosaicHeight = mosaic?.offsetHeight ?? hero.clientHeight * 0.72;
+		const mosaicWidth = mosaicGeometry.width;
+		const mosaicHeight = mosaicGeometry.height;
 		const idleVisible = Math.max(1, config.mosaic.idleVisible);
 		const depth = tile.order % idleVisible;
 		const depthProgress = idleVisible > 1 ? depth / (idleVisible - 1) : 0;
@@ -352,15 +374,15 @@ export function mountHomeHero() {
 		};
 	};
 
-	// 首屏布局只服务于第一次静止展示；进入轮换后仍回到上面的随机布局。
+	// 首屏布局和拼合入场共用当前画布尺寸，refresh 后不会沿用旧窗口的像素位移。
 	const getTileInitialTransform = (tile: TileState): TileTransform => {
 		const layout = config.mosaic.initialLayout?.[tile.order];
 		if (mobileQuery.matches || !mosaic || !layout) {
 			return getTileIdleTransform(tile);
 		}
 
-		const mosaicWidth = Math.max(1, mosaic.offsetWidth);
-		const mosaicHeight = Math.max(1, mosaic.offsetHeight);
+		const mosaicWidth = mosaicGeometry.width;
+		const mosaicHeight = mosaicGeometry.height;
 		const columns = Math.max(1, config.mosaic.columns);
 		const rows = Math.max(1, config.mosaic.rows);
 		const clampRatio = (value: number, fallback: number) =>
@@ -387,6 +409,16 @@ export function mountHomeHero() {
 			scaleY: height * rows,
 			blur,
 		};
+	};
+	const initialTileVars = {
+		x: (index: number) => getTileInitialTransform(tiles[index]).x,
+		y: (index: number) => getTileInitialTransform(tiles[index]).y,
+		rotation: (index: number) => getTileInitialTransform(tiles[index]).rotation,
+		scaleX: (index: number) => getTileInitialTransform(tiles[index]).scaleX,
+		scaleY: (index: number) => getTileInitialTransform(tiles[index]).scaleY,
+		filter: (index: number) =>
+			`blur(${getTileInitialTransform(tiles[index]).blur}px)`,
+		autoAlpha: (index: number) => (tiles[index].initiallyVisible ? 1 : 0),
 	};
 
 	const getBaseScrollDistance = () =>
@@ -451,41 +483,41 @@ export function mountHomeHero() {
 		updateSceneState(progress);
 	};
 
-	const invalidateTimelineFromInitialState = () => {
-		if (!timeline) return;
+	const refreshMosaicGeometry = () => {
+		if (!timeline || !measureMosaic()) return;
 		const progress = timeline.totalProgress();
-		// GSAP 的 to tween 会以 invalidate 时的当前值作为起点，先回到初始帧才能保留原始起点。
+		// 入场补间记录的是旧尺寸，尺寸改变后交给显式起点的滚动时间线恢复当前画面。
+		tilesIntroTimeline?.kill();
+		tilesIntroTimeline = null;
 		timeline.totalProgress(0, true);
+		// 进度为 0 时，invalidate 不会立即初始化尚未开始的补间，静止碎片要同步重定位。
+		gsap.set(tileElements, { ...initialTileVars });
 		timeline.invalidate();
 		timeline.totalProgress(progress, true);
 	};
 
 	const buildTimeline = () => {
-		if (!title || !mosaic || !backdrop || tiles.length === 0) return;
+		if (
+			!title ||
+			!mosaic ||
+			!mosaicComplete ||
+			!mosaicGrid ||
+			tiles.length === 0
+		)
+			return;
 
-		gsap.set(mosaic, { xPercent: -50, y: 0, scale: 1 });
-		if (mosaicComplete) gsap.set(mosaicComplete, { autoAlpha: 0 });
-		gsap.set(backdrop, { autoAlpha: 0 });
+		measureMosaic();
+		gsap.set(mosaic, { y: 0, scale: 1 });
+		gsap.set(mosaicComplete, { autoAlpha: 0 });
+		// 先记录 CSS 的 display，卸载时才能清掉延迟 fromTo 留下的内联起点。
+		gsap.set(mosaicGrid, { display: "block" });
 		if (dialogueRoot) {
 			gsap.set(dialogueRoot, { autoAlpha: 0, y: 16, scale: 0.96 });
 		}
 		if (quickActions.length) {
 			gsap.set(quickActions, { autoAlpha: 0, y: 38, scale: 0.42 });
 		}
-		for (const tile of tiles) {
-			const transform = tile.initiallyVisible
-				? getTileInitialTransform(tile)
-				: getTileEntranceTransform(tile);
-			gsap.set(tile.element, {
-				x: transform.x,
-				y: transform.y,
-				rotation: transform.rotation,
-				scaleX: transform.scaleX,
-				scaleY: transform.scaleY,
-				filter: `blur(${transform.blur}px)`,
-				autoAlpha: tile.initiallyVisible ? 1 : 0,
-			});
-		}
+		gsap.set(tileElements, { ...initialTileVars });
 
 		timeline = gsap.timeline({
 			defaults: { ease: "none" },
@@ -493,7 +525,7 @@ export function mountHomeHero() {
 		});
 
 		timeline.to({}, { duration: 1 });
-		// 这条 scrub 时间线会被 invalidate()（onRefreshInit / 窗口 resize 都会触发）。
+		// 这条 scrub 时间线会在画布尺寸变化后 invalidate()。
 		// GSAP 的 to 补间在 invalidate 后会把「当前 DOM 值」重新记录为起点：
 		// 若 invalidate 发生在标题已淡出的深滚动状态，起点被记成 autoAlpha 0，
 		// 之后滚回顶部标题永远不可见。因此所有补间一律 fromTo 显式锚定起点。
@@ -512,11 +544,8 @@ export function mountHomeHero() {
 		// 右下角 contact 的退场不再整体渐隐，改为字符随风散落，
 		// 由 prepareFlyText() 在字体就绪后将 scatter 时间线挂载到 0.04 位置。
 		timeline.fromTo(
-			tiles.map((tile) => tile.element),
-			{
-				// 起点必须逐片区分：initiallyVisible 的碎片在进度 0 应可见，其余不可见
-				autoAlpha: (index) => (tiles[index].initiallyVisible ? 1 : 0),
-			},
+			tileElements,
+			{ ...initialTileVars },
 			{
 				autoAlpha: 0,
 				duration: 0.06,
@@ -554,14 +583,19 @@ export function mountHomeHero() {
 			);
 		}
 
-		if (mosaicComplete) {
-			timeline.fromTo(
-				mosaicComplete,
-				{ autoAlpha: 0 },
-				{ autoAlpha: 1, duration: 0.03, ease: "none" },
-				0.72,
-			);
-		}
+		timeline.fromTo(
+			mosaicComplete,
+			{ autoAlpha: 0 },
+			{ autoAlpha: 1, duration: 0.03, ease: "none" },
+			0.72,
+		);
+		// 整图与碎片完全对齐后隐藏碎片 DOM，避免 24 个合成层随全屏放大继续绘制。
+		timeline.fromTo(
+			mosaicGrid,
+			{ display: "block" },
+			{ display: "none", duration: 0, immediateRender: false },
+			0.75,
+		);
 
 		// 淡出段只加 y 位移，不碰 yPercent：yPercent 已由上一段补间锚定，若这里再显式给
 		// yPercent 起点，进度归零的回滚渲染会按时间序先后渲染两段，后渲染的这段把
@@ -593,30 +627,17 @@ export function mountHomeHero() {
 			);
 		}
 
-		// 拼合完成后整图放大到铺满全屏，与背景大图无缝交接：背景大图是同一张图的
-		// 全幅版本，所以这里只补到「刚好盖住视口」的缩放，不再额外放大或抬出画。
+		// 同一张自然比例整图从拼合持续放大到 cover，并保留为背景，不再切换图片层。
 		timeline.fromTo(
 			mosaic,
 			{ y: 0, scale: 1 },
 			{
-				y: () => getMosaicTransform().y,
-				scale: () => getMosaicTransform().scale,
+				y: () => mosaicGeometry.y,
+				scale: () => mosaicGeometry.scale,
 				duration: 0.2,
 				ease: "power3.inOut",
 			},
 			0.76,
-		);
-		timeline.fromTo(
-			backdrop,
-			{ autoAlpha: 0 },
-			{ autoAlpha: 1, duration: 0.1, ease: "power2.inOut" },
-			0.87,
-		);
-		timeline.fromTo(
-			mosaic,
-			{ autoAlpha: 1 },
-			{ autoAlpha: 0, duration: 0.07, ease: "power2.in" },
-			0.92,
 		);
 
 		quickActions.forEach((action, index) => {
@@ -660,10 +681,12 @@ export function mountHomeHero() {
 			anticipatePin: 1,
 			animation: scrollDriver,
 			invalidateOnRefresh: true,
-			onRefreshInit: invalidateTimelineFromInitialState,
 			onRefresh: (self) => {
+				// refreshInit 时 pin 可能还锁着旧宽度，必须等 pin 恢复新布局后再测量。
+				animationContext.add(refreshMosaicGeometry);
 				self.update();
 				renderTimelineForScroll(scrollDriver?.progress() ?? self.progress);
+				animationContext.add(playTilesIntro);
 			},
 			onUpdate: (self) => {
 				if (!scrollDriver) renderTimelineForScroll(self.progress);
@@ -679,6 +702,14 @@ export function mountHomeHero() {
 
 	// 初始可见碎片的渐入；完成后碎片就停在初始布局上，不再有其它自动动画
 	const playTilesIntro = () => {
+		if (
+			hasPlayedTilesIntro ||
+			!mosaicImage?.complete ||
+			mosaicImage.naturalWidth === 0
+		)
+			return;
+		hasPlayedTilesIntro = true;
+		if ((timeline?.totalProgress() ?? 0) > 0.002) return;
 		const idleTiles = tiles.filter((tile) => tile.initiallyVisible);
 		if (!idleTiles.length) return;
 		tilesIntroTimeline = gsap.timeline({
@@ -817,6 +848,14 @@ export function mountHomeHero() {
 			wordmark = initHomeHeroWordmark(hero);
 			buildTimeline();
 			playTilesIntro();
+			// 慢速图片先建立 pin；图片撑出自然高度后统一刷新几何，再播放碎片入场。
+			if (mosaicImage && !mosaicImage.complete) {
+				mosaicImage.addEventListener(
+					"load",
+					() => requestScrollTriggerRefresh(ScrollTrigger),
+					{ once: true, signal: abortController.signal },
+				);
+			}
 			prepareFlyText();
 		}
 	});

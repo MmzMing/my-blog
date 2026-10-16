@@ -19,22 +19,8 @@ const mosaicStyle = [
 ---
 
 <div class="home-hero__visual" style={mosaicStyle} aria-hidden="true">
-	<picture class="home-hero__backdrop" data-hero-backdrop>
-		<source media="(max-width: 768px)" srcset={mobileImage} />
-		<img
-			class="home-hero__backdrop-image"
-			src={desktopImage}
-			alt=""
-			width="3000"
-			height="1500"
-			loading="eager"
-			fetchpriority="high"
-			decoding="async"
-		/>
-	</picture>
-
 	<div class="home-hero__mosaic-frame" data-hero-mosaic>
-		<div class="home-hero__mosaic-grid">
+		<div class="home-hero__mosaic-grid" data-hero-mosaic-grid>
 			{tiles.map((tile) => (
 				<span
 					class:list={[
@@ -59,7 +45,7 @@ const mosaicStyle = [
 		</div>
 		<picture class="home-hero__mosaic-complete" data-hero-mosaic-complete>
 			<source media="(max-width: 768px)" srcset={mobileImage} />
-			<img src={desktopImage} alt="" width="3000" height="1500" decoding="async" />
+			<img src={desktopImage} alt="" loading="eager" fetchpriority="high" decoding="async" />
 		</picture>
 	</div>
 </div>
