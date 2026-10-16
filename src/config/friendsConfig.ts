@@ -660,6 +660,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "张萌萌",
+		imgurl: "https://blog.nw177.cn/assets/avatar.webp",
+		desc: "春风得意马蹄疾 一日看尽长安花",
+		siteurl: "https://blog.nw177.cn",
+		image: "/assets/images/friends/nw177.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
