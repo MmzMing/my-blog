@@ -1,6 +1,6 @@
 ---
 import HomeBlindsScene from "@components/layout/HomeBlindsScene.astro";
-import { homeConfig } from "@/config";
+import { commentConfig, homeConfig } from "@/config";
 import type { HomeBlindsSceneItem } from "@/types/config";
 
 const config = homeConfig.homeBlinds;
@@ -23,17 +23,16 @@ const standImages = config.scenes.standImages.slice(
 	Math.min(4, Math.max(0, sceneItems.length - 1)),
 );
 /**
- * 背景跑马灯：单格宽度固定为 CYCLE_CELL_VW，先把列表重复到「一轮 ≥ 一屏宽」，
- * 再整轮复制一份首尾相接，控制器把 xPercent 从 0 走到 -50 即为无缝左移。
+ * 背景方格：一个循环周期 CYCLE_PERIOD_PX（内部分 4 小格，粗线压在周期边界上），
+ * 轨道按整周期往左平移，移满一格即与起点完全重合，循环看不出接缝。
+ * 只注入这一个长度，小格边长由样式按 1/4 算；控制器也读同一个变量决定平移距离，
+ * 平移量若取小格而非整周期，粗线会在接缝处整体跳一格。
  */
-const CYCLE_CELL_VW = 38;
-const cycleImages = config.scenes.cycleImages.filter(Boolean);
-const cyclePass = Math.max(
-	1,
-	Math.ceil(100 / (Math.max(1, cycleImages.length) * CYCLE_CELL_VW)),
-);
-const cycleCells = Array.from({ length: cyclePass * 2 }).flatMap(
-	() => cycleImages,
+const CYCLE_PERIOD_PX = 224;
+/** 同屏飘着的气泡条数：文案由控制器按权重随机填，用完一条回收再填一条 */
+const BUBBLE_COUNT = 12;
+const bubbleMessages = config.scenes.bubbleMessages.filter(
+	(message) => (message.text ?? "").trim().length > 0 || Boolean(message.image),
 );
 // 底部电池为整层共用的一块，始终停在水平中间，由控制器随横移进度逐块点亮；
 // 序号与百分比不显示，数值只同步到 aria-valuenow
@@ -46,10 +45,21 @@ const meterInitialLit = Math.max(
 	Math.round((sceneInitialPercent / 100) * METER_BLOCK_COUNT),
 );
 const meterBlocks = Array.from({ length: METER_BLOCK_COUNT });
+/**
+ * 评论区那条能不能取，在构建期就判完：只有 Waline 开着才有意义。
+ * 判不过就把 enabled 压成 false，客户端一次请求都不会发，运行时不必再猜。
+ */
+const commentBubble = {
+	enabled:
+		config.scenes.commentBubble.enabled &&
+		commentConfig.type === "waline" &&
+		Boolean(commentConfig.waline?.serverURL),
+	serverURL: commentConfig.waline?.serverURL ?? "",
+	lang: commentConfig.waline?.lang ?? "zh-CN",
+	weight: Math.max(1, config.scenes.commentBubble.weight),
+};
 const runtimeConfig = {
 	reveal: {
-		foregroundOpacity: config.reveal.foregroundOpacity,
-		pointerTravel: config.reveal.pointerTravel,
 		headline: {
 			enterDuration: headline.enterDuration ?? 0.5,
 			messageHold: headline.messageHold ?? 2.6,
@@ -59,8 +69,9 @@ const runtimeConfig = {
 	scenes: {
 		scrollDistance: config.scenes.scrollDistance,
 		sceneCount: sceneItems.length,
-		standCount: standImages.length,
 		cycleDuration: config.scenes.cycleDuration,
+		bubbleMessages,
+		commentBubble,
 	},
 };
 ---
@@ -80,15 +91,9 @@ const runtimeConfig = {
 			data-blinds-background
 		/>
 
-		<div class="home-blinds__foreground-window" data-reveal-window>
-			<img
-				class="home-blinds__foreground"
-				data-home-blinds-src={config.reveal.foregroundImage}
-				alt=""
-				decoding="async"
-				data-reveal-foreground
-			/>
-		</div>
+		<!-- 揭示层全屏磨砂玻璃：压在背景之上、入场标题之下当暗色衬底。
+		     显隐与背景由 setupScenes 的 applyPhase 同一次写入，同帧进出不会错闪 -->
+		<div class="home-blinds__reveal-glass" data-reveal-glass></div>
 
 		<!-- 入场标题：长条与标题同色，长条内缘退开时标题才「从背面」显露；
 		     长条固定在两侧后往外缩放消失，退场随整个揭示层一起上滑 -->
@@ -184,33 +189,50 @@ const runtimeConfig = {
 	</div>
 
 	<section class="home-blinds-reveal" data-home-blinds-reveal aria-label="影像揭示">
-		<div class="home-blinds-reveal__viewport" data-reveal-viewport></div>
+		<div class="home-blinds-reveal__viewport"></div>
 	</section>
 
 	<section class="home-blinds-scenes" data-home-blinds-scenes aria-label="横向影像叙事">
 		<div class="home-blinds-scenes__viewport" data-scenes-viewport>
-			<!-- 背景跑马灯：与立牌同时从后方以纸牌立起的姿态入场，之后持续从右往左无缝循环 -->
+			<!-- 背景方格：与立牌同时从后方以纸牌立起的姿态入场，之后按整周期持续左移 -->
 			<div
 				class="home-blinds-scenes__cycle"
-				style={`--home-blinds-cycle-cell: ${CYCLE_CELL_VW}vw`}
+				style={`--home-blinds-cycle-period: ${CYCLE_PERIOD_PX}px`}
 				aria-hidden="true"
 				data-scenes-cycle
 			>
-				<div class="home-blinds-scenes__cycle-track" data-scenes-cycle-track>
-					{
-						cycleCells.map((image) => (
-							<div class="home-blinds-scenes__cycle-cell">
+				<div
+					class="home-blinds-scenes__cycle-track"
+					data-scenes-cycle-track
+				></div>
+			</div>
+
+			<!-- 留言墙：明信片身后一排气泡各自横向飘过，飘出屏幕外那一侧时回收换一条再飘。
+			     文案与头像由控制器按权重随机填，这里只给等量的空壳 -->
+			<div
+				class="home-blinds-scenes__bubbles"
+				aria-hidden="true"
+				data-scenes-bubbles
+			>
+				{
+					Array.from({ length: BUBBLE_COUNT }).map(() => (
+						<span class="home-blinds-bubble" data-scene-bubble>
+							<span class="home-blinds-bubble__body" data-scene-bubble-body>
+								<span
+									class="home-blinds-bubble__text"
+									data-scene-bubble-text
+								/>
 								<img
-									class="home-blinds-scenes__cycle-image"
-									src={image}
+									class="home-blinds-bubble__image"
+									data-scene-bubble-image
 									alt=""
 									loading="lazy"
 									decoding="async"
 								/>
-							</div>
-						))
-					}
-				</div>
+							</span>
+						</span>
+					))
+				}
 			</div>
 
 			<div class="home-blinds-scenes__track" data-scenes-track>

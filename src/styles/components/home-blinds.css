@@ -66,6 +66,9 @@
 	object-position: center;
 	user-select: none;
 	-webkit-user-drag: none;
+	/* 视差位移由 setupReveal 逐帧写 transform：起始放大留出上下余量，落定回到恒等变换，
+	   与过渡层的满屏起点逐像素重合 */
+	will-change: transform;
 }
 
 /* 过渡层里的图片不吃 inset：控制器按「视口 cover 的渲染尺寸」给它显式宽高，
@@ -92,29 +95,35 @@
 	z-index: 1;
 }
 
-.home-blinds__foreground-window {
+/* 揭示层全屏磨砂玻璃：满屏模糊 + 暗色遮罩，把线稿背景压成入场标题的衬底。
+   位于背景（z-index 1）之上、入场标题（z-index 4）之下；显隐与背景同一次
+   gsap.set 写入，因此与背景同帧入场、同帧退场。 */
+.home-blinds__reveal-glass {
+	--home-blinds-glass-blur: 18px;
+	--home-blinds-glass-tint: 10, 12, 16;
+	--home-blinds-glass-flat: 0.42;
+	--home-blinds-glass-vignette: 0.18;
 	position: absolute;
 	inset: 0;
-	z-index: 3;
-	overflow: hidden;
-}
-
-.home-blinds__foreground {
-	position: absolute;
-	bottom: 1.5vh;
-	left: 50%;
-	display: block;
-	width: min(88vw, 105rem);
-	max-width: none;
-	height: auto;
-	max-height: 88%;
-	object-fit: contain;
-	object-position: center bottom;
-	user-select: none;
-	-webkit-user-drag: none;
+	z-index: 2;
+	background:
+		radial-gradient(
+			120% 90% at 50% 50%,
+			transparent,
+			rgba(var(--home-blinds-glass-tint), var(--home-blinds-glass-vignette))
+		),
+		rgba(var(--home-blinds-glass-tint), var(--home-blinds-glass-flat));
+	backdrop-filter: blur(var(--home-blinds-glass-blur)) saturate(1.08);
+	-webkit-backdrop-filter: blur(var(--home-blinds-glass-blur)) saturate(1.08);
 	opacity: 0;
 	visibility: hidden;
-	will-change: transform, opacity;
+}
+
+/* 不支持磨砂时退化为整体压暗：标题可读性优先于背景观感 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+	.home-blinds__reveal-glass {
+		background: rgba(var(--home-blinds-glass-tint), 0.6);
+	}
 }
 
 .home-blinds__portal,
@@ -653,14 +662,24 @@
 	transform-origin: 100% 50%;
 }
 
-/* ---------- 第二层背景跑马灯：与立牌同时自后方纸牌式立起，之后持续左移循环 ----------
-   transform 由控制器写入（rotationX + transformPerspective），
-   这里只给铰链位置；单格宽度由组件按图片数量算好后注入 --home-blinds-cycle-cell */
+/* ---------- 第二层背景方格：与立牌同时自后方纸牌式立起，之后按整周期持续左移 ----------
+   transform 由控制器写入（rotationX + transformPerspective），这里只给铰链位置。
+   --home-blinds-cycle-period 是一个循环周期的长度（组件按同名常量注入内联样式覆盖这里的兜底值），
+   细线一格取它的 1/4，粗线正好压在周期边界上；轨道平移一整周期即与起点完全重合。
+   线色取 --deep-text 的淡色，深浅两套主题自动反转，不再压一层页面底色遮罩 */
 
 .home-blinds-scenes__cycle {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
+	--home-blinds-cycle-period: 224px;
+	--home-blinds-cycle-tile: calc(var(--home-blinds-cycle-period) / 4);
+	--home-blinds-cycle-line: color-mix(in srgb, var(--deep-text) 12%, transparent);
+	--home-blinds-cycle-major-line: color-mix(
+		in srgb,
+		var(--deep-text) 22%,
+		transparent
+	);
 	overflow: hidden;
 	opacity: 0;
 	visibility: hidden;
@@ -668,43 +687,150 @@
 	will-change: transform, opacity;
 }
 
-/* 压一层页面底色，保证图框外的题名文字仍有对比度 */
-.home-blinds-scenes__cycle::after {
-	position: absolute;
-	inset: 0;
-	z-index: 1;
-	display: block;
-	content: "";
-	background: color-mix(in srgb, var(--page-bg) 62%, transparent);
-	pointer-events: none;
-}
-
 .home-blinds-scenes__cycle-track {
 	position: absolute;
 	top: 0;
+	/* 右边多铺一整周期：轨道左移到极限时右缘仍有图案接上，不会露出空带 */
+	right: calc(-1 * var(--home-blinds-cycle-period));
+	bottom: 0;
 	left: 0;
 	z-index: 0;
-	display: flex;
-	width: max-content;
-	height: 100%;
+	background-image:
+		linear-gradient(
+			to right,
+			var(--home-blinds-cycle-major-line) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			to bottom,
+			var(--home-blinds-cycle-major-line) 1px,
+			transparent 1px
+		),
+		linear-gradient(to right, var(--home-blinds-cycle-line) 1px, transparent 1px),
+		linear-gradient(to bottom, var(--home-blinds-cycle-line) 1px, transparent 1px);
+	background-size:
+		var(--home-blinds-cycle-period) var(--home-blinds-cycle-period),
+		var(--home-blinds-cycle-period) var(--home-blinds-cycle-period),
+		var(--home-blinds-cycle-tile) var(--home-blinds-cycle-tile),
+		var(--home-blinds-cycle-tile) var(--home-blinds-cycle-tile);
 	will-change: transform;
 }
 
-.home-blinds-scenes__cycle-cell {
-	flex: none;
-	width: var(--home-blinds-cycle-cell, 38vw);
-	height: 100%;
+/* ---------- 第二层留言墙：明信片身后一排气泡各自飘过，飘完一条换下一条 ----------
+   位移全程交给合成层跑 CSS 动画，JS 一帧都不参与：只在 animationiteration
+   （这一刻气泡正好在屏幕外）换文案并重掷高度/时长/字号，离屏时整体暂停。
+   --top / --duration / --scale 由控制器逐条写在气泡上 */
+
+.home-blinds-scenes__bubbles {
+	position: absolute;
+	inset: 0;
+	/* 压在明信片之上（track 是 2），但仍让立牌与电池压在身前 */
+	z-index: 3;
 	overflow: hidden;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
 }
 
-.home-blinds-scenes__cycle-image {
-	display: block;
-	width: 100%;
-	height: 100%;
+/* 外层只管位移：横向漂移的 transform 归它，落位高度与时长由控制器写在变量上 */
+.home-blinds-bubble {
+	position: absolute;
+	top: var(--home-blinds-bubble-top, 50%);
+	left: 0;
+	max-width: 20rem;
+	will-change: transform;
+	animation: home-blinds-bubble-drift var(--home-blinds-bubble-duration, 32s) linear
+		infinite;
+}
+
+/* 内层是卡面本体，入场的 Q 弹只打在这一层。
+   两层各持一个 transform，弹跳的 scale 不会把漂移的 translate 覆盖掉
+   （同首页移动层那条约定：外层管位移、内层管入场） */
+.home-blinds-bubble__body {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.45em;
+	padding: 0.42rem 0.95rem 0.6rem;
+	border: 1px solid color-mix(in srgb, var(--deep-text) 16%, transparent);
+	border-radius: 1rem;
+	background: color-mix(in srgb, var(--page-bg) 68%, transparent);
+	color: color-mix(in srgb, var(--deep-text) 62%, transparent);
+	font-size: calc(0.86rem * var(--home-blinds-bubble-scale, 1));
+	line-height: 1.45;
+}
+
+/* 文字在上、图片在下。尺寸按 em 给，跟着气泡自己的随机字号一起缩放；
+   没配图的那条整块不显示，气泡宽度就退回由文字决定 */
+.home-blinds-bubble__image {
+	display: none;
+	flex: none;
+	width: 9em;
+	height: 6.2em;
+	border-radius: 0.7rem;
 	object-fit: cover;
-	object-position: center;
-	user-select: none;
-	-webkit-user-drag: none;
+	opacity: 0;
+	background: color-mix(in srgb, var(--deep-text) 12%, transparent);
+	transition: opacity 0.45s ease;
+}
+
+/* 加载中：底色上跑一道斜向微光；解码完成后由 is-loaded 淡入把它盖住 */
+.home-blinds-bubble__image.is-loading {
+	background-image: linear-gradient(
+		100deg,
+		transparent 20%,
+		color-mix(in srgb, var(--deep-text) 16%, transparent) 45%,
+		transparent 70%
+	);
+	background-size: 220% 100%;
+	animation: home-blinds-bubble-shimmer 1.25s linear infinite;
+}
+
+.home-blinds-bubble__image.is-loaded {
+	opacity: 1;
+}
+
+/* 最多两行，超出在第二行末尾截断加省略号。
+   宽度由外层气泡的 max-width 兜住，所以长文会先折行、到两行才省略 */
+.home-blinds-bubble__text {
+	display: -webkit-box;
+	max-width: 100%;
+	overflow: hidden;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow-wrap: break-word;
+	white-space: normal;
+}
+
+.home-blinds-bubble.has-image .home-blinds-bubble__image {
+	display: block;
+}
+
+.home-blinds-scenes__bubbles.is-paused .home-blinds-bubble,
+.home-blinds-scenes__bubbles.is-paused .home-blinds-bubble__image {
+	animation-play-state: paused;
+}
+
+@keyframes home-blinds-bubble-shimmer {
+	from {
+		background-position: 180% 0;
+	}
+	to {
+		background-position: -80% 0;
+	}
+}
+
+@keyframes home-blinds-bubble-drift {
+	from {
+		/* 起点取 100vw 而不是 100vw + 自身宽度：整颗确实藏在容器右缘之外（被 overflow 裁掉），
+		   但下一帧就开始露头 —— 换条时补的那次弹跳才看得见，否则 0.78s 早在屏幕外跑完了 */
+		transform: translate3d(100vw, 0, 0);
+	}
+	to {
+		/* 100% 是气泡自身宽度：终点右缘正好贴在容器左缘，整颗藏在左侧之外 */
+		transform: translate3d(-100%, 0, 0);
+	}
 }
 
 .home-blinds-scenes__track {

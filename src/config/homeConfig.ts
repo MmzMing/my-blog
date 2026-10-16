@@ -143,21 +143,11 @@ export const homeConfig: HomeConfig = {
 		},
 	},
 
-	dataLayer: {
-		visitImage: "/assets/images/home/home-data-1.avif",
-		archiveImage: "/assets/images/home/home-data-2.avif",
-		contactImage: "/assets/images/home/home-data-3.avif",
-	},
-
-	// 桌面端双层影像交互：固定背景揭示 → 五幕画面横向叙事
+	// 桌面端影像叙事：背景视差揭示（全屏磨砂玻璃衬底）→ 五幕画面横向叙事
 	homeBlinds: {
 		enabled: true,
 		reveal: {
-			backgroundImage: "/assets/images/home-blinds/act2/1.webp",
-			foregroundImage: "/assets/images/home-blinds/act1/1.webp",
-			foregroundAlt: "奔跑人物剪影",
-			foregroundOpacity: 0.5,
-			pointerTravel: 28,
+			backgroundImage: "/assets/images/home-blinds/act1/1.webp",
 			// 长条横移揭示的入场标题：标题单行显示（版式按 4 字排），
 			// 祝福语单行显示（版式按 5 字排），可自由增减条数
 			headline: {
@@ -170,9 +160,53 @@ export const homeConfig: HomeConfig = {
 		},
 		scenes: {
 			scrollDistance: 3400,
-			// 背景跑马灯：列表从右往左无缝循环，只有一张也会自动复制到铺满
-			cycleImages: ["/assets/images/home-blinds/act-cycle/1.webp"],
-			cycleDuration: 26,
+			// 背景方格往左挪完一个循环周期（4 小格）所需的秒数，越小越快
+			cycleDuration: 2.4,
+			// 留言墙气泡：条数不限，weight 越大越容易被飘出，缺省按 1 算。
+			// text 与 image 至少给一个；给了 image 就在文字下方带一张图。
+			// 文案是 2025—2026 网络热梗与站内老梗混排，梗过时了直接换掉就行
+			bubbleMessages: [
+				{
+					text: "Token来",
+					weight: 5,
+					image: "/assets/images/home-blinds/act2-background/101.webp",
+				},
+				{
+					text: "昨日一去不复回 欧耶耶",
+					weight: 4,
+					image: "/assets/images/home-blinds/act2-background/3.gif",
+				},
+				{
+					text: "年更型站长",
+					weight: 4,
+					image: "/assets/images/home-blinds/act2-background/2.gif",
+				},
+				{
+					text: "我来看看怎么个事",
+					weight: 4,
+					image: "/assets/images/home-blinds/act2-background/1.gif",
+				},
+				{ text: "主打一个随缘更新", weight: 3 },
+				{ text: "低山臭水遇知音", weight: 3 },
+				{ text: "站长，博客开源吗", weight: 3 },
+				{ text: "活人感拉满", weight: 3 },
+				{ text: "爱你，站长", weight: 3 },
+				{ text: "版本无回滚", weight: 3 },
+				{ text: "别熬夜了", weight: 3 },
+				{ text: "刚出锅，趁热看", weight: 2 },
+				{ text: "开源的，开源的", weight: 2 },
+				{ text: "哈基墩到此一游", weight: 2 },
+				{ text: "敬自己一杯", weight: 2 },
+				{ text: "感觉很赞", weight: 2 },
+				{ text: "班味有点重", weight: 2 },
+				{ text: "已收藏，下次一定看", weight: 2 },
+				{ text: "归档翻到凌晨三点", weight: 2 },
+			],
+			// 从评论区捞一条真实留言混进上面这池子：滚到影像层才异步取，且只取一次
+			commentBubble: {
+				enabled: true,
+				weight: 4,
+			},
 			composite: {
 				eyebrow: "PROLOGUE / RUN",
 				title: "筑一间小屋",
@@ -186,7 +220,7 @@ export const homeConfig: HomeConfig = {
 					eyebrow: "SCENE 02 / LIGHT",
 					title: "小屋落户",
 					description: "一纸备案落定，小屋自此有门有牌，堂堂正正晒着太阳。",
-					image: "/assets/images/home-blinds/act3/1.webp",
+					image: "/assets/images/home-blinds/act2/1.webp",
 					alt: "第二幕插画",
 					date: "2026 / 06 / 10",
 				},
@@ -194,7 +228,7 @@ export const homeConfig: HomeConfig = {
 					eyebrow: "SCENE 03 / WIND",
 					title: "尘满窗台",
 					description: "人往学海拾新，倦意悄悄落了窗，小屋静候，蒙上薄尘。",
-					image: "/assets/images/home-blinds/act3/2.webp",
+					image: "/assets/images/home-blinds/act2/2.webp",
 					alt: "第三幕插画",
 					date: "2026 / 06 / 21",
 				},
@@ -202,7 +236,7 @@ export const homeConfig: HomeConfig = {
 					eyebrow: "SCENE 04 / PAGE",
 					title: "重燃灯火",
 					description: "拂去薄尘，重燃灯火，一砖一瓦再把小屋细细打磨。",
-					image: "/assets/images/home-blinds/act3/3.webp",
+					image: "/assets/images/home-blinds/act2/3.webp",
 					alt: "第四幕插画",
 					date: "2026 / 08 / 18",
 				},
@@ -210,12 +244,12 @@ export const homeConfig: HomeConfig = {
 					eyebrow: "FINALE / ARRIVE",
 					title: "抵达之前",
 					description: "笔墨暂歇，来日方长；下一程山水，且歌且行。",
-					image: "/assets/images/home-blinds/act3/4.webp",
+					image: "/assets/images/home-blinds/act2/4.webp",
 					alt: "第五幕插画",
 					date: "2026 / 09 / 01",
 				},
 			],
-			standImages: ["/assets/images/home-blinds/act4/1.webp"],
+			standImages: ["/assets/images/home-blinds/act2-doll/1.webp"],
 		},
 	},
 
@@ -224,42 +258,36 @@ export const homeConfig: HomeConfig = {
 	// 访问https://icones.js.org/ 获取图标代码，
 	// 如果想使用尚未包含相应的图标集，则需要安装它
 	// `pnpm add @iconify-json/<icon-set-name>`
-	// showName: true 时显示图标和名称，false 时只显示图标
 	links: [
 		{
 			name: "qq",
 			icon: "fa7-brands:qq",
 			url: "https://qm.qq.com/q/2R07cjGTZ0",
 			color: "#12B7F6",
-			showName: false,
 		},
 		{
 			name: "B站",
 			icon: "fa7-brands:bilibili",
 			url: "https://space.bilibili.com/15446538",
 			color: "#FB7299",
-			showName: false,
 		},
 		{
 			name: "GitHub",
 			icon: "fa7-brands:github",
 			url: "https://github.com/MmzMing",
 			color: "#1F6FEB",
-			showName: false,
 		},
 		{
 			name: "站内留言",
 			icon: "material-symbols:chat-rounded",
 			url: "/guestbook/",
 			color: "#B8FF1F",
-			showName: false,
 		},
 		{
 			name: "RSS",
 			icon: "fa7-solid:rss",
 			url: "/rss/",
 			color: "#F26522",
-			showName: false,
 		},
 	],
 };

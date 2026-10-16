@@ -256,30 +256,42 @@ export type HomeBlindsHeadlineConfig = {
 	messageFlipDuration?: number;
 };
 
+/**
+ * 留言墙的一条气泡：weight 为该条被飘出的相对权重，缺省为 1。
+ * text 与 image 至少给一个，只给 image 就是纯图片气泡。
+ */
+export type HomeBlindsBubbleMessage = {
+	/** 气泡文字，留空则只出图片 */
+	text?: string;
+	/** 图片，显示在文字下方；只认 public 下的路径（运行时直接塞进 img.src） */
+	image?: string;
+	weight?: number;
+};
+
 export type HomeBlindsConfig = {
 	/** 是否启用桌面端首页双层影像交互 */
 	enabled: boolean;
 	reveal: {
-		/** 固定背景图（首屏揭示层与首幕画面共用） */
+		/** 背景图（首屏揭示层与首幕画面共用），揭示层内带视差位移 */
 		backgroundImage: string;
-		/** 透明前景图 */
-		foregroundImage: string;
-		foregroundAlt: string;
-		/** 前景图完全进入后的透明度，取值 0-1 */
-		foregroundOpacity: number;
-		/** 前景图跟随鼠标移动的最大像素距离 */
-		pointerTravel: number;
 		/** 长条横移揭示的入场标题与循环祝福语 */
 		headline: HomeBlindsHeadlineConfig;
 	};
 	scenes: {
 		/** 横向影像层固定滚动距离，越小则横移越快 */
 		scrollDistance: number;
-		/** 背景跑马灯图片，按顺序从左往右无缝循环；只放一张也能跑 */
-		cycleImages: string[];
-		/** 跑马灯走完一轮列表的时长（秒），越大越慢 */
+		/** 背景方格横向走完一个循环周期（4 小格）所需时长（秒），越小越快 */
 		cycleDuration: number;
-		/** 由上一层背景与透明前景图合成的首幕文案（序幕） */
+		/** 影像层身后留言墙的气泡文案，可自由增减条数 */
+		bubbleMessages: HomeBlindsBubbleMessage[];
+		/** 从评论区捞一条真实留言混进气泡池（目前只有 Waline 支持） */
+		commentBubble: {
+			/** 是否开启。评论系统没开、或开的不是 Waline 时一次请求都不会发 */
+			enabled: boolean;
+			/** 捞回来的那条的权重，与写死的那些一起参与加权随机 */
+			weight: number;
+		};
+		/** 由揭示层背景合成的首幕文案（序幕） */
 		composite: Omit<HomeBlindsSceneItem, "image" | "alt"> & { alt: string };
 		/** 后续画面，运行时最多读取前 4 张 */
 		items: HomeBlindsSceneItem[];
@@ -412,11 +424,6 @@ export type HomeConfig = {
 			color?: string;
 		};
 	};
-	dataLayer: {
-		visitImage: string;
-		archiveImage: string;
-		contactImage: string;
-	};
 	/** 桌面端首页揭示层与横向明信片层 */
 	homeBlinds: HomeBlindsConfig;
 	links: {
@@ -425,7 +432,6 @@ export type HomeConfig = {
 		icon: string;
 		/** 品牌色，用于首页「订阅与联系」的图标染色；留空则回退到主题强调色 */
 		color?: string;
-		showName?: boolean;
 	}[];
 };
 
