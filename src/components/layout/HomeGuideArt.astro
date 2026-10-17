@@ -132,7 +132,7 @@ const glyphs: Record<string, string[]> = {
 						class="stat-layer"
 						data-stat-index={i}
 						data-on={i === 0 ? "" : undefined}
-						style={`--y-rest:${TOP_REST + i * STEP_REST}px;--y-open:${TOP_OPEN + i * STEP_OPEN}px`}
+						style={`--y-rest:${TOP_REST + i * STEP_REST}px;--y-open:${TOP_OPEN + i * STEP_OPEN}px;--beat-outline:calc(${statBoxes.length - 1 - i} * var(--enter-step))`}
 					>
 						<!-- 厚度：同一个菱形往下挪一档，先画，露出的下沿就是侧壁 -->
 						<g transform={`translate(0 ${THICK}) matrix(1 0.5 -1 0.5 0 0)`}>
@@ -151,17 +151,17 @@ const glyphs: Record<string, string[]> = {
 )}
 
 {variant === "contact" && (
-	<div class="orbit" aria-hidden="true">
+	<div class="orbit" style={`--orbit-count:${satellites.length}`} aria-hidden="true">
 		<!-- 外场整体缓转，槽位只负责按 x/y 偏移定位，内层 face 反向转回，
-		     图标因此始终正立。偏移量乘 --orbit-spread：入场从中心爆开，
-		     展开时再往外推一档 -->
+		     图标因此始终正立。中心先出现，槽位按序号从中心依次弹出，
+		     全部落定后才开始旋转；入场闸门只触发一次 -->
 		<div class="orbit__field">
 			{satellites.map((link, i) => {
 				const slot = slots[i % slots.length];
 				return (
 					<div
 						class="orbit__slot"
-						style={`--x:${slot.x};--y:${slot.y};--s:${slot.s}${
+						style={`--x:${slot.x};--y:${slot.y};--s:${slot.s};--orbit-i:${i}${
 							link.color ? `;--brand:${link.color}` : ""
 						}`}
 					>

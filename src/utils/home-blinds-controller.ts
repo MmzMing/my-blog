@@ -3,6 +3,7 @@ import {
 	loadCommentBubble,
 	startBubbleWall,
 } from "@/utils/home-blinds-bubble-controller";
+import { startBlindsImageRail } from "@/utils/home-blinds-image-rail-controller";
 import { requestScrollTriggerRefresh } from "@/utils/scroll-trigger-refresh";
 
 type Gsap = typeof import("gsap")["gsap"];
@@ -93,14 +94,14 @@ let bootGeneration = 0;
 type SceneRefs = {
 	card: HTMLElement;
 	swing: HTMLElement;
-	railDot: HTMLElement;
-	railEyebrow: HTMLElement;
-	railLine: HTMLElement;
-	railTitle: HTMLElement;
-	sticker: HTMLElement;
-	/** 底栏：左列（中文年 + 月日）与竖杠只在配置写了 date 时渲染，故可空 */
-	band: HTMLElement | null;
-	bandDivider: HTMLElement | null;
+	sticker: SVGSVGElement;
+	stickerFill: SVGGElement;
+	stickerOutline: SVGPathElement;
+	stickerInk: SVGPathElement[];
+	bandTitle: HTMLElement;
+	/** 日期可省略，标题与分隔线始终保留 */
+	bandDate: HTMLElement | null;
+	bandDivider: HTMLElement;
 	bandNote: HTMLElement;
 	intro: GsapTimeline | null;
 	active: boolean;
@@ -136,16 +137,25 @@ function canInitialize(root: HTMLElement) {
 }
 
 function collectScene(card: HTMLElement): SceneRefs {
+	const sticker = selectRequired<SVGSVGElement>(card, "[data-scene-sticker]");
 	return {
 		card,
 		swing: selectRequired<HTMLElement>(card, "[data-scene-swing]"),
-		railDot: selectRequired<HTMLElement>(card, "[data-scene-rail-dot]"),
-		railEyebrow: selectRequired<HTMLElement>(card, "[data-scene-rail-eyebrow]"),
-		railLine: selectRequired<HTMLElement>(card, "[data-scene-rail-line]"),
-		railTitle: selectRequired<HTMLElement>(card, "[data-scene-rail-title]"),
-		sticker: selectRequired<HTMLElement>(card, "[data-scene-sticker]"),
-		band: card.querySelector<HTMLElement>("[data-scene-band]"),
-		bandDivider: card.querySelector<HTMLElement>("[data-scene-band-divider]"),
+		sticker,
+		stickerFill: selectRequired<SVGGElement>(
+			sticker,
+			"[data-scene-sticker-fill]",
+		),
+		stickerOutline: selectRequired<SVGPathElement>(
+			sticker,
+			"[data-scene-sticker-outline]",
+		),
+		stickerInk: Array.from(
+			sticker.querySelectorAll<SVGPathElement>("[data-scene-sticker-ink]"),
+		),
+		bandTitle: selectRequired<HTMLElement>(card, "[data-scene-title]"),
+		bandDate: card.querySelector<HTMLElement>("[data-scene-date]"),
+		bandDivider: selectRequired<HTMLElement>(card, "[data-scene-band-divider]"),
 		bandNote: selectRequired<HTMLElement>(card, "[data-scene-note]"),
 		intro: null,
 		active: false,
@@ -154,23 +164,20 @@ function collectScene(card: HTMLElement): SceneRefs {
 
 /** 该幕所有文字与 UI 的初始（隐藏）状态，也是离场后的复位状态 */
 function hideSceneChrome(gsap: Gsap, scene: SceneRefs) {
-	gsap.set(scene.railDot, { autoAlpha: 0, scale: 0 });
-	gsap.set(scene.railEyebrow, { autoAlpha: 0, y: -12 });
-	gsap.set(scene.railLine, { autoAlpha: 0, scaleY: 0 });
-	gsap.set(scene.railTitle, {
-		autoAlpha: 0,
-		y: -18,
-		clipPath: "inset(0% 0% 100% 0%)",
+	gsap.set(scene.bandTitle, { autoAlpha: 0, y: -10 });
+	gsap.set(scene.sticker, { autoAlpha: 0 });
+	gsap.set(scene.stickerFill, { opacity: 0 });
+	gsap.set([scene.stickerOutline, ...scene.stickerInk], {
+		strokeDasharray: 1,
+		strokeDashoffset: 1,
 	});
-	gsap.set(scene.sticker, { autoAlpha: 0, scale: 0, rotation: -26 });
-	if (scene.band) gsap.set(scene.band, { autoAlpha: 0, x: -10 });
-	if (scene.bandDivider)
-		gsap.set(scene.bandDivider, { autoAlpha: 0, scaleY: 0 });
+	if (scene.bandDate) gsap.set(scene.bandDate, { autoAlpha: 0, y: 8 });
+	gsap.set(scene.bandDivider, { autoAlpha: 0, scaleY: 0 });
 	gsap.set(scene.bandNote, { autoAlpha: 0, y: 8 });
 }
 
 /**
- * 分层显示：竖排题名 → 左上角序号贴纸 → 底栏（左列标题与日期、竖杠、右栏说明）。
+ * 分层显示：底栏标题 → 左上角贴纸描线 → 完整日期 → 竖杠 → 右栏说明。
  * 只在图框收缩到位（阶段已进入 scenes）且该幕居中时调用，
  * 因此文字永远不会与背景收缩动画抢镜。
  */
@@ -180,11 +187,13 @@ function playSceneIntro(gsap: Gsap, scene: SceneRefs) {
 	scene.intro?.kill();
 	hideSceneChrome(gsap, scene);
 
-	// 底栏三件不在 CSS 里常驻 will-change：入场期间临时挂上，播完立刻清成 auto。
-	// 左列与竖杠只在配置写了 date 时存在，这里按实际渲染结果收集
-	const boosted = [scene.band, scene.bandDivider, scene.bandNote].filter(
-		(element): element is HTMLElement => element !== null,
-	);
+	// 底栏不在 CSS 里常驻 will-change：入场期间临时挂上，播完立刻清成 auto。
+	const boosted = [
+		scene.bandTitle,
+		scene.bandDate,
+		scene.bandDivider,
+		scene.bandNote,
+	].filter((element): element is HTMLElement => element !== null);
 	const timeline = gsap.timeline({
 		onStart: () =>
 			gsap.set(boosted, {
@@ -195,63 +204,52 @@ function playSceneIntro(gsap: Gsap, scene: SceneRefs) {
 
 	timeline
 		.to(
-			scene.railDot,
-			{ autoAlpha: 1, scale: 1, duration: 0.32, ease: "back.out(2.8)" },
-			0,
-		)
-		.to(
-			scene.railEyebrow,
-			{ autoAlpha: 1, y: 0, duration: 0.44, ease: "power2.out" },
-			0.06,
-		)
-		.to(
-			scene.railLine,
-			{ autoAlpha: 1, scaleY: 1, duration: 0.46, ease: "power3.inOut" },
-			0.14,
-		)
-		.to(
-			scene.railTitle,
+			scene.bandTitle,
 			{
 				autoAlpha: 1,
 				y: 0,
-				clipPath: "inset(0% 0% 0% 0%)",
 				duration: 0.66,
 				ease: "power3.out",
 			},
 			0.2,
 		)
+		.set(scene.sticker, { autoAlpha: 1 }, 0.42)
+		// pathLength 归一化后直接推进虚线偏移，不逐帧测量路径，也不常驻循环。
 		.to(
-			scene.sticker,
-			{
-				autoAlpha: 1,
-				scale: 1,
-				rotation: -8,
-				duration: 0.5,
-				ease: "back.out(2.4)",
-			},
+			scene.stickerOutline,
+			{ strokeDashoffset: 0, duration: 0.62, ease: "power1.inOut" },
 			0.42,
+		)
+		.to(scene.stickerFill, { opacity: 1, duration: 0.25 }, 0.76)
+		.to(
+			scene.stickerInk,
+			{
+				strokeDashoffset: 0,
+				duration: 0.42,
+				stagger: 0.08,
+				ease: "power1.inOut",
+			},
+			0.86,
 		);
 
-	// 左列与竖杠只在配置写了 date 的幕里存在，缺了就直接播右栏说明
-	if (scene.band) {
+	if (scene.bandDate) {
 		timeline.to(
-			scene.band,
-			{ autoAlpha: 1, x: 0, duration: 0.46, ease: "power2.out" },
+			scene.bandDate,
+			{ autoAlpha: 1, y: 0, duration: 0.46, ease: "power2.out" },
 			0.55,
 		);
 	}
-	if (scene.bandDivider) {
-		timeline.to(
+	timeline
+		.to(
 			scene.bandDivider,
 			{ autoAlpha: 1, scaleY: 1, duration: 0.34, ease: "power2.inOut" },
 			0.62,
+		)
+		.to(
+			scene.bandNote,
+			{ autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" },
+			0.66,
 		);
-	}
-	timeline.to(
-		scene.bandNote,
-		{ autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" },
-		0.66,
-	);
 
 	scene.intro = timeline;
 }
@@ -270,17 +268,6 @@ function setupScenes(context: SetupContext) {
 	const viewport = selectRequired<HTMLElement>(
 		section,
 		"[data-scenes-viewport]",
-	);
-	const meter = selectRequired<HTMLElement>(section, "[data-scenes-meter]");
-	// 电池内是一排小方块，逐块点亮，不再是一条连续长条；
-	// 序号与百分比文本已去掉，进度只靠方块表达，数值仅保留在 aria-valuenow 上
-	const meterBlocks = Array.from(
-		meter.querySelectorAll<HTMLElement>("[data-scenes-meter-block]"),
-	);
-	// 电池上方的状态字：未满写「正在充电」，满格写「充电完毕」
-	const meterLabel = selectRequired<HTMLElement>(
-		meter,
-		"[data-scenes-meter-label]",
 	);
 	const portal = selectRequired<HTMLElement>(root, "[data-scenes-portal]");
 	const portalImage = selectRequired<HTMLImageElement>(
@@ -307,14 +294,15 @@ function setupScenes(context: SetupContext) {
 	).map(collectScene);
 	const cards = scenes.map((scene) => scene.card);
 	const swings = scenes.map((scene) => scene.swing);
-	const stands = Array.from(
-		section.querySelectorAll<HTMLElement>("[data-scene-stand]"),
+	const stands = selectRequired<HTMLElement>(section, "[data-scenes-stands]");
+	const standsTrack = selectRequired<HTMLElement>(
+		stands,
+		"[data-scenes-stands-track]",
 	);
-	const stand = stands[0] ?? null;
-	// 待机的压扁只作用在立牌图上：容器留给入场（rotationX）与横位（xPercent），
-	// 图片底边即脚底，压扁以它为锚点，脚不会离地。
-	const standImage =
-		stand?.querySelector<HTMLElement>("[data-scene-stand-image]") ?? null;
+	const standImages = Array.from(
+		stands.querySelectorAll<HTMLImageElement>("[data-scenes-stand-image]"),
+	);
+	const setImageRailPaused = startBlindsImageRail(stands, standsTrack, signal);
 	const cycleStage = selectRequired<HTMLElement>(
 		section,
 		"[data-scenes-cycle]",
@@ -384,7 +372,6 @@ function setupScenes(context: SetupContext) {
 	let shrinkTrigger: ScrollTriggerInstance | null = null;
 	let pinTrigger: ScrollTriggerInstance | null = null;
 	let actVisible = false;
-	let squashTimeline: GsapTimeline | null = null;
 	let cycleTransition: GsapTween | null = null;
 	let bubbleTransition: GsapTween | null = null;
 	let bubblePop: GsapTween | null = null;
@@ -392,8 +379,8 @@ function setupScenes(context: SetupContext) {
 	/**
 	 * 三组判据各管各的，混用会做出「退场段动画被掐掉」这类怪事：
 	 * - `isStageInView`：固定舞台（全屏背景与收缩门）该不该露出，滚过影像层就隐藏。
-	 * - `isLayerLive`：影像层本身还在屏幕上，**含横移结束后的退场段** —— 背景方格、留言墙、立牌
-	 *   跳动、字幕入场与横移姿态都要继续跟着 section 一起离场，不能在 done 阶段停下。
+	 * - `isLayerLive`：影像层本身还在屏幕上，**含横移结束后的退场段** —— 背景方格、留言墙、
+	 *   图片列表、字幕入场与横移姿态都要继续跟着 section 一起离场，不能在 done 阶段停下。
 	 * - `loopsShouldRun`：在 `isLayerLive` 之上再让开后台标签页，只用于暂停无限循环。
 	 * 文档可见性不得参与显隐判断，否则页面被判定不可见时整块舞台会消失。
 	 */
@@ -489,50 +476,6 @@ function setupScenes(context: SetupContext) {
 		);
 	}
 
-	/** 压扁峰值：纵向压下的同时横向反向鼓起，保持体积感 */
-	const SQUASH_SCALE_Y = 0.86;
-	const SQUASH_SCALE_X = 1.06;
-	const REBOUND_SCALE_Y = 1.04;
-	const REBOUND_SCALE_X = 0.97;
-
-	const stopSquash = () => {
-		squashTimeline?.kill();
-		squashTimeline = null;
-		if (!standImage) return;
-		gsap.killTweensOf(standImage);
-		gsap.set(standImage, { scale: 1 });
-	};
-
-	/**
-	 * 待机压扁：以脚底为锚点把立牌图压扁、回弹、归位，一轮约 1s 且中间不停。
-	 * 三段都用 sine.inOut，首尾同为原始比例，衔接处速度归零，循环看不出接缝。
-	 */
-	const startSquash = () => {
-		if (signal.aborted || !actVisible || !standImage) return;
-		stopSquash();
-		const timeline = gsap.timeline({ repeat: -1, paused: !loopsShouldRun() });
-		timeline
-			.to(standImage, {
-				scaleY: SQUASH_SCALE_Y,
-				scaleX: SQUASH_SCALE_X,
-				duration: 0.34,
-				ease: "sine.inOut",
-			})
-			.to(standImage, {
-				scaleY: REBOUND_SCALE_Y,
-				scaleX: REBOUND_SCALE_X,
-				duration: 0.28,
-				ease: "sine.inOut",
-			})
-			.to(standImage, {
-				scaleY: 1,
-				scaleX: 1,
-				duration: 0.34,
-				ease: "sine.inOut",
-			});
-		squashTimeline = timeline;
-	};
-
 	/**
 	 * 评论区那条只在影像层第一次露脸时取一次：没滚到这里就一个请求都不发。
 	 * 取回来是往气泡池尾部追加，等哪颗气泡飘完回收时自然被抽中，不打断正在飘的。
@@ -559,11 +502,11 @@ function setupScenes(context: SetupContext) {
 	};
 
 	/**
-	 * 背景方格、留言墙与立牌同时入场。方格与立牌走同一套纸牌立起的姿态：
+	 * 背景方格与留言墙同时入场。方格保留纸牌立起的姿态：
 	 * 以底边为铰链从向后平躺（rotationX 正 88，顶边朝远离视线的方向倒）转到竖直，
 	 * 配合 transformPerspective 造出「屏幕从后方地面立起来」的透视；
 	 * 正号不可写成负号，负号会变成朝观众一侧倒、成了从前面立起来。
-	 * 立牌收一点回弹，背景大面积不回弹免得晃。
+	 * 图片内层与方格同样从底边立起，外层横向位移仍由图片控制器独立更新。
 	 * 留言墙不跟着淡入：整层糊在一起会盖掉每颗自己的节奏，容器直接就位，
 	 * 卡面一颗颗从小弹到原位，elastic 的过冲就是那下「Q弹」。
 	 */
@@ -589,17 +532,14 @@ function setupScenes(context: SetupContext) {
 			from: "random",
 		});
 
-		if (!stand) return;
 		standTransition?.kill();
-		gsap.set(stand, { xPercent: -50, rotation: 0 });
-		// 木杆是立牌的子元素，autoAlpha 与 rotationX 直接继承，无需单独补间
-		standTransition = gsap.to(stand, {
+		gsap.set(stands, { autoAlpha: 1 });
+		standTransition = gsap.to(standImages, {
 			autoAlpha: 1,
 			rotationX: 0,
-			duration: 0.72,
-			ease: "back.out(1.4)",
+			duration: 0.78,
+			ease: "power4.out",
 			overwrite: "auto",
-			onComplete: startSquash,
 		});
 	};
 
@@ -611,7 +551,6 @@ function setupScenes(context: SetupContext) {
 	const hideAct = () => {
 		if (!actVisible) return;
 		actVisible = false;
-		stopSquash();
 
 		cycleTransition?.kill();
 		cycleTransition = gsap.to(cycleStage, {
@@ -633,27 +572,28 @@ function setupScenes(context: SetupContext) {
 		});
 		bubbleWall.setPaused(true);
 
-		if (!stand) return;
 		standTransition?.kill();
-		standTransition = gsap.to(stand, {
+		standTransition = gsap.to(standImages, {
 			autoAlpha: 0,
 			duration: 0.46,
 			ease: "power2.in",
 			overwrite: "auto",
-			onComplete: () => gsap.set(stand, { rotationX: 88 }),
+			onComplete: () => {
+				gsap.set(standImages, { rotationX: 88 });
+				gsap.set(stands, { autoAlpha: 0 });
+			},
 		});
 	};
 
-	// 不用 hideAct 处理离屏：它会杀掉并复位跳跃，回来就不再是离开时的那一帧。
+	// 循环暂停时保留当前帧，回到前台或滚回本层后继续。
 	const syncAnimationPlayback = () => {
 		const layerLive = isLayerLive();
 		const loopsRun = loopsShouldRun();
-		// 立牌与背景方格的进离场补间不在这里暂停：它们的 onComplete 负责把姿态复位到
-		// rotationX 88，暂停会让复位永不发生，下次进场就只剩淡入而不再从后方立起。
-		// 两条无限循环与留言墙额外让开后台标签页；退场段（done）仍属影像层，照常跑。
+		// 背景方格的进离场补间不在这里暂停：onComplete 负责把姿态复位到 rotationX 88。
+		// 背景循环、留言墙和图片轨道额外让开后台标签页；退场段仍随 section 离场。
 		cycleLoop.paused(!loopsRun || !actVisible);
 		bubbleWall.setPaused(!loopsRun || !actVisible);
-		squashTimeline?.paused(!loopsRun || !actVisible);
+		setImageRailPaused(!loopsRun || !actVisible);
 		for (const scene of scenes) {
 			if (scene.intro && scene.intro.progress() < 1) {
 				scene.intro.paused(!layerLive);
@@ -672,56 +612,7 @@ function setupScenes(context: SetupContext) {
 		syncAnimationPlayback();
 	};
 
-	// 上一帧已写入的取整值：百分比、点亮块数与显隐取整后大多数帧并无变化，
-	// 按值短路可省掉每帧的 setAttribute / classList / autoAlpha 写入。
-	let lastMeterPercentage = -1;
-	let lastMeterLit = -1;
-	let lastMeterVisible: boolean | null = null;
-	let lastMeterFull: boolean | null = null;
-
-	/** 共用电池进度：按当前居中的连续幕索引逐块点亮，不播放额外入场动画。 */
-	const renderMeter = (sceneProgress: number, isVisible: boolean) => {
-		const boundedProgress = clamp(sceneProgress, 0, lastSceneIndex);
-		const progressRatio =
-			sceneCount <= 1 ? 1 : (boundedProgress + 1) / sceneCount;
-		const percentage = Math.round(progressRatio * 100);
-
-		// 至少点亮一块：首幕居中时进度已是 1/幕数，不该出现空条
-		const litCount =
-			meterBlocks.length > 0
-				? clamp(
-						Math.max(1, Math.round(progressRatio * meterBlocks.length)),
-						1,
-						meterBlocks.length,
-					)
-				: 0;
-		if (litCount !== lastMeterLit) {
-			for (let index = 0; index < meterBlocks.length; index += 1) {
-				meterBlocks[index].classList.toggle("is-lit", index < litCount);
-			}
-			lastMeterLit = litCount;
-		}
-		// 电池上方的状态字只在满格与否翻转时写一次，不在每帧碰 DOM
-		const full = meterBlocks.length > 0 && litCount === meterBlocks.length;
-		if (full !== lastMeterFull) {
-			const stateText = full ? "充电完毕" : "正在充电";
-			meterLabel.textContent = stateText;
-			meter.setAttribute("aria-valuetext", stateText);
-			lastMeterFull = full;
-		}
-		// 数值本身不再显示，只同步给读屏
-		if (percentage !== lastMeterPercentage) {
-			meter.setAttribute("aria-valuenow", String(percentage));
-			lastMeterPercentage = percentage;
-		}
-		if (isVisible !== lastMeterVisible) {
-			gsap.set(meter, { autoAlpha: isVisible ? 1 : 0 });
-			lastMeterVisible = isVisible;
-		}
-	};
-
 	const renderScenes = (sceneProgress: number, isVisible: boolean) => {
-		renderMeter(sceneProgress, isVisible);
 		const step = cachedSceneStep;
 		const layerLive = isLayerLive();
 		let moving = false;
@@ -766,7 +657,7 @@ function setupScenes(context: SetupContext) {
 			resetWindTimer = window.setTimeout(resetWind, 110);
 		}
 
-		// 背景跑马灯与立牌同进同出；立牌钉在起始横位不再随横移滑动
+		// 背景跑马灯与底部图片列表同进同出，图片横向位置独立于明信片滚动。
 		if (isVisible) showAct();
 		else hideAct();
 	};
@@ -821,12 +712,10 @@ function setupScenes(context: SetupContext) {
 		autoAlpha: 0,
 	});
 	gsap.set(cards, { autoAlpha: 0 });
-	// 立牌与背景跑马灯的初始姿态：以底边为铰链向后（远离视线）几乎平躺，入场时朝观众立起来
-	gsap.set(stands, {
-		xPercent: -50,
-		y: 0,
+	gsap.set(stands, { autoAlpha: 0 });
+	gsap.set(standImages, {
 		rotationX: 88,
-		transformPerspective: 1100,
+		transformPerspective: 1400,
 		autoAlpha: 0,
 	});
 	gsap.set(cycleStage, {
@@ -834,7 +723,6 @@ function setupScenes(context: SetupContext) {
 		transformPerspective: 1400,
 		autoAlpha: 0,
 	});
-	renderMeter(0, false);
 	for (const scene of scenes) hideSceneChrome(gsap, scene);
 
 	const shrinkTimeline = gsap.timeline({
@@ -941,11 +829,12 @@ function setupScenes(context: SetupContext) {
 	ScrollTrigger.addEventListener("refresh", handleRefresh);
 	document.addEventListener("visibilitychange", syncStage, { signal });
 
-	// 不支持鼠标拖拽横移：横向推进只跟随滚轮/触控板，避免与页面滚动抢手感
+	// 明信片仍由滚轮/触控板推进；底部图片轨道的拖拽不换算成页面滚动。
 	viewport.addEventListener(
 		"wheel",
 		(event) => {
 			if (
+				(event.target instanceof Node && stands.contains(event.target)) ||
 				!horizontalEnabled ||
 				!pinTrigger ||
 				Math.abs(event.deltaX) <= Math.abs(event.deltaY)
@@ -983,8 +872,7 @@ function setupScenes(context: SetupContext) {
 		bubbleTransition?.kill();
 		bubblePop?.kill();
 		standTransition?.kill();
-		// stopSquash 已经把立牌图的缩放复位到 1，不必再进下面的 killTweensOf 清单
-		stopSquash();
+		setImageRailPaused(true);
 		cycleLoop.kill();
 		for (const setRotation of rotationSetters) setRotation.tween.kill();
 		for (const scene of scenes) {
@@ -992,23 +880,25 @@ function setupScenes(context: SetupContext) {
 			scene.intro = null;
 			scene.active = false;
 			gsap.set(
-				[scene.band, scene.bandDivider, scene.bandNote].filter(
-					(element): element is HTMLElement => element !== null,
-				),
+				[
+					scene.bandTitle,
+					scene.bandDate,
+					scene.bandDivider,
+					scene.bandNote,
+				].filter((element): element is HTMLElement => element !== null),
 				{ clearProps: "willChange" },
 			);
 		}
-		renderMeter(0, false);
 		viewport.classList.remove("is-horizontal");
 		gsap.killTweensOf([
 			...cards,
 			...swings,
-			...stands,
+			stands,
+			...standImages,
 			cycleStage,
 			cycleTrack,
 			bubbleLayer,
 			...bubbleBodies,
-			meter,
 			stage,
 			portal,
 			portalImage,
@@ -1655,8 +1545,7 @@ async function initializeHomeBlinds(root: HTMLElement, generation: number) {
  * Swup 容器被替换之前拆掉整层。
  * 只挂 astro:page-load 的话，清理会推迟到 content:replace 之后 ——
  * 那时被 pin 的 section 和 ScrollTrigger 自己插的 .pin-spacer 已经随容器一起摘掉，
- * kill() 变成在游离节点上做 revert；而离场淡出期间跑马灯与跳跃这两条
- * repeat: -1 的时间线还在跑。递增 generation 同时作废仍在飞的异步初始化。
+ * kill() 变成在游离节点上做 revert；而离场淡出期间背景循环与图片轨道还在跑。递增 generation 同时作废仍在飞的异步初始化。
  * 复位 activeRoot 后，下一次 bootHomeBlinds 会照常重建（非首页时两者同为 null，直接短路）。
  */
 export function teardownHomeBlinds(): void {

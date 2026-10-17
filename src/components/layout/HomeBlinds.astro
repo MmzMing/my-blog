@@ -18,33 +18,17 @@ const sceneItems: HomeBlindsSceneItem[] = [
 	},
 	...config.scenes.items.slice(0, 4),
 ];
-const standImages = config.scenes.standImages.slice(
-	0,
-	Math.min(4, Math.max(0, sceneItems.length - 1)),
-);
+const standImages = config.scenes.standImages;
 /**
- * 背景方格：一个循环周期 CYCLE_PERIOD_PX（内部分 4 小格，粗线压在周期边界上），
- * 轨道按整周期往左平移，移满一格即与起点完全重合，循环看不出接缝。
- * 只注入这一个长度，小格边长由样式按 1/4 算；控制器也读同一个变量决定平移距离，
- * 平移量若取小格而非整周期，粗线会在接缝处整体跳一格。
+ * 拼图背景：SVG 蒙版每周期包含 4 块，凹凸方向交错；
+ * 控制器读同一个长度平移整层，循环边界与图案严格重合。
  */
 const CYCLE_PERIOD_PX = 224;
-/** 同屏飘着的气泡条数：文案由控制器按权重随机填，用完一条回收再填一条 */
+/** 气泡槽位上限：控制器按权重排出不重复队列，飘完一条回收再填下一条 */
 const BUBBLE_COUNT = 12;
 const bubbleMessages = config.scenes.bubbleMessages.filter(
 	(message) => (message.text ?? "").trim().length > 0 || Boolean(message.image),
 );
-// 底部电池为整层共用的一块，始终停在水平中间，由控制器随横移进度逐块点亮；
-// 序号与百分比不显示，数值只同步到 aria-valuenow
-const sceneInitialPercent = Math.round(100 / Math.max(1, sceneItems.length));
-// 电池内是一排等宽小方块（不是连续长条）。
-// 取 20 块：正好被 5 幕整除，每幕点亮 4 块
-const METER_BLOCK_COUNT = 20;
-const meterInitialLit = Math.max(
-	1,
-	Math.round((sceneInitialPercent / 100) * METER_BLOCK_COUNT),
-);
-const meterBlocks = Array.from({ length: METER_BLOCK_COUNT });
 /**
  * 评论区那条能不能取，在构建期就判完：只有 Waline 开着才有意义。
  * 判不过就把 enabled 压成 false，客户端一次请求都不会发，运行时不必再猜。
@@ -194,7 +178,7 @@ const runtimeConfig = {
 
 	<section class="home-blinds-scenes" data-home-blinds-scenes aria-label="横向影像叙事">
 		<div class="home-blinds-scenes__viewport" data-scenes-viewport>
-			<!-- 背景方格：与立牌同时从后方以纸牌立起的姿态入场，之后按整周期持续左移 -->
+			<!-- 拼图接缝：单张 SVG 蒙版随整层移动，不为每块拼图建立节点 -->
 			<div
 				class="home-blinds-scenes__cycle"
 				style={`--home-blinds-cycle-period: ${CYCLE_PERIOD_PX}px`}
@@ -208,7 +192,7 @@ const runtimeConfig = {
 			</div>
 
 			<!-- 留言墙：明信片身后一排气泡各自横向飘过，飘出屏幕外那一侧时回收换一条再飘。
-			     文案与头像由控制器按权重随机填，这里只给等量的空壳 -->
+			     文案与头像由控制器去重后按权重排序，这里只给等量的空壳 -->
 			<div
 				class="home-blinds-scenes__bubbles"
 				aria-hidden="true"
@@ -247,61 +231,24 @@ const runtimeConfig = {
 				}
 			</div>
 
-			<div
-				class="home-blinds-scenes__meter"
-				data-scenes-meter
-				role="progressbar"
-				aria-label="影像进度"
-				aria-valuemin="0"
-				aria-valuemax="100"
-				aria-valuenow={sceneInitialPercent}
-			>
-				<span class="home-blinds-scenes__meter-label" data-scenes-meter-label
-					>正在充电</span
-				>
-				<span class="home-blinds-scenes__meter-row">
-					<span class="home-blinds-scenes__meter-track">
-						<span
-							class="home-blinds-scenes__meter-blocks"
-							data-scenes-meter-blocks
-						>
-							{
-								meterBlocks.map((_, blockIndex) => (
-									<span
-										class:list={[
-											"home-blinds-scenes__meter-block",
-											{ "is-lit": blockIndex < meterInitialLit },
-										]}
-										data-scenes-meter-block
-									/>
-								))
-							}
-						</span>
-					</span>
-					<span class="home-blinds-scenes__meter-cap" aria-hidden="true"></span>
-				</span>
-			</div>
-
-			<div class="home-blinds-scenes__stands" aria-hidden="true">
-				{
-					standImages.map((image, index) => (
-						<div
-							class="home-blinds-scenes__stand"
-							style={`--home-blinds-stand-index: ${index}`}
-							data-scene-stand
-							data-stand-index={index}
-						>
-							<img
-								class="home-blinds-scenes__stand-image"
-								src={image}
-								alt=""
-								loading="lazy"
-								decoding="async"
-								data-scene-stand-image
-							/>
-						</div>
-					))
-				}
+			<div class="home-blinds-scenes__stands" data-scenes-stands aria-hidden="true">
+				<div class="home-blinds-scenes__stands-track" data-scenes-stands-track>
+					{
+						standImages.map((image) => (
+							<div class="home-blinds-scenes__stand" data-scenes-stand>
+								<img
+									class="home-blinds-scenes__stand-image"
+									data-scenes-stand-image
+									src={image}
+									alt=""
+									loading="lazy"
+									decoding="async"
+									draggable="false"
+								/>
+							</div>
+						))
+					}
+				</div>
 			</div>
 		</div>
 	</section>
@@ -321,7 +268,7 @@ const runtimeConfig = {
 	} from "@/utils/home-blinds-controller";
 	import { bindHomeLayer } from "@/utils/home-lifecycle";
 
-	// 这一层带 pin 与两条无限循环时间线，必须在 Swup 替换容器之前拆掉，
+	// 这一层带 pin、循环动画与可拖拽轨道，必须在 Swup 替换容器之前拆掉，
 	// 否则 kill() 会落在已经脱离文档的节点上（同 HomeHero）
 	bindHomeLayer("blinds", {
 		media: "(min-width: 769px)",

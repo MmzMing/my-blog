@@ -1,4 +1,5 @@
 ---
+import dayjs from "dayjs";
 import type { HomeBlindsSceneItem } from "@/types/config";
 
 interface Props {
@@ -14,29 +15,22 @@ const { index, item, composite = false } = Astro.props;
 // 单数幕垂直居中，左右两张错落排布
 const isRaised = index % 2 === 1;
 
-const CN_DIGITS = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+const sceneDate = item.date
+	? dayjs(item.date.replace(/\s+/gu, "")).format("YYYY/MM/DD")
+	: null;
 
-/**
- * 配置里的落款是 "2026 / 06 / 10"，底栏要拆成两行：
- * 上行中文年（二零二六年），下行月日数字（06 / 10）。
- * 年份不是纯数字时原样保留，不猜写法。
- */
-function splitSceneDate(date: string | undefined) {
-	if (!date) return null;
-	const [year, ...rest] = date.split("/");
-	const monthDay = rest.map((part) => part.trim()).join(" / ");
-	if (!year || !monthDay) return null;
-	const digits = year.trim().split("");
-	const isAllDigits = digits.every((d) => d >= "0" && d <= "9");
-	return {
-		yearText: isAllDigits
-			? `${digits.map((d) => CN_DIGITS[Number(d)]).join("")}年`
-			: year.trim(),
-		monthDay,
-	};
-}
-
-const sceneDate = splitSceneDate(item.date);
+// 数字保留真实笔顺，描线时不用测字形轮廓，也不依赖客户端字体。
+const numberStrokes = [
+	["M42 38L55 28L55 68", "M42 70H68"],
+	["M36 38C38 23 66 24 68 38C70 49 47 57 36 70H70"],
+	[
+		"M37 31C49 25 68 28 67 39C67 46 59 49 49 49C63 48 72 54 68 63C64 74 44 74 35 66",
+	],
+	["M56 29L35 55H70", "M61 29V71"],
+	["M69 29H40L37 49C49 42 69 46 69 59C69 74 45 76 35 66"],
+][index];
+const stickerEdge =
+	"M18 9L85 6Q93 5 97 15L100 37L97 43L102 49V64L82 88L21 92Q11 93 10 83L5 24Q4 13 18 9Z";
 ---
 
 <article
@@ -50,27 +44,131 @@ const sceneDate = splitSceneDate(item.date);
 	aria-label={item.title}
 >
 	<div class="home-blinds-scene__swing" data-scene-swing>
-		<!-- 吊线：自视窗顶部垂到卡顶正中，放在 swing 内与卡身一起绕挂点倾斜 -->
-		<span class="home-blinds-scene__string" aria-hidden="true"></span>
-
-		<div class="home-blinds-scene__rail" data-scene-rail>
-			<span class="home-blinds-scene__rail-dot" aria-hidden="true" data-scene-rail-dot
-			></span>
-			<span class="home-blinds-scene__rail-eyebrow" data-scene-rail-eyebrow
-				>{item.eyebrow}</span
-			>
-			<span class="home-blinds-scene__rail-line" aria-hidden="true" data-scene-rail-line
-			></span>
-			<span class="home-blinds-scene__rail-title" data-scene-rail-title
-				>{item.title}</span
-			>
-		</div>
+		<!-- 木夹分前后两层：后木臂被纸面遮住，前夹口压在照片上，双线随卡身一起摆动 -->
+		{
+			["left", "right"].map((side) => (
+				<div
+					class={`home-blinds-scene__hanger home-blinds-scene__hanger--${side}`}
+					aria-hidden="true"
+				>
+					<span class="home-blinds-scene__string" />
+					<svg
+						class="home-blinds-scene__clip home-blinds-scene__clip--back"
+						viewBox="0 0 84 182"
+						fill="none"
+					>
+						<g transform="translate(0 182) rotate(-90)">
+							<path
+								class="home-blinds-scene__clip-back"
+								d="M21 69L173 30Q179 28 177 34L75 70L25 78Q19 79 21 69Z"
+							/>
+							<path
+								class="home-blinds-scene__clip-bevel"
+								d="M25 74L75 66L175 31L177 34L75 70L25 78Z"
+							/>
+							<path
+								class="home-blinds-scene__clip-grain"
+								d="M84 62L158 36M42 70L68 66"
+							/>
+						</g>
+					</svg>
+					<svg
+						class="home-blinds-scene__clip home-blinds-scene__clip--front"
+						viewBox="0 0 84 182"
+						fill="none"
+					>
+						<g transform="translate(0 182) rotate(-90)">
+							<!-- 与木臂同形的短偏移阴影贴住纸面，夹口留出真实凹槽 -->
+							<path
+								class="home-blinds-scene__clip-shadow"
+								d="M10 43L163 7Q168 6 166 11L120 40L111 39Q105 38 105 43L59 58C62 51 60 43 53 41C45 39 39 45 40 53C41 61 47 63 53 61L23 72L7 50Q4 46 10 43Z"
+								transform="translate(-2 3)"
+							/>
+							<path
+								class="home-blinds-scene__clip-wood"
+								d="M10 43L163 7Q168 6 166 11L120 40L111 39Q105 38 105 43L59 58C62 51 60 43 53 41C45 39 39 45 40 53C41 61 47 63 53 61L23 72L7 50Q4 46 10 43Z"
+							/>
+							<path
+								class="home-blinds-scene__clip-bevel"
+								d="M7 50L23 72L53 61L48 61L24 67L9 47ZM60 54L105 40V43L59 58Z"
+							/>
+							<path
+								class="home-blinds-scene__clip-highlight"
+								d="M13 45L157 11M25 65L35 61"
+							/>
+							<path
+								class="home-blinds-scene__clip-grain"
+								d="M68 36L141 16M83 39L128 24M18 49L34 45M24 55L34 52M64 45L88 38"
+							/>
+							<path
+								class="home-blinds-scene__clip-wire-shadow"
+								d="M115 43L80 63L57 61M113 31L102 26"
+							/>
+							<path
+								class="home-blinds-scene__clip-wire"
+								d="M115 43L80 63L57 61M113 31L102 26"
+							/>
+							<circle class="home-blinds-scene__clip-coil-base" cx="119" cy="36" r="8" />
+							<circle class="home-blinds-scene__clip-coil" cx="119" cy="36" r="6" />
+						</g>
+					</svg>
+				</div>
+			))
+		}
 
 		<div class="home-blinds-scene__card">
-			<span class="home-blinds-scene__tape" aria-hidden="true"></span>
-			<span class="home-blinds-scene__sticker" aria-hidden="true" data-scene-sticker>
-				{index + 1}
-			</span>
+			<svg
+				class="home-blinds-scene__sticker"
+				viewBox="0 0 112 100"
+				fill="none"
+				aria-hidden="true"
+				data-scene-sticker
+			>
+				<g data-scene-sticker-fill>
+					<path
+						class="home-blinds-scene__sticker-shadow"
+						d={stickerEdge}
+						transform="translate(1 4)"
+					/>
+					<path class="home-blinds-scene__sticker-paper" d={stickerEdge} />
+					<path
+						class="home-blinds-scene__sticker-face"
+						d="M21 17L84 13Q88 12 90 20L93 37L90 43L95 50V62L77 81L23 85Q18 86 18 80L12 25Q11 19 21 17Z"
+					/>
+					<path
+						class="home-blinds-scene__sticker-fold"
+						d="M82 88L79 72Q78 66 85 65L102 64Z"
+					/>
+				</g>
+				<path
+					class="home-blinds-scene__sticker-outline"
+					d={stickerEdge}
+					pathLength="1"
+					data-scene-sticker-outline
+				/>
+				{
+					numberStrokes.map((d) => (
+						<path
+							class="home-blinds-scene__sticker-number"
+							d={d}
+							pathLength="1"
+							data-scene-sticker-ink
+						/>
+					))
+				}
+				<path
+					class="home-blinds-scene__sticker-crease"
+					d="M82 88L79 72Q78 66 85 65L102 64"
+					pathLength="1"
+					data-scene-sticker-ink
+				/>
+				<path
+					class="home-blinds-scene__sticker-glint"
+					d="M81 24L80 33M76 29L85 28"
+					pathLength="1"
+					data-scene-sticker-ink
+				/>
+			</svg>
 
 			<div class="home-blinds-scene__frame" data-scene-frame>
 				<img
@@ -83,27 +181,25 @@ const sceneDate = splitSceneDate(item.date);
 				/>
 			</div>
 
-			<!-- 底部介绍区：左列中文年 + 月日数字，竖杠分隔，右栏说明最多两行 -->
+			<!-- 标题与完整日期各占一层，保留独立节点供入场动效错峰显示 -->
 			<div class="home-blinds-scene__band">
-				{
-					sceneDate && (
-						<>
-							<div class="home-blinds-scene__band-id" data-scene-band>
-								<p class="home-blinds-scene__band-year">
-									{sceneDate.yearText}
-								</p>
-								<p class="home-blinds-scene__band-date">
-									{sceneDate.monthDay}
-								</p>
-							</div>
-							<span
-								class="home-blinds-scene__band-divider"
-								data-scene-band-divider
-								aria-hidden="true"
-							></span>
-						</>
-					)
-				}
+				<div class="home-blinds-scene__band-id">
+					<p class="home-blinds-scene__band-title" data-scene-title>
+						{item.title}
+					</p>
+					{
+						sceneDate && (
+							<p class="home-blinds-scene__band-date" data-scene-date>
+								{sceneDate}
+							</p>
+						)
+					}
+				</div>
+				<span
+					class="home-blinds-scene__band-divider"
+					data-scene-band-divider
+					aria-hidden="true"
+				></span>
 				<p class="home-blinds-scene__band-note" data-scene-note>
 					{item.description}
 				</p>

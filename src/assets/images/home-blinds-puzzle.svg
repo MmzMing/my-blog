@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
+	<defs>
+		<path id="edge" d="M0 0H18C21 0 23 2 21 4C18 7 18 12 23 13C26 14 30 14 33 13C38 12 38 7 35 4C33 2 35 0 38 0H74C77 0 79-2 77-4C74-7 74-12 79-13C82-14 86-14 89-13C94-12 94-7 91-4C89-2 91 0 94 0H112"/>
+		<pattern id="puzzle" width="112" height="112" patternUnits="userSpaceOnUse">
+			<g fill="none" stroke="white" stroke-width="0.8" stroke-linejoin="round">
+				<use href="#edge"/>
+				<use href="#edge" transform="translate(0 56) scale(1 -1)"/>
+				<use href="#edge" transform="translate(0 112)"/>
+				<use href="#edge" transform="rotate(90)"/>
+				<use href="#edge" transform="translate(56 0) rotate(90) scale(1 -1)"/>
+				<use href="#edge" transform="translate(112 0) rotate(90)"/>
+			</g>
+		</pattern>
+	</defs>
+	<path fill="url(#puzzle)" d="M0 0H224V224H0Z"/>
+</svg>

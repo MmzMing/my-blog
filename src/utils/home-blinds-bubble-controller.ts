@@ -1,4 +1,4 @@
-/** 一条气泡：text 与 image 至少有一个，weight 为被飘出的相对权重 */
+/** 一条气泡：text 与 image 至少有一个，weight 为每轮出场顺序的相对权重 */
 export type BubbleMessage = {
 	text?: string;
 	image?: string;
@@ -26,29 +26,17 @@ const MIN_SCALE = 0.82;
 const MAX_SCALE = 1.18;
 
 /**
- * 加权抽一条：先把权重累加成一张递增表，抽取时二分定位。
- * 表只在挂载时算一次，之后每换一条只花 O(log n)，不在滚动帧里跑加权随机。
- * 权重为 0 的条目在表上不占区间，因此永不被抽中。
+ * 加权洗牌：每条只占一个位置，权重越大越容易排在前面。
+ * 只在一轮用完后重排，避免高权重条目反复霸屏；不在滚动帧里计算。
  */
-function buildWeightedPicker(messages: BubbleMessage[]) {
-	const cumulative: number[] = [];
-	let total = 0;
-	for (const message of messages) {
-		total += Math.max(0, message.weight ?? 1);
-		cumulative.push(total);
-	}
-	if (total <= 0) return null;
-	return (random: number) => {
-		const target = random * total;
-		let low = 0;
-		let high = cumulative.length - 1;
-		while (low < high) {
-			const middle = (low + high) >> 1;
-			if (cumulative[middle] < target) low = middle + 1;
-			else high = middle;
-		}
-		return low;
-	};
+function buildWeightedQueue(messages: BubbleMessage[]): number[] {
+	return messages
+		.map((message, index) => ({
+			index,
+			priority: -Math.log(1 - Math.random()) / (message.weight ?? 1),
+		}))
+		.sort((left, right) => left.priority - right.priority)
+		.map(({ index }) => index);
 }
 
 function randomBetween(min: number, max: number) {
@@ -58,7 +46,7 @@ function randomBetween(min: number, max: number) {
 export type BubbleWall = {
 	/** 离屏与后台标签页停表：CSS 动画不会自己因为 visibility: hidden 而停下 */
 	setPaused: (paused: boolean) => void;
-	/** 往池子里追加几条（评论区捞回来的那条走这里），加权表按新池子重建 */
+	/** 往池子里追加几条（评论区捞回来的那条走这里），先去重再排入队列 */
 	addMessages: (messages: BubbleMessage[]) => void;
 };
 
@@ -82,27 +70,54 @@ export function startBubbleWall(options: {
 	const { container, bubbles, messages, signal } = options;
 	const setPaused = (paused: boolean) =>
 		container.classList.toggle("is-paused", paused);
-	// 池子允许事后追加（评论区那条是异步回来的），所以加权表也得能重建；
-	// 只往尾部 push，已发出的索引不会失效
-	const pool = [...messages];
-	const initialPick = buildWeightedPicker(pool);
-	// 兜底函数在下面的守卫之后不可能被调到，只是为了让 pick 的类型非空
-	let pick = initialPick ?? (() => 0);
+	// 索引只追加不改写；同一句文字即使带不同图片也只留一条，纯图按路径去重。
+	const pool: BubbleMessage[] = [];
+	const messageKeys = new Set<string>();
+	let queue: number[] = [];
 
-	const addMessages = (incoming: BubbleMessage[]) => {
-		const usable = incoming.filter(
-			(message) => (message.text ?? "").trim().length > 0,
-		);
-		if (usable.length === 0) return;
-		pool.push(...usable);
-		const rebuilt = buildWeightedPicker(pool);
-		if (rebuilt) pick = rebuilt;
+	const addMessages = (incoming: BubbleMessage[]): void => {
+		for (const message of incoming) {
+			const text = (message.text ?? "").replace(/\s+/gu, " ").trim();
+			const image = (message.image ?? "").trim();
+			if ((!text && !image) || (message.weight ?? 1) <= 0) continue;
+			const key = text ? `text:${text}` : `image:${image}`;
+			if (messageKeys.has(key)) continue;
+			messageKeys.add(key);
+			queue.push(pool.length);
+			pool.push({ ...message, text, image });
+		}
 	};
+	addMessages(messages);
+	queue = buildWeightedQueue(pool);
 
-	if (!initialPick || bubbles.length === 0) return { setPaused, addMessages };
+	if (bubbles.length === 0) return { setPaused, addMessages };
 
 	const slotByRoot = new Map(bubbles.map((slot) => [slot.root, slot]));
 	const lastPickBySlot = new Map<BubbleSlot, number>();
+	const active = new Set<number>();
+	const recent: number[] = [];
+
+	/** 优先用完当前轮；剩余条目全被同屏占用时才开下一轮，不做无限重抽。 */
+	const takeNext = (previous: number | undefined): number | undefined => {
+		const findAvailable = (allowRecent: boolean): number =>
+			queue.findIndex(
+				(index) =>
+					!active.has(index) &&
+					index !== previous &&
+					(allowRecent || !recent.includes(index)),
+			);
+		let position = findAvailable(false);
+		if (position < 0) position = findAvailable(true);
+		if (position < 0) {
+			queue = buildWeightedQueue(pool);
+			position = findAvailable(false);
+			if (position < 0) position = findAvailable(true);
+		}
+		// 小池子没有其他可选内容时允许原槽继续用上一条，同屏仍不重复。
+		if (position < 0) position = queue.findIndex((index) => !active.has(index));
+		if (position < 0) return undefined;
+		return queue.splice(position, 1)[0];
+	};
 
 	/** 图片到位：成功就淡入，失败就退回纯文字气泡，不留一块灰框挂在墙上 */
 	const settle = (slot: BubbleSlot, ok: boolean) => {
@@ -131,9 +146,23 @@ export function startBubbleWall(options: {
 	};
 
 	const assign = (slot: BubbleSlot) => {
-		let index = pick(Math.random());
-		// 同一颗气泡连着两次抽到同一条会露出「随机」的底，重掷一次即可
-		if (index === lastPickBySlot.get(slot)) index = pick(Math.random());
+		const previous = lastPickBySlot.get(slot);
+		if (previous !== undefined) {
+			active.delete(previous);
+			recent.push(previous);
+		}
+		// 留出一个未被同屏和近期记录占用的候选，池子较小时自动缩短避让窗口。
+		const recentLimit = Math.min(
+			bubbles.length,
+			Math.max(0, pool.length - bubbles.length - 1),
+		);
+		if (recent.length > recentLimit)
+			recent.splice(0, recent.length - recentLimit);
+		lastPickBySlot.delete(slot);
+		const index = takeNext(previous);
+		slot.root.classList.toggle("is-empty", index === undefined);
+		if (index === undefined) return;
+		active.add(index);
 		lastPickBySlot.set(slot, index);
 		paint(slot, pool[index]);
 	};

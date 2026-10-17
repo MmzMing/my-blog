@@ -123,6 +123,12 @@ html:has(.home-hero) #top-row {
 	background-position: var(--home-hero-tile-bg-x) var(--home-hero-tile-bg-y);
 }
 
+/* 图片就绪后才渐入，避免滚动时间线初始化时先闪现一帧完整碎片。 */
+.home-hero__mosaic-tile.is-idle-visible .home-hero__mosaic-tile-image {
+	opacity: 0;
+	visibility: hidden;
+}
+
 .home-hero__mosaic-complete {
 	position: relative;
 	z-index: 1;

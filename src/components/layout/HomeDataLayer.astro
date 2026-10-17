@@ -326,8 +326,12 @@ const statBoxes: {
 								style={`--deck-n:${deckItems.length};`}
 							>
 								{deckItems.map((item, i) => (
-									<div
+									<a
 										class="post-card"
+										href={item.href}
+										draggable="false"
+										tabindex={i === 0 ? 0 : -1}
+										inert={i !== 0}
 										data-post-card={i}
 										data-on={i === 0 ? "" : undefined}
 										style={`--depth:${i};`}
@@ -353,7 +357,7 @@ const statBoxes: {
 												<span class="post-card__date">{item.date}</span>
 											</p>
 										</div>
-									</div>
+									</a>
 								))}
 							</div>
 						)}

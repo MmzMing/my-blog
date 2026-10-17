@@ -160,9 +160,9 @@ export const homeConfig: HomeConfig = {
 		},
 		scenes: {
 			scrollDistance: 3400,
-			// 背景方格往左挪完一个循环周期（4 小格）所需的秒数，越小越快
+			// 拼图背景往左挪完一个循环周期（4 块）所需的秒数，越小越快
 			cycleDuration: 2.4,
-			// 留言墙气泡：条数不限，weight 越大越容易被飘出，缺省按 1 算。
+			// 留言墙气泡：同屏去重，每轮不放回；weight 越大越优先出场，缺省按 1 算。
 			// text 与 image 至少给一个；给了 image 就在文字下方带一张图。
 			// 文案是 2025—2026 网络热梗与站内老梗混排，梗过时了直接换掉就行
 			bubbleMessages: [
@@ -208,16 +208,14 @@ export const homeConfig: HomeConfig = {
 				weight: 4,
 			},
 			composite: {
-				eyebrow: "PROLOGUE / RUN",
 				title: "筑一间小屋",
 				description: "以代码为梁、热爱为瓦，荒原上筑起一间自己的小屋。",
 				alt: "第一幕插画",
-				// 明信片右下角的落款日期，按每张图的实际日期改；删掉即不显示
+				// 明信片左下角标题下的完整日期；删掉即只显示标题
 				date: "2026 / 05 / 07",
 			},
 			items: [
 				{
-					eyebrow: "SCENE 02 / LIGHT",
 					title: "小屋落户",
 					description: "一纸备案落定，小屋自此有门有牌，堂堂正正晒着太阳。",
 					image: "/assets/images/home-blinds/act2/1.webp",
@@ -225,7 +223,6 @@ export const homeConfig: HomeConfig = {
 					date: "2026 / 06 / 10",
 				},
 				{
-					eyebrow: "SCENE 03 / WIND",
 					title: "尘满窗台",
 					description: "人往学海拾新，倦意悄悄落了窗，小屋静候，蒙上薄尘。",
 					image: "/assets/images/home-blinds/act2/2.webp",
@@ -233,7 +230,6 @@ export const homeConfig: HomeConfig = {
 					date: "2026 / 06 / 21",
 				},
 				{
-					eyebrow: "SCENE 04 / PAGE",
 					title: "重燃灯火",
 					description: "拂去薄尘，重燃灯火，一砖一瓦再把小屋细细打磨。",
 					image: "/assets/images/home-blinds/act2/3.webp",
@@ -241,7 +237,6 @@ export const homeConfig: HomeConfig = {
 					date: "2026 / 08 / 18",
 				},
 				{
-					eyebrow: "FINALE / ARRIVE",
 					title: "抵达之前",
 					description: "笔墨暂歇，来日方长；下一程山水，且歌且行。",
 					image: "/assets/images/home-blinds/act2/4.webp",
@@ -249,7 +244,7 @@ export const homeConfig: HomeConfig = {
 					date: "2026 / 09 / 01",
 				},
 			],
-			standImages: ["/assets/images/home-blinds/act2-doll/1.webp"],
+			standImages: ["/assets/images/home-blinds/act2-doll/1.gif", "/assets/images/home-blinds/act2-doll/2.gif"],
 		},
 	},
 

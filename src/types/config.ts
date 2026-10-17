@@ -226,14 +226,13 @@ export type NavBarConfig = {
 };
 
 export type HomeBlindsSceneItem = {
-	/** 左侧竖排题名的英文标识 */
-	eyebrow: string;
+	/** 明信片左下角的标题，显示在完整日期上方 */
 	title: string;
 	/** 明信片底部的介绍文案 */
 	description: string;
 	image: string;
 	alt: string;
-	/** 明信片右下角的落款日期，如 "2026 / 03 / 14"；留空则不渲染 */
+	/** 标题下方的完整日期，如 "2026 / 03 / 14"；留空则只显示标题 */
 	date?: string;
 };
 
@@ -257,7 +256,7 @@ export type HomeBlindsHeadlineConfig = {
 };
 
 /**
- * 留言墙的一条气泡：weight 为该条被飘出的相对权重，缺省为 1。
+ * 留言墙的一条气泡：每轮不放回，weight 越大越优先出场，缺省为 1。
  * text 与 image 至少给一个，只给 image 就是纯图片气泡。
  */
 export type HomeBlindsBubbleMessage = {
@@ -280,7 +279,7 @@ export type HomeBlindsConfig = {
 	scenes: {
 		/** 横向影像层固定滚动距离，越小则横移越快 */
 		scrollDistance: number;
-		/** 背景方格横向走完一个循环周期（4 小格）所需时长（秒），越小越快 */
+		/** 拼图背景横向走完一个循环周期（4 块）所需时长（秒），越小越快 */
 		cycleDuration: number;
 		/** 影像层身后留言墙的气泡文案，可自由增减条数 */
 		bubbleMessages: HomeBlindsBubbleMessage[];
@@ -295,7 +294,7 @@ export type HomeBlindsConfig = {
 		composite: Omit<HomeBlindsSceneItem, "image" | "alt"> & { alt: string };
 		/** 后续画面，运行时最多读取前 4 张 */
 		items: HomeBlindsSceneItem[];
-		/** 立牌图 */
+		/** 底部图片列表：限制单张尺寸、底边对齐；每张独立往返与拖拽，显示全部图片 */
 		standImages: string[];
 	};
 };

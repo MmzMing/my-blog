@@ -220,6 +220,11 @@ export function mountHomeHero(): () => void {
 	);
 	const tiles = getTileStates(hero);
 	const tileElements = tiles.map((tile) => tile.element);
+	const tileIntroElements = Array.from(
+		hero.querySelectorAll<HTMLElement>(
+			".home-hero__mosaic-tile.is-idle-visible .home-hero__mosaic-tile-image",
+		),
+	);
 	let timeline: ReturnType<typeof gsap.timeline> | null = null;
 	let heroScrollTrigger: ReturnType<typeof ScrollTrigger.create> | null = null;
 	let scrollDriver: ReturnType<typeof gsap.to> | null = null;
@@ -246,7 +251,11 @@ export function mountHomeHero(): () => void {
 		if (tilesIntroTimeline) {
 			tilesIntroTimeline.progress(1);
 			tilesIntroTimeline = null;
+		} else if (!hasPlayedTilesIntro && tileIntroElements.length) {
+			// 图片未就绪就开始滚动时也直接显露内层，避免外层拼合后仍是空白。
+			gsap.set(tileIntroElements, { autoAlpha: 1, y: 0, scale: 1 });
 		}
+		hasPlayedTilesIntro = true;
 		if (textIntroTimeline) {
 			textIntroTimeline.progress(1);
 			textIntroTimeline.kill();
@@ -291,9 +300,6 @@ export function mountHomeHero(): () => void {
 		rainWanted = rainActive;
 		syncRain();
 		wordmark?.setActive(timelineTime < TITLE_EXIT_TIME);
-		// 碎片默认停在初始布局上，不再自动轮换，所以只有开始滚动时才需要
-		// 把仍在播的入场补间推到终帧，交给 scrub 时间线接管。
-		if (progress > 0.002) completePendingIntros();
 	};
 
 	// computed width / height 不受 transform 影响且保留小数；只在挂载和 refresh 时读布局。
@@ -479,6 +485,8 @@ export function mountHomeHero(): () => void {
 
 	const renderTimelineForScroll = (scrollProgress: number) => {
 		const progress = mapScrollProgressToTimelineProgress(scrollProgress);
+		// 先结束入场再渲染滚动帧，避免入场终帧覆盖本帧已经算好的淡出状态。
+		if (progress > 0.002) completePendingIntros();
 		timeline?.totalProgress(progress);
 		updateSceneState(progress);
 	};
@@ -486,9 +494,7 @@ export function mountHomeHero(): () => void {
 	const refreshMosaicGeometry = () => {
 		if (!timeline || !measureMosaic()) return;
 		const progress = timeline.totalProgress();
-		// 入场补间记录的是旧尺寸，尺寸改变后交给显式起点的滚动时间线恢复当前画面。
-		tilesIntroTimeline?.kill();
-		tilesIntroTimeline = null;
+		// 入场只作用于内层图片，刷新外层几何时保留渐入进度。
 		timeline.totalProgress(0, true);
 		// 进度为 0 时，invalidate 不会立即初始化尚未开始的补间，静止碎片要同步重定位。
 		gsap.set(tileElements, { ...initialTileVars });
@@ -700,7 +706,8 @@ export function mountHomeHero(): () => void {
 		requestScrollTriggerRefresh(ScrollTrigger);
 	};
 
-	// 初始可见碎片的渐入；完成后碎片就停在初始布局上，不再有其它自动动画
+	// 入场只动内部图片，外层的位置、景深和透明度始终交给滚动时间线。
+	// 不再补间模糊，避免入场时反复栅格化图片；初始景深仍由外层保留。
 	const playTilesIntro = () => {
 		if (
 			hasPlayedTilesIntro ||
@@ -709,38 +716,26 @@ export function mountHomeHero(): () => void {
 		)
 			return;
 		hasPlayedTilesIntro = true;
-		if ((timeline?.totalProgress() ?? 0) > 0.002) return;
-		const idleTiles = tiles.filter((tile) => tile.initiallyVisible);
-		if (!idleTiles.length) return;
+		if (!tileIntroElements.length) return;
 		tilesIntroTimeline = gsap.timeline({
 			onComplete: () => {
 				tilesIntroTimeline = null;
 			},
 		});
-		for (const tile of idleTiles) {
-			const transform = getTileInitialTransform(tile);
-			tilesIntroTimeline.fromTo(
-				tile.element,
-				{
-					y: transform.y + 24,
-					scaleX: transform.scaleX * 0.92,
-					scaleY: transform.scaleY * 0.92,
-					filter: `blur(${transform.blur + 5}px)`,
-					autoAlpha: 0,
-				},
-				{
-					y: transform.y,
-					scaleX: transform.scaleX,
-					scaleY: transform.scaleY,
-					filter: `blur(${transform.blur}px)`,
-					autoAlpha: 1,
-					duration: 0.85,
-					ease: "power2.out",
-					immediateRender: true,
-				},
-				0.06 + tile.order * 0.05,
-			);
-		}
+		tilesIntroTimeline.fromTo(
+			tileIntroElements,
+			{ y: 18, scale: 0.96, autoAlpha: 0 },
+			{
+				y: 0,
+				scale: 1,
+				autoAlpha: 1,
+				duration: 0.7,
+				stagger: 0.05,
+				ease: "power2.out",
+				immediateRender: true,
+			},
+			0.06,
+		);
 	};
 
 	// 右下角 contact：Scatter random 入场；下滑时字符风散退场

@@ -1,5 +1,5 @@
 /**
- * 首页导览四卡的交互控制器 —— 只负责「入场闸门」与「点击展开/收起」两件事。
+ * 首页导览四卡的交互控制器：入场、展开收起，以及数据层与文章牌堆的手动/自动切换。
  *
  * 描线动画本身不在这里：笔画的 dashoffset、分镜延迟、虚线围合流动全部由
  * home-data-layer.css 的关键帧驱动，本模块只切换根节点上的 3 个 dataset 属性，
@@ -32,6 +32,10 @@ const DECK_CYCLE_MS = 3800;
 const DECK_FLY_MS = 620;
 /** 少于此数不轮播，见下方注释 */
 const DECK_MIN_CARDS = 4;
+/** 与列表页轮播一致，先给点击留出移动余量，再按卡宽决定是否翻页 */
+const DECK_DRAG_THRESHOLD = 10;
+const DECK_DRAG_COMMIT_RATIO = 0.22;
+const DECK_DRAG_TILT = 9;
 
 const CARD_SELECTOR = "[data-guide-card]";
 /** 站点数据右侧的读数卡，与左侧层按 data-stat-card 对应 */
@@ -126,24 +130,28 @@ export function bootHomeGuide(root: HTMLElement): () => void {
 	// 卡片自身可聚焦（没有可见按钮），键盘用 Enter / Space 触发开合
 	const onKeyDown = (event: KeyboardEvent): void => {
 		if (event.key !== "Enter" && event.key !== " ") return;
-		const card = (event.target as Element | null)?.closest(CARD_SELECTOR);
+		const origin = event.target;
+		if (!(origin instanceof Element) || origin.closest("a, button")) return;
+		const card = origin.closest(CARD_SELECTOR);
 		if (!card) return;
 		event.preventDefault();
 		toggle(card.getAttribute("data-guide-card") ?? "");
 	};
 
 	/* ---- 站点数据：左侧层叠与右侧读数卡的联动 ----
-	   悬停某层 → 右侧换成那层的数据；移开 → 回到定住的那层；点击 → 定住。
-	   只做属性开关，抬升与淡入淡出的位移全部在 CSS 里 */
+	   悬停某层 → 右侧换成那层的数据；移开卡片 → 回到轮询的那层；点击 → 定住。
+	   读数共用一个滑动窗口，快速切层时由 CSS 从当前位置继续补间，避免淡出留白。 */
 	const statLayers = Array.from(
-		root.querySelectorAll<HTMLElement>(LAYER_SELECTOR),
+		root.querySelectorAll<SVGElement>(LAYER_SELECTOR),
 	);
 	const statReadouts = Array.from(
 		root.querySelectorAll<HTMLElement>(READOUT_SELECTOR),
 	);
+	const statReadout = root.querySelector<HTMLElement>(".stat-readout");
 	let statPinned = "0";
 
 	const markLayer = (index: string): void => {
+		statReadout?.style.setProperty("--stat-active", index);
 		statLayers.forEach((layer) => {
 			layer.toggleAttribute("data-on", layer.dataset.statIndex === index);
 		});
@@ -163,14 +171,20 @@ export function bootHomeGuide(root: HTMLElement): () => void {
 		);
 	};
 
-	const onStatOver = (event: PointerEvent): void => {
-		const index = indexOfLayer(event.target as Element | null);
+	const onStatMove = (event: PointerEvent): void => {
+		const index = indexOfLayer(
+			event.target instanceof Element ? event.target : null,
+		);
 		if (index !== null) markLayer(index);
 	};
 
 	const onStatOut = (event: PointerEvent): void => {
-		// 从一层移到另一层不算离开，否则途经空白会闪回定住的那层
-		if (indexOfLayer(event.relatedTarget as Element | null) !== null) return;
+		// 抬层动画会让热区从鼠标下移走，留在卡片内时保留手动选中，避免读数闪回。
+		if (
+			event.relatedTarget instanceof Element &&
+			event.relatedTarget.closest('[data-guide-card="stats"]')
+		)
+			return;
 		markLayer(statPinned);
 	};
 
@@ -209,7 +223,11 @@ export function bootHomeGuide(root: HTMLElement): () => void {
 		};
 	};
 
-	const isPaused = (id: string): boolean => pausedCards.has(id);
+	const isPaused = (id: string): boolean =>
+		pausedCards.has(id) ||
+		(Boolean(document.activeElement?.matches(":focus-visible")) &&
+			document.activeElement?.closest<HTMLElement>(CARD_SELECTOR)?.dataset
+				.guideCard === id);
 
 	const unbindStatsPause = bindPauseOnHover("stats");
 
@@ -240,18 +258,35 @@ export function bootHomeGuide(root: HTMLElement): () => void {
 	const deckCards = Array.from(
 		root.querySelectorAll<HTMLElement>(POST_CARD_SELECTOR),
 	);
+	const deck = root.querySelector<HTMLElement>("[data-post-deck]");
 	const accordion = root.querySelector<HTMLElement>(POST_ACC_SELECTOR);
 	let deckAnchor = 0;
 	let deckShown = 0;
 	let deckCycleTimer: number | null = null;
 	let deckFlyTimer: number | null = null;
+	let deckFlyingCard: HTMLElement | null = null;
+	let deckPointerId: number | null = null;
+	let deckDragCard: HTMLElement | null = null;
+	let deckStartX = 0;
+	let deckStartY = 0;
+	let deckDragWidth = 0;
+	let deckOffset = 0;
+	let isDeckDragging = false;
+	let suppressDeckClick = false;
 
 	const layoutDeck = (): void => {
 		const n = deckCards.length;
+		const shouldMoveFocus = deckCards.some(
+			(card) =>
+				card === document.activeElement && card.matches(":focus-visible"),
+		);
 		deckCards.forEach((card, i) => {
 			card.style.setProperty("--depth", String((i - deckShown + n) % n));
 			card.toggleAttribute("data-on", i === deckShown);
+			card.inert = i !== deckShown;
+			card.tabIndex = i === deckShown ? 0 : -1;
 		});
+		if (shouldMoveFocus) deckCards[deckShown]?.focus({ preventScroll: true });
 	};
 
 	const showDeckCard = (index: number): void => {
@@ -260,18 +295,35 @@ export function bootHomeGuide(root: HTMLElement): () => void {
 		layoutDeck();
 	};
 
-	const advanceDeck = (): void => {
+	const finishDeckFlight = (): void => {
+		if (deckFlyTimer !== null) window.clearTimeout(deckFlyTimer);
+		deckFlyTimer = null;
+		const card = deckFlyingCard;
+		if (!card) return;
+		deckFlyingCard = null;
+		// 飞出的牌直接归入当前栈底位置，不能在撤掉 data-flying 后反向补间回牌面。
+		card.style.transition = "none";
+		card.removeAttribute("data-flying");
+		card.style.removeProperty("--deck-fly-direction");
+		card.getBoundingClientRect();
+		card.style.removeProperty("transition");
+	};
+
+	const advanceDeck = (flyDirection: 1 | -1 = 1): void => {
 		const n = deckCards.length;
-		const leaving = deckCards[deckAnchor];
-		deckAnchor = (deckAnchor + 1) % n;
+		if (n < 2) return;
+		finishDeckFlight();
+		const leaving = deckCards[deckShown];
+		// 左右拖走都翻开下一张，方向只影响飞出姿态，旧顶牌始终排到最底部。
+		deckAnchor = (deckShown + 1) % n;
 		deckShown = deckAnchor;
 		layoutDeck();
+		// 小牌堆和减少动态效果模式直接换牌，避免旧牌回栈时从正面穿过。
+		if (reduced || n < DECK_MIN_CARDS) return;
+		deckFlyingCard = leaving ?? null;
+		leaving?.style.setProperty("--deck-fly-direction", String(flyDirection));
 		leaving?.setAttribute("data-flying", "");
-		if (deckFlyTimer !== null) window.clearTimeout(deckFlyTimer);
-		deckFlyTimer = window.setTimeout(() => {
-			deckFlyTimer = null;
-			leaving?.removeAttribute("data-flying");
-		}, DECK_FLY_MS);
+		deckFlyTimer = window.setTimeout(finishDeckFlight, DECK_FLY_MS);
 	};
 
 	const stopDeckCycle = (): void => {
@@ -284,12 +336,120 @@ export function bootHomeGuide(root: HTMLElement): () => void {
 		if (deckCycleTimer !== null || reduced || deckCards.length < DECK_MIN_CARDS)
 			return;
 		deckCycleTimer = window.setInterval(() => {
-			if (activeId === "posts" || isPaused("posts")) return;
+			if (activeId === "posts" || isPaused("posts") || deckPointerId !== null)
+				return;
 			advanceDeck();
 		}, DECK_CYCLE_MS);
 	};
 
 	const unbindDeckPause = bindPauseOnHover("posts");
+
+	const resetDeckDrag = (): void => {
+		const pointerId = deckPointerId;
+		deckPointerId = null;
+		isDeckDragging = false;
+		deck?.removeAttribute("data-dragging");
+		deckDragCard?.style.removeProperty("transform");
+		deckDragCard = null;
+		if (pointerId !== null && deck?.hasPointerCapture(pointerId))
+			deck.releasePointerCapture(pointerId);
+	};
+
+	const onDeckDown = (event: PointerEvent): void => {
+		if (
+			!event.isPrimary ||
+			event.button !== 0 ||
+			activeId === "posts" ||
+			deckCards.length < 2 ||
+			deckPointerId !== null
+		)
+			return;
+		const card =
+			event.target instanceof Element
+				? event.target.closest<HTMLElement>(`${POST_CARD_SELECTOR}[data-on]`)
+				: null;
+		if (!card) return;
+		// 自动抛牌尚未结束时，先收掉旧牌，当前封面立即交给手动操作。
+		finishDeckFlight();
+		deckPointerId = event.pointerId;
+		deckDragCard = card;
+		deckStartX = event.clientX;
+		deckStartY = event.clientY;
+		deckDragWidth = card.getBoundingClientRect().width;
+		deckOffset = 0;
+		suppressDeckClick = false;
+		stopDeckCycle();
+	};
+
+	const onDeckMove = (event: PointerEvent): void => {
+		if (event.pointerId !== deckPointerId || !deckDragCard || !deck) return;
+		const dx = event.clientX - deckStartX;
+		const dy = event.clientY - deckStartY;
+		if (!isDeckDragging) {
+			if (Math.max(Math.abs(dx), Math.abs(dy)) < DECK_DRAG_THRESHOLD) return;
+			// 纵向手势留给页面滚动；只有横向拖动才捕获指针并拦住后续点击。
+			if (Math.abs(dx) <= Math.abs(dy)) {
+				resetDeckDrag();
+				startDeckCycle();
+				return;
+			}
+			isDeckDragging = true;
+			suppressDeckClick = true;
+			deck.setPointerCapture(event.pointerId);
+			deck.setAttribute("data-dragging", "");
+		}
+		event.preventDefault();
+		deckOffset = Math.max(-deckDragWidth, Math.min(dx, deckDragWidth));
+		const tilt = (deckOffset / deckDragWidth) * DECK_DRAG_TILT;
+		deckDragCard.style.transform = `translateX(${deckOffset}px) rotate(${tilt}deg)`;
+	};
+
+	const onDeckUp = (event: PointerEvent): void => {
+		if (event.pointerId !== deckPointerId) return;
+		const shouldAdvance =
+			isDeckDragging &&
+			Math.abs(deckOffset) >= deckDragWidth * DECK_DRAG_COMMIT_RATIO;
+		const direction = deckOffset < 0 ? 1 : -1;
+		resetDeckDrag();
+		if (shouldAdvance) advanceDeck(direction);
+		startDeckCycle();
+	};
+
+	const onDeckCancel = (event: PointerEvent): void => {
+		if (event.pointerId !== deckPointerId) return;
+		resetDeckDrag();
+		startDeckCycle();
+	};
+
+	const onDeckClick = (event: MouseEvent): void => {
+		if (!suppressDeckClick || event.detail === 0) return;
+		suppressDeckClick = false;
+		// 拖拽结束仍会合成 click，必须在捕获阶段同时阻止链接跳转与外层卡片展开。
+		event.preventDefault();
+		event.stopPropagation();
+	};
+
+	const onDeckKeyDown = (event: KeyboardEvent): void => {
+		if (activeId === "posts") return;
+		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+		event.preventDefault();
+		event.stopPropagation();
+		advanceDeck(event.key === "ArrowRight" ? 1 : -1);
+	};
+
+	const onDeckDragStart = (event: DragEvent): void => {
+		// 封面与链接的原生拖放会截断 pointermove，统一使用上面的跟手翻牌。
+		event.preventDefault();
+	};
+
+	deck?.addEventListener("pointerdown", onDeckDown);
+	window.addEventListener("pointermove", onDeckMove, { passive: false });
+	window.addEventListener("pointerup", onDeckUp);
+	window.addEventListener("pointercancel", onDeckCancel);
+	deck?.addEventListener("lostpointercapture", onDeckCancel);
+	deck?.addEventListener("click", onDeckClick, { capture: true });
+	deck?.addEventListener("keydown", onDeckKeyDown);
+	deck?.addEventListener("dragstart", onDeckDragStart);
 
 	/* 展开态：悬停手风琴里的哪一条，左侧就换成那张封面 */
 	const indexOfPick = (node: Element | null): number | null => {
@@ -343,7 +503,8 @@ export function bootHomeGuide(root: HTMLElement): () => void {
 		head.addEventListener("click", onAccHead);
 	});
 
-	root.addEventListener("pointerover", onStatOver);
+	// 只跟随实际指针移动选层，抬层动画合成的 pointerover 不应再次切换读数。
+	root.addEventListener("pointermove", onStatMove);
 	root.addEventListener("pointerout", onStatOut);
 	// 必须早于 onClick 注册：同为 root 上的冒泡阶段监听，先注册的先执行，
 	// 才能靠 stopPropagation 挡住「点层被当成点卡收起」
@@ -379,7 +540,20 @@ export function bootHomeGuide(root: HTMLElement): () => void {
 		observer?.disconnect();
 		stopStatCycle();
 		stopDeckCycle();
-		if (deckFlyTimer !== null) window.clearTimeout(deckFlyTimer);
+		finishDeckFlight();
+		resetDeckDrag();
+		deck?.removeEventListener("pointerdown", onDeckDown);
+		window.removeEventListener("pointermove", onDeckMove);
+		window.removeEventListener("pointerup", onDeckUp);
+		window.removeEventListener("pointercancel", onDeckCancel);
+		deck?.removeEventListener("lostpointercapture", onDeckCancel);
+		deck?.removeEventListener("click", onDeckClick, { capture: true });
+		deck?.removeEventListener("keydown", onDeckKeyDown);
+		deck?.removeEventListener("dragstart", onDeckDragStart);
+		deckShown = 0;
+		layoutDeck();
+		markLayer("0");
+		statReadout?.style.removeProperty("--stat-active");
 		unbindStatsPause();
 		unbindDeckPause();
 		accordion?.removeEventListener("pointerover", onPickOver);
@@ -389,7 +563,7 @@ export function bootHomeGuide(root: HTMLElement): () => void {
 		});
 		root.removeEventListener("click", onClick);
 		root.removeEventListener("keydown", onKeyDown);
-		root.removeEventListener("pointerover", onStatOver);
+		root.removeEventListener("pointermove", onStatMove);
 		root.removeEventListener("pointerout", onStatOut);
 		root.removeEventListener("click", onStatClick);
 		timeline?.kill();
