@@ -263,6 +263,7 @@ export const ru: Translation = {
 	[Key.tools]: "Инструменты",
 	[Key.breadcrumb]: "Навигационная цепочка",
 	[Key.copyPrefix]: "Копировать",
+	[Key.copyAll]: "Копировать всё",
 	[Key.copyTemplate]: "Копировать шаблон",
 	[Key.copyNotice]: "Скопировано. При перепечатке укажите ссылку на эту статью",
 

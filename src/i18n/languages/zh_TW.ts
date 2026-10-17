@@ -258,6 +258,7 @@ export const zh_TW: Translation = {
 	[Key.tools]: "工具",
 	[Key.breadcrumb]: "麵包屑",
 	[Key.copyPrefix]: "複製",
+	[Key.copyAll]: "全部複製",
 	[Key.copyTemplate]: "複製範本",
 	[Key.copyNotice]: "複製成功，轉載請標註本文地址",
 

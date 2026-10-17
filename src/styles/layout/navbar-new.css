@@ -564,90 +564,78 @@
 }
 
 /* ============================================
- * 公告弹窗：工具面板公告入口 → 水平垂直居中展示
+ * 主题图标形变
+ * 切主题走的是 View Transitions（setting-utils 的 runThemeMutation），整页 root 被
+ * 快照交叉淡入，元素身上的 CSS 过渡在快照期间是看不见的。给它独立的快照组，
+ * 让它按参考实现里光芒那套「转 90° + 缩到 0.4」自己转着换，才是这条路径上唯一
+ * 看得见的动效。不支持 VT 的浏览器由 ThemeMorphIcon.astro 内的 CSS 过渡接管。
  * ============================================ */
-.nav-announcement-modal {
-	position: fixed;
-	inset: 0;
-	z-index: 99999;
-	display: none;
-	align-items: center;
-	justify-content: center;
-	padding: 1rem;
+.nav-tools-item .theme-morph {
+	view-transition-name: nav-theme-icon;
 }
 
-.nav-announcement-modal.is-open {
-	display: flex;
+::view-transition-group(nav-theme-icon) {
+	animation-duration: 0.45s;
+	animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 图标是透明底的描边图形，默认的 multiply / screen 混合会让线条发灰 */
+::view-transition-image-pair(nav-theme-icon) {
+	mix-blend-mode: normal;
+}
+::view-transition-old(nav-theme-icon) {
+	animation: nav-theme-icon-out 0.2s ease-in forwards;
+}
+::view-transition-new(nav-theme-icon) {
+	animation: nav-theme-icon-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-.nav-announcement-backdrop {
-	position: absolute;
-	inset: 0;
-	background: oklch(0 0 0 / 0.5);
-	backdrop-filter: blur(4px);
+@keyframes nav-theme-icon-out {
+	to {
+		opacity: 0;
+		transform: rotate(-90deg) scale(0.4);
+	}
+}
+@keyframes nav-theme-icon-in {
+	from {
+		opacity: 0;
+		transform: rotate(90deg) scale(0.4);
+	}
 }
 
-.nav-announcement-modal.is-open .nav-announcement-backdrop {
-	animation: nav-announcement-fade 0.2s ease-out;
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-group(nav-theme-icon),
+	::view-transition-old(nav-theme-icon),
+	::view-transition-new(nav-theme-icon) {
+		animation: none;
+	}
 }
 
-.nav-announcement-panel {
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	width: 100%;
-	max-width: 26rem;
-	max-height: min(42rem, 85vh);
-	border: 1.5px solid var(--deep-text);
-	border-radius: 0.75rem;
-	background: var(--float-panel-bg);
-	color: var(--deep-text);
-	box-shadow: 0 25px 50px -12px oklch(0 0 0 / 0.25);
-	overflow: hidden;
-}
-
-.nav-announcement-modal.is-open .nav-announcement-panel {
-	animation: nav-announcement-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.nav-announcement-header {
+/* ============================================
+ * 公告弹窗：这里只留公告自己的内容样式（标题图标与列表条目）。
+ * 弹窗外壳 —— 遮罩、面板、标题行、正文滚动、底部按钮、进出动效、窄屏收窄 ——
+ * 全部复用 .privacy-* 那套（src/styles/components/privacy-modal.css），
+ * 隐私政策与用户协议两个弹窗用的也是它，不再抄第二份数值。
+ * ============================================ */
+/* .privacy-title 不是 flex 容器，铃铛和标题会各占一行；公告标题要并排 */
+.nav-announcement-title {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
-	padding: 0.875rem 1rem;
-	font-weight: 600;
-	border-bottom: 1.5px solid color-mix(in oklch, var(--deep-text) 15%, transparent);
 }
-
-.nav-announcement-close {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 1.75rem;
-	height: 1.75rem;
-	margin-left: auto;
-	border-radius: 9999px;
-	color: var(--deep-text);
-	transition: background-color 0.2s ease;
-}
-
-.nav-announcement-close:hover {
-	background-color: var(--navbar-highlight-bg);
+.nav-announcement-title-icon {
+	font-size: 1.2rem;
+	opacity: 0.75;
 }
 
 .nav-announcement-list {
 	display: flex;
 	flex-direction: column;
 	gap: 0.75rem;
-	padding: 0.75rem 1rem 1rem;
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	scrollbar-width: thin;
 }
 
 .nav-announcement-item {
 	padding: 0.75rem 0.875rem;
-	border: 1px solid color-mix(in oklch, var(--deep-text) 15%, transparent);
+	border: 1px solid var(--card-border);
 	border-radius: 0.625rem;
 }
 
@@ -690,26 +678,6 @@
 	margin-top: 0.5rem;
 }
 
-@keyframes nav-announcement-fade {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
-}
-
-@keyframes nav-announcement-in {
-	from {
-		opacity: 0;
-		transform: translateY(0.5rem) scale(0.96);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-}
-
 @media (prefers-reduced-motion: reduce) {
 	.nav-tools-panel,
 	.nav-tools-item,
@@ -723,10 +691,5 @@
 	.nav-tools-panel,
 	.nav-tools-item {
 		transform: none !important;
-	}
-
-	.nav-announcement-backdrop,
-	.nav-announcement-panel {
-		animation: none !important;
 	}
 }

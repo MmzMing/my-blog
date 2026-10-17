@@ -1,0 +1,99 @@
+---
+/**
+ * 复制 ↔ 对勾 形变图标，照搬参考实现 CopyCheckIcon：
+ * 后面那张纸往前收进前面那张底下并淡出，前面那张缩到 0.7 淡出，
+ * 对勾用 pathLength 从起点画出来，比两张图硬切换更连贯。
+ *
+ * 状态由祖先的 .is-copied 驱动（复制按钮的 JS 已经在校时切换这个类），
+ * 图标本身不带任何脚本。对勾画法沿用仓库里 HomeGuideArt 的
+ * pathLength="1" + stroke-dasharray 归一化套路。
+ */
+interface Props {
+	class?: string;
+}
+
+const { class: className = "" } = Astro.props;
+---
+
+<svg
+	class:list={["copy-check", className]}
+	viewBox="0 0 24 24"
+	width="1em"
+	height="1em"
+	fill="none"
+	stroke="currentColor"
+	stroke-width="1.75"
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	aria-hidden="true"
+	focusable="false"
+>
+	<path
+		class="copy-check__back"
+		d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+	/>
+	<rect class="copy-check__front" x="8" y="8" width="14" height="14" rx="2" />
+	<path class="copy-check__mark" pathLength="1" d="M5 12.5 L9.5 17 L19 7.5" />
+</svg>
+
+<style>
+	.copy-check {
+		display: inline-block;
+		overflow: visible;
+	}
+
+	.copy-check__back,
+	.copy-check__front,
+	.copy-check__mark {
+		transform-box: fill-box;
+		transform-origin: center;
+	}
+
+	.copy-check__back {
+		transition:
+			transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+			opacity 140ms ease;
+	}
+
+	.copy-check__front {
+		transition:
+			transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+			opacity 140ms ease;
+	}
+
+	/* 未复制时整条描边被 dashoffset 推走，等于不可见，但保留占位以便回抽 */
+	.copy-check__mark {
+		stroke-dasharray: 1;
+		stroke-dashoffset: 1;
+		opacity: 0;
+		transition:
+			stroke-dashoffset 380ms cubic-bezier(0.22, 1, 0.36, 1),
+			opacity 80ms ease;
+	}
+
+	:global(.is-copied) .copy-check__back {
+		transform: translate(4px, 4px);
+		opacity: 0;
+	}
+
+	:global(.is-copied) .copy-check__front {
+		transform: scale(0.7);
+		opacity: 0;
+	}
+
+	/* 对勾晚 60ms 起笔：等两张纸让开，画出来才不显得叠在一起 */
+	:global(.is-copied) .copy-check__mark {
+		stroke-dashoffset: 0;
+		opacity: 1;
+		transition-delay: 60ms;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.copy-check__back,
+		.copy-check__front,
+		.copy-check__mark {
+			transition-duration: 0s;
+			transition-delay: 0s;
+		}
+	}
+</style>

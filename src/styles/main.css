@@ -42,6 +42,20 @@
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+/* 列表卡片的表面层级与描边：与首页导览四卡同一套算法（home-data-layer.css 的
+   --guide-card-surface / --guide-card-border），拿前景色往底色或透明里混 ——
+   浅色下变深、深色下变亮，两个主题都得到与底色的分离感。
+   深色下 5% / 11% 实测正是 #181818 与 #222222。
+   只声明一份：引用的 --deep-text / --page-bg 由 :root.dark 覆盖，
+   自定义属性在同一元素上求值，切深色时这几个跟着翻。
+   注意别挪进 variables.styl —— Stylus 会把 color-mix() 整条丢掉。 */
+:root {
+  --card-surface: color-mix(in oklab, var(--deep-text) 5%, var(--page-bg));
+  --card-surface-hover: color-mix(in oklab, var(--deep-text) 11%, var(--page-bg));
+  --card-border: color-mix(in oklab, var(--deep-text) 14%, transparent);
+  --card-border-hover: color-mix(in oklab, var(--deep-text) 30%, transparent);
+}
+
 /* 自定义工具类 - Tailwind v4 使用 @utility 定义 */
 @utility expand-animation {
   position: relative;

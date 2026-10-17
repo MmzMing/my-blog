@@ -45,7 +45,11 @@ const groups = [...groupMap.entries()]
 		label: key === "__uncategorized__" ? i18n(I18nKey.uncategorized) : key,
 		items: list,
 	}))
-	.sort((a, b) => a.label.localeCompare(b.label));
+	/* 按码位序排，不用 localeCompare —— 后者不带 locale 时按运行时的默认语言做拼音排序：
+	   本机 Node 是 zh-CN，"Blog" 会排到 "收藏博客/文档/星图" 之后；
+	   CI 是 en-US，"Blog" 又排到最前。同一份配置两个环境两种顺序，
+	   码位序不依赖 ICU 数据与系统语言，哪儿都一致（Latin 在 CJK 之前，即线上那份顺序） */
+	.sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0));
 
 const chatMessages = friendsPageConfig.chat ?? [];
 

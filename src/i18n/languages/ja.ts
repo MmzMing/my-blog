@@ -262,6 +262,7 @@ export const ja: Translation = {
 	[Key.tools]: "ツール",
 	[Key.breadcrumb]: "パンくずリスト",
 	[Key.copyPrefix]: "コピー",
+	[Key.copyAll]: "すべてコピー",
 	[Key.copyTemplate]: "テンプレートをコピー",
 	[Key.copyNotice]: "コピーしました。転載の際は本文のURLを明記してください",
 

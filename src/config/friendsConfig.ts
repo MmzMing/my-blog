@@ -672,7 +672,8 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 		title: "AIOVTUE-雪",
-		imgurl: "https://r2tc.20030327.xyz/file/博客/主题/1780655293662_avatar_me.jpg.PNG",
+		imgurl:
+			"https://r2tc.20030327.xyz/file/博客/主题/1780655293662_avatar_me.jpg.PNG",
 		desc: "雨滴会记录生命中的每一个瞬间",
 		siteurl: "https://daily.yybb.us",
 		image: "/assets/images/friends/yybb.webp",

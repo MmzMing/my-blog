@@ -250,6 +250,7 @@ enum I18nKey {
 	tools = "tools",
 	breadcrumb = "breadcrumb",
 	copyPrefix = "copyPrefix",
+	copyAll = "copyAll",
 	copyTemplate = "copyTemplate",
 	copyNotice = "copyNotice",
 

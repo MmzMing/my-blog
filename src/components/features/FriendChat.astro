@@ -2,6 +2,7 @@
 import { join, normalize } from "node:path";
 import Icon from "@components/common/Icon.astro";
 import masterAvatar from "@/assets/images/avatar-master.webp";
+import CopyCheckIcon from "@/components/common/CopyCheckIcon.astro";
 import { friendsPageConfig, homeConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -45,6 +46,11 @@ const siteInfoRows = site
 			{ label: i18n(I18nKey.siteAvatarLabel), value: site.avatar },
 		].filter((row) => Boolean(row.value))
 	: [];
+
+// 「全部复制」的成稿：标题：值，一行一条，与页面上各行展示的标签完全同源
+const allSiteInfoText = siteInfoRows
+	.map((row) => `${row.label}：${row.value}`)
+	.join("\n");
 ---
 
 <section class="friend-chat" data-friend-chat>
@@ -86,7 +92,9 @@ const siteInfoRows = site
         </span>
         <div class="friend-chat__bubble">
           <span class="friend-chat__name">{msg.name}</span>
-          <p class="friend-chat__text" data-friend-chat-text></p>
+          {/* 整句先按服务端渲染留在 DOM 里：无 JS 时照常显示、也照常被抓取。
+              脚本会在打字前用它量出终态宽度并钉住，然后清空逐字打 */}
+          <p class="friend-chat__text" data-friend-chat-text>{msg.text}</p>
         </div>
       </div>
     ))}
@@ -130,10 +138,24 @@ const siteInfoRows = site
     <!-- 右：本站信息（用于复制） -->
     {site && siteInfoRows.length > 0 && (
       <div class="friend-apply__site">
-        <h3 class="friend-apply__site-title">
-          <Icon name="material-symbols:content-copy-outline-rounded" class="friend-apply__site-icon" />
-          {i18n(I18nKey.friendSiteInfo)}
-        </h3>
+        <div class="friend-apply__site-head">
+          <h3 class="friend-apply__site-title">
+            <Icon name="material-symbols:content-copy-outline-rounded" class="friend-apply__site-icon" />
+            {i18n(I18nKey.friendSiteInfo)}
+          </h3>
+          <button
+            type="button"
+            class="friend-apply__copy-all"
+            data-copy-text={allSiteInfoText}
+            aria-label={i18n(I18nKey.copyAll)}
+            title={allSiteInfoText}
+          >
+            <CopyCheckIcon class="friend-apply__copy-glyph" />
+            {/* 两个标签都渲染，靠 is-copied 互换：文字和图标一起给出成功反馈 */}
+            <span class="friend-apply__copy-idle">{i18n(I18nKey.copyAll)}</span>
+            <span class="friend-apply__copy-done">{i18n(I18nKey.copied)}</span>
+          </button>
+        </div>
         <div class="friend-apply__rows">
           {siteInfoRows.map((row) => (
             <div class="friend-apply__row">
@@ -147,8 +169,7 @@ const siteInfoRows = site
                 data-copy-text={row.value}
                 aria-label={`${i18n(I18nKey.copyPrefix)}${row.label}`}
               >
-                <Icon name="material-symbols:content-copy-outline-rounded" class="friend-apply__copy-icon" />
-                <Icon name="material-symbols:check-rounded" class="friend-apply__check-icon" />
+                <CopyCheckIcon class="friend-apply__copy-glyph" />
               </button>
             </div>
           ))}
@@ -168,7 +189,9 @@ const siteInfoRows = site
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  // 打字机：逐字写入气泡文本，打字期间显示光标
+  // 打字机：逐字写入气泡文本，打字期间显示光标。
+  // 折行宽度由 CSS 固定（.friend-chat__item 定宽 + 气泡 flex:1），
+  // 所以这里只管往恒定宽度的盒子里追加文字，高度随行数自己长
   async function typewriter(el: HTMLElement, text: string): Promise<void> {
     const speed = 40;
     for (let i = 1; i <= text.length; i++) {
@@ -193,13 +216,9 @@ const siteInfoRows = site
       const textEl = item.querySelector<HTMLElement>("[data-friend-chat-text]");
 
       item.classList.add("is-active");
-      if (!textEl) continue;
+      if (!textEl || reduced) continue;
 
-      if (reduced) {
-        textEl.textContent = text;
-        continue;
-      }
-
+      textEl.textContent = "";
       item.classList.add("is-typing");
       await sleep(350);
       await typewriter(textEl, text);
@@ -230,17 +249,24 @@ const siteInfoRows = site
     });
   }
 
-  // 复制按钮：点击后图标切换为对勾 1.5s
+  // 复制按钮：确认写入成功后才切成对勾，1.5s 后回抽
   function initFriendCopy(): void {
     document
-      .querySelectorAll<HTMLElement>(".friend-apply__copy[data-copy-text]")
+      .querySelectorAll<HTMLElement>(".friend-apply__copy[data-copy-text], .friend-apply__copy-all[data-copy-text]")
       .forEach((btn) => {
         if (btn.dataset.copyBound === "true") return;
         btn.dataset.copyBound = "true";
         btn.addEventListener("click", () => {
-          void navigator.clipboard.writeText(btn.dataset.copyText ?? "");
-          btn.classList.add("is-copied");
-          setTimeout(() => btn.classList.remove("is-copied"), 1500);
+          void navigator.clipboard
+            .writeText(btn.dataset.copyText ?? "")
+            .then(() => {
+              btn.classList.add("is-copied");
+              setTimeout(() => btn.classList.remove("is-copied"), 1500);
+            })
+            .catch(() => {
+              // 剪贴板被拒（非安全上下文、权限未授予）时保持原图标：
+              // 没有真的复制成功就不给成功反馈
+            });
         });
       });
   }

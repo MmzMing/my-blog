@@ -61,7 +61,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 1.25rem 1.5rem;
+	padding: 0.75rem 1.25rem;
 	border-bottom: 1px solid oklch(0.9 0 0);
 	flex-shrink: 0;
 }
@@ -111,7 +111,7 @@
 .privacy-body {
 	flex: 1;
 	overflow-y: auto;
-	padding: 1.5rem;
+	padding: 1rem 1.25rem;
 	color: oklch(0.25 0 0);
 	line-height: 1.7;
 }
@@ -170,7 +170,7 @@
 .privacy-footer {
 	display: flex;
 	justify-content: flex-end;
-	padding: 1.25rem 1.5rem;
+	padding: 0.75rem 1.25rem;
 	border-top: 1px solid oklch(0.9 0 0);
 	flex-shrink: 0;
 }
@@ -182,7 +182,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 0.5rem;
-	padding: 0.625rem 1.25rem;
+	padding: 0.5rem 1rem;
 	border-radius: 0.625rem;
 	border: none;
 	background: oklch(0.2 0 0);
@@ -207,10 +207,19 @@
 		max-height: 90vh;
 	}
 	.privacy-body {
-		padding: 1rem;
+		padding: 0.875rem 1rem;
 	}
 	.privacy-header,
 	.privacy-footer {
-		padding: 0.875rem 1rem;
+		padding: 0.625rem 1rem;
+	}
+}
+
+/* 减少动态：三个共用这套外壳的弹窗（隐私政策、用户协议、公告）都只留下有无，
+   去掉遮罩淡入与面板下落 */
+@media (prefers-reduced-motion: reduce) {
+	.privacy-overlay,
+	.privacy-panel {
+		animation: none;
 	}
 }

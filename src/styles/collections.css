@@ -8,6 +8,26 @@
   border-bottom: 1px solid var(--line-divider);
 }
 
+/* 动效谱：面板高度走不回弹的 ease-out（收过头会把内容整块抽走），
+   内容落位与箭头翻转借首页气泡那档带轻微过冲的弹性曲线。
+   时序集中在这一处，下面的规则只引用变量 */
+.tools-accordion {
+  --tools-panel-duration: 420ms;
+  --tools-content-duration: 460ms;
+  --tools-fade-in: 260ms;
+  --tools-fade-out: 160ms;
+  --tools-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --tools-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* 内容入场时的下沉量与失焦模糊量 */
+  --tools-content-lift: -0.375rem;
+  --tools-content-blur: 2px;
+  /* 卡片描边、投影与模糊都画在网格边界之外，裁剪容器要让出等量的横向余量。
+     最坏情况 = 悬停放大的一半（约 6px）+ 投影外扩 4px + 描边 1px */
+  --tools-card-bleed: 1rem;
+  /* 悬停放大量：气泡是 1.12，卡片密排在三列网格里，放太多会压到邻卡 */
+  --tools-card-pop: 1.03;
+}
+
 /* 分组头部（点击展开/收起） */
 .tools-accordion-header {
   display: flex;
@@ -87,7 +107,7 @@
   height: 1.5rem;
   flex-shrink: 0;
   color: oklch(0.6 0 0);
-  transition: rotate 0.4s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease;
+  transition: rotate 360ms var(--tools-ease-spring), color 0.2s ease;
 }
 .tools-accordion-header:hover .tools-accordion-arrow {
   color: var(--deep-text);
@@ -96,11 +116,12 @@
   rotate: 180deg;
 }
 
-/* 展开/收起主体：grid-template-rows 过渡（合成层友好，60fps），贝塞尔缓动 */
+/* 展开/收起主体：grid-template-rows 当高度用（合成层友好，60fps）。
+   三层各司其职：body 收高度，body-inner 裁内容并管淡入淡出与无障碍树，card-grid 做下沉与失焦 */
 .tools-accordion-body {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: grid-template-rows var(--tools-panel-duration) var(--tools-ease-settle);
 }
 .tools-accordion[data-open] .tools-accordion-body {
   grid-template-rows: 1fr;
@@ -108,11 +129,29 @@
 .tools-accordion-body-inner {
   overflow: hidden;
   min-height: 0;
+  /* 负 margin 换出等量 padding：裁剪框向两侧让出余量，卡片仍与标题严格左对齐 */
+  margin-inline: calc(var(--tools-card-bleed) * -1);
+  padding-inline: var(--tools-card-bleed);
+  /* 收起的面板要退出无障碍树与 Tab 序列，否则折叠着也能 Tab 进里面的链接。
+     visibility 延后到面板收完才切隐藏，展开时立刻恢复可见 */
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--tools-fade-out) linear,
+    visibility 0s linear var(--tools-panel-duration);
+}
+.tools-accordion[data-open] .tools-accordion-body-inner {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--tools-fade-in) linear 80ms,
+    visibility 0s;
 }
 
-/* 展开后的卡片区域：左右不加内边距，卡片与标题严格左对齐 */
+/* 展开后的卡片区域：只留上下留白，横向投影余量由 body-inner 的负 margin 提供；
+   上留白要盖住卡片悬停放大溢出的那一两像素 */
 .tools-accordion .tools-card-grid {
-  padding: 0.25rem 0 1.5rem;
+  padding: 0.5rem 0 1.5rem;
 }
 
 /* 卡片网格 */
@@ -120,6 +159,21 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
+  translate: 0 var(--tools-content-lift);
+  filter: blur(var(--tools-content-blur));
+  transition:
+    translate 200ms var(--tools-ease-settle),
+    filter 200ms linear;
+}
+/* 面板起幅后再落位，带一点过冲，读起来像"沉"进已经张开的位置。
+   落位后 filter 收成 none 而不是 blur(0) —— 留着滤镜会把整块网格钉在合成层上，
+   中文字的小号字反锯齿会跟着变糊 */
+.tools-accordion[data-open] .tools-card-grid {
+  translate: 0 0;
+  filter: none;
+  transition:
+    translate var(--tools-content-duration) var(--tools-ease-spring) 60ms,
+    filter var(--tools-panel-duration) linear;
 }
 @media (max-width: 1024px) {
   .tools-card-grid {
@@ -132,30 +186,54 @@
   }
 }
 
-/* 卡片样式 */
+/* 卡片样式：外观对齐首页导览四卡（home-data-layer.css 的 .guide-card）——
+   1px 实线边框 + hover 加深，投影分两层（贴边薄影 + 大半径柔影），
+   底色与描边都走全局 token，拿前景色往底色/透明里混，不写死色值 */
 .tools-card {
+  --tools-card-shadow:
+    0 1px 2px color-mix(in srgb, var(--deep-text) 5%, transparent),
+    0 8px 20px -8px color-mix(in srgb, var(--deep-text) 12%, transparent);
+  --tools-card-shadow-hover:
+    0 2px 4px color-mix(in srgb, var(--deep-text) 6%, transparent),
+    0 14px 28px -10px color-mix(in srgb, var(--deep-text) 18%, transparent);
+
   position: relative;
   display: flex;
   flex-direction: column;
   padding: 1.25rem;
   border-radius: var(--radius-large, 0.75rem);
-  border: 2px solid var(--deep-text);
-  background: var(--page-bg);
+  border: 1px solid var(--card-border);
+  background: var(--card-surface);
+  box-shadow: var(--tools-card-shadow);
   text-decoration: none;
   overflow: hidden;
-  transition: border-color 300ms ease, box-shadow 300ms ease, transform 300ms ease, background-color 300ms ease;
+  /* 悬停对齐气泡：弹性放大 + 投影加深 + 底色与描边各抬一档 */
+  transition:
+    scale 260ms var(--tools-ease-spring),
+    box-shadow 260ms ease,
+    background-color 260ms ease,
+    border-color 260ms ease;
 }
 .tools-card:hover {
-  border-color: var(--deep-text);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+  scale: var(--tools-card-pop);
+  /* 放大后要把邻卡的边框压在下面，否则边缘接缝处互相切 */
+  z-index: 1;
+  border-color: var(--card-border-hover);
+  background: var(--card-surface-hover);
+  box-shadow: var(--tools-card-shadow-hover);
 }
-:root.dark .tools-card:hover {
-  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
+/* 深色下投影改用黑色 —— 往近黑底色上混前景色得到的是亮晕不是投影，
+   浮起感需要的是把卡片四周压暗。描边交给全局 token，两个主题同一套算法 */
+:root.dark .tools-card {
+  --tools-card-shadow:
+    0 1px 2px rgb(0 0 0 / 40%),
+    0 8px 20px -8px rgb(0 0 0 / 60%);
+  --tools-card-shadow-hover:
+    0 2px 4px rgb(0 0 0 / 45%),
+    0 14px 28px -10px rgb(0 0 0 / 70%);
 }
 
-/* 右上角跳转图标 */
+/* 右上角跳转图标：只留一个裸图标，不带底色块与圆角 */
 .tools-card-jump-icon {
   position: absolute;
   top: 0.875rem;
@@ -165,9 +243,7 @@
   justify-content: center;
   width: 1.75rem;
   height: 1.75rem;
-  border-radius: 0.5rem;
   color: oklch(0.55 0 0);
-  background: oklch(0.9 0 0);
   opacity: 0;
   transform: scale(0.8) translateY(-4px);
   transition: opacity 250ms cubic-bezier(0.4, 0, 0.2, 1), transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -176,7 +252,6 @@
 }
 :root.dark .tools-card-jump-icon {
   color: oklch(0.6 0 0);
-  background: oklch(0.2 0 0);
 }
 .tools-card:hover .tools-card-jump-icon {
   opacity: 1;
@@ -211,4 +286,18 @@
 }
 :root.dark .tools-card-footer {
   border-color: oklch(0.2 0 0);
+}
+
+/* 减少动态：终态保持不变，只把过程抹平 —— 面板瞬开瞬合、内容不沉不糊、卡片不弹。
+   连 delay 一起清零，否则收起时那 420ms 的 visibility 延后会残留一段可 Tab 的隐藏面板 */
+@media (prefers-reduced-motion: reduce) {
+  .tools-accordion-body,
+  .tools-accordion-body-inner,
+  .tools-card-grid,
+  .tools-accordion-arrow,
+  .tools-card,
+  .tools-card-jump-icon {
+    transition-duration: 0s;
+    transition-delay: 0s;
+  }
 }

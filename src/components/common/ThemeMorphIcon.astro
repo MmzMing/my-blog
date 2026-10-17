@@ -1,0 +1,114 @@
+---
+/**
+ * 主题图标：亮色是太阳，暗色是月亮，靠 :root.dark 驱动，不需要 JS 改状态。
+ *
+ * 形变照搬参考实现 SunMoonIcon 的做法：圆盘长大，一枚阴影圆从角上滑过、用 mask 把
+ * 圆盘咬成月牙（阴影圆同时按圆盘裁剪，补出月牙的内侧弧线），八道光芒转 90°、缩到
+ * 0.4 并淡出。r / cx / cy 是 SVG2 的几何属性，Chrome、Firefox、Safari 都能用 CSS 过渡。
+ *
+ * 但站点切主题走的是 View Transitions（setting-utils 的 runThemeMutation），整页 root
+ * 会被快照交叉淡入 —— 快照会把这一刻的 DOM 冻成图片，元素身上的 CSS 过渡在过渡期间
+ * 根本看不见。所以这里同时留两条路：支持 VT 的浏览器由 navbar-new.css 给它独立的
+ * view-transition-name 让它自己转着换，不支持的浏览器才走下面这套 CSS 过渡。
+ */
+interface Props {
+	class?: string;
+}
+
+const { class: className = "" } = Astro.props;
+
+/* mask / clipPath 的 id 是写死的：一个文档里只放一个实例（目前只有导航栏那处）。
+   真要复用多处，再加一个前缀 prop —— 两处引用同一份 defs 其实也不会画错，
+   因为遮罩的几何完全由 :root.dark 驱动，两个实例的状态永远一致 */
+const biteId = "theme-morph-bite";
+const discId = "theme-morph-disc";
+
+// 八道光芒：24 网格上以圆心为原点，每 45° 一道，从 r=7.5 画到 r=10
+const rays = Array.from({ length: 8 }, (_, index) => {
+	const angle = (index * Math.PI) / 4;
+	const c = Math.cos(angle);
+	const s = Math.sin(angle);
+	const round = (value: number) => Math.round(value * 100) / 100;
+	return `M${round(12 + c * 7.5)} ${round(12 + s * 7.5)} L${round(12 + c * 10)} ${round(12 + s * 10)}`;
+});
+---
+
+<svg
+	class:list={["theme-morph", className]}
+	viewBox="0 0 24 24"
+	width="1em"
+	height="1em"
+	fill="none"
+	stroke="currentColor"
+	stroke-width="1.75"
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	aria-hidden="true"
+	focusable="false"
+>
+	<defs>
+		<mask id={biteId} maskUnits="userSpaceOnUse" x="-8" y="-8" width="40" height="40">
+			<rect x="-8" y="-8" width="40" height="40" fill="white" stroke="none" />
+			<circle class="theme-morph__bite" cx="30" cy="-6" r="6.5" fill="black" stroke="none" />
+		</mask>
+		<clipPath id={discId}>
+			<circle class="theme-morph__clip" cx="12" cy="12" r="4.5" />
+		</clipPath>
+	</defs>
+	<circle class="theme-morph__disc" cx="12" cy="12" r="4.5" mask={`url(#${biteId})`} />
+	<circle class="theme-morph__bite" cx="30" cy="-6" r="6.5" clip-path={`url(#${discId})`} />
+	<g class="theme-morph__rays">
+		{rays.map((d) => <path d={d} />)}
+	</g>
+</svg>
+
+<style>
+	.theme-morph {
+		display: inline-block;
+		flex-shrink: 0;
+		overflow: visible;
+	}
+
+	/* 圆盘与裁剪圆必须同步长大，否则月牙的内弧会跑偏到圆盘外面 */
+	.theme-morph__disc,
+	.theme-morph__clip {
+		transition: r 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	.theme-morph__bite {
+		transition:
+			cx 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+			cy 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	.theme-morph__rays {
+		transform-origin: 50% 50%;
+		transition:
+			transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+			opacity 160ms ease;
+	}
+
+	:root.dark .theme-morph__disc,
+	:root.dark .theme-morph__clip {
+		r: 8.5;
+	}
+
+	:root.dark .theme-morph__bite {
+		cx: 18;
+		cy: 6;
+	}
+
+	:root.dark .theme-morph__rays {
+		transform: rotate(90deg) scale(0.4);
+		opacity: 0;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.theme-morph__disc,
+		.theme-morph__clip,
+		.theme-morph__bite,
+		.theme-morph__rays {
+			transition: none;
+		}
+	}
+</style>

@@ -261,6 +261,7 @@ export const en: Translation = {
 	[Key.tools]: "Tools",
 	[Key.breadcrumb]: "Breadcrumb",
 	[Key.copyPrefix]: "Copy",
+	[Key.copyAll]: "Copy all",
 	[Key.copyTemplate]: "Copy template",
 	[Key.copyNotice]: "Copied. Please credit this article's URL when reposting.",
 

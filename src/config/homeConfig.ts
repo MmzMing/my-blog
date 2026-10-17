@@ -244,7 +244,10 @@ export const homeConfig: HomeConfig = {
 					date: "2026 / 09 / 01",
 				},
 			],
-			standImages: ["/assets/images/home-blinds/act2-doll/1.gif", "/assets/images/home-blinds/act2-doll/2.gif"],
+			standImages: [
+				"/assets/images/home-blinds/act2-doll/1.gif",
+				"/assets/images/home-blinds/act2-doll/2.gif",
+			],
 		},
 	},
 

@@ -29,57 +29,57 @@ try {
 	rel="noopener noreferrer"
 	data-friend-image={hasImage ? friend.image : undefined}
 >
-	{hasImage && (
-		<span class="friend-card__cover image-pixel-reveal-host" data-friend-cover>
-			{/* 加载动效：图片加载完成后由脚本隐藏 */}
-			<span class="friend-card__cover-loader" aria-hidden="true"></span>
-			<span
-				class="image-pixel-reveal"
-				data-image-pixel-reveal
-				aria-hidden="true"
-			></span>
-			<img
-				class="friend-card__cover-img image-pixel-reveal-source"
-				src={friend.image}
-				alt=""
-				loading="lazy"
-				decoding="async"
-			/>
-		</span>
-	)}
-
-	<span class="friend-card__body">
-		<span class="friend-card__info">
-			<span class="friend-card__avatar" data-friend-avatar>
+	{
+		hasImage && (
+			<span class="friend-card__cover image-pixel-reveal-host" data-friend-cover>
+				{/* 加载动效：图片加载完成后由脚本隐藏 */}
+				<span class="friend-card__cover-loader" aria-hidden="true"></span>
+				<span
+					class="image-pixel-reveal"
+					data-image-pixel-reveal
+					aria-hidden="true"
+				></span>
 				<img
-					src={friend.imgurl}
+					class="friend-card__cover-img image-pixel-reveal-source"
+					src={friend.image}
 					alt=""
 					loading="lazy"
 					decoding="async"
 				/>
+			</span>
+		)
+	}
+
+	<div class="friend-card__body">
+		{/* 第一层：左头像，右侧两行名字与地址 */}
+		<div class="friend-card__info">
+			<span class="friend-card__avatar" data-friend-avatar>
+				<img src={friend.imgurl} alt="" loading="lazy" decoding="async" />
 				<span class="friend-card__avatar-fallback" aria-hidden="true">
 					{initial}
 				</span>
 			</span>
-			<span class="friend-card__meta">
+			<div class="friend-card__meta">
 				<span class="friend-card__name-row">
 					<strong class="friend-card__name" title={friend.title}>
 						{friend.title}
 					</strong>
-					{/* 跳转图标：悬停卡片时在名字右侧浮现 */}
-					<Icon
-						name="material-symbols:arrow-outward-rounded"
-						class="friend-card__jump-icon"
-					/>
+					{/* 跳转箭头：与工具导航的 .tools-card-jump-icon 同一套浮现节奏，
+					    只是贴在名字右侧。它常占位不显形，悬停时不会把名字挤得左右跳 */}
+					<span class="friend-card__jump-icon">
+						<Icon
+							name="material-symbols:arrow-outward-rounded"
+							class="friend-card__jump-glyph"
+						/>
+					</span>
 				</span>
-				<span class="friend-card__url" title={friend.siteurl}>
-					{hostname}
-				</span>
-			</span>
-		</span>
+				<span class="friend-card__url" title={friend.siteurl}>{hostname}</span>
+			</div>
+		</div>
 
 		<span class="friend-card__divider" aria-hidden="true"></span>
 
-		<span class="friend-card__desc">{friend.desc}</span>
-	</span>
+		{/* 第二层：介绍，固定两行 */}
+		<p class="friend-card__desc">{friend.desc}</p>
+	</div>
 </a>
