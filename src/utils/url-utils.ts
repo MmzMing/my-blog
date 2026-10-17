@@ -57,6 +57,17 @@ export function getCategoryUrl(category: string | null): string {
 	return url(`/categories/${termToSlug(category)}/`);
 }
 
+/**
+ * 分类的归档过滤地址。与 /categories/<slug>/ 枢纽页并存：
+ * 文章页的分类标签统一走这里，避免同一片元信息里一半跳枢纽页、一半跳归档页。
+ */
+export function getCategoryArchiveUrl(category: string | null): string {
+	const term = category?.trim();
+	if (!term || term.toLowerCase() === i18n(I18nKey.uncategorized).toLowerCase())
+		return getUncategorizedArchiveUrl();
+	return url(`/archive/?category=${encodeURIComponent(term)}`);
+}
+
 /** 未分类文章的退化地址：归档页按「未分类」过滤 */
 export function getUncategorizedArchiveUrl(): string {
 	return url("/archive/?uncategorized=true");

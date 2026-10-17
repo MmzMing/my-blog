@@ -13,8 +13,9 @@ import QRCode from "qrcode";
 import PostHeaderNav from "@/components/misc/PostHeaderNav.astro";
 import "@/styles/components/post-hero.css";
 import "@/styles/components/post-header-nav.css";
-import { getSortedPosts, getTagList } from "@utils/content-utils";
+import { getSortedPosts } from "@utils/content-utils";
 import {
+	getCategoryArchiveUrl,
 	getCategoryUrl,
 	getFileDirFromPath,
 	getPostUrlBySlug,
@@ -164,15 +165,6 @@ const structuredImage =
 		: structuredImageUrl;
 
 const siteRoot = new URL("/", Astro.site).href;
-
-// 标签未必都有枢纽页（碎片化标签不建页），所以按 name → 地址查表，
-// 查不到就退回归档页过滤，避免链到不存在的 /tags/<slug>/
-const tagUrlMap = new Map<string, string>();
-for (const tag of await getTagList()) {
-	tagUrlMap.set(tag.name, tag.url);
-}
-const resolveTagHref = (tag: string): string =>
-	tagUrlMap.get(tag.trim()) ?? getTagArchiveUrl(tag);
 
 // 分类现有独立静态路由（/categories/<slug>/），面包屑直接指向它；
 // 未分类文章不编造中间节点。
@@ -438,7 +430,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
 
         <div class="post-hero__taxonomy-row">
           <a
-            href={getCategoryUrl(entry.data.category || null)}
+            href={getCategoryArchiveUrl(entry.data.category || null)}
             class="post-hero__taxonomy-link post-hero__taxonomy-link--category"
           >
             {entry.data.category || i18n(I18nKey.uncategorized)}
@@ -447,7 +439,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
           {entry.data.tags && entry.data.tags.length > 0 && entry.data.tags.map((tag) => (
             <span class="post-hero__taxonomy-item">
               <span class="post-hero__taxonomy-separator" aria-hidden="true">/</span>
-              <a href={resolveTagHref(tag)} class="post-hero__taxonomy-link post-hero__taxonomy-link--tag">
+              <a href={getTagArchiveUrl(tag)} class="post-hero__taxonomy-link post-hero__taxonomy-link--tag">
                 {tag.trim()}
               </a>
             </span>

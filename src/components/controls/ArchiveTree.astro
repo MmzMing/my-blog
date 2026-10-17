@@ -1,0 +1,67 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { ArrowUpRight, ChevronRight, Folder, FolderOpen } from "lucide-svelte";
+import type { ArchiveNode, ArchiveView } from "@/types/archive";
+import { getCategoryHue } from "@/utils/article-list-posts";
+
+interface Props {
+	nodes: ArchiveNode[];
+	view: ArchiveView;
+	depth?: number;
+}
+const { nodes, view, depth = 0 } = Astro.props;
+const Heading = depth === 0 ? "h2" : "h3";
+// 标签条数按断点各出一版文本，由 CSS 二选一：数量在构建期定稿，不在客户端重排。
+function formatTags(tags: string[], limit: number): string {
+	const shown = tags
+		.slice(0, limit)
+		.map((tag) => `#${tag}`)
+		.join("  ");
+	return tags.length > limit ? `${shown}  +${tags.length - limit}` : shown;
+}
+---
+
+<ul class="archive-panel__list" data-depth={depth}>
+	{nodes.map((node, index) => (
+		node.kind === "group" ? (
+			<li class:list={["archive-panel__group", view === "category" && "archive-panel__group--category"]} data-archive-group data-open={node.isOpen || undefined} style={`--archive-order: ${Math.min(index, 7)};${view === "category" ? `--article-category-hue: ${getCategoryHue(node.label)}` : ""}`}>
+				<Heading class="archive-panel__heading">
+					<button type="button" class="archive-panel__row archive-panel__group-toggle" data-archive-toggle aria-expanded={node.isOpen ? "true" : "false"} aria-controls={`archive-${view}-${node.id}`}>
+						<ChevronRight class="archive-panel__chevron" size={14} strokeWidth={1.8} aria-hidden="true" />
+						<span class="archive-panel__folder" aria-hidden="true">
+							<Folder class="archive-panel__folder-closed" size={18} strokeWidth={1.5} />
+							<FolderOpen class="archive-panel__folder-open" size={18} strokeWidth={1.5} />
+						</span>
+						<span class="archive-panel__group-name">{node.label}</span>
+						<span class="archive-panel__group-rule" aria-hidden="true" />
+						<span class="archive-panel__count">
+							<span data-archive-count aria-hidden="true">{String(node.count).padStart(2, "0")}</span>
+							<span class="sr-only" data-archive-count-label>{node.count} {i18n(node.count === 1 ? I18nKey.postCount : I18nKey.postsCount)}</span>
+						</span>
+					</button>
+				</Heading>
+				<div class="archive-panel__content" id={`archive-${view}-${node.id}`} data-archive-content>
+					<div class="archive-panel__content-inner"><Astro.self nodes={node.children} view={view} depth={depth + 1} /></div>
+				</div>
+			</li>
+		) : (
+			<li class="archive-panel__post" data-post-id={node.id} data-category={node.category} data-tags={JSON.stringify(node.tags)} style={`--archive-order: ${Math.min(index, 7)}; --article-category-hue: ${getCategoryHue(node.category || i18n(I18nKey.uncategorized))}`}>
+				<a class="archive-panel__row archive-panel__post-link" href={node.url} data-archive-link>
+					<time class="archive-panel__date" datetime={node.isoDate} title={node.dateLabel}>
+						<span class="sr-only">{node.dateLabel}</span><span aria-hidden="true">{node.date}</span>
+					</time>
+					<span class="archive-panel__post-copy">
+						<span class="archive-panel__title">{node.title}</span>
+						<span class="archive-panel__meta">
+							<span class="archive-panel__category">{node.category || i18n(I18nKey.uncategorized)}</span>
+							{node.tags.length > 0 && <span class="archive-panel__tags archive-panel__tags--wide">{formatTags(node.tags, 3)}</span>}
+						{node.tags.length > 0 && <span class="archive-panel__tags archive-panel__tags--narrow">{formatTags(node.tags, 2)}</span>}
+						</span>
+					</span>
+					<ArrowUpRight class="archive-panel__post-arrow" size={15} strokeWidth={1.6} aria-hidden="true" />
+				</a>
+			</li>
+		)
+	))}
+</ul>

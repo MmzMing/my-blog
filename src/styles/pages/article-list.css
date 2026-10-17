@@ -316,9 +316,9 @@
 	transition: color 180ms ease, text-decoration-color 180ms ease;
 }
 
+/* 卡片的悬停指示已经交给背景胶囊，标题不再叠一层下划线；键盘聚焦仍保留。 */
 .article-list-pinned-item:hover .article-list-pinned-item__title-text,
 .article-list-pinned-item:focus-within .article-list-pinned-item__title-text,
-.article-list-card:hover .article-list-card__title-text,
 .article-list-card:focus-within .article-list-card__title-text {
 	text-decoration-line: underline;
 	text-decoration-color: currentColor;
@@ -453,14 +453,38 @@
    ========================================================================== */
 
 .article-list-regular {
-	margin-top: var(--space-2);
+	/* 留出胶囊顶部外扩的空间，否则第一行悬停时高亮会压到工具栏的分隔线上。 */
+	margin-top: var(--space-5);
 }
 
 .article-list-card-grid {
+	position: relative;
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: var(--space-8) var(--space-6);
+	/* 行间距与工具栏到首行的 20px 对齐，否则首行上方显窄、行与行之间显宽。 */
+	gap: var(--space-5) var(--space-6);
+	isolation: isolate;
 }
+
+/* 悬停胶囊：单根浮层靠 transform 在卡片之间落位，绝对定位所以不占网格单元。
+   z-index 为负要配 isolation，否则会掉到页面底色下面。 */
+.article-list-highlight {
+	--article-list-highlight-gap: var(--space-3);
+	position: absolute;
+	inset: 0 auto auto 0;
+	z-index: -1;
+	/* JS 写进来的宽高就是卡片矩形本身。outset box-shadow 只画在边框盒之外、中间会漏底，
+	   所以改用 content-box + padding 四边等宽撑大，负 margin 补回起点偏移。 */
+	box-sizing: content-box;
+	padding: var(--article-list-highlight-gap);
+	margin: calc(var(--article-list-highlight-gap) * -1);
+	border-radius: calc(var(--radius-medium) + var(--article-list-highlight-gap));
+	background: var(--btn-plain-bg-active);
+	opacity: 0;
+	pointer-events: none;
+	transition: transform 280ms ease, width 280ms ease, height 280ms ease, opacity 160ms ease;
+}
+.article-list-card-grid[data-highlighted] > .article-list-highlight { opacity: 1; }
 
 .article-list-card {
 	position: relative;
@@ -804,7 +828,8 @@
 	.article-list-pinned-item__cover-loader-dot,
 	.article-list-card__cover-loader-dot,
 	.article-list-pagination__btn,
-	.article-list-pagination__page {
+	.article-list-pagination__page,
+	.article-list-highlight {
 		transition: none;
 	}
 

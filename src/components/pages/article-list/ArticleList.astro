@@ -66,7 +66,8 @@ const totalPostLabel = i18n(
 
 	<section class="article-list-regular" aria-labelledby="article-list-regular-title">
 		{regularPosts.length > 0 ? (
-			<div class="article-list-card-grid">
+			<div class="article-list-card-grid" data-article-list-card-grid>
+				<span class="article-list-highlight" data-article-list-highlight aria-hidden="true" />
 				{regularPosts.map((post) => (
 					<ArticleCard
 						post={post}
@@ -92,6 +93,7 @@ const totalPostLabel = i18n(
 		parseArticleCoverApiUrls,
 		type ArticleCoverLifecycle,
 	} from "@/utils/article-cover-lifecycle";
+	import { createArticleListHighlight } from "@/utils/article-list-highlight-controller";
 	import { createPinnedCarousel } from "@/utils/pinned-carousel-controller";
 	import {
 		createEmptyUmamiPageviewLookup,
@@ -119,6 +121,9 @@ const totalPostLabel = i18n(
 		);
 		const pinnedList = articleList.querySelector<HTMLElement>(
 			"[data-article-list-pinned]",
+		);
+		const cardGrid = articleList.querySelector<HTMLElement>(
+			"[data-article-list-card-grid]",
 		);
 		const controller = new AbortController();
 		const { signal } = controller;
@@ -167,6 +172,7 @@ const totalPostLabel = i18n(
 		const cleanupPinnedCarousel = pinnedList
 			? createPinnedCarousel({ section: pinnedList, coverLifecycles, signal })
 			: () => {};
+		if (cardGrid) createArticleListHighlight({ grid: cardGrid, signal });
 		renderPageviews();
 
 		const canLoadPageviews =

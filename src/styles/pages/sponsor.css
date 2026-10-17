@@ -1,216 +1,152 @@
 /* ============================================
-   赞助页 — 来自 sponsor.astro
+   打赏页 — 来自 sponsor.astro
    ============================================ */
 
 /* ============================================
-   扫码赞助卡片
+   收款码网格：1:1 卡片，二维码压成灰度幽灵 + 轻模糊，悬停还原
    ============================================ */
 
-.sponsor-qr-card__outer {
-	display: block;
-	width: 100%;
-	padding: 1.5rem;
-	border: 2px solid #1a1a1a;
-	border-radius: var(--radius-large, 0.75rem);
-	background: transparent;
+/* 卡片外观与悬停动效对齐工具箱 .tools-card（collections.css）：
+   同一套 --card-* token，弹性放大 + 双层投影抬升 + 描边底色各抬一档 */
+.sponsor-qr-card,
+.sponsor-card {
+  --sponsor-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* 三列密排，放太多会压到邻卡；工具箱同款取值 */
+  --sponsor-card-pop: 1.03;
+  --sponsor-card-shadow:
+    0 1px 2px color-mix(in srgb, var(--deep-text) 5%, transparent),
+    0 8px 20px -8px color-mix(in srgb, var(--deep-text) 12%, transparent);
+  --sponsor-card-shadow-hover:
+    0 2px 4px color-mix(in srgb, var(--deep-text) 6%, transparent),
+    0 14px 28px -10px color-mix(in srgb, var(--deep-text) 18%, transparent);
 }
 
-:root.dark .sponsor-qr-card__outer {
-	border-color: #2e2e2e;
+/* 深色下投影改用黑色 —— 往近黑底色上混前景色得到的是亮晕不是投影 */
+:root.dark .sponsor-qr-card,
+:root.dark .sponsor-card {
+  --sponsor-card-shadow:
+    0 1px 2px rgb(0 0 0 / 40%),
+    0 8px 20px -8px rgb(0 0 0 / 60%);
+  --sponsor-card-shadow-hover:
+    0 2px 4px rgb(0 0 0 / 45%),
+    0 14px 28px -10px rgb(0 0 0 / 70%);
+}
+
+.sponsor-qr-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 18.125rem));
+	justify-content: center;
+	gap: 1.125rem;
 }
 
 .sponsor-qr-card {
 	position: relative;
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
+	margin: 0;
+	overflow: hidden;
+	border: 1px solid var(--card-border);
+	border-radius: var(--radius-large);
+	background: var(--card-surface);
+	box-shadow: var(--sponsor-card-shadow);
+	transition: scale 260ms var(--sponsor-ease-spring),
+		box-shadow 260ms ease, background-color 260ms ease,
+		border-color 260ms ease;
 }
 
-/* 第一层：扫码赞助标题 */
-.sponsor-qr-card__header {
-	margin-bottom: 0.25rem;
-}
-
-.sponsor-qr-card__title {
-	font-size: 1rem;
-	font-weight: 500;
-	color: var(--neutral-900, #111827);
-	line-height: 1.4;
-}
-
-:root.dark .sponsor-qr-card__title {
-	color: #dadada;
-}
-
-/* 第二层：选择支付方式 */
-.sponsor-qr-card__subtitle {
-	font-size: 0.8125rem;
-	color: var(--neutral-500, #6b7280);
-	margin-bottom: 1rem;
-	line-height: 1.5;
-}
-
-:root.dark .sponsor-qr-card__subtitle {
-	color: #b3b3b3;
-}
-
-/* 第三层：Tabs 导航 */
-.sponsor-qr-card__tabs-wrapper {
-	margin-bottom: 1.5rem;
-}
-
-.sponsor-qr-card__tabs-pill {
-	position: relative;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.375rem;
-	padding: 0.375rem;
-	border-radius: 1rem;
-	border: 1.5px solid #000;
-}
-
-:root.dark .sponsor-qr-card__tabs-pill {
-	border-color: #2e2e2e;
-}
-
-.sponsor-qr-card__tabs-indicator {
-	position: absolute;
-	border-radius: 9999px;
-	background: #000;
-	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-				top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-				width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-				height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-	opacity: 0;
-	pointer-events: none;
-	z-index: 0;
-}
-
-:root.dark .sponsor-qr-card__tabs-indicator {
-	background: #282828;
-}
-
-.sponsor-qr-card__tab-btn {
-	position: relative;
+.sponsor-qr-card:hover,
+.sponsor-qr-card:focus-visible {
+	scale: var(--sponsor-card-pop);
+	/* 放大后要把邻卡的边框压在下面，否则边缘接缝处互相切 */
 	z-index: 1;
-	display: flex;
-	align-items: center;
-	gap: 0.375rem;
-	padding: 0.375rem 0.875rem;
-	border: none;
-	border-radius: 9999px;
-	font-size: 0.8125rem;
-	font-weight: 500;
-	white-space: nowrap;
-	cursor: pointer;
-	background: transparent;
-	transition: color 0.2s;
-	flex-shrink: 0;
+	border-color: var(--card-border-hover);
+	background: var(--card-surface-hover);
+	box-shadow: var(--sponsor-card-shadow-hover);
 }
 
-/* 激活态：指示条覆盖时白色文字 */
-.sponsor-qr-card__tab-btn--active {
-	color: #fff;
-	cursor: default;
+.sponsor-qr-card:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
 }
 
-:root.dark .sponsor-qr-card__tab-btn--active {
-	color: #dadada;
-}
-
-/* 未激活态：黑色文字 */
-.sponsor-qr-card__tab-btn--inactive {
-	color: #000;
-}
-
-.sponsor-qr-card__tab-btn--inactive:hover {
-	opacity: 0.7;
-}
-
-:root.dark .sponsor-qr-card__tab-btn--inactive {
-	color: #b3b3b3;
-}
-
-/* 第四层：二维码图片 */
-.sponsor-qr-card__content {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	width: 100%;
-}
-
-.sponsor-qr-card__panel {
-	width: 100%;
-	display: flex;
-	justify-content: center;
-}
-
-.sponsor-qr-card__panel.hidden {
-	display: none;
-}
-
-.sponsor-qr-card__image-wrapper {
-	width: 100%;
-	max-width: 400px;
+.sponsor-qr-card__frame {
+	position: relative;
 	aspect-ratio: 1 / 1;
-	background: transparent;
-	border-radius: 0;
-	padding: 0;
-	box-shadow: none;
+	width: 100%;
 }
 
+/* contain + 低透明度：二维码只当灰度底纹，不靠 blur 糊成色块 */
 .sponsor-qr-card__image {
-	width: 100%;
-	height: 100%;
+	position: absolute;
+	inset: 1.125rem;
+	width: calc(100% - 2.25rem);
+	height: calc(100% - 2.25rem);
 	object-fit: contain;
+	opacity: 0.32;
+	filter: blur(4px);
+	transition: opacity 0.24s ease, filter 0.24s ease, transform 0.24s ease;
 }
 
-/* 无二维码时的空状态 */
-.sponsor-qr-card__empty {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	max-width: 400px;
-	aspect-ratio: 1 / 1;
-	color: var(--neutral-400, #9ca3af);
+.sponsor-qr-card:hover .sponsor-qr-card__image,
+.sponsor-qr-card:focus-visible .sponsor-qr-card__image,
+.sponsor-qr-card--revealed .sponsor-qr-card__image {
+	opacity: 1;
+	filter: blur(0);
+	transform: scale(1.01);
+}
+
+.sponsor-qr-card__icon {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	pointer-events: none;
+	transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+/* 单色图标，跟随主题：深色底给白图标、浅色底给黑图标 */
+.sponsor-qr-card__glyph {
+	width: 34%;
+	height: 34%;
+	color: var(--btn-content);
+}
+
+/* 未开通的卡片没有码可揭，图标保持常驻 */
+.sponsor-qr-card:not(.sponsor-qr-card--empty):hover .sponsor-qr-card__icon,
+.sponsor-qr-card:not(.sponsor-qr-card--empty):focus-visible .sponsor-qr-card__icon,
+.sponsor-qr-card--revealed .sponsor-qr-card__icon {
+	opacity: 0;
+	transform: scale(0.92);
 }
 
 .sponsor-qr-card__empty-text {
-	font-size: 0.875rem;
+	position: absolute;
+	inset: auto 0 1rem;
+	text-align: center;
+	font-size: 0.8125rem;
 	font-weight: 500;
+	color: var(--content-meta);
 }
 
-/* 移动端适配 */
-@media (max-width: 640px) {
-	.sponsor-qr-card__outer {
-		padding: 1rem;
+/* 触屏没有 hover，交给 sponsor-qr-controller 的点击揭示 */
+@media (hover: none) {
+	.sponsor-qr-card:not(.sponsor-qr-card--empty) {
+		cursor: pointer;
 	}
+}
 
-	.sponsor-qr-card__tabs-pill {
-		flex-wrap: nowrap;
-		overflow-x: auto;
-	}
-
-	.sponsor-qr-card__tab-btn {
-		flex-shrink: 0;
-	}
-
-	.sponsor-qr-card__image-wrapper {
-		max-width: 280px;
+@media (max-width: 768px) {
+	.sponsor-qr-grid {
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
 
 /* ============================================
-   赞助者列表
+   赞助者列表：按金额铺底的进度卡片
    ============================================ */
 
 .sponsor-list {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 0.625rem;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 1.125rem;
 }
 
 .sponsor-list__heading {
@@ -228,96 +164,88 @@
 	white-space: nowrap;
 }
 
-.sponsor-row {
-	display: flex;
-	align-items: center;
-	padding: 1rem 0.875rem;
-	border-radius: 0.75rem;
-	border: 2px solid #1a1a1a;
-	transition: border-color 0.2s ease;
+.sponsor-card {
+	/* 底条要压过卡面 hover 那一档（11%），否则悬停抬底色时进度条会隐形 */
+	--sponsor-progress-surface: color-mix(
+		in oklab,
+		var(--deep-text) 17%,
+		var(--page-bg)
+	);
+
+	position: relative;
+	min-height: 5.125rem;
+	overflow: hidden;
+	padding: 0.875rem 1rem;
+	border: 1px solid var(--card-border);
+	border-radius: var(--radius-large);
+	background: var(--card-surface);
+	box-shadow: var(--sponsor-card-shadow);
+	transition: scale 260ms var(--sponsor-ease-spring),
+		box-shadow 260ms ease, background-color 260ms ease,
+		border-color 260ms ease;
 }
 
-:root.dark .sponsor-row {
-	border-color: #2e2e2e;
+.sponsor-card:hover {
+	scale: var(--sponsor-card-pop);
+	z-index: 1;
+	border-color: var(--card-border-hover);
+	background: var(--card-surface-hover);
+	box-shadow: var(--sponsor-card-shadow-hover);
 }
 
-.sponsor-row:hover {
-	border-color: var(--primary, #4f46e5);
+/* 进度底条：宽度由 --sponsor-progress 决定，金额达到上限即铺满 */
+.sponsor-card::before {
+	content: "";
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: var(--sponsor-progress, 0%);
+	background: var(--sponsor-progress-surface);
+	pointer-events: none;
 }
 
-.sponsor-avatar {
-	width: 3rem;
-	height: 3rem;
-	flex-shrink: 0;
-	border-radius: 50%;
-	background: color-mix(in srgb, var(--primary, #4f46e5) 10%, transparent);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-right: 0.625rem;
-	transition: background 0.2s ease;
+.sponsor-card > * {
+	position: relative;
 }
 
-.sponsor-row:hover .sponsor-avatar {
-	background: color-mix(in srgb, var(--primary, #4f46e5) 20%, transparent);
-}
-
-.sponsor-avatar span {
+.sponsor-card__name {
+	display: block;
+	/* 给右下角金额留出位置，长昵称省略号收尾 */
+	margin-right: 3.375rem;
 	font-size: 1.125rem;
-	font-weight: 700;
-	color: var(--primary, #4f46e5);
-}
-
-.sponsor-avatar__img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	border-radius: 50%;
-}
-
-.sponsor-info {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-}
-
-.sponsor-name {
-	font-size: 1rem;
-	font-weight: 600;
-	color: var(--neutral-900, #111827);
+	font-weight: 500;
+	line-height: 1.35;
+	color: var(--deep-text);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-:root.dark .sponsor-name {
-	color: #dadada;
+.sponsor-card__meta {
+	display: block;
+	margin-top: 0.75rem;
+	font-size: 0.8125rem;
+	line-height: 1.4;
+	color: var(--content-meta);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.sponsor-date {
-	font-size: 0.7rem;
-	color: var(--neutral-400, #9ca3af);
-	margin-top: 0.25rem;
-}
-
-:root.dark .sponsor-date {
-	color: #666666;
-}
-
-.sponsor-amount {
-	flex-shrink: 0;
-	font-size: 1rem;
-	font-weight: 700;
-	color: var(--primary, #4f46e5);
-	margin-left: 0.75rem;
+.sponsor-card__amount {
+	position: absolute;
+	right: 1rem;
+	bottom: 0.75rem;
+	font-size: 1.125rem;
+	font-weight: 500;
+	line-height: 1;
+	color: var(--deep-text);
+	font-variant-numeric: tabular-nums;
 }
 
 /* 平板：两列 */
 @media (max-width: 1024px) {
 	.sponsor-list {
-		grid-template-columns: repeat(2, 1fr);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
 
@@ -329,28 +257,36 @@
 	}
 
 	.sponsor-list {
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 1fr);
 	}
 
-	.sponsor-row {
-		padding: 0.875rem 0.75rem;
+	.sponsor-card {
+		min-height: 0;
+		padding: 0.75rem 0.875rem;
 	}
 
-	.sponsor-avatar {
-		width: 2.75rem;
-		height: 2.75rem;
-		margin-right: 0.625rem;
-	}
-
-	.sponsor-avatar span {
-		font-size: 1rem;
-	}
-
-	.sponsor-name {
+	.sponsor-card__name {
+		margin-right: 2.5rem;
 		font-size: 0.9375rem;
 	}
 
-	.sponsor-amount {
+	.sponsor-card__meta {
+		margin-top: 0.375rem;
+		font-size: 0.6875rem;
+	}
+
+	.sponsor-card__amount {
+		right: 0.875rem;
+		bottom: 0.625rem;
 		font-size: 0.9375rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.sponsor-qr-card,
+	.sponsor-card,
+	.sponsor-qr-card__image,
+	.sponsor-qr-card__icon {
+		transition: none;
 	}
 }

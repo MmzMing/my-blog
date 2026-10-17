@@ -5,6 +5,7 @@ import { siteConfig, sponsorConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { formatDateToYYYYMMDD } from "@/utils/date-utils";
 import { url } from "@/utils/url-utils";
 import "@/styles/pages/sponsor.css";
 
@@ -13,24 +14,59 @@ if (!siteConfig.pages.sponsor) {
 	return Astro.redirect("/404/");
 }
 
+/** 打赏卡片进度拉满对应的金额（元），达到或超过即铺满整张卡片 */
+const SPONSOR_PROGRESS_FULL_AMOUNT = 50;
+
 const title = sponsorConfig.title || i18n(I18nKey.sponsorTitle);
 const description =
 	sponsorConfig.description || i18n(I18nKey.sponsorDescription);
 const enabledMethods = sponsorConfig.methods.filter((method) => method.enabled);
 const sponsors = sponsorConfig.sponsors || [];
 const showSponsorsList = sponsorConfig.showSponsorsList !== false;
-const sponsorAmountsInFen = sponsors
-	.map((sponsor) => {
-		const normalizedAmount = sponsor.amount?.replace(/[^\d.]/g, "");
-		const amount = normalizedAmount ? Number(normalizedAmount) : Number.NaN;
 
-		return Number.isFinite(amount) ? Math.round(amount * 100) : null;
-	})
-	.filter((amount): amount is number => amount !== null);
-const sponsorTotal = sponsorAmountsInFen.reduce(
-	(total, amount) => total + amount,
+/** 从 "¥648"、"648 元" 这类文案里取出数值，取不到返回 undefined */
+function parseSponsorAmount(amount: string | undefined): number | undefined {
+	const normalized = amount?.replace(/[^\d.]/g, "");
+	if (!normalized) return undefined;
+	const parsed = Number(normalized);
+	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function formatSponsorDate(date: string | undefined): string {
+	if (!date) return "";
+	const parsed = new Date(date);
+	return Number.isNaN(parsed.getTime()) ? date : formatDateToYYYYMMDD(parsed);
+}
+
+const sponsorCards = sponsors.map((sponsor) => {
+	const amount = parseSponsorAmount(sponsor.amount);
+	const ratio =
+		amount === undefined
+			? 0
+			: Math.min(amount / SPONSOR_PROGRESS_FULL_AMOUNT, 1);
+	const dateText = formatSponsorDate(sponsor.date);
+	const meta =
+		dateText && sponsor.method
+			? i18n(I18nKey.sponsorMetaTemplate)
+					.replace("{date}", dateText)
+					.replace("{method}", sponsor.method)
+			: dateText || sponsor.method || "";
+
+	return {
+		name: sponsor.name,
+		amount: sponsor.amount,
+		meta,
+		progress: Math.round(ratio * 100),
+		amountInFen: amount === undefined ? null : Math.round(amount * 100),
+	};
+});
+
+// 金额以「分」为单位累加，避免浮点误差
+const sponsorTotal = sponsorCards.reduce(
+	(total, card) => total + (card.amountInFen ?? 0),
 	0,
 );
+const hasSponsorAmount = sponsorCards.some((card) => card.amountInFen !== null);
 const formattedSponsorTotal = new Intl.NumberFormat("zh-CN", {
 	style: "currency",
 	currency: "CNY",
@@ -62,72 +98,38 @@ const formattedSponsorTotal = new Intl.NumberFormat("zh-CN", {
         )}
       </div>
 
-      <!-- 赞助方式 -->
+      <!-- 收款码：一行三个，模糊遮罩 + 居中支付图标，悬停揭示完整二维码 -->
       {enabledMethods.length > 0 && (
-        <div class="sponsor-qr-card__outer">
-        <div class="sponsor-qr-card">
-          <!-- 第一层：扫码赞助标题 -->
-          <div class="sponsor-qr-card__header">
-            <h3 class="sponsor-qr-card__title">{i18n(I18nKey.scanToSponsor)}</h3>
-          </div>
-
-          <!-- 第二层：选择支付方式 -->
-          <p class="sponsor-qr-card__subtitle">{i18n(I18nKey.sponsorChooseMethod)}</p>
-
-          <!-- 第三层：Tabs 导航 -->
-          <div class="sponsor-qr-card__tabs-wrapper">
-            <div class="sponsor-qr-card__tabs-pill" data-sponsor-tab-nav>
-              <div class="sponsor-qr-card__tabs-indicator" data-sponsor-tab-indicator></div>
-              {enabledMethods.map((method, index) => (
-                <button
-                  class:list={[
-                    "sponsor-qr-card__tab-btn",
-                    {
-                      "sponsor-qr-card__tab-btn--active": index === 0,
-                      "sponsor-qr-card__tab-btn--inactive": index !== 0
-                    }
-                  ]}
-                  data-sponsor-tab={index}
-                  type="button"
-                >
-                  {method.icon && (
-                    <Icon name={method.icon} class="text-[1rem]" />
-                  )}
-                  {method.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <!-- 第四层：二维码图片 -->
-          <div class="sponsor-qr-card__content">
-            {enabledMethods.map((method, index) => (
-              <div
-                class:list={[
-                  "sponsor-qr-card__panel",
-                  { "hidden": index !== 0 }
-                ]}
-                data-sponsor-panel={index}
-              >
+        <div class="sponsor-qr-grid">
+          {enabledMethods.map((method) => (
+            <figure
+              class:list={[
+                "sponsor-qr-card",
+                { "sponsor-qr-card--empty": !method.qrCode }
+              ]}
+              data-sponsor-qr-card={method.qrCode ? "" : undefined}
+              tabindex={method.qrCode ? 0 : undefined}
+            >
+              <div class="sponsor-qr-card__frame">
                 {method.qrCode ? (
-                  <div class="sponsor-qr-card__image-wrapper">
-                    <img
-                      src={url(method.qrCode)}
-                      alt={`${method.name} ${i18n(I18nKey.scanToSponsor)}`}
-                      class="sponsor-qr-card__image"
-                      loading="lazy"
-                    />
-                  </div>
+                  <img
+                    src={url(method.qrCode)}
+                    alt={`${method.name} ${i18n(I18nKey.scanToSponsor)}`}
+                    class="sponsor-qr-card__image"
+                    loading="lazy"
+                  />
                 ) : (
-                  <div class="sponsor-qr-card__empty">
-                    <Icon name="material-symbols:qr-code-scanner" class="text-[3rem] mb-2 opacity-40" />
-                    <span class="sponsor-qr-card__empty-text">{i18n(I18nKey.sponsorNotAvailable)}</span>
-                  </div>
+                  <span class="sponsor-qr-card__empty-text">{i18n(I18nKey.sponsorNotAvailable)}</span>
+                )}
+                {method.icon && (
+                  <span class="sponsor-qr-card__icon">
+                    <Icon name={method.icon} class="sponsor-qr-card__glyph" />
+                  </span>
                 )}
               </div>
-            ))}
-          </div>
-        </div>
+              <figcaption class="sr-only">{method.name}</figcaption>
+            </figure>
+          ))}
         </div>
       )}
     </div>
@@ -142,46 +144,26 @@ const formattedSponsorTotal = new Intl.NumberFormat("zh-CN", {
             <h2 class="text-xl font-bold text-neutral-900 dark:text-neutral-100">
               {i18n(I18nKey.sponsorList)}
             </h2>
-            {sponsorAmountsInFen.length > 0 && (
+            {hasSponsorAmount && (
               <span class="sponsor-list__total">
                 {i18n(I18nKey.sponsorTotal)} {formattedSponsorTotal}
               </span>
             )}
           </div>
         </div>
-        {sponsors.length > 0 ? (
+        {sponsorCards.length > 0 ? (
           <div class="sponsor-list">
-            {sponsors.map((sponsor) => (
-              <div class="sponsor-row group">
-                {/* 头像 */}
-                <div class="sponsor-avatar">
-                  {sponsor.avatar ? (
-                    <img
-                      src={sponsor.avatar}
-                      alt={sponsor.name}
-                      class="sponsor-avatar__img"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span>{sponsor.name.charAt(0)}</span>
-                  )}
-                </div>
-
-                {/* 信息 */}
-                <div class="sponsor-info">
-                  <span class="sponsor-name">
-                    {sponsor.name}
-                  </span>
-                  {sponsor.date && (
-                    <span class="sponsor-date">
-                      {new Date(sponsor.date).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
+            {sponsorCards.map((sponsor) => (
+              <div
+                class="sponsor-card"
+                style={`--sponsor-progress: ${sponsor.progress}%`}
+              >
+                <span class="sponsor-card__name">{sponsor.name}</span>
+                {sponsor.meta && (
+                  <span class="sponsor-card__meta">{sponsor.meta}</span>
+                )}
                 {sponsor.amount && (
-                  <span class="sponsor-amount">
-                    {sponsor.amount}
-                  </span>
+                  <span class="sponsor-card__amount">{sponsor.amount}</span>
                 )}
               </div>
             ))}
@@ -197,79 +179,17 @@ const formattedSponsorTotal = new Intl.NumberFormat("zh-CN", {
 
   <!-- 样式已迁移至 src/styles/pages/sponsor.css -->
 
-  <!-- Sponsor Tabs 交互脚本 -->
-  <script is:inline>
-    (function() {
-      if (window.__sponsorTabsReady) return;
-      window.__sponsorTabsReady = true;
+  <script>
+    import { definePageIsland } from "@/utils/swup-lifecycle";
+    import {
+      mountSponsorQrReveal,
+      unmountSponsorQrReveal,
+    } from "@/utils/sponsor-qr-controller";
 
-      function updateSponsorIndicator(nav) {
-        if (!nav) return;
-        var indicator = nav.querySelector("[data-sponsor-tab-indicator]");
-        if (!indicator) return;
-        var activeBtn = nav.querySelector(".sponsor-qr-card__tab-btn--active");
-        if (!activeBtn) return;
-        var navRect = nav.getBoundingClientRect();
-        var btnRect = activeBtn.getBoundingClientRect();
-        indicator.style.left = (btnRect.left - navRect.left) + "px";
-        indicator.style.top = (btnRect.top - navRect.top) + "px";
-        indicator.style.width = btnRect.width + "px";
-        indicator.style.height = btnRect.height + "px";
-        indicator.style.opacity = "1";
-      }
-
-      function activateSponsorTab(tabIndex) {
-        var tabIndexStr = String(tabIndex);
-        var tabButtons = document.querySelectorAll("[data-sponsor-tab]");
-        var panels = document.querySelectorAll("[data-sponsor-panel]");
-
-        tabButtons.forEach(function(btn) {
-          if (btn.dataset.sponsorTab === tabIndexStr) {
-            btn.classList.remove("sponsor-qr-card__tab-btn--inactive");
-            btn.classList.add("sponsor-qr-card__tab-btn--active");
-          } else {
-            btn.classList.remove("sponsor-qr-card__tab-btn--active");
-            btn.classList.add("sponsor-qr-card__tab-btn--inactive");
-          }
-        });
-
-        panels.forEach(function(panel) {
-          if (panel.dataset.sponsorPanel === tabIndexStr) {
-            panel.classList.remove("hidden");
-          } else {
-            panel.classList.add("hidden");
-          }
-        });
-
-        var nav = document.querySelector("[data-sponsor-tab-nav]");
-        if (nav) updateSponsorIndicator(nav);
-      }
-
-      // 事件委托：sponsor tab 点击
-      document.addEventListener("click", function(e) {
-        var btn = e.target.closest("[data-sponsor-tab]");
-        if (!btn) return;
-        activateSponsorTab(btn.dataset.sponsorTab);
-      });
-
-      // resize：更新指示器
-      window.addEventListener("resize", function() {
-        var nav = document.querySelector("[data-sponsor-tab-nav]");
-        if (nav) updateSponsorIndicator(nav);
-      });
-
-      // 初始化 sponsor tab 指示器
-      function initSponsorTabs() {
-        var nav = document.querySelector("[data-sponsor-tab-nav]");
-        if (nav) {
-          requestAnimationFrame(function() {
-            updateSponsorIndicator(nav);
-          });
-        }
-      }
-
-      initSponsorTabs();
-      document.addEventListener("astro:page-load", initSponsorTabs);
-    })();
+    definePageIsland({
+      name: "sponsor-qr-reveal",
+      mount: mountSponsorQrReveal,
+      unmount: unmountSponsorQrReveal,
+    });
   </script>
 </MainGridLayout>
