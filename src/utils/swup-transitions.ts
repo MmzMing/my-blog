@@ -100,7 +100,7 @@ export function setupSwupTransitions(): void {
 		}
 		pendingPosition = undefined;
 		pendingAnchor = "";
-		root.classList.remove("is-scroll-restoring");
+		root.classList.remove("is-content-pending");
 		releaseManualRestoration();
 	};
 
@@ -126,15 +126,30 @@ export function setupSwupTransitions(): void {
 	// 刷新首页时从第一帧重播入场编排，由持有 ScrollTrigger 的 hero 层负责复位：
 	// ScrollTrigger 会记住加载时的滚动位置并在首帧后回灌，导航层不引 gsap 就压不住它。
 
+	// Head 插件会先撤掉旧 CSS 再等新 CSS，必须比它更早遮住内容；
+	// 减少动画模式没有退场动画遮挡，也需要经过这道准备闸门。
+	onSwupHook(
+		"content:replace",
+		() => {
+			root.classList.add("is-content-pending");
+		},
+		{ before: true, priority: -1 },
+	);
+
 	onSwupHook("content:replace", () => {
 		updateSidebarWidgetVisibility();
 		root.classList.toggle(
-			"is-scroll-restoring",
+			"is-content-pending",
 			Boolean(pendingPosition || pendingAnchor),
 		);
 	});
 
 	onSwupHook("visit:start", (visit) => {
+		// @swup/astro 不透传 animateHistoryBrowsing，在本次导航上启用现有过渡；
+		// 不开启 Swup 的滚动重置，历史位置仍由下方的恢复逻辑负责。
+		if (visit.history.popstate) {
+			visit.animation.animate = !reducedMotion.matches;
+		}
 		restoration.abort();
 		restoration = new AbortController();
 		clearTocFlagResetTimer();
@@ -149,7 +164,7 @@ export function setupSwupTransitions(): void {
 				: undefined;
 		pendingAnchor = !visit.history.popstate ? (visit.to.hash ?? "") : "";
 		const restoring = Boolean(pendingPosition || pendingAnchor);
-		root.classList.remove("is-scroll-restoring");
+		root.classList.remove("is-content-pending");
 		history.scrollRestoration = restoring ? "manual" : "auto";
 		// 锚点要等首页 pin 建好再定位，不能在临时文档高度上计算目标。
 		if (pendingAnchor) visit.scroll.target = false;
@@ -188,7 +203,7 @@ export function setupSwupTransitions(): void {
 		restoration.abort();
 		pendingPosition = undefined;
 		pendingAnchor = "";
-		root.classList.remove("is-scroll-restoring");
+		root.classList.remove("is-content-pending");
 		history.scrollRestoration = "auto";
 	});
 

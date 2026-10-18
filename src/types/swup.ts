@@ -42,6 +42,7 @@ export interface SwupVisit {
 	readonly to: SwupVisitLocation;
 	readonly done: boolean;
 	readonly history: { popstate: boolean };
+	readonly animation: { animate: boolean };
 	readonly scroll: { reset: boolean; target?: string | false };
 }
 
