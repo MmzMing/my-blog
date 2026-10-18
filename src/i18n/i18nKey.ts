@@ -26,6 +26,8 @@ enum I18nKey {
 	tocMindMapZoomOut = "tocMindMapZoomOut",
 	tocMindMapReset = "tocMindMapReset",
 	tocMindMapFullscreen = "tocMindMapFullscreen",
+	tocBuyCoffee = "tocBuyCoffee",
+	tocSupportThanks = "tocSupportThanks",
 	music = "music",
 
 	// 公告栏
@@ -157,6 +159,12 @@ enum I18nKey {
 
 	// 站点统计
 	siteStats = "siteStats",
+	siteStatsRunningDays = "siteStatsRunningDays",
+	siteStatsLastUpdate = "siteStatsLastUpdate",
+	siteStatsWords = "siteStatsWords",
+	siteStatsDaysAgo = "siteStatsDaysAgo",
+	siteStatsUpdatedSentence = "siteStatsUpdatedSentence",
+	siteStatsWordsSentence = "siteStatsWordsSentence",
 	siteStatsPostCount = "siteStatsPostCount",
 	siteStatsCategoryCount = "siteStatsCategoryCount",
 	siteStatsTagCount = "siteStatsTagCount",
@@ -176,6 +184,7 @@ enum I18nKey {
 	shareWhatsApp = "shareWhatsApp",
 	copied = "copied",
 	copyLink = "copyLink",
+	shareCopyFailed = "shareCopyFailed",
 	shareToQQ = "shareToQQ",
 	shareByEmail = "shareByEmail",
 	shareToFeishu = "shareToFeishu",

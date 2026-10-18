@@ -1,19 +1,15 @@
 /**
  * 右侧大纲面板（Obsidian 风格）控制器。
  *
- * 结构：工具栏（手风琴三模式 + 思维导图 + 进度%）/ 节点树（圆点 + SVG 竖轨
- * 主干与进度线 + 阅读位置指示器）/ 思维导图弹窗。树、竖轨与指示器全部由本
- * 控制器在客户端渲染。
+ * 结构：标题与工具栏 / 节点树（圆点 + SVG 竖轨与阅读位置指示器）/ 底部阅读
+ * 进度与打赏/分享操作 / 站点统计卡片 / 思维导图弹窗。树、竖轨与指示器由本控制器渲染。
  *
  * 坑位备忘：
- * - 面板是 max-height 封顶 + 树内部滚动；底部钳制锚在页脚顶边（不再锚正文卡底）：
+ * - 面板随内容收缩，视口只限制最大高度，树内部滚动；底部钳制锚在页脚顶边：
  *   面板底边触到页脚顶后随文档滚走，不悬浮在页脚上；
  * - 可切换面板（带 [data-toc-related] 相关文章视图时）：许可协议卡底边与面板
- *   底边对齐后切为堆叠换牌——目录留在文档流撑高（面板几何恒定，底边即固定触发
- *   线），相关文章绝对叠在同位、按自然高度向下溢出。换牌时两层都只做淡入淡出，
- *   位移交给层内逐项落位（按 --toc-stagger 依次下移归位，控制器按文档序编号）；
- *   退场层原地淡出。交错入场在首次真实切换时才启用（is-mode-armed）。
- *   退出带 24px 迟滞；
+ *   最大停靠区底边对齐后切换；两层同位叠放，仅做可反向接续的透明度过渡。
+ *   触发线取停靠顶边 + CSS 最大高度，不随手风琴和页脚钳制变化。退出带 24px 迟滞；
  * - 竖轨取点用圆点中心相对树容器的位置（含 scrollTop），SVG 作为树的第一个
  *   子节点随内容一起滚，滚动树不需要重画；指示器相反，它挂在外层并按视口坐标
  *   定位（__tree 的 overflow 会裁掉起飞），所以每帧都要用 nav 矩形反算一次，
@@ -270,6 +266,8 @@ function lyingAngle(drift: number, angle: number): number {
 export class ArticleTocPanelController {
 	private readonly root: HTMLElement;
 	private readonly abortController = new AbortController();
+	private readonly tocLayer: HTMLElement | null;
+	private readonly hoverHighlight: HTMLElement | null;
 	private readonly treeNav: HTMLElement | null;
 	private readonly linesSvg: SVGSVGElement | null;
 	private readonly autoButton: HTMLButtonElement | null;
@@ -277,6 +275,9 @@ export class ArticleTocPanelController {
 	private readonly mindmapButton: HTMLButtonElement | null;
 	private readonly progressRegion: HTMLElement | null;
 	private readonly progressLabel: HTMLElement | null;
+	private readonly supportControl: HTMLElement | null;
+	private readonly supportButton: HTMLButtonElement | null;
+	private readonly supportPopover: HTMLElement | null;
 	private readonly mindmapDialog: HTMLDialogElement | null;
 	private readonly mindmapCanvas: HTMLElement | null;
 	private readonly mindmapTree: HTMLElement | null;
@@ -307,6 +308,7 @@ export class ArticleTocPanelController {
 		toggle: HTMLButtonElement | null;
 	}[] = [];
 	private rootDot: HTMLElement | null = null;
+	private highlightedRow: HTMLElement | null = null;
 	/* ---------- 竖轨与指示器状态 ---------- */
 	/** 竖轨两条常驻 path：底层虚线与按弧长填充的进度线，共用同一个 d */
 	private trackBase: SVGPathElement | null = null;
@@ -372,15 +374,13 @@ export class ArticleTocPanelController {
 	/* 停靠状态：顶部跟随（信息卡顶 → 8rem 停靠线），底部钳制在页脚顶边 */
 	private railBaseTop = 0;
 	private railHeight = 0;
-	/** 相关文章浮层的自然高度（向下溢出面板的部分），参与页脚钳制占位 */
-	private relatedHeight = 0;
+	private modeTriggerHeight = 0;
 	private appliedRailTop: number | null = null;
 	/** 顶部跟随锚点（过期提示/AI 摘要/封面图信息卡）：初始与卡顶对齐，不存在则恒停靠 */
 	private introAnchor: HTMLElement | null = null;
 	/** 底部钳制锚点：面板底边触到页脚顶边后随文档滚走，不悬浮在页脚上 */
 	private footerEl: HTMLElement | null = null;
-	/* 目录 ↔ 相关文章转换状态机：仅有 [data-toc-related] 时启用（transitionEnabled）。
-	   目录视图留在文档流撑高，切换只改可见性与淡入淡出，面板几何恒定、触发线稳定 */
+	/* 目录与相关文章浮层同位叠放；隐藏层立即退出键盘导航，视觉过渡可随时反向接续。 */
 	private relatedLayer: HTMLElement | null = null;
 	private licenseEl: HTMLElement | null = null;
 	private fallbackAnchorEl: HTMLElement | null = null;
@@ -388,9 +388,12 @@ export class ArticleTocPanelController {
 	private mode: "toc" | "related" = "toc";
 	/** 首次定态前不播动画（滚动恢复/前进后退落在转换区时防闪） */
 	private modeInitialized = false;
+	private modeInitFrame: number | null = null;
 
 	constructor(root: HTMLElement) {
 		this.root = root;
+		this.tocLayer = root.querySelector("[data-toc-view]");
+		this.hoverHighlight = root.querySelector("[data-toc-highlight]");
 		this.treeNav = root.querySelector("[data-toc-tree]");
 		this.linesSvg = root.querySelector("[data-toc-lines]");
 		this.autoButton = root.querySelector("[data-toc-auto-btn]");
@@ -398,6 +401,9 @@ export class ArticleTocPanelController {
 		this.mindmapButton = root.querySelector("[data-toc-mindmap-btn]");
 		this.progressRegion = root.querySelector("[data-toc-progress]");
 		this.progressLabel = root.querySelector("[data-toc-progress-label]");
+		this.supportControl = root.querySelector("[data-toc-support]");
+		this.supportButton = root.querySelector("[data-toc-support-btn]");
+		this.supportPopover = root.querySelector("[data-toc-support-popover]");
 		this.mindmapDialog = root.querySelector("[data-toc-mindmap]");
 		this.mindmapCanvas = root.querySelector("[data-toc-mindmap-canvas]");
 		this.mindmapTree = root.querySelector("[data-toc-mindmap-tree]");
@@ -436,12 +442,26 @@ export class ArticleTocPanelController {
 			this.licenseEl = document.querySelector(".license-container");
 			this.fallbackAnchorEl = document.querySelector("#post-container");
 		}
+		this.setMode("toc");
 		this.cachePositions();
 		this.renderRows();
-		this.applyStagger();
 		this.bindInteractions();
-		this.resizeObserver = new ResizeObserver(() => this.scheduleMeasure());
+		this.resizeObserver = new ResizeObserver((entries) => {
+			if (
+				entries.some(
+					(entry) =>
+						entry.target !== this.root && entry.target !== this.relatedLayer,
+				)
+			) {
+				this.scheduleMeasure();
+			} else {
+				// 手风琴改变的是侧栏高度，无需重新测量正文里的所有标题。
+				this.scheduleUpdate();
+			}
+		});
 		this.resizeObserver.observe(this.article);
+		this.resizeObserver.observe(this.root);
+		if (this.relatedLayer) this.resizeObserver.observe(this.relatedLayer);
 		// 字体换字、封面图折叠等会推移信息卡顶，一并监听以重算停靠位置与标题坐标
 		const hero = document.querySelector(".post-hero");
 		if (hero) this.resizeObserver.observe(hero);
@@ -466,27 +486,27 @@ export class ArticleTocPanelController {
 	}
 
 	public destroy(): void {
+		this.clearHighlight();
+		this.setSupportOpen(false);
 		this.abortController.abort();
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.root.style.top = "";
-		this.root.classList.remove(
-			"is-related-mode",
-			"is-mode-armed",
-			"is-mode-no-anim",
-		);
+		this.root.classList.remove("is-related-mode", "is-mode-no-anim");
 		this.appliedRailTop = null;
 		if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
 		if (this.measureFrame !== null) cancelAnimationFrame(this.measureFrame);
 		if (this.trackFrame !== null) cancelAnimationFrame(this.trackFrame);
 		if (this.trackAnimFrame !== null) cancelAnimationFrame(this.trackAnimFrame);
 		if (this.tickFrame !== null) cancelAnimationFrame(this.tickFrame);
+		if (this.modeInitFrame !== null) cancelAnimationFrame(this.modeInitFrame);
 		if (this.activeScrollTimer) clearTimeout(this.activeScrollTimer);
 		this.animationFrame = null;
 		this.measureFrame = null;
 		this.trackFrame = null;
 		this.trackAnimFrame = null;
 		this.tickFrame = null;
+		this.modeInitFrame = null;
 		this.activeScrollTimer = null;
 		/* 弹窗还开着时导航走人：显式关掉，避免顶层 layer 残留焦点陷阱 */
 		if (this.mindmapDialog?.open) this.mindmapDialog.close();
@@ -824,16 +844,7 @@ export class ArticleTocPanelController {
 		const base = this.trackBase;
 		const progress = this.trackProgress;
 		if (!tree || !svg || !nav || !base || !progress) return;
-
-		/* 先归零再测量：svg 的旧高度是绝对定位溢出，会污染 scrollHeight
-		   （只涨不缩的棘轮），在树里残留大片可滚动的空白 */
-		svg.setAttribute("width", "0");
-		svg.setAttribute("height", "0");
-		svg.setAttribute("width", String(nav.clientWidth));
-		svg.setAttribute(
-			"height",
-			String(Math.max(nav.scrollHeight, nav.clientHeight)),
-		);
+		this.syncHighlight();
 
 		const hadTrack = this.trackTotal > 0;
 		const points: TrackPoint[] = [];
@@ -850,6 +861,17 @@ export class ArticleTocPanelController {
 			points.push(center);
 			indexes.push(node.index);
 		});
+
+		/* 不从 scrollHeight 反推 SVG 高度：旧 path 的溢出也会进入该值，
+		   即使先把 viewport 归零仍会留下自我撑高的空白轨道。只取真实节点边界。 */
+		const lastPoint = points.at(-1);
+		svg.setAttribute("width", String(nav.clientWidth));
+		svg.setAttribute(
+			"height",
+			String(
+				Math.max(nav.clientHeight, (lastPoint?.y ?? 0) + PLANE_EDGE_INSET),
+			),
+		);
 
 		const d = buildTrackPath(points);
 		if (!d) {
@@ -1203,8 +1225,15 @@ export class ArticleTocPanelController {
 		   auto（parse 出 NaN），所以每次测量都重取，窄屏↔宽屏切换后才有正确值。
 		   先摘掉内联 top 再读：否则读到的是 syncDock 自己写上去的跟随值 */
 		const appliedTop = this.root.style.top;
+		const appliedHeight = this.root.style.height;
 		this.root.style.top = "";
-		const rootTop = Number.parseFloat(getComputedStyle(this.root).top);
+		const rootStyle = getComputedStyle(this.root);
+		const rootTop = Number.parseFloat(rootStyle.top);
+		// max-height 可能仍是 min()/calc() 表达式；临时作为 height 测量用值，
+		// 不解析 CSS 数学表达式，也不让目录内容高度参与切换判断。
+		this.root.style.height = rootStyle.maxHeight;
+		this.modeTriggerHeight = this.root.offsetHeight;
+		this.root.style.height = appliedHeight;
 		this.root.style.top = appliedTop;
 		this.railBaseTop = Number.isNaN(rootTop) ? 0 : rootTop;
 
@@ -1213,8 +1242,6 @@ export class ArticleTocPanelController {
 		this.articleStart = articleRect.top + scrollY;
 		this.articleEnd = articleRect.bottom + scrollY;
 		this.railHeight = this.root.offsetHeight;
-		/* 相关文章浮层按自然高度向下溢出面板，页脚钳制要把它算进占位高度 */
-		this.relatedHeight = this.relatedLayer?.scrollHeight ?? 0;
 		this.headingTops = tree.nodes.map(
 			(node) => node.element.getBoundingClientRect().top + scrollY,
 		);
@@ -1241,10 +1268,12 @@ export class ArticleTocPanelController {
 	   （CSS 的 8rem，即原本与标题对齐的位置）后，钳制在停靠线悬停跟随。
 	   每帧实时取视口坐标，字体加载/折叠卡片导致的位移无需额外缓存。
 	   fitTop 防止矮视口下初始位置把面板底边撑出屏幕。
-	   底部钳制：面板底边触到页脚顶边后随文档滚走，不悬浮在页脚上。占位高度取
-	   目录高与相关文章自然高的较大值——相关文章向下溢出不撑高面板，不预留就会
-	   压到页脚上；顶边贴到视口上沿即止，不再向上移出屏幕。 */
+	   停靠按当前可见视图的实际高度计算，短目录不撑高，相关文章不越过页脚。 */
 	private syncDock(): void {
+		this.railHeight =
+			this.mode === "related" && this.relatedLayer
+				? this.relatedLayer.offsetHeight
+				: this.root.offsetHeight;
 		if (!this.railHeight) return;
 
 		let followTop = this.railBaseTop;
@@ -1256,8 +1285,7 @@ export class ArticleTocPanelController {
 
 		if (this.footerEl) {
 			const footerTop = this.footerEl.getBoundingClientRect().top;
-			const clampHeight = Math.max(this.railHeight, this.relatedHeight);
-			const maxTop = Math.max(0, footerTop - clampHeight - RAIL_BOTTOM_GAP);
+			const maxTop = Math.max(0, footerTop - this.railHeight - RAIL_BOTTOM_GAP);
 			followTop = Math.min(followTop, maxTop);
 		}
 
@@ -1270,8 +1298,8 @@ export class ArticleTocPanelController {
 	/* 目录 → 相关文章转换评估（每帧随 update 调用）。
 	   触发：许可协议卡（兜底：正文卡）底边上移到面板底边水平线 → 进入相关态；
 	   退出：锚点底边回落越过面板底边 + 迟滞带 → 恢复目录态。
-	   坐标全部实时读取。两层同框、面板高度不随模式变化，底边即固定触发线，
-	   切换过程中它不动，因此不会因几何漂移而反向命中条件来回振荡。 */
+	   触发线使用停靠位置，不能读取被页脚钳制推移的实时底边，否则滚动方向
+	   未变也可能反向命中条件。手风琴和视图切换都不改变这个几何基准。 */
 	private evaluateMode(): void {
 		if (!this.transitionEnabled) return;
 		if (getComputedStyle(this.root).display === "none") return; // 窄屏面板不可见
@@ -1279,7 +1307,7 @@ export class ArticleTocPanelController {
 		if (!anchorEl) return;
 
 		const anchorBottom = anchorEl.getBoundingClientRect().bottom;
-		const panelBottom = this.root.getBoundingClientRect().bottom;
+		const panelBottom = this.railBaseTop + this.modeTriggerHeight;
 
 		if (this.mode === "toc") {
 			if (anchorBottom <= panelBottom) this.setMode("related");
@@ -1291,41 +1319,30 @@ export class ArticleTocPanelController {
 			this.modeInitialized = true;
 			// 首次定态不播过渡（滚动恢复/前进后退落在转换区时面板直接以正确模式出现）
 			this.root.classList.add("is-mode-no-anim");
-			requestAnimationFrame(() =>
-				this.root.classList.remove("is-mode-no-anim"),
-			);
+			this.modeInitFrame = requestAnimationFrame(() => {
+				this.modeInitFrame = null;
+				this.root.classList.remove("is-mode-no-anim");
+			});
 		}
 	}
 
 	private setMode(mode: "toc" | "related"): void {
-		if (mode === this.mode) return;
 		this.mode = mode;
-		/* 交错入场只在真正的切换里播：首次定态（滚动恢复/前进后退落在转换区）时
-		   modeInitialized 还是 false，面板直接以正确模式静默出现 */
-		if (this.modeInitialized) this.root.classList.add("is-mode-armed");
-		// 只翻类：两层同框、面板高度不随模式变化，淡入淡出与落位全由 CSS 时长控制
-		this.root.classList.toggle("is-related-mode", mode === "related");
-	}
-
-	/** 按文档序给两层各自的可动元素写 --toc-stagger，供 CSS 逐项落位算延迟 */
-	private applyStagger(): void {
-		const assign = (targets: NodeListOf<HTMLElement>): void => {
-			targets.forEach((el, order) => {
-				el.style.setProperty("--toc-stagger", String(order));
-			});
-		};
-		assign(
-			this.root.querySelectorAll<HTMLElement>(
-				".article-toc-panel__toolbar, .article-toc-panel__row",
-			),
-		);
-		if (this.relatedLayer) {
-			assign(
-				this.relatedLayer.querySelectorAll<HTMLElement>(
-					".related-cards__title, .related-cards__item",
-				),
-			);
+		// 语义状态立即跟随最后一次切换，不等待动画完成或旧回调。
+		const isRelated = mode === "related";
+		if (isRelated) {
+			this.clearHighlight();
+			this.setSupportOpen(false);
 		}
+		if (this.tocLayer) {
+			this.tocLayer.inert = isRelated;
+			this.tocLayer.setAttribute("aria-hidden", String(isRelated));
+		}
+		if (this.relatedLayer) {
+			this.relatedLayer.inert = !isRelated;
+			this.relatedLayer.setAttribute("aria-hidden", String(!isRelated));
+		}
+		this.root.classList.toggle("is-related-mode", mode === "related");
 	}
 
 	private getActiveIndex(): number {
@@ -1370,8 +1387,9 @@ export class ArticleTocPanelController {
 	private update(): void {
 		if (!this.tree) return;
 
-		this.syncDock();
 		this.evaluateMode();
+		this.syncDock();
+		this.syncHighlight();
 		this.syncFlightWithScroll();
 
 		const progressPercent = Math.round(this.getProgress() * 100);
@@ -1380,6 +1398,10 @@ export class ArticleTocPanelController {
 			this.progressRegion?.setAttribute(
 				"aria-valuenow",
 				String(progressPercent),
+			);
+			this.progressRegion?.style.setProperty(
+				"--toc-reading-progress",
+				String(progressPercent / 100),
 			);
 			if (this.progressLabel)
 				this.progressLabel.textContent = `${progressPercent}%`;
@@ -1712,10 +1734,167 @@ export class ArticleTocPanelController {
 		});
 	}
 
+	/* ---------- 目录悬停高亮 ---------- */
+
+	private highlightRow(row: HTMLElement): void {
+		if (this.highlightedRow === row || !this.hoverHighlight) return;
+		// 首次直接落位，之后只更新目标，快速反向时由 CSS 从当前画面接续。
+		this.hoverHighlight.style.transitionDuration = this.highlightedRow
+			? ""
+			: "0ms";
+		this.highlightedRow = row;
+		this.syncHighlight();
+		if (this.highlightedRow)
+			this.tocLayer?.setAttribute("data-toc-highlighted", "");
+	}
+
+	private clearHighlight(): void {
+		this.highlightedRow = null;
+		this.tocLayer?.removeAttribute("data-toc-highlighted");
+		if (this.hoverHighlight) this.hoverHighlight.style.transitionDuration = "";
+	}
+
+	private syncHighlight(): void {
+		const row = this.highlightedRow;
+		const highlight = this.hoverHighlight;
+		const nav = this.treeNav;
+		const layer = this.tocLayer;
+		if (!row || !highlight || !nav || !layer) return;
+		const index = Number(row.dataset.tocIndex);
+		if (index >= 0 && !this.isNodeVisible(index)) {
+			this.clearHighlight();
+			return;
+		}
+
+		const target = row.getBoundingClientRect();
+		const viewport = nav.getBoundingClientRect();
+		const bounds = layer.getBoundingClientRect();
+		// 高亮不在滚动容器里，需要裁到目录可视区，避免滚动时盖住工具栏或操作区。
+		const top = Math.max(target.top, viewport.top);
+		const bottom = Math.min(target.bottom, viewport.bottom);
+		if (bottom <= top || target.width === 0) {
+			this.clearHighlight();
+			return;
+		}
+		highlight.style.transform = `translate(${target.left - bounds.left}px, ${top - bounds.top}px)`;
+		highlight.style.width = `${target.width}px`;
+		highlight.style.height = `${bottom - top}px`;
+	}
+
 	/* ---------- 事件绑定 ---------- */
+
+	private setSupportOpen(open: boolean): void {
+		this.supportControl?.classList.toggle("is-open", open);
+		this.supportButton?.setAttribute("aria-expanded", String(open));
+		if (this.supportPopover) {
+			this.supportPopover.inert = !open;
+			this.supportPopover.setAttribute("aria-hidden", String(!open));
+		}
+	}
 
 	private bindInteractions(): void {
 		const { signal } = this.abortController;
+		this.treeNav?.addEventListener(
+			"pointerover",
+			(event) => {
+				if (event.pointerType === "touch" || !(event.target instanceof Element))
+					return;
+				const row = event.target.closest<HTMLElement>(
+					".article-toc-panel__row",
+				);
+				if (row) this.highlightRow(row);
+				else this.clearHighlight();
+			},
+			{ signal },
+		);
+		this.treeNav?.addEventListener(
+			"pointerleave",
+			() => {
+				const focused = document.activeElement;
+				const row =
+					focused instanceof Element && focused.matches(":focus-visible")
+						? focused.closest<HTMLElement>(".article-toc-panel__row")
+						: null;
+				if (row && this.treeNav?.contains(row)) this.highlightRow(row);
+				else this.clearHighlight();
+			},
+			{ signal },
+		);
+		this.treeNav?.addEventListener(
+			"focusin",
+			(event) => {
+				if (!(event.target instanceof Element)) return;
+				const row = event.target.closest<HTMLElement>(
+					".article-toc-panel__row",
+				);
+				if (row) this.highlightRow(row);
+			},
+			{ signal },
+		);
+		this.treeNav?.addEventListener(
+			"focusout",
+			(event) => {
+				if (
+					event.relatedTarget instanceof Element &&
+					this.treeNav?.contains(event.relatedTarget) &&
+					event.relatedTarget.closest(".article-toc-panel__row")
+				)
+					return;
+				this.clearHighlight();
+			},
+			{ signal },
+		);
+		const support = this.supportControl;
+		if (support) {
+			support.addEventListener(
+				"pointerenter",
+				() => this.setSupportOpen(true),
+				{ signal },
+			);
+			support.addEventListener(
+				"pointerleave",
+				() => {
+					if (!support.contains(document.activeElement))
+						this.setSupportOpen(false);
+				},
+				{ signal },
+			);
+			support.addEventListener("focusin", () => this.setSupportOpen(true), {
+				signal,
+			});
+			support.addEventListener(
+				"focusout",
+				(event) => {
+					if (
+						!(event.relatedTarget instanceof Node) ||
+						!support.contains(event.relatedTarget)
+					) {
+						this.setSupportOpen(false);
+					}
+				},
+				{ signal },
+			);
+			this.supportButton?.addEventListener(
+				"click",
+				() => this.setSupportOpen(true),
+				{ signal },
+			);
+			document.addEventListener(
+				"keydown",
+				(event) => {
+					if (event.key === "Escape") this.setSupportOpen(false);
+				},
+				{ signal },
+			);
+			document.addEventListener(
+				"pointerdown",
+				(event) => {
+					if (event.target instanceof Node && !support.contains(event.target))
+						this.setSupportOpen(false);
+				},
+				{ signal },
+			);
+		}
 
 		this.autoButton?.addEventListener(
 			"click",
@@ -1772,10 +1951,14 @@ export class ArticleTocPanelController {
 
 		/* 指示器挂在外层按视口定位，树内部滚动只挪 nav.scrollTop：竖轨跟着内容走，
 		   指示器却要重算一次视口位置 */
-		this.treeNav?.addEventListener("scroll", () => this.applyPlane(), {
-			passive: true,
-			signal,
-		});
+		this.treeNav?.addEventListener(
+			"scroll",
+			() => {
+				this.syncHighlight();
+				this.applyPlane();
+			},
+			{ passive: true, signal },
+		);
 
 		/* 起飞只由用户主动滚动触发：监听挂在 window 上且一律 passive，不拦默认行为。
 		   鼠标停在面板上、由树自己消化滚动时 wheel 仍会冒泡到这里 */

@@ -6,40 +6,39 @@
 @media (min-width: 96rem) and (hover: hover) and (pointer: fine) {
 	.article-toc-panel {
 		--article-toc-active: #0e7490;
-		--article-toc-panel-bg: #dedede;
-		--article-toc-panel-text: #1f1f1f;
-		--article-toc-panel-muted: #4d4d4d;
-		--article-toc-panel-hover: rgb(0 0 0 / 8%);
+		--article-toc-panel-bg: var(--page-bg);
+		--article-toc-panel-text: var(--deep-text);
+		--article-toc-panel-muted: var(--content-meta);
+		--article-toc-panel-hover: var(--btn-plain-bg-hover);
 		--article-toc-line: rgb(0 0 0 / 28%);
 		--article-toc-dot: rgb(0 0 0 / 40%);
 		--article-toc-surface-width: 18rem;
 		--toc-plane-size: 1rem;
 		--toc-plane-shadow: rgb(0 0 0 / 35%);
+		--toc-switch-duration: 200ms;
+		--toc-max-height: min(40rem, calc(100dvh - 10rem));
 
 		position: fixed;
 		top: 8rem;
 		/* 与旧轨道同位：正文卡宽 56.5rem（半宽 28.25rem），贴右缘再留 1rem 间距 */
 		left: calc(50% + 28.25rem + var(--space-4));
 		z-index: 30;
-		display: flex;
-		flex-direction: column;
+		display: block;
 		width: var(--article-toc-surface-width);
-		/* 内容不满时贴合内容高度，超限时封顶并由树内部滚动 */
-		max-height: min(40rem, calc(100vh - 10rem));
-		/* 卡片底色与圆角挂在 __view 上：根节点恒透明，相关文章浮层向下溢出时不漏出容器底 */
+		/* 只限制上限，短目录与收起的分支不再撑出底部空白。 */
+		max-height: var(--toc-max-height);
+		background: transparent;
+		border: 0;
+		box-shadow: none;
 	}
 
-	/* 无标题文章：控制器挂 hidden 属性，显式压过本块的 display:flex */
+	/* 无标题文章：控制器挂 hidden 属性，显式压过本块的 display:block */
 	.article-toc-panel[hidden] {
 		display: none;
 	}
 
 	:root.dark .article-toc-panel {
 		--article-toc-active: #67e8f9;
-		--article-toc-panel-bg: #161616;
-		--article-toc-panel-text: #dadada;
-		--article-toc-panel-muted: #9e9e9e;
-		--article-toc-panel-hover: rgb(255 255 255 / 12%);
 		--article-toc-line: rgb(255 255 255 / 22%);
 		--article-toc-dot: rgb(255 255 255 / 40%);
 		--toc-plane-shadow: rgb(0 0 0 / 55%);
@@ -50,113 +49,67 @@
 		pointer-events: none;
 	}
 
-	/* ---------- 目录 ↔ 相关文章双视图（交错换牌） ---------- */
+	/* ---------- 目录 ↔ 相关文章双视图 ---------- */
 
-	/* 目录层是唯一的文档流子项，面板高度只由它决定；卡片底色挂在本层
-	   （根节点恒透明），相关文章层按自然高度向下溢出，不套容器底。
-	   面板几何恒定是这套动效不抖的前提：面板底边就是控制器的转换触发线，
-	   切换过程中它不能动，否则会立刻反向命中触发条件来回振荡。 */
+	/* 目录留在文档流，相关文章同位叠放，统计卡片属于目录层。层内不做 transform/filter：
+	   它们既会干扰圆点取点，也会改变 fixed 纸飞机的定位参照。 */
 	.article-toc-panel__view {
+		position: relative;
+		isolation: isolate;
 		display: flex;
-		flex: 1 1 auto;
 		flex-direction: column;
 		min-height: 0;
-		background: var(--article-toc-panel-bg);
-		border-radius: var(--radius-large);
+		min-width: 0;
+		max-height: var(--toc-max-height);
+		background: transparent;
 	}
 
-	.article-toc-panel {
-		/* 层间只做淡入淡出，位移交给层内逐项落位。两个方向的退场时长不同：
-		   - 相关文章盖目录（退场方=目录）用短淡出。相关文章不套容器底，卡片缝隙是透的，
-		     目录留太久会从缝里透出来压字；
-		   - 目录盖相关文章（退场方=相关文章）用满时长。目录是不透明整片，
-		     盖上去确实压得住，两层同时可见才有堆叠感。 */
-		--toc-switch-duration: 280ms;
-		--toc-switch-out: 120ms;
-		--toc-switch-in: 120ms;
-		/* 入场层的内容项自上而下逐件落位：轻微下移 + 模糊散去，末段带一点过冲 */
-		--toc-enter-duration: 320ms;
-		--toc-enter-delay: 80ms;
-		--toc-stagger-step: 45ms;
-		/* 交错只轮到前若干项，长目录不至于让末尾等到一秒以后 */
-		--toc-stagger-cap: 6;
-		--toc-item-offset: -10px;
-		--toc-item-blur: 4px;
-		--toc-enter-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+	/* 双向使用同一条 CSS transition；连续反向切换从当前透明度接续，
+	   不重播关键帧、不等待逐项延迟，也不依赖 transitionend 更新交互状态。 */
+	.article-toc-panel.is-mode-switchable :is(.article-toc-panel__view, .article-toc-panel__related) {
+		transition:
+			opacity var(--toc-switch-duration) cubic-bezier(0.2, 0, 0.2, 1),
+			visibility 0s linear var(--toc-switch-duration);
 	}
 
 	.article-toc-panel.is-mode-switchable .article-toc-panel__view {
-		position: relative;
 		z-index: 1;
 		opacity: 1;
 		visibility: visible;
-		transition:
-			opacity var(--toc-switch-in) linear,
-			visibility 0s linear;
+		transition-delay: 0s;
 	}
 
 	.article-toc-panel.is-mode-switchable.is-related-mode
 		.article-toc-panel__view {
-		z-index: 0;
-		opacity: 0;
-		visibility: hidden;
-		transition:
-			opacity var(--toc-switch-out) ease,
-			visibility 0s linear var(--toc-switch-out);
-	}
-
-	/* 相关文章层：inset:0 只作定位框，内容自然高度向下溢出，不套容器底 */
-	.article-toc-panel.is-mode-switchable .article-toc-panel__related {
-		position: absolute;
-		inset: 0;
 		opacity: 0;
 		visibility: hidden;
 		pointer-events: none;
-		transition:
-			opacity var(--toc-switch-duration) ease,
-			visibility 0s linear var(--toc-switch-duration);
+		transition-delay: 0s, var(--toc-switch-duration);
+	}
+
+	.article-toc-panel.is-mode-switchable .article-toc-panel__related {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		z-index: 2;
+		min-height: 0;
+		min-width: 0;
+		max-height: var(--toc-max-height);
+		overflow-y: auto;
+		overscroll-behavior-y: contain;
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		background: transparent;
 	}
 
 	.article-toc-panel.is-mode-switchable.is-related-mode
 		.article-toc-panel__related {
-		z-index: 2;
 		opacity: 1;
 		visibility: visible;
 		pointer-events: auto;
-		transition:
-			opacity var(--toc-switch-in) linear,
-			visibility 0s linear;
-	}
-
-	/* 交错入场只挂在入场层：动画名从 none 变成关键帧就会重播，因此来回切换每次都能
-	   重新落位，退场层则停在原位跟着整层淡出。--toc-stagger 由控制器按文档序写好。
-	   is-mode-armed 在首次真实切换时才加上，首屏落在目录态不会凭空播一段。
-	   fill-mode 用 backwards 而非 both：动画结束后不留 filter，避免 blur(0) 常驻改变文字栅格化。 */
-	.article-toc-panel.is-mode-switchable.is-mode-armed:not(.is-related-mode)
-		:is(.article-toc-panel__toolbar, .article-toc-panel__row),
-	.article-toc-panel.is-mode-switchable.is-mode-armed.is-related-mode
-		:is(.related-cards__title, .related-cards__item) {
-		animation-name: article-toc-item-enter;
-		animation-duration: var(--toc-enter-duration);
-		animation-timing-function: var(--toc-enter-ease);
-		animation-fill-mode: backwards;
-		animation-delay: calc(
-			var(--toc-enter-delay) +
-				min(var(--toc-stagger, 0), var(--toc-stagger-cap)) * var(--toc-stagger-step)
-		);
-	}
-
-	@keyframes article-toc-item-enter {
-		from {
-			opacity: 0;
-			transform: translateY(var(--toc-item-offset));
-			filter: blur(var(--toc-item-blur));
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-			filter: blur(0);
-		}
+		transition-delay: 0s;
 	}
 
 	/* 首次定态不播动画（滚动恢复落在转换区时防闪），下一帧由控制器摘掉 */
@@ -170,17 +123,54 @@
 	.article-toc-panel__toolbar {
 		display: flex;
 		flex: none;
-		gap: 0.15rem;
+		justify-content: space-between;
+		gap: var(--space-2);
 		align-items: center;
-		padding: var(--space-2) var(--space-3);
+		padding-bottom: var(--space-1);
+	}
+
+	.article-toc-panel__heading,
+	.article-toc-panel__related .related-cards__title {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		color: var(--article-toc-panel-text);
+		font-size: 1.05rem;
+		font-weight: 600;
+		line-height: 1.5;
+	}
+
+	.article-toc-panel__heading {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.article-toc-panel__heading svg,
+	.article-toc-panel__related .related-cards__title svg {
+		flex: none;
+	}
+
+	.article-toc-panel__related .related-cards__title {
+		display: flex;
+		align-items: center;
+		min-height: var(--space-8);
+		margin-bottom: var(--space-3);
+	}
+
+	.article-toc-panel__tools {
+		display: flex;
+		flex: none;
+		align-items: center;
+		gap: var(--space-1);
 	}
 
 	.article-toc-panel__tool-btn {
 		position: relative;
 		display: grid;
 		place-items: center;
-		width: 1.7rem;
-		height: 1.7rem;
+		width: var(--space-8);
+		height: var(--space-8);
 		padding: 0;
 		border: 0;
 		border-radius: var(--radius-medium);
@@ -198,9 +188,8 @@
 		background: var(--article-toc-panel-hover);
 	}
 
-	/* 按下高亮仅用于自动手风琴开关（aria-pressed = 开启中） */
+	/* 自动手风琴只用背景提示开启状态，图标沿用普通按钮配色。 */
 	.article-toc-panel__tool-btn[data-toc-auto-btn][aria-pressed="true"] {
-		color: var(--article-toc-active);
 		background: var(--article-toc-panel-hover);
 	}
 
@@ -219,11 +208,11 @@
 		display: block;
 	}
 
-	/* 工具栏提示：面板贴屏幕右缘，向左弹出（同 footer 的 data-tooltip 惯例） */
+	/* 提示在按钮上方并对齐右缘，避免最右侧按钮的提示超出视口。 */
 	.article-toc-panel__tool-btn::after {
 		position: absolute;
-		top: 50%;
-		right: calc(100% + 0.5rem);
+		bottom: calc(100% + var(--space-2));
+		right: 0;
 		padding: 0.25rem 0.5rem;
 		border-radius: var(--radius-small);
 		background: var(--article-toc-panel-text);
@@ -234,7 +223,7 @@
 		white-space: nowrap;
 		opacity: 0;
 		pointer-events: none;
-		transform: translate(0.25rem, -50%);
+		transform: translateY(var(--space-1));
 		transition:
 			opacity 160ms ease,
 			transform 160ms ease,
@@ -245,36 +234,379 @@
 	.article-toc-panel__tool-btn:hover::after,
 	.article-toc-panel__tool-btn:focus-visible::after {
 		opacity: 1;
-		transform: translate(0, -50%);
+		transform: translateY(0);
 		visibility: visible;
 	}
 
-	.article-toc-panel__progress {
+	.article-toc-panel__actions {
+		position: relative;
+		z-index: 3;
+		display: flex;
+		flex: none;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: var(--space-2);
+		padding: var(--space-1);
+		border: 1px solid var(--card-border);
+		border-radius: var(--radius-large);
+		background: var(--card-surface);
+	}
+
+	/* 两条连接线跨过统计卡片的上间距，不占布局，也不拦截按钮交互。 */
+	.article-toc-panel__actions::before,
+	.article-toc-panel__actions::after {
+		position: absolute;
+		top: 100%;
+		width: 1px;
+		height: calc(var(--space-4) + 1px);
+		background: var(--line-divider);
+		content: "";
+		pointer-events: none;
+	}
+
+	.article-toc-panel__actions::before {
+		left: 27%;
+	}
+
+	.article-toc-panel__actions::after {
+		right: 27%;
+	}
+
+	.article-toc-panel__action-buttons {
+		position: relative;
+		z-index: 1;
 		display: flex;
 		align-items: center;
-		margin-left: auto;
-		padding-right: 0.25rem;
+		gap: var(--space-2);
+	}
+
+	.article-toc-panel__action-btn {
+		display: grid;
+		place-items: center;
+		width: var(--space-8);
+		height: var(--space-8);
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-medium);
+		background: transparent;
 		color: var(--article-toc-panel-muted);
-		font-family: "JetBrains Mono Variable", ui-monospace, monospace;
-		font-size: 0.78rem;
+		font-size: 0.8rem;
+		cursor: pointer;
+		transition: background-color 160ms ease, color 160ms ease;
+	}
+
+	.article-toc-panel__action-btn:hover,
+	.article-toc-panel__action-btn:focus-visible,
+	.article-toc-panel__support.is-open > .article-toc-panel__action-btn {
+		background: var(--article-toc-panel-hover);
+		color: var(--article-toc-panel-text);
+	}
+
+	.article-toc-panel__support {
+		position: relative;
+	}
+
+	.article-toc-panel__support-popover {
+		--toc-support-card: 10rem;
+
+		position: absolute;
+		top: 50%;
+		right: calc(100% + var(--space-3));
+		z-index: 3;
+		width: max-content;
+		max-width: calc(100vw - var(--space-8));
+		padding: var(--space-4);
+		border: 1.5px solid var(--deep-text);
+		border-radius: var(--radius-large);
+		background: var(--float-panel-bg);
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		transform: translate(var(--space-1), -50%);
+		transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+	}
+
+	/* 箭头与导航工具菜单使用相同描边，居中指向咖啡按钮。 */
+	.article-toc-panel__support-popover::before {
+		position: absolute;
+		top: 50%;
+		right: calc(var(--space-3) / -2 - 0.75px);
+		width: var(--space-3);
+		height: var(--space-3);
+		border-top: 1.5px solid var(--deep-text);
+		border-right: 1.5px solid var(--deep-text);
+		background: var(--float-panel-bg);
+		content: "";
+		transform: translateY(-50%) rotate(45deg);
+	}
+
+	/* 覆盖弹层与按钮之间的间隙，鼠标可以直接移到收款码上。 */
+	.article-toc-panel__support-popover::after {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 100%;
+		width: var(--space-3);
+		content: "";
+	}
+
+	.article-toc-panel__support.is-open .article-toc-panel__support-popover {
+		opacity: 1;
+		visibility: visible;
+		pointer-events: auto;
+		transform: translate(0, -50%);
+	}
+
+	/* 收款码统一成 1:1 方块卡片：竖版海报、方形二维码、横图都塞进同一尺寸的框，
+	   图片在框内 contain 完整显示不裁切，方式名与支付图标压进卡片底栏。
+	   标题按整排卡片的宽度换行，避免长句把弹层撑成一行。 */
+	.article-toc-panel__support-title {
+		margin: 0 0 var(--space-3);
+		max-width: calc(
+			var(--toc-support-count) * var(--toc-support-card) +
+				(var(--toc-support-count) - 1) * var(--space-3)
+		);
+		color: var(--article-toc-panel-text);
+		font-size: 0.85rem;
+		font-weight: 600;
+		line-height: 1.5;
+		text-align: center;
+	}
+
+	.article-toc-panel__support-codes {
+		display: grid;
+		grid-template-columns: repeat(var(--toc-support-count), var(--toc-support-card));
+		gap: var(--space-3);
+	}
+
+	.article-toc-panel__support-card {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		aspect-ratio: 1 / 1;
+		margin: 0;
+		border: 1px solid var(--card-border);
+		border-radius: var(--radius-large);
+		background: var(--card-surface);
+	}
+
+	.article-toc-panel__support-frame {
+		flex: 1;
+		min-height: 0;
+		padding: var(--space-2);
+	}
+
+	.article-toc-panel__support-qr {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.article-toc-panel__support-caption {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-1);
+		min-width: 0;
+		padding: var(--space-1) var(--space-2);
+		border-top: 1px solid var(--card-border);
+		color: var(--article-toc-panel-muted);
+		font-size: 0.75rem;
+		line-height: 1.4;
+	}
+
+	.article-toc-panel__support-glyph {
+		flex: none;
+		width: 1rem;
+		height: 1rem;
+		color: var(--article-toc-panel-text);
+	}
+
+	.article-toc-panel__progress {
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		overflow: hidden;
+		pointer-events: none;
 	}
 
 	.article-toc-panel__progress-label {
+		position: relative;
+		z-index: 1;
+		padding-inline: var(--space-3);
+		color: var(--article-toc-panel-text);
+		font-family: "JetBrains Mono Variable", ui-monospace, monospace;
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
+		font-size: 0.75rem;
+	}
+
+	.article-toc-panel__progress-fill {
+		display: block;
+		width: 100%;
+		height: 100%;
+		background: color-mix(in oklab, var(--deep-text) 14%, transparent);
+		transform: scaleX(var(--toc-reading-progress, 0));
+		transform-origin: left center;
+		transition: transform 120ms linear;
+	}
+
+	.article-toc-panel__stats {
+		flex: none;
+		margin-top: var(--space-4);
+	}
+
+	.article-toc-panel__stats-heading {
+		position: relative;
+		width: 75%;
+		margin: 0 0 var(--space-2);
+		color: var(--article-toc-panel-text);
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.article-toc-panel__stats-card {
+		position: relative;
+		padding: var(--space-3);
+		border: 1px solid var(--card-border);
+		border-radius: var(--radius-large);
+		background: var(--card-surface);
+		overflow: hidden;
+	}
+
+	/* 拉长整张图片的透明遮罩，让图片从左侧留白缓缓显现到右缘。 */
+	.article-toc-panel__stats-background {
+		position: absolute;
+		inset: 0 0 0 25%;
+		opacity: 0.65;
+		mask-image: linear-gradient(
+			to right,
+			transparent,
+			color-mix(in srgb, currentColor 25%, transparent) 45%,
+			currentColor
+		);
+		pointer-events: none;
+	}
+
+	.article-toc-panel__stats-background img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: 65% center;
+	}
+
+	.article-toc-panel__stats-viewport {
+		--toc-stats-row-height: var(--space-6);
+
+		position: relative;
+		width: 75%;
+		height: var(--toc-stats-row-height);
+		overflow: hidden;
+		mask-image: linear-gradient(
+			to bottom,
+			transparent,
+			currentColor var(--space-1),
+			currentColor calc(100% - var(--space-1)),
+			transparent
+		);
+	}
+
+	.article-toc-panel__stats-card:focus-visible {
+		outline: 1px solid var(--article-toc-panel-text);
+		outline-offset: var(--space-1);
+	}
+
+	/* 末尾复制首句接住循环，重置轨道时仍是同一句，不产生倒滑或闪烁。 */
+	.article-toc-panel__stats-messages[data-stats-count="3"] {
+		animation: article-toc-stats-three 12s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+	}
+
+	.article-toc-panel__stats-messages[data-stats-count="2"] {
+		animation: article-toc-stats-two 8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+	}
+
+	.article-toc-panel__stats-card:hover .article-toc-panel__stats-messages,
+	.article-toc-panel__stats-card:focus-within .article-toc-panel__stats-messages,
+	.article-toc-panel.is-related-mode .article-toc-panel__stats-messages {
+		animation-play-state: paused;
+	}
+
+	.article-toc-panel__stats-message {
+		height: var(--toc-stats-row-height);
+		margin: 0;
+		color: var(--article-toc-panel-text);
+		font-size: 0.8rem;
+		font-variant-numeric: tabular-nums;
+		line-height: var(--toc-stats-row-height);
+		white-space: nowrap;
+	}
+
+	@keyframes article-toc-stats-three {
+		0%,
+		29% {
+			transform: translateY(0);
+		}
+		33.333%,
+		62.333% {
+			transform: translateY(calc(var(--toc-stats-row-height) * -1));
+		}
+		66.666%,
+		95.666% {
+			transform: translateY(calc(var(--toc-stats-row-height) * -2));
+		}
+		100% {
+			transform: translateY(calc(var(--toc-stats-row-height) * -3));
+		}
+	}
+
+	@keyframes article-toc-stats-two {
+		0%,
+		45% {
+			transform: translateY(0);
+		}
+		50%,
+		95% {
+			transform: translateY(calc(var(--toc-stats-row-height) * -1));
+		}
+		100% {
+			transform: translateY(calc(var(--toc-stats-row-height) * -2));
+		}
 	}
 
 	/* ---------- 节点树 ---------- */
 
+	/* 沿用归档页的单层滑动高亮，放在 SVG 下方，避免行背景遮断连线。
+	   挂在目录层而非滚动容器里，收起分支后旧位置不会撑出滚动空白。 */
+	.article-toc-panel__highlight {
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: -1;
+		border-radius: var(--radius-medium);
+		background: var(--article-toc-panel-hover);
+		opacity: 0;
+		pointer-events: none;
+		transition:
+			transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+			width 320ms cubic-bezier(0.22, 1, 0.36, 1),
+			height 320ms cubic-bezier(0.22, 1, 0.36, 1),
+			opacity 140ms ease;
+	}
+
+	.article-toc-panel__view[data-toc-highlighted] > .article-toc-panel__highlight {
+		opacity: 1;
+	}
+
 	.article-toc-panel__tree {
 		position: relative;
-		flex: 1 1 auto;
+		flex: 0 1 auto;
 		min-height: 0;
-		padding: var(--space-2) 0 var(--space-3);
+		padding: var(--space-1) 0;
 		overflow-y: auto;
 		overflow-x: hidden;
 		overscroll-behavior-y: contain;
-		/* 不预留滚动条槽位：内容未超高时无滚动条，超过 max-height 才出现 */
+		/* hide-scrollbar 隐藏滚动条，长目录仍可滚动并跟随当前章节。 */
 	}
 
 	.article-toc-panel__lines {
@@ -282,7 +614,7 @@
 		top: 0;
 		left: 0;
 		z-index: 0;
-		overflow: visible;
+		overflow: hidden;
 		pointer-events: none;
 	}
 
@@ -330,8 +662,8 @@
 		overflow: visible;
 	}
 
-	/* 行容器承载悬停/活动高亮、内边距与逐级缩进（含一级相对根节点的缩进）；
-	   根行不带 --toc-level 变量，走基础内边距 */
+	/* 基础缩进按标题图标宽度与根圆点直径计算，让二者中心对齐；
+	   子级仍沿用原来的层级缩进，SVG 会根据圆点位置自动重绘。 */
 	.article-toc-panel__row {
 		position: relative;
 		z-index: 1;
@@ -340,9 +672,8 @@
 		align-items: center;
 		min-width: 0;
 		padding: 0.28rem var(--space-2);
-		padding-left: calc(var(--space-3) + var(--toc-level, 0) * 0.95rem);
+		padding-left: calc((var(--space-5) - 0.55rem) / 2 + var(--toc-level, 0) * 0.95rem);
 		border-radius: var(--radius-medium);
-		transition: background-color 160ms ease;
 	}
 
 	/* ---------- 树结构（嵌套列表 + grid-rows 折叠动画） ---------- */
@@ -390,11 +721,6 @@
 	.article-toc-panel__row--root .article-toc-panel__link {
 		color: var(--article-toc-panel-text);
 		font-weight: 700;
-	}
-
-	.article-toc-panel__row:hover,
-	.article-toc-panel__row:focus-within {
-		background: var(--article-toc-panel-hover);
 	}
 
 	.article-toc-panel__row:hover .article-toc-panel__link,
@@ -502,22 +828,40 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		/* 双视图的时长与节奏统一走变量，改这一处即可让层间淡入淡出与逐项落位一起失效 */
+		/* 减少动态效果时两个视图直接切换，状态仍由控制器立即同步。 */
 		.article-toc-panel.is-mode-switchable {
 			--toc-switch-duration: 1ms;
-			--toc-switch-out: 1ms;
-			--toc-switch-in: 1ms;
-			--toc-enter-duration: 1ms;
-			--toc-enter-delay: 0ms;
-			--toc-stagger-step: 0ms;
+		}
+
+		/* 关闭自动轮播时直接展示全部文案，仍能读到每一项统计。 */
+		.article-toc-panel__stats-viewport {
+			height: auto;
+			mask-image: none;
+		}
+
+		.article-toc-panel__stats-messages[data-stats-count] {
+			animation: none;
+		}
+
+		.article-toc-panel__stats-message {
+			height: auto;
+			white-space: normal;
+		}
+
+		.article-toc-panel__stats-message[aria-hidden="true"] {
+			display: none;
 		}
 
 		.article-toc-panel__tool-btn,
 		.article-toc-panel__tool-btn::after,
+		.article-toc-panel__highlight,
 		.article-toc-panel__link,
 		.article-toc-panel__dot,
 		.article-toc-panel__toggle,
 		.article-toc-panel__toggle::before,
+		.article-toc-panel__progress-fill,
+		.article-toc-panel__action-btn,
+		.article-toc-panel__support-popover,
 		.article-toc-panel__children {
 			transition-duration: 1ms;
 			transition-delay: 0ms;

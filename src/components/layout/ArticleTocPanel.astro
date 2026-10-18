@@ -1,9 +1,19 @@
 ---
+import CoverImage from "@components/common/CoverImage.astro";
 import Icon from "@components/common/Icon.astro";
 import RelatedPostCards from "@components/misc/RelatedPostCards.astro";
+import dayjs from "dayjs";
+import { homeConfig, siteConfig, sponsorConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+import { getSortedPosts } from "@/utils/content-utils";
+import { buildCoverImage } from "@/utils/cover-image";
+import {
+	countReadableCharacters,
+	formatCompactNumber,
+} from "@/utils/home-data-layer.js";
 import type { RelatedPostCard } from "@/utils/related-posts";
+import { url } from "@/utils/url-utils";
 
 interface Props {
 	/** 相关文章卡片数据（[...slug] 一次性算好经 MainGridLayout 透传）；
@@ -25,6 +35,49 @@ const mindMapZoomOutLabel = i18n(I18nKey.tocMindMapZoomOut);
 const mindMapResetLabel = i18n(I18nKey.tocMindMapReset);
 const mindMapFullscreenLabel = i18n(I18nKey.tocMindMapFullscreen);
 const closeLabel = i18n(I18nKey.close);
+const sponsorMethods = sponsorConfig.methods
+	.filter((method) => method.enabled && method.qrCode)
+	.slice(0, 3);
+const statsBackground = await buildCoverImage({
+	image: homeConfig.avatarBanner || "",
+	widths: [288, 576],
+	sizes: "18rem",
+});
+
+const posts = await getSortedPosts();
+const totalWords = posts.reduce(
+	(sum, post) => sum + countReadableCharacters(post.body || ""),
+	0,
+);
+const runningDays = siteConfig.siteStartDate
+	? Math.max(0, dayjs().diff(dayjs(siteConfig.siteStartDate), "day"))
+	: null;
+const latestUpdate = posts.reduce<Date | null>((latest, post) => {
+	const updated = post.data.updated ?? post.data.published;
+	return !latest || updated > latest ? updated : latest;
+}, null);
+const updateDays = latestUpdate
+	? Math.max(0, dayjs().diff(dayjs(latestUpdate), "day"))
+	: 0;
+const updateText =
+	updateDays === 0
+		? i18n(I18nKey.today)
+		: i18n(I18nKey.siteStatsDaysAgo).replace("{days}", String(updateDays));
+const statsSentences = [
+	runningDays !== null
+		? i18n(I18nKey.footerRunningDays).replace(
+				"{days}",
+				runningDays.toLocaleString(),
+			)
+		: null,
+	latestUpdate
+		? i18n(I18nKey.siteStatsUpdatedSentence).replace("{updated}", updateText)
+		: null,
+	i18n(I18nKey.siteStatsWordsSentence).replace(
+		"{words}",
+		formatCompactNumber(totalWords),
+	),
+].filter((sentence): sentence is string => sentence !== null);
 ---
 
 <aside
@@ -32,48 +85,108 @@ const closeLabel = i18n(I18nKey.close);
 	id="article-toc-panel"
 	aria-label={outlineLabel}
 >
-	<!-- 目录视图（工具栏 + 节点树）；可切换时与相关视图绝对叠放交叉淡入，层内逐项落位 -->
+	<!-- 目录按内容收缩，操作区与统计卡片随目录一起切换；触发线由控制器独立计算。 -->
 	<div class="article-toc-panel__view" data-toc-view>
-		<div class="article-toc-panel__toolbar">
-			<button
-				type="button"
-				class="article-toc-panel__tool-btn"
-				data-toc-auto-btn
-				aria-pressed="true"
-				data-tooltip={accordionAutoLabel}
-				aria-label={accordionAutoLabel}
-			>
-				<Icon name="mingcute:list-collapse-line" class="h-4 w-4" />
-			</button>
-			<button
-				type="button"
-				class="article-toc-panel__tool-btn"
-				data-toc-toggle-all-btn
-				aria-pressed="false"
-				data-tooltip={expandAllLabel}
-				aria-label={expandAllLabel}
-				data-toc-expand-label={expandAllLabel}
-				data-toc-collapse-label={collapseAllLabel}
-			>
-				<Icon
-					name="mdi:unfold-more-horizontal"
-					class="article-toc-panel__tool-icon is-expand h-4 w-4"
-				/>
-				<Icon
-					name="mdi:unfold-less-horizontal"
-					class="article-toc-panel__tool-icon is-collapse h-4 w-4"
-				/>
-			</button>
-			<button
-				type="button"
-				class="article-toc-panel__tool-btn"
-				data-toc-mindmap-btn
-				data-tooltip={mindMapLabel}
-				aria-label={mindMapLabel}
-			>
-				<Icon name="ri:node-tree" class="h-4 w-4" />
-			</button>
-			<span
+		<span class="article-toc-panel__highlight" data-toc-highlight aria-hidden="true"></span>
+		<header class="article-toc-panel__toolbar">
+			<h2 class="article-toc-panel__heading">
+				<Icon name="material-symbols:format-list-bulleted-rounded" class="h-5 w-5" aria-hidden="true" />
+				{outlineLabel}
+			</h2>
+			<div class="article-toc-panel__tools">
+				<button
+					type="button"
+					class="article-toc-panel__tool-btn"
+					data-toc-auto-btn
+					aria-pressed="true"
+					data-tooltip={accordionAutoLabel}
+					aria-label={accordionAutoLabel}
+				>
+					<Icon name="mingcute:list-collapse-line" class="h-4 w-4" />
+				</button>
+				<button
+					type="button"
+					class="article-toc-panel__tool-btn"
+					data-toc-toggle-all-btn
+					aria-pressed="false"
+					data-tooltip={expandAllLabel}
+					aria-label={expandAllLabel}
+					data-toc-expand-label={expandAllLabel}
+					data-toc-collapse-label={collapseAllLabel}
+				>
+					<Icon
+						name="mdi:unfold-more-horizontal"
+						class="article-toc-panel__tool-icon is-expand h-4 w-4"
+					/>
+					<Icon
+						name="mdi:unfold-less-horizontal"
+						class="article-toc-panel__tool-icon is-collapse h-4 w-4"
+					/>
+				</button>
+				<button
+					type="button"
+					class="article-toc-panel__tool-btn"
+					data-toc-mindmap-btn
+					data-tooltip={mindMapLabel}
+					aria-label={mindMapLabel}
+				>
+					<Icon name="ri:node-tree" class="h-4 w-4" />
+				</button>
+			</div>
+		</header>
+
+		<nav class="article-toc-panel__tree hide-scrollbar" aria-label={outlineLabel} data-toc-tree>
+			<!-- 竖轨（虚线主干 + 进度线）的两条 path 由控制器建在这里 -->
+			<svg class="article-toc-panel__lines" data-toc-lines aria-hidden="true" focusable="false"></svg>
+		</nav>
+
+		<div class="article-toc-panel__actions">
+			<div class="article-toc-panel__action-buttons">
+				{sponsorMethods.length > 0 && (
+					<div class="article-toc-panel__support" data-toc-support>
+						<button
+							type="button"
+							class="article-toc-panel__action-btn"
+							data-toc-support-btn
+							aria-label={i18n(I18nKey.tocBuyCoffee)}
+							aria-expanded="false"
+							aria-controls="article-toc-support"
+						>
+							<Icon name="material-symbols:coffee-outline-rounded" class="h-4 w-4" aria-hidden="true" />
+						</button>
+						<div
+							id="article-toc-support"
+							class="article-toc-panel__support-popover"
+							data-toc-support-popover
+							style={`--toc-support-count:${sponsorMethods.length}`}
+							aria-hidden="true"
+							inert
+						>
+							<p class="article-toc-panel__support-title">{i18n(I18nKey.sponsorMotto)}</p>
+							<div class="article-toc-panel__support-codes">
+								{sponsorMethods.map((method) => (
+									<figure class="article-toc-panel__support-card">
+										<div class="article-toc-panel__support-frame">
+											<img class="article-toc-panel__support-qr" src={url(method.qrCode || "")} alt={`${method.name} · ${i18n(I18nKey.scanToSponsor)}`} loading="lazy" decoding="async" />
+										</div>
+										<figcaption class="article-toc-panel__support-caption">
+											{method.icon && <Icon name={method.icon} class="article-toc-panel__support-glyph" aria-hidden="true" />}
+											<span>{method.name}</span>
+										</figcaption>
+									</figure>
+								))}
+							</div>
+						</div>
+					</div>
+				)}
+				{siteConfig.postShare && (
+					<button type="button" class="article-toc-panel__action-btn" data-post-share-native aria-label={i18n(I18nKey.shareArticle)} title={i18n(I18nKey.shareArticle)}>
+						<Icon name="material-symbols:share" class="h-4 w-4" aria-hidden="true" />
+					</button>
+				)}
+			</div>
+			<span class="article-toc-panel__progress-label" data-toc-progress-label aria-hidden="true">0%</span>
+			<div
 				class="article-toc-panel__progress"
 				role="progressbar"
 				aria-label={readingProgressLabel}
@@ -82,14 +195,30 @@ const closeLabel = i18n(I18nKey.close);
 				aria-valuenow="0"
 				data-toc-progress
 			>
-				<span class="article-toc-panel__progress-label" data-toc-progress-label>0%</span>
-			</span>
+				<span class="article-toc-panel__progress-fill" aria-hidden="true"></span>
+			</div>
 		</div>
 
-		<nav class="article-toc-panel__tree" aria-label={outlineLabel} data-toc-tree>
-			<!-- 竖轨（虚线主干 + 进度线）的两条 path 由控制器建在这里 -->
-			<svg class="article-toc-panel__lines" data-toc-lines aria-hidden="true" focusable="false"></svg>
-		</nav>
+		<section class="article-toc-panel__stats" aria-labelledby="article-toc-stats-heading">
+			<div class="article-toc-panel__stats-card" tabindex={statsSentences.length > 1 ? 0 : undefined}>
+				{statsBackground && (
+					<div class="article-toc-panel__stats-background" aria-hidden="true">
+						<CoverImage cover={statsBackground} alt="" />
+					</div>
+				)}
+				<h3 id="article-toc-stats-heading" class="article-toc-panel__stats-heading">{i18n(I18nKey.siteStats)}</h3>
+				<div class="article-toc-panel__stats-viewport">
+					<div class="article-toc-panel__stats-messages" data-stats-count={statsSentences.length}>
+						{statsSentences.map((sentence) => (
+							<p class="article-toc-panel__stats-message">{sentence}</p>
+						))}
+						{statsSentences.length > 1 && (
+							<p class="article-toc-panel__stats-message" aria-hidden="true">{statsSentences[0]}</p>
+						)}
+					</div>
+				</div>
+			</div>
+		</section>
 
 		<!-- 阅读位置指示器。挂在 __view 而不是 __tree：树的 overflow 裁剪会把起飞的
 		     飞机切成一截；纸飞机形状是内联 path，不走 pnpm icons 的图标集收集 -->
@@ -113,6 +242,8 @@ const closeLabel = i18n(I18nKey.close);
 				class="article-toc-panel__related"
 				data-toc-related
 				aria-label={i18n(I18nKey.relatedPosts)}
+				aria-hidden="true"
+				inert
 			>
 				<RelatedPostCards cards={relatedCards!} />
 			</div>

@@ -46,6 +46,8 @@ export const ja: Translation = {
 	[Key.tocMindMapZoomOut]: "縮小",
 	[Key.tocMindMapReset]: "ズームをリセット",
 	[Key.tocMindMapFullscreen]: "フルスクリーン",
+	[Key.tocBuyCoffee]: "コーヒーを贈る",
+	[Key.tocSupportThanks]: "コーヒーでの応援、ありがとうございます。",
 	[Key.music]: "音楽",
 	[Key.musicNoPlaying]: "再生中なし",
 	[Key.musicLyrics]: "歌詞",
@@ -180,6 +182,12 @@ export const ja: Translation = {
 
 	// サイト統計
 	[Key.siteStats]: "サイト統計",
+	[Key.siteStatsRunningDays]: "運用日数",
+	[Key.siteStatsLastUpdate]: "最終更新",
+	[Key.siteStatsWords]: "総文字数",
+	[Key.siteStatsDaysAgo]: "{days} 日前",
+	[Key.siteStatsUpdatedSentence]: "最終更新：{updated}",
+	[Key.siteStatsWordsSentence]: "累計 {words} 文字を記録",
 	[Key.siteStatsPostCount]: "記事",
 	[Key.siteStatsCategoryCount]: "カテゴリー",
 	[Key.siteStatsTagCount]: "タグ",
@@ -200,6 +208,8 @@ export const ja: Translation = {
 	[Key.shareWhatsApp]: "WhatsApp",
 	[Key.copied]: "コピーしました",
 	[Key.copyLink]: "リンクをコピー",
+	[Key.shareCopyFailed]:
+		"コピーできませんでした。リンクを手動でコピーしてください。",
 	[Key.shareToQQ]: "QQ で共有",
 	[Key.shareByEmail]: "メールで共有",
 	[Key.shareToFeishu]: "Feishu で共有",

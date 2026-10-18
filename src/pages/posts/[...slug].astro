@@ -305,17 +305,25 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
 
               <div
                 class="post-hero__share-menu"
-                tabindex="0"
                 role="group"
                 aria-label={i18n(I18nKey.shareArticle)}
+                data-share-title={shareTitle}
+                data-share-text={shareDescription}
+                data-share-url={canonicalUrl}
                 data-pagefind-ignore
               >
-                <span class="post-hero__share-trigger">
+                <button type="button" class="post-hero__share-trigger" data-post-share-native>
                   <Icon name="material-symbols:share" aria-hidden="true" />
                   <span>{i18n(I18nKey.shareArticle)}</span>
-                </span>
+                </button>
 
-                <div class="post-hero__share-popover" aria-label={i18n(I18nKey.shareArticle)}>
+                <dialog class="post-hero__share-popover" data-post-share-dialog aria-label={i18n(I18nKey.shareArticle)}>
+                  <header class="post-hero__share-dialog-header">
+                    <span><Icon name="material-symbols:share" aria-hidden="true" />{i18n(I18nKey.shareArticle)}</span>
+                    <button type="button" class="post-hero__share-close" data-post-share-close aria-label={i18n(I18nKey.close)}>
+                      <Icon name="material-symbols:close-rounded" aria-hidden="true" />
+                    </button>
+                  </header>
                   <div class="post-hero__share-qr">
                     <img
                       class="post-hero__share-qr-image"
@@ -328,7 +336,8 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
                   </div>
 
                   <div class="post-hero__share-content">
-                    <span class="post-hero__share-title">{i18n(I18nKey.shareArticle)}</span>
+                    <span class="post-hero__share-title">{shareTitle}</span>
+                    <input class="post-hero__share-url" data-post-share-url type="text" value={canonicalUrl} readonly aria-label={i18n(I18nKey.copyLink)} />
 
                     <div class="post-hero__share-actions">
                       <a
@@ -391,6 +400,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
                         data-copy-link={canonicalUrl}
                         data-copy-label={i18n(I18nKey.copyLink)}
                         data-copied-label={i18n(I18nKey.copied)}
+                        data-failed-label={i18n(I18nKey.shareCopyFailed)}
                         aria-label={i18n(I18nKey.copyLink)}
                         title={i18n(I18nKey.copyLink)}
                       >
@@ -400,8 +410,8 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
                     </div>
                   </div>
 
-                  <span class="sr-only" role="status" aria-live="polite" data-post-share-status></span>
-                </div>
+                  <span class="post-hero__share-status" role="status" aria-live="polite" data-post-share-status></span>
+                </dialog>
               </div>
             </>
           )}
@@ -598,7 +608,10 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
 
   <script>
     import dayjs from "dayjs";
+    import { mountPostShare } from "@/utils/post-share-controller";
     import { definePageIsland } from "@/utils/swup-lifecycle";
+
+    let cleanupPostShare: (() => void) | null = null;
 
     function initPostCoverImage() {
       const cover = document.getElementById("post-cover");
@@ -665,67 +678,6 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
       }
     }
 
-    function fallbackCopy(text: string): boolean {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.setAttribute("readonly", "");
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      textarea.style.pointerEvents = "none";
-      document.body.appendChild(textarea);
-      textarea.select();
-      // execCommand 已废弃，但在 Clipboard API 不可用的非安全上下文里仍是唯一选择；
-      // 显式重写类型以绕开 astro check 的废弃提示
-      const execCommand = (
-        document as Document & { execCommand: (command: string) => boolean }
-      ).execCommand.bind(document);
-      const copied = execCommand("copy");
-      textarea.remove();
-      return copied;
-    }
-
-    async function copyPostShareLink(button: HTMLButtonElement) {
-      const link = button.dataset.copyLink;
-      if (!link) return;
-
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(link);
-        } else if (!fallbackCopy(link)) {
-          throw new Error("Copy command was unavailable");
-        }
-
-        const menu = button.closest(".post-hero__share-menu");
-        const status = menu?.querySelector<HTMLElement>("[data-post-share-status]");
-        const label = button.querySelector<HTMLElement>("[data-post-share-copy-label]");
-        const originalLabel = button.dataset.copyLabel || "";
-        const copiedLabel = button.dataset.copiedLabel || originalLabel;
-
-        status?.replaceChildren(copiedLabel);
-        label?.replaceChildren(copiedLabel);
-        button.classList.add("is-copied");
-        button.setAttribute("aria-label", copiedLabel);
-        button.title = copiedLabel;
-
-        window.setTimeout(() => {
-          button.classList.remove("is-copied");
-          label?.replaceChildren(originalLabel);
-          button.setAttribute("aria-label", originalLabel);
-          button.title = originalLabel;
-        }, 1600);
-      } catch {
-        button.focus();
-      }
-    }
-
-    function initPostShare() {
-      document.querySelectorAll<HTMLButtonElement>("[data-post-share-copy]").forEach((button) => {
-        if (button.dataset.initialized === "true") return;
-        button.dataset.initialized = "true";
-        button.addEventListener("click", () => void copyPostShareLink(button));
-      });
-    }
-
     // checkOutdated 原先只挂在 astro:page-load 上、顶层没调，
     // 而该事件首次加载并不触发 —— 直接打开文章页时「内容可能过时」提示从来不显示。
     // 三个初始化统一走 definePageIsland，首次加载与每次导航各跑一次
@@ -734,7 +686,11 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
       mount: () => {
         initPostCoverImage();
         checkOutdated();
-        initPostShare();
+        cleanupPostShare = mountPostShare();
+      },
+      unmount: () => {
+        cleanupPostShare?.();
+        cleanupPostShare = null;
       },
     });
   </script>

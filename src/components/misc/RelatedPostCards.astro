@@ -6,6 +6,7 @@
  * 样式见 src/styles/components/related-post-cards.css（仅此一处 import）。
  */
 import CoverImage from "@components/common/CoverImage.astro";
+import Icon from "@components/common/Icon.astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import type { RelatedPostCard } from "@/utils/related-posts";
@@ -19,7 +20,10 @@ const { cards } = Astro.props;
 ---
 
 <div class="related-cards">
-	<h2 class="related-cards__title">{i18n(I18nKey.relatedPosts)}</h2>
+	<h2 class="related-cards__title">
+		<Icon name="material-symbols:library-books-outline-rounded" class="h-5 w-5" aria-hidden="true" />
+		{i18n(I18nKey.relatedPosts)}
+	</h2>
 	<ul class="related-cards__list">
 		{
 			cards.map((card) => (
