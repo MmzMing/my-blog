@@ -25,7 +25,6 @@ export const homeConfig: HomeConfig = {
 	bio: ["且视他人之疑目如盏盏鬼火，大胆地去走你的夜路"],
 
 	hero: {
-		backgroundImage: "/assets/images/home/home.avif",
 		mosaic: {
 			rows: 4,
 			columns: 6,
@@ -76,62 +75,38 @@ export const homeConfig: HomeConfig = {
 				travelScale: 0.45,
 			},
 		},
-		// galgame 对话框（写死暗黑主题）。内容全部由此驱动，可自由增删
+		// 拼合完成后的照片态：主图平面倾斜并左移，右侧三张介绍卡片错峰倒下；
+		// overlay 会在落位后从下方滑入叠在照片下缘，image 留空不显示；
+		// author 填了就在图片右上角显示作者小标牌，留空不显示
+		photo: {
+			main: {
+				image: "/assets/images/home/home.avif",
+				author: "by 冰冰坚老师",
+			},
+			overlay: {
+				image: "/assets/images/home/home2.avif",
+				author: "by 冰冰坚老师",
+			},
+			intro: {
+				direction: "站点专研方向Java后端、前端、Agent和Python",
+				hobby: "热衷于制作一些没人用的小组件和收集好看的AI绘画",
+				bio: "且视他人之疑目如盏盏鬼火，大胆地去走你的夜路",
+			},
+		},
+		// 左下角角色的想法气泡：首次出现自动冒第一句，之后点击角色逐句弹出，末句后从头循环
 		dialogue: {
 			enabled: true,
-			speakers: {
-				host: "哈基墩",
-				visitor: "访客",
-			},
-			menuTitle: "想聊点什么？",
-			typingSpeed: 45,
-			autoDelay: 1600,
-			// 默认逐句播放的简介，末句后弹出话题菜单
-			intro: [
-				{ speaker: "host", text: "欸——来客人了喵～随便坐，别客气。" },
-				{ speaker: "host", text: "我是喵墩，老爸在摸鱼，这儿归我管了喵～" },
-				{
-					speaker: "host",
-					text: "对了喵，得搬上简介了~喵找找：且视他人之疑目如盏盏鬼火，大胆地去走你的夜路。",
-				},
-				{ speaker: "host", text: "想打听啥喵？戳戳下面的话题，喵跟你慢慢唠～" },
-			],
-			// 话题菜单：点击进入逐句对话，末句后返回菜单
-			topics: [
-				{
-					title: "关于我",
-					lines: [
-						{ speaker: "visitor", text: "你爸是哪方面选手呀？" },
-						{
-							speaker: "host",
-							text: "嘛……算个半桶水全栈喵，外加一个不务正业的博客写手。",
-						},
-						{
-							speaker: "host",
-							text: "前端后端都摸一点，俗称「全干工程师」喵～",
-						},
-						{ speaker: "visitor", text: "听起来很忙的样子。" },
-						{
-							speaker: "host",
-							text: "忙归忙，但好玩呀——折腾本身就是浪漫喵～如果你感兴趣也可以加QQ群喵，放心，傻爸爸不咬人的",
-						},
-					],
-				},
-				{
-					title: "博客特色",
-					lines: [
-						{ speaker: "visitor", text: "有什么好玩的功能吗？" },
-						{
-							speaker: "host",
-							text: "有个音乐3D可视化播放，但博客重点不是文章吗喵~老爸整站基本是AI搓出来的，喵爪都没动几下。",
-						},
-						{
-							speaker: "host",
-							text: "傻爸爸最近在捣鼓Agent，不知道又要整啥活喵～",
-						},
-						{ speaker: "host", text: "慢慢逛，角落里藏着不少彩蛋呢喵！" },
-					],
-				},
+			lines: [
+				"欸——来客人了喵～随便坐，别客气。",
+				"我是喵墩，老爸在摸鱼，这儿归我管了喵～",
+				"且视他人之疑目如盏盏鬼火，大胆地去走你的夜路。",
+				"老爸是个半桶水全栈，俗称「全干工程师」喵。",
+				"前端后端都摸一点，外加一个不务正业的博客写手。",
+				"整站基本是 AI 搓出来的，喵爪都没动几下。",
+				"有个音乐 3D 可视化播放器，记得去点点喵～",
+				"傻爸爸最近在捣鼓 Agent，不知道又要整啥活喵。",
+				"角落里藏着不少彩蛋，慢慢逛喵！",
+				"感兴趣可以加 QQ 群喵，放心，傻爸爸不咬人的。",
 			],
 		},
 		// 玻璃雨珠 + 撞击水花（移动端自动降低密度，尊重 prefers-reduced-motion）

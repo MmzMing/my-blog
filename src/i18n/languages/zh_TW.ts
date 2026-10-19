@@ -263,7 +263,6 @@ export const zh_TW: Translation = {
 	[Key.login]: "登入",
 	[Key.logout]: "登出",
 	[Key.gotIt]: "我知道了",
-	[Key.visitor]: "訪客",
 	[Key.viewDetails]: "查看詳情",
 	[Key.backToTop]: "回到頂部",
 	[Key.top]: "頂部",
@@ -284,7 +283,6 @@ export const zh_TW: Translation = {
 	[Key.themeSystem]: "跟隨系統",
 	[Key.spineModel]: "Spine 模型",
 	[Key.toggleDock]: "工具列",
-	[Key.quickActions]: "快捷入口",
 	[Key.viewAnnouncement]: "查看公告",
 
 	// ===== 搜索弹窗 =====
@@ -301,13 +299,8 @@ export const zh_TW: Translation = {
 
 	// ===== 首页 Hero 对话 =====
 	[Key.techBlogSuffix]: "的技術部落格",
-	[Key.dialogueMenuTitle]: "想聊些什麼？",
 	[Key.characterDialogue]: "角色對話",
-	[Key.dialoguePrev]: "上一句",
 	[Key.dialogueNext]: "下一句",
-	[Key.dialogueAutoPlay]: "自動播放",
-	[Key.reopenDialogue]: "重新開啟對話",
-	[Key.dialogueRestoreHint]: "喵？還想繼續聊聊嗎",
 
 	// ===== 首页数据层 =====
 	[Key.siteData]: "網站資料",

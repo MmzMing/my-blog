@@ -1,4 +1,5 @@
 ---
+import HeroDialogue from "@components/layout/HeroDialogue.astro";
 import HomeBlinds from "@components/layout/HomeBlinds.astro";
 import HomeDataLayer from "@components/layout/HomeDataLayer.astro";
 import HomeHero from "@components/layout/HomeHero.astro";
@@ -22,6 +23,8 @@ import "@/styles/components/home-blinds.css";---
 	<div class="home-page home-page--motion-pending">
 		<HomeHero />
 		<HomeDataLayer />
+		{/* 左下角角色是 sticky 的，必须排在第二层之后，才会一路停到第二层底部 */}
+		<HeroDialogue />
 		<HomeBlinds />
 		<HomeMobile />
 	</div>

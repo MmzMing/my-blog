@@ -6,9 +6,13 @@ interface Props {
 	desktopImage: string;
 	mobileImage: string;
 	config: HeroMosaicConfig;
+	/** 主图右上角作者标牌，空串不渲染 */
+	mainAuthor?: string;
+	/** 落位后从下方滑入、叠在照片下缘的第二张图 */
+	overlay?: { image: string; author?: string };
 }
 
-const { desktopImage, mobileImage, config } = Astro.props;
+const { desktopImage, mobileImage, config, mainAuthor, overlay } = Astro.props;
 const tiles = createHeroTileLayout(config);
 const mosaicStyle = [
 	`--home-hero-mosaic-image: url("${desktopImage}")`,
@@ -19,6 +23,7 @@ const mosaicStyle = [
 ---
 
 <div class="home-hero__visual" style={mosaicStyle} aria-hidden="true">
+	<span class="home-hero__mosaic-target" data-hero-mosaic-target></span>
 	<div class="home-hero__mosaic-frame" data-hero-mosaic>
 		<div class="home-hero__mosaic-grid" data-hero-mosaic-grid>
 			{tiles.map((tile) => (
@@ -47,5 +52,36 @@ const mosaicStyle = [
 			<source media="(max-width: 768px)" srcset={mobileImage} />
 			<img src={desktopImage} alt="" loading="eager" fetchpriority="high" decoding="async" />
 		</picture>
+		<!-- 照片描边：8 条从四角出发到边中点的笔画，d 由控制器按实测尺寸写入，
+		     减弱动效下没有 d、不渲染，边框回退为整图 box-shadow。
+		     pathLength 取 1000 而非 1：GSAP 会把 px 单位的补间值四舍五入到整数，
+		     归一成 1 时 dashoffset 只剩 1/0 两档，蔓延会变成跳变 -->
+		<svg class="home-hero__photo-frame" data-hero-photo-frame aria-hidden="true">
+			{Array.from({ length: 8 }, () => <path pathLength="1000" />)}
+		</svg>
+		{
+			mainAuthor && (
+				<span class="home-hero__photo-author" data-hero-photo-author>
+					{mainAuthor}
+				</span>
+			)
+		}
+		{
+			overlay?.image && (
+				<div class="home-hero__photo-overlay" data-hero-photo-overlay>
+					<img
+						class="home-hero__photo-overlay-image"
+						src={overlay.image}
+						alt=""
+						aria-hidden="true"
+						loading="lazy"
+						decoding="async"
+					/>
+					{overlay.author && (
+						<span class="home-hero__photo-author">{overlay.author}</span>
+					)}
+				</div>
+			)
+		}
 	</div>
 </div>

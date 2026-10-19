@@ -266,7 +266,6 @@ export const en: Translation = {
 	[Key.login]: "Log in",
 	[Key.logout]: "Log out",
 	[Key.gotIt]: "Got it",
-	[Key.visitor]: "Visitor",
 	[Key.viewDetails]: "View details",
 	[Key.backToTop]: "Back to top",
 	[Key.top]: "Top",
@@ -287,7 +286,6 @@ export const en: Translation = {
 	[Key.themeSystem]: "System",
 	[Key.spineModel]: "Spine model",
 	[Key.toggleDock]: "Toggle dock",
-	[Key.quickActions]: "Quick actions",
 	[Key.viewAnnouncement]: "View announcement",
 
 	// ===== 搜索弹窗 =====
@@ -303,13 +301,8 @@ export const en: Translation = {
 	[Key.searchHintToggle]: "Ctrl+K to switch",
 	// ===== 首页 Hero 对话 =====
 	[Key.techBlogSuffix]: "'s Tech Blog",
-	[Key.dialogueMenuTitle]: "What shall we talk about?",
 	[Key.characterDialogue]: "Character dialogue",
-	[Key.dialoguePrev]: "Previous line",
 	[Key.dialogueNext]: "Next line",
-	[Key.dialogueAutoPlay]: "Auto play",
-	[Key.reopenDialogue]: "Reopen dialogue",
-	[Key.dialogueRestoreHint]: "Meow? Want to keep chatting?",
 
 	// ===== 首页数据层 =====
 	[Key.siteData]: "Site Data",

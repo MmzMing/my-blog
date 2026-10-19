@@ -255,7 +255,6 @@ enum I18nKey {
 	login = "login",
 	logout = "logout",
 	gotIt = "gotIt",
-	visitor = "visitor",
 	viewDetails = "viewDetails",
 	backToTop = "backToTop",
 	top = "top",
@@ -276,7 +275,6 @@ enum I18nKey {
 	themeSystem = "themeSystem",
 	spineModel = "spineModel",
 	toggleDock = "toggleDock",
-	quickActions = "quickActions",
 	viewAnnouncement = "viewAnnouncement",
 
 	// ===== 搜索弹窗 =====
@@ -292,13 +290,8 @@ enum I18nKey {
 	searchHintToggle = "searchHintToggle",
 	// ===== 首页 Hero 对话 =====
 	techBlogSuffix = "techBlogSuffix",
-	dialogueMenuTitle = "dialogueMenuTitle",
 	characterDialogue = "characterDialogue",
-	dialoguePrev = "dialoguePrev",
 	dialogueNext = "dialogueNext",
-	dialogueAutoPlay = "dialogueAutoPlay",
-	reopenDialogue = "reopenDialogue",
-	dialogueRestoreHint = "dialogueRestoreHint",
 
 	// ===== 首页数据层 =====
 	siteData = "siteData",

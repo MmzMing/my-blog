@@ -1,16 +1,15 @@
-export function initHomeHeroSticker(hero: HTMLElement): () => void {
-	const sticker = hero.querySelector<HTMLElement>("[data-hero-sticker]");
-	const dialogue = hero.querySelector<HTMLElement>("[data-hero-dialogue]");
+export function initHomeHeroSticker(root: HTMLElement | null): () => void {
+	const sticker = root?.querySelector<HTMLElement>("[data-hero-sticker]");
 	const features = Array.from(
 		sticker?.querySelectorAll<HTMLElement>("[data-hero-sticker-feature]") ?? [],
 	);
-	if (!sticker || !dialogue || features.length === 0) return () => undefined;
+	if (!root || !sticker || features.length === 0) return () => undefined;
 
 	const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 	const travelX = Number.parseFloat(sticker.dataset.eyeTravelX ?? "0");
 	const travelY = Number.parseFloat(sticker.dataset.eyeTravelY ?? "0");
 	const abortController = new AbortController();
-	let heroInView = false;
+	let stickerInView = false;
 	let disposed = false;
 	let currentX = 0;
 	let currentY = 0;
@@ -20,10 +19,9 @@ export function initHomeHeroSticker(hero: HTMLElement): () => void {
 
 	const canTrack = () =>
 		!disposed &&
-		heroInView &&
+		stickerInView &&
 		!reducedMotion.matches &&
-		dialogue.dataset.sceneVisible === "true" &&
-		dialogue.dataset.hidden !== "true";
+		root.dataset.sceneVisible === "true";
 
 	const stop = () => {
 		cancelAnimationFrame(animationFrame);
@@ -82,17 +80,18 @@ export function initHomeHeroSticker(hero: HTMLElement): () => void {
 	};
 
 	// 场景隐藏和离开视口都即时取消插值，不等下一次 pointermove 才停。
-	const heroVisibility = new IntersectionObserver((entries) => {
-		for (const entry of entries) heroInView = entry.isIntersecting;
+	// 角色会跟着 sticky 浮到第二层，观察的是角色自身而不是 hero
+	const stickerVisibility = new IntersectionObserver((entries) => {
+		for (const entry of entries) stickerInView = entry.isIntersecting;
 		if (!canTrack()) stop();
 	});
-	heroVisibility.observe(hero);
-	const dialogueVisibility = new MutationObserver(() => {
+	stickerVisibility.observe(sticker);
+	const sceneVisibility = new MutationObserver(() => {
 		if (!canTrack()) stop();
 	});
-	dialogueVisibility.observe(dialogue, {
+	sceneVisibility.observe(root, {
 		attributes: true,
-		attributeFilter: ["data-scene-visible", "data-hidden"],
+		attributeFilter: ["data-scene-visible"],
 	});
 
 	window.addEventListener(
@@ -127,8 +126,8 @@ export function initHomeHeroSticker(hero: HTMLElement): () => void {
 
 	return () => {
 		disposed = true;
-		heroVisibility.disconnect();
-		dialogueVisibility.disconnect();
+		stickerVisibility.disconnect();
+		sceneVisibility.disconnect();
 		abortController.abort();
 		stop();
 	};

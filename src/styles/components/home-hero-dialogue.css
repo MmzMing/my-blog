@@ -1,482 +1,147 @@
+/* ==========================================================================
+   左下角角色 + 想法气泡（贴纸漫画式的思考泡泡）
+   外层 sticky 贴视口底边、自身零高度：正常流位置在第二层底部，
+   所以从首屏一路浮到第二层，最后停在第二层左下角，随第二层一起滚走。
+   气泡是贴纸质感，白纸黑墨不随主题切换。
+   ========================================================================== */
+
 .home-hero__dialogue {
-	position: absolute;
-	left: 0;
-	right: auto;
+	--home-dialogue-size: clamp(12rem, 13vw, 16rem);
+	--home-dialogue-ink: oklch(0.22 0.01 300);
+	--home-dialogue-paper: oklch(1 0 0);
+	--home-dialogue-stroke: 0.2rem;
+	/* 玩偶回弹：优先用能过冲再收住的 linear() 弹簧，不支持时退回带过冲的三次贝塞尔 */
+	--home-dialogue-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+	position: sticky;
 	bottom: 0;
-	z-index: 7;
+	z-index: 3;
 	width: 100vw;
-	opacity: 0;
-	visibility: hidden;
-	pointer-events: none;
-	will-change: transform, opacity;
+	height: 0;
+	margin-inline: calc(50% - 50vw);
 }
 
-.home-hero__dialogue[data-scene-visible="true"][data-hidden="false"] {
-	pointer-events: auto;
-}
-
-.home-hero__dialogue-layout {
-	position: relative;
-	height: clamp(14.5rem, 29svh, 18rem);
-	min-height: 0;
-	isolation: isolate;
-}
-
-.home-hero__dialogue-box {
-	position: relative;
-	z-index: 1;
-	width: 100%;
-	height: 100%;
-	min-height: 0;
-	box-sizing: border-box;
-	display: flex;
-	flex-direction: column;
-	padding: clamp(1.5rem, 3.5svh, 2.5rem) clamp(1.5rem, 6vw, 8rem)
-		clamp(3.75rem, 6svh, 4.75rem) clamp(2.25rem, 12vw, 14rem);
-	border-top: 2.5px solid var(--home-hero-ink);
-	background-color: color-mix(
-		in oklch,
-		var(--home-hero-surface) 68%,
-		transparent
-	);
-	background-image:
-		linear-gradient(
-			90deg,
-			color-mix(in oklch, var(--home-hero-ink) 9%, transparent) 1px,
-			transparent 1px
-		),
-		linear-gradient(
-			color-mix(in oklch, var(--home-hero-ink) 9%, transparent) 1px,
-			transparent 1px
+@supports (transition-timing-function: linear(0, 1)) {
+	.home-hero__dialogue {
+		--home-dialogue-spring: linear(
+			0,
+			0.36 12%,
+			0.86 26%,
+			1.12 36%,
+			0.98 46%,
+			1.02 58%,
+			0.995 74%,
+			1
 		);
-	background-position: -1px -1px;
-	background-size: clamp(2.5rem, 4vw, 4rem) clamp(2.5rem, 4vw, 4rem);
-	color: var(--home-hero-ink);
-	clip-path: none;
-	backdrop-filter: blur(14px);
-	box-shadow: 0 1.25rem 3.5rem var(--home-hero-shadow);
-	overflow: hidden;
-	transition: opacity 180ms ease, transform 180ms ease;
+	}
 }
 
-.home-hero__dialogue[data-hidden="true"] .home-hero__dialogue-box,
-.home-hero__dialogue[data-hidden="true"] .home-hero__sticker,
-.home-hero__dialogue[data-hidden="true"] .home-hero__dialogue-controls {
-	opacity: 0;
-	transform: translateY(0.9rem) scale(0.98);
-	visibility: hidden;
-	pointer-events: none;
-}
-
-.home-hero__dialogue[data-hidden="true"] .home-hero__dialogue-menu {
-	opacity: 0;
-	visibility: hidden;
-	pointer-events: none;
-}
-
-.home-hero__dialogue-controls {
-	display: inline-flex;
-	align-items: center;
-	gap: clamp(0.1rem, 0.4vw, 0.4rem);
-}
-
-/* galgame 风纯图标按钮：无边框、无背景，仅保留图标 */
-.home-hero__dialogue-button {
-	display: inline-flex;
-	width: clamp(2.6rem, 3.4vw, 3.1rem);
-	height: clamp(2.6rem, 3.4vw, 3.1rem);
-	align-items: center;
-	justify-content: center;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	color: inherit;
-	opacity: 0.68;
-	cursor: pointer;
-	transition: opacity 150ms ease, transform 150ms ease;
-}
-
-.home-hero__dialogue-button svg {
-	width: 1.7rem;
-	height: 1.7rem;
-}
-
-.home-hero__dialogue-button:hover,
-.home-hero__dialogue-button:focus-visible {
-	opacity: 1;
-	transform: translateY(-1px);
-}
-
-.home-hero__dialogue-button[aria-pressed="true"] {
-	opacity: 1;
-}
-
-/* AUTO 开启后图标切换为暂停（两条竖线），默认只显示播放图标 */
-.home-hero__dialogue-icon-pause {
-	display: none;
-}
-
-.home-hero__dialogue-button[aria-pressed="true"] .home-hero__dialogue-icon-play {
-	display: none;
-}
-
-.home-hero__dialogue-button[aria-pressed="true"] .home-hero__dialogue-icon-pause {
-	display: block;
-}
-
-.home-hero__dialogue-button:focus-visible,
-.home-hero__dialogue-advance:focus-visible,
-.home-hero__dialogue-menu-item:focus-visible {
-	outline: 2px solid var(--home-hero-ink);
-	outline-offset: 3px;
-}
-
-.home-hero__dialogue-body {
-	position: relative;
+/* 角色本体的盒子，底边压在视口底边上、左缘贴住视口左缘（图本身有透明留白，
+   看着就是卡在角上）。JS 接管前保持隐藏，由 hero 时间线把它从底边推出来 */
+.home-hero__dialogue-anchor {
+	position: absolute;
 	bottom: 0;
-	left: clamp(2rem, 4vw, 5rem);
-	display: grid;
-	min-height: 0;
-	flex: 1 1 auto;
-	grid-template-rows: auto minmax(0, 1fr);
-	align-content: start;
-	padding-bottom: clamp(0.25rem, 1svh, 0.75rem);
-	cursor: pointer;
-	/* galgame 台词文本不参与选中，避免拖选干扰推进交互 */
-	user-select: none;
-	-webkit-user-select: none;
-}
-
-.home-hero__dialogue-nameplate {
-	display: inline-flex;
-	min-width: 0;
-	min-height: 1.2em;
-	align-items: center;
-	gap: var(--space-2);
-	justify-self: start;
-	margin-bottom: clamp(0.45rem, 1.2svh, 0.85rem);
-	font-size: clamp(1.1rem, 3svh, 1.55rem);
-	font-weight: 750;
-	line-height: 1.2;
-}
-
-.home-hero__dialogue-name {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.home-hero__dialogue-status {
-	width: 0.45rem;
-	height: 0.45rem;
-	flex: 0 0 auto;
-	border-radius: var(--radius-full);
-	background: var(--home-hero-ink);
-}
-
-.home-hero__dialogue-box[data-speaker="visitor"] .home-hero__dialogue-status {
-	transform: scale(0.72);
-}
-
-.home-hero__dialogue-text {
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
-	max-width: 52rem;
-	max-height: 2.8em;
-	margin: 0;
-	overflow: hidden;
-	font-size: clamp(1.45rem, 4svh, 2rem);
-	line-height: 1.4;
-	text-overflow: ellipsis;
-	text-wrap: pretty;
-}
-
-.home-hero__dialogue-box[data-typing="true"] .home-hero__dialogue-text::after {
-	content: "";
-	display: inline-block;
-	width: 0.4rem;
-	height: 1em;
-	margin-left: 0.2rem;
-	vertical-align: -0.14em;
-	background: currentColor;
-	animation: home-hero-dialogue-caret 720ms steps(2, start) infinite;
-}
-
-/* 话题选项悬浮在对话框上方居中。 */
-.home-hero__dialogue-menu {
-	position: absolute;
-	left: 50%;
-	bottom: calc(100% + clamp(3rem, 20vh, 15rem));
-	z-index: 6;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: clamp(1.35rem, 1.8vw, 1.75rem);
-	width: min(48rem, calc(100vw - 2rem));
-	margin: 0;
-	padding: 0;
-	list-style: none;
-	transform: translateX(-50%);
-}
-
-.home-hero__dialogue-menu[hidden] {
-	display: none;
-}
-
-.home-hero__dialogue-menu li {
-	display: flex;
-	width: 100%;
-	justify-content: center;
-}
-
-.home-hero__dialogue-menu-item {
-	position: relative;
-	isolation: isolate;
-	display: inline-flex;
-	width: 100%;
-	min-height: 3.6rem;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-3) clamp(2.5rem, 7vw, 5.5rem);
-	border: 0;
-	border-radius: 0;
-	background: linear-gradient(
-		90deg,
-		transparent 0%,
-		rgb(0 0 0 / 18%) 12%,
-		rgb(0 0 0 / 62%) 31%,
-		rgb(0 0 0 / 82%) 50%,
-		rgb(0 0 0 / 62%) 69%,
-		rgb(0 0 0 / 18%) 88%,
-		transparent 100%
-	);
-	backdrop-filter: blur(8px);
-	color: var(--home-hero-ink);
-	font: inherit;
-	font-size: 1.15rem;
-	font-weight: 700;
-	line-height: 1.2;
-	cursor: pointer;
-	overflow: hidden;
-	transition: background 200ms ease, color 200ms ease;
-}
-
-.home-hero__dialogue-menu-item:hover,
-.home-hero__dialogue-menu-item:focus-visible {
-	background: linear-gradient(
-		90deg,
-		transparent 0%,
-		rgb(196 133 172 / 28%) 15%,
-		rgb(159 112 159 / 86%) 35%,
-		rgb(109 121 156) 50%,
-		rgb(82 145 177 / 86%) 65%,
-		rgb(71 169 194 / 28%) 85%,
-		transparent 100%
-	);
-}
-
-.home-hero__dialogue-menu-label {
-	position: relative;
-	z-index: 1;
-	text-shadow: 0 1px 0 color-mix(in oklch, var(--home-hero-shadow) 68%, transparent);
-}
-
-.home-hero__dialogue-menu-particles {
-	position: absolute;
-	inset: 0;
-	z-index: 0;
-	pointer-events: none;
-}
-
-.home-hero__dialogue-menu-particle {
-	position: absolute;
-	bottom: -0.55rem;
-	width: 0.22rem;
+	left: 0;
+	width: var(--home-dialogue-size);
 	aspect-ratio: 1;
-	border-radius: var(--radius-full);
-	background: color-mix(in oklch, white 82%, oklch(0.75 0.12 292));
-	box-shadow: 0 0 0.45rem color-mix(in oklch, oklch(0.75 0.12 292) 72%, transparent);
-	opacity: 0;
-	transform: translate3d(0, 0, 0) scale(0.4);
-	will-change: transform, opacity;
-}
-
-.home-hero__dialogue-menu-item:hover .home-hero__dialogue-menu-particle,
-.home-hero__dialogue-menu-item:focus-visible .home-hero__dialogue-menu-particle {
-	animation: home-hero-menu-particle-drift
-		var(--home-hero-particle-duration, 2.6s) ease-in infinite
-		var(--home-hero-particle-delay, 0s);
-}
-
-.home-hero__dialogue-menu-particle:nth-child(1) {
-	left: 12%;
-	--home-hero-particle-delay: -0.2s;
-	--home-hero-particle-x-start: -0.3rem;
-	--home-hero-particle-x-mid: 0.65rem;
-	--home-hero-particle-x-end: -0.55rem;
-	--home-hero-particle-y-mid: -1.1rem;
-	--home-hero-particle-y-end: -2.5rem;
-}
-
-.home-hero__dialogue-menu-particle:nth-child(2) {
-	left: 21%;
-	--home-hero-particle-delay: -1.8s;
-	--home-hero-particle-duration: 3.1s;
-	--home-hero-particle-x-start: 0.7rem;
-	--home-hero-particle-x-mid: -0.8rem;
-	--home-hero-particle-x-end: 0.4rem;
-	--home-hero-particle-y-mid: -2.4rem;
-	--home-hero-particle-y-end: -0.95rem;
-}
-
-.home-hero__dialogue-menu-particle:nth-child(3) {
-	left: 30%;
-	--home-hero-particle-delay: -0.9s;
-	--home-hero-particle-duration: 2.2s;
-	--home-hero-particle-x-start: -0.55rem;
-	--home-hero-particle-x-mid: 0.2rem;
-	--home-hero-particle-x-end: 1rem;
-	--home-hero-particle-y-mid: -0.7rem;
-	--home-hero-particle-y-end: -2rem;
-}
-
-.home-hero__dialogue-menu-particle:nth-child(4) {
-	left: 39%;
-	--home-hero-particle-delay: -2.35s;
-	--home-hero-particle-duration: 3.4s;
-	--home-hero-particle-x-start: 0.15rem;
-	--home-hero-particle-x-mid: -0.7rem;
-	--home-hero-particle-x-end: -0.15rem;
-	--home-hero-particle-y-mid: -2.15rem;
-	--home-hero-particle-y-end: -0.55rem;
-}
-
-.home-hero__dialogue-menu-particle:nth-child(5) {
-	left: 47%;
-	--home-hero-particle-delay: -1.2s;
-	--home-hero-particle-x-start: -0.85rem;
-	--home-hero-particle-x-mid: 0.9rem;
-	--home-hero-particle-x-end: 0.25rem;
-	--home-hero-particle-y-mid: -1.55rem;
-	--home-hero-particle-y-end: -2.65rem;
-}
-
-.home-hero__dialogue-menu-particle:nth-child(6) {
-	left: 55%;
-	--home-hero-particle-delay: -2.7s;
-	--home-hero-particle-duration: 3.25s;
-	--home-hero-particle-x-start: 0.45rem;
-	--home-hero-particle-x-mid: -0.2rem;
-	--home-hero-particle-x-end: -0.95rem;
-	--home-hero-particle-y-mid: -0.55rem;
-	--home-hero-particle-y-end: -1.6rem;
-}
-
-.home-hero__dialogue-menu-particle:nth-child(7) {
-	left: 64%;
-	--home-hero-particle-delay: -0.6s;
-	--home-hero-particle-duration: 2.35s;
-	--home-hero-particle-x-start: -0.25rem;
-	--home-hero-particle-x-mid: 0.75rem;
-	--home-hero-particle-x-end: -0.65rem;
-	--home-hero-particle-y-mid: -2.25rem;
-	--home-hero-particle-y-end: -1.05rem;
-}
-
-.home-hero__dialogue-menu-particle:nth-child(8) {
-	left: 72%;
-	--home-hero-particle-delay: -1.55s;
-	--home-hero-particle-duration: 3s;
-	--home-hero-particle-x-start: 0.95rem;
-	--home-hero-particle-x-mid: -0.45rem;
-	--home-hero-particle-x-end: 0.45rem;
-	--home-hero-particle-y-mid: -1.3rem;
-	--home-hero-particle-y-end: -2.4rem;
-}
-
-.home-hero__dialogue-menu-particle:nth-child(9) {
-	left: 81%;
-	--home-hero-particle-delay: -2.1s;
-	--home-hero-particle-duration: 2.65s;
-	--home-hero-particle-x-start: -0.75rem;
-	--home-hero-particle-x-mid: 0.15rem;
-	--home-hero-particle-x-end: 0.85rem;
-	--home-hero-particle-y-mid: -0.9rem;
-	--home-hero-particle-y-end: -2.2rem;
-}
-
-.home-hero__dialogue-menu-particle:nth-child(10) {
-	left: 89%;
-	--home-hero-particle-delay: -1.05s;
-	--home-hero-particle-duration: 3.35s;
-	--home-hero-particle-x-start: 0.2rem;
-	--home-hero-particle-x-mid: -0.95rem;
-	--home-hero-particle-x-end: -0.25rem;
-	--home-hero-particle-y-mid: -2.35rem;
-	--home-hero-particle-y-end: -0.7rem;
-}
-
-.home-hero__dialogue-footer {
-	position: absolute;
-	right: clamp(3rem, 7vw, 8rem);
-	bottom: clamp(0.45rem, 1.1vw, 0.9rem);
-	z-index: 2;
-	display: flex;
-	min-height: 2.75rem;
-	align-items: center;
-	justify-content: end;
-	gap: clamp(0.35rem, 0.8vw, 0.9rem);
-}
-
-/* 「下一句」同为纯图标按钮，箭头轻浮动提示可推进 */
-.home-hero__dialogue-advance {
-	display: inline-flex;
-	width: clamp(2.6rem, 3.4vw, 3.1rem);
-	height: clamp(2.6rem, 3.4vw, 3.1rem);
-	align-items: center;
-	justify-content: center;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	color: inherit;
 	opacity: 0;
 	visibility: hidden;
-	pointer-events: none;
-	transform: translateY(-0.35rem);
-	cursor: pointer;
-	transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
-}
-
-.home-hero__dialogue-advance[data-ready="true"] {
-	opacity: 0.85;
-	visibility: visible;
-	pointer-events: auto;
-	transform: translateY(0);
-	transition-delay: 0s;
-}
-
-.home-hero__dialogue-advance svg {
-	width: 1.7rem;
-	height: 1.7rem;
-	animation: home-hero-dialogue-advance-bob 1.6s ease-in-out infinite;
-}
-
-.home-hero__dialogue-advance:hover,
-.home-hero__dialogue-advance:focus-visible {
-	opacity: 1;
+	will-change: transform, opacity;
 }
 
 .home-hero__sticker {
 	position: absolute;
-	bottom: clamp(6rem, 14svh, 11rem);
-	left: clamp(0.5rem, 2.5vw, 3.5rem);
-	z-index: 0;
-	width: min(clamp(25rem, 35vw, 34rem), 78svh);
+	inset: 0;
 	margin: 0;
 	line-height: 0;
-	filter: drop-shadow(0 1rem 1rem var(--home-hero-shadow));
-	transition: opacity 180ms ease, transform 180ms ease;
+	filter: drop-shadow(0 0.5rem 0.8rem rgb(0 0 0 / 26%));
+	/* 支点在底边：压下去时头顶动、脚不动，才像按在桌上的一团棉花 */
+	transform-origin: 50% 100%;
+	transition:
+		scale 360ms var(--home-dialogue-spring),
+		translate 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 悬停是「按下去」的挤压，不是跳一下：变扁同时变宽，体积感留住 */
+@media (hover: hover) and (pointer: fine) {
+	.home-hero__dialogue-anchor:has(.home-hero__dialogue-trigger:hover)
+		.home-hero__sticker {
+		scale: 1.07 0.9;
+	}
+}
+
+.home-hero__dialogue-trigger {
+	position: absolute;
+	inset: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 50% 50% 0 0;
+	background: transparent;
+	cursor: pointer;
+}
+
+.home-hero__dialogue-trigger:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+/* 想法气泡：粗描边白椭圆，挂在角色头顶右上方，从左下角（小圆点那一侧）冒出来。
+   text-wrap: balance 让两行等长，文字角点才不会戳出椭圆边 */
+.home-hero__dialogue-bubble {
+	position: absolute;
+	bottom: 92%;
+	left: 52%;
+	z-index: 1;
+	width: max-content;
+	max-width: min(16rem, 42vw);
+	margin: 0;
+	padding: 0.95rem 1.75rem;
+	border: var(--home-dialogue-stroke) solid var(--home-dialogue-ink);
+	border-radius: 50%;
+	background: var(--home-dialogue-paper);
+	color: var(--home-dialogue-ink);
+	font-size: clamp(0.88rem, 0.95vw, 1rem);
+	font-weight: 800;
+	line-height: 1.45;
+	text-align: center;
+	text-wrap: balance;
+	transform-origin: 0% 100%;
+	cursor: pointer;
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		opacity 180ms ease,
+		visibility 0s linear 180ms;
+}
+
+.home-hero__dialogue-bubble[data-open="true"] {
+	opacity: 1;
+	visibility: visible;
+	transition: none;
+}
+
+/* 思考泡泡的两颗小圆点，从气泡左下角一路落向角色头顶 */
+.home-hero__dialogue-bubble::before,
+.home-hero__dialogue-bubble::after {
+	content: "";
+	position: absolute;
+	border: var(--home-dialogue-stroke) solid var(--home-dialogue-ink);
+	border-radius: 50%;
+	background: var(--home-dialogue-paper);
+}
+
+.home-hero__dialogue-bubble::before {
+	top: calc(100% + 0.2rem);
+	left: 0.9rem;
+	width: 1rem;
+	height: 0.85rem;
+}
+
+.home-hero__dialogue-bubble::after {
+	top: calc(100% + 1.25rem);
+	left: 0.1rem;
+	width: 0.62rem;
+	height: 0.52rem;
 }
 
 .home-hero__sticker-image {
@@ -534,71 +199,6 @@
 	background: oklch(0.035 0 0);
 }
 
-.home-hero__dialogue:has(
-		.home-hero__dialogue-box[data-typing="true"]
-	)
-	.home-hero__sticker-mouth {
-	width: clamp(1.35rem, 2vw, 1.85rem);
-	height: clamp(0.65rem, 0.9vw, 0.8rem);
-	border-radius: 0.16rem;
-	clip-path: inset(0 round 0.16rem);
-	animation: home-hero-sticker-talk 180ms steps(2, end) infinite;
-}
-
-@keyframes home-hero-dialogue-caret {
-	50% {
-		opacity: 0;
-	}
-}
-
-@keyframes home-hero-dialogue-advance-bob {
-	0%,
-	100% {
-		transform: translateY(0);
-	}
-	50% {
-		transform: translateY(0.22rem);
-	}
-}
-
-@keyframes home-hero-menu-particle-drift {
-	0% {
-		opacity: 0;
-		transform: translate3d(
-			var(--home-hero-particle-x-start, -0.4rem),
-			0.3rem,
-			0
-		) scale(0.45);
-	}
-	18% {
-		opacity: 0.55;
-	}
-	47% {
-		opacity: 0.9;
-		transform: translate3d(
-			var(--home-hero-particle-x-mid, 0.45rem),
-			var(--home-hero-particle-y-mid, -1.5rem),
-			0
-		) scale(1);
-	}
-	72% {
-		opacity: 0.42;
-		transform: translate3d(
-			calc(var(--home-hero-particle-x-mid, 0.45rem) * -0.45),
-			calc(var(--home-hero-particle-y-mid, -1.5rem) * 0.4),
-			0
-		) scale(0.7);
-	}
-	100% {
-		opacity: 0;
-		transform: translate3d(
-			var(--home-hero-particle-x-end, -0.25rem),
-			var(--home-hero-particle-y-end, -2.5rem),
-			0
-		) scale(0.5);
-	}
-}
-
 @keyframes home-hero-sticker-blink {
 	0%,
 	46%,
@@ -612,123 +212,25 @@
 	}
 }
 
-@keyframes home-hero-sticker-talk {
-	0%,
-	100% {
-		clip-path: inset(0 round 0.16rem);
-	}
-	50% {
-		clip-path: inset(38% 0 round 0.16rem);
-	}
-}
-
+/* 移动端首页由 HomeMobile 承担，桌面 hero 不挂载，角色一并隐藏 */
 @media (max-width: 768px) {
 	.home-hero__dialogue {
-		bottom: 0;
-		width: 100vw;
-	}
-
-	.home-hero__dialogue-layout {
-		height: clamp(12rem, 34svh, 15rem);
-		min-height: 0;
-	}
-
-	.home-hero__dialogue-box {
-		height: 100%;
-		min-height: 0;
-		padding: clamp(1.25rem, 3svh, 1.75rem) 1.25rem
-			clamp(3.5rem, 6svh, 4.25rem) 1.5rem;
-		background-size: 2.25rem 2.25rem;
-		clip-path: none;
-		backdrop-filter: blur(7px);
-	}
-
-	.home-hero__dialogue-button,
-	.home-hero__dialogue-advance {
-		width: 2.6rem;
-		height: 2.6rem;
-	}
-
-	.home-hero__dialogue-button svg,
-	.home-hero__dialogue-advance svg {
-		width: 1.35rem;
-		height: 1.35rem;
-	}
-
-	.home-hero__dialogue-body {
-		bottom: 0;
-		left: 0;
-		min-height: 0;
-	}
-
-	.home-hero__dialogue-nameplate {
-		margin-bottom: clamp(0.35rem, 1svh, 0.6rem);
-		font-size: clamp(1rem, 2.8svh, 1.25rem);
-	}
-
-	.home-hero__dialogue-text {
-		max-height: 2.9em;
-		font-size: clamp(1.125rem, 3.4svh, 1.5rem);
-		line-height: 1.45;
-	}
-
-	.home-hero__dialogue-menu {
-		bottom: calc(100% + clamp(2rem, 14vh, 8rem));
-		width: calc(100vw - 1.5rem);
-		gap: 1.1rem;
-	}
-
-	.home-hero__dialogue-menu-item {
-		min-height: 3rem;
-		padding: var(--space-2) var(--space-4);
-		font-size: 1rem;
-	}
-
-	.home-hero__dialogue-footer {
-		right: 1.25rem;
-		bottom: 0.25rem;
-		gap: 0.25rem;
-	}
-
-	.home-hero__sticker {
-		bottom: 0.75rem;
-		left: 0;
-		width: min(64vw, 18rem);
+		display: none;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.home-hero__dialogue {
+	.home-hero__dialogue-anchor {
 		opacity: 1;
 		visibility: visible;
-		transform: none;
 	}
 
-	.home-hero__dialogue-box,
-	.home-hero__sticker {
+	.home-hero__sticker,
+	.home-hero__dialogue-bubble {
 		transition: none;
 	}
 
-	.home-hero__dialogue-box[data-typing="true"] .home-hero__dialogue-text::after {
-		animation: none;
-	}
-
-	.home-hero__dialogue-advance svg {
-		animation: none;
-	}
-
-	.home-hero__dialogue-menu-particle {
-		animation: none;
-	}
-
 	.home-hero__sticker-eye-pupil {
-		animation: none;
-	}
-
-	.home-hero__dialogue:has(
-			.home-hero__dialogue-box[data-typing="true"]
-		)
-		.home-hero__sticker-mouth {
 		animation: none;
 	}
 }

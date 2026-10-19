@@ -92,6 +92,40 @@ export function getHeroPinEndDistance(
 	return Math.max(0, configured, Math.round(viewport * minimumViewports));
 }
 
+/**
+ * 照片描边蔓延路径：8 条笔画，各自从某个圆角弧线 45° 中点出发、
+ * 沿单边延伸到该边中点。配合 pathLength=1 + dashoffset 1→0，
+ * 边框就从四角同时向四边中点蔓延闭合成框。
+ * 路径画在描边中心线上：相对图片盒外扩 thickness/2，圆角半径同步放大。
+ */
+export function createHeroPhotoFramePaths(
+	width: number,
+	height: number,
+	thickness: number,
+	radius: number,
+): string[] {
+	const x0 = -thickness / 2;
+	const y0 = -thickness / 2;
+	const x1 = width + thickness / 2;
+	const y1 = height + thickness / 2;
+	const r = radius + thickness / 2;
+	const cx = (x0 + x1) / 2;
+	const cy = (y0 + y1) / 2;
+	// 45° 弧中点相对切点的内缩距离：r·(1 − √2/2)
+	const k = r * (1 - Math.SQRT1_2);
+	const f = (n: number) => Math.round(n * 100) / 100;
+	return [
+		`M ${f(x0 + k)} ${f(y0 + k)} A ${f(r)} ${f(r)} 0 0 1 ${f(x0 + r)} ${f(y0)} L ${f(cx)} ${f(y0)}`,
+		`M ${f(x0 + k)} ${f(y0 + k)} A ${f(r)} ${f(r)} 0 0 0 ${f(x0)} ${f(y0 + r)} L ${f(x0)} ${f(cy)}`,
+		`M ${f(x1 - k)} ${f(y0 + k)} A ${f(r)} ${f(r)} 0 0 0 ${f(x1 - r)} ${f(y0)} L ${f(cx)} ${f(y0)}`,
+		`M ${f(x1 - k)} ${f(y0 + k)} A ${f(r)} ${f(r)} 0 0 1 ${f(x1)} ${f(y0 + r)} L ${f(x1)} ${f(cy)}`,
+		`M ${f(x1 - k)} ${f(y1 - k)} A ${f(r)} ${f(r)} 0 0 0 ${f(x1)} ${f(y1 - r)} L ${f(x1)} ${f(cy)}`,
+		`M ${f(x1 - k)} ${f(y1 - k)} A ${f(r)} ${f(r)} 0 0 1 ${f(x1 - r)} ${f(y1)} L ${f(cx)} ${f(y1)}`,
+		`M ${f(x0 + k)} ${f(y1 - k)} A ${f(r)} ${f(r)} 0 0 1 ${f(x0 + r)} ${f(y1)} L ${f(cx)} ${f(y1)}`,
+		`M ${f(x0 + k)} ${f(y1 - k)} A ${f(r)} ${f(r)} 0 0 0 ${f(x0)} ${f(y1 - r)} L ${f(x0)} ${f(cy)}`,
+	];
+}
+
 const PUZZLE_COLUMNS = 18;
 const PUZZLE_ROWS = 12;
 const PUZZLE_SEED = 20261015;

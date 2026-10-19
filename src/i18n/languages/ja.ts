@@ -268,7 +268,6 @@ export const ja: Translation = {
 	[Key.login]: "ログイン",
 	[Key.logout]: "ログアウト",
 	[Key.gotIt]: "了解しました",
-	[Key.visitor]: "訪問者",
 	[Key.viewDetails]: "詳細を見る",
 	[Key.backToTop]: "トップへ戻る",
 	[Key.top]: "トップ",
@@ -289,7 +288,6 @@ export const ja: Translation = {
 	[Key.themeSystem]: "システムに従う",
 	[Key.spineModel]: "Spineモデル",
 	[Key.toggleDock]: "ドック切替",
-	[Key.quickActions]: "クイックアクション",
 	[Key.viewAnnouncement]: "お知らせを見る",
 
 	// ===== 搜索弹窗 =====
@@ -305,13 +303,8 @@ export const ja: Translation = {
 	[Key.searchHintToggle]: "Ctrl+K 切替",
 	// ===== 首页 Hero 对话 =====
 	[Key.techBlogSuffix]: "の技術ブログ",
-	[Key.dialogueMenuTitle]: "何を話そうか？",
 	[Key.characterDialogue]: "キャラクターとの対話",
-	[Key.dialoguePrev]: "前の一言",
 	[Key.dialogueNext]: "次の一言",
-	[Key.dialogueAutoPlay]: "自動再生",
-	[Key.reopenDialogue]: "対話を再開",
-	[Key.dialogueRestoreHint]: "ニャ？まだ話したい？",
 
 	// ===== 首页数据层 =====
 	[Key.siteData]: "サイトデータ",

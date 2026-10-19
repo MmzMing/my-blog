@@ -10,6 +10,21 @@
       --guide-flip-duration 与 home-guide-controller.ts 的 FLIP_DURATION 必须一致。
    ========================================================================== */
 
+/* 井字导引线与内容列的尺寸关系，首屏 Hero 与本层共用这一份：
+   两层竖线必须同列、横线必须同高，滚动交接时才能接成一条线。
+   --guide-col 是两条竖线之间的宽度，比卡片列更宽，向两侧外扩
+   --guide-col-inset 是卡片列与竖线之间的水平留白
+   --guide-row-inset 是卡片列与横线之间的垂直留白
+   横线通满整层宽度，竖线通满整层高度 */
+.home-hero,
+.home-data-layer {
+	--guide-col: clamp(20rem, 94%, 84rem);
+	--guide-col-inset: clamp(2rem, 4vw, 4rem);
+	--guide-row-inset: clamp(1.25rem, 3vh, 2.5rem);
+	--layer-pad-block: clamp(1.5rem, 4.5vh, 3.25rem);
+	--guide-frame-ink: color-mix(in srgb, var(--deep-text) 40%, transparent);
+}
+
 .home-data-layer {
 	--guide-gap: clamp(0.7rem, 1.2vw, 1.1rem);
 	--guide-radius: 1.25rem;
@@ -26,13 +41,12 @@
 	--guide-card-border: color-mix(in oklab, var(--guide-fg) 14%, transparent);
 	--guide-card-border-hover: color-mix(in oklab, var(--guide-fg) 30%, transparent);
 
-	/* 墨色分档：主轮廓 / 结构与纹理 / 虚线框。
+	/* 墨色分档：主轮廓 / 结构与纹理（虚线框墨色在上方共用规则里）。
 	   线宽用画布单位（viewBox 220×140），随插画一起缩放 —— 不能配
 	   vector-effect="non-scaling-stroke"，那个属性会把 dash 度量搬到屏幕空间，
 	   pathLength 归一化随之失效，大周长闭合图形画不到尾 */
 	--guide-ink: color-mix(in srgb, var(--guide-fg) 85%, transparent);
 	--guide-ink-faint: color-mix(in srgb, var(--guide-fg) 45%, transparent);
-	--guide-frame-ink: color-mix(in srgb, var(--guide-fg) 40%, transparent);
 	--guide-stat-side: color-mix(in oklab, var(--guide-fg) 12%, var(--guide-bg));
 
 	/* 时序 */
@@ -59,17 +73,6 @@
 	--enter-step: 80ms;
 	--enter-cap: 320ms;
 
-	/* 内容列与导引线的共用尺寸：收窄列宽给两侧留白，
-	   竖导引线压在列边界上，横导引线压在层的纵向内边距上 */
-	/* 井字导引线与内容列的尺寸关系：
-	   --guide-col 是两条竖线之间的宽度，比卡片列更宽，向两侧外扩
-	   --guide-col-inset 是卡片列与竖线之间的水平留白
-	   --guide-row-inset 是卡片列与横线之间的垂直留白
-	   横线通满整层宽度，竖线通满整层高度 */
-	--guide-col: clamp(20rem, 94%, 84rem);
-	--guide-col-inset: clamp(2rem, 4vw, 4rem);
-	--guide-row-inset: clamp(1.25rem, 3vh, 2.5rem);
-	--layer-pad-block: clamp(1.5rem, 4.5vh, 3.25rem);
 	--layer-pad-inline: clamp(1rem, 4vw, 4.5rem);
 
 	position: relative;
@@ -144,12 +147,13 @@
 	overflow: visible;
 }
 
-/* 井字导引线：纯静态虚线，不参与任何动效 */
+/* 井字导引线：纯静态虚线，不参与任何动效。
+   粗描边 + 长划，对齐参考站的 4px dashed 边框观感（浏览器 dashed 的划长约等于 3 倍边宽） */
 .g-guide {
 	fill: none;
 	stroke: var(--guide-frame-ink);
-	stroke-width: 1.5px;
-	stroke-dasharray: 6 6;
+	stroke-width: 4px;
+	stroke-dasharray: 14 12;
 }
 
 .home-data-layer[data-guide-expanded] .home-guide {

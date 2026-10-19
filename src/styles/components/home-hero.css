@@ -15,12 +15,21 @@ html:has(.home-hero) #top-row {
 	--home-hero-border-soft: color-mix(in oklch, var(--home-hero-ink) 20%, transparent);
 	--home-hero-shadow: color-mix(in oklch, var(--home-hero-surface) 78%, transparent);
 	/* 首屏拼图底层：纯色 page-bg + 发丝榫头缝线，两端颜色全取主题令牌，
-	   所以亮暗切换自动反相，不需要 :root.dark 分支。这一层常驻不淡出，
-	   拼合后的整图直接覆盖在它上面并持续放大，过渡全程底色不变。 */
+	   所以亮暗切换自动反相，不需要 :root.dark 分支。拼合完成后由 .home-hero__backdrop
+	   淡入把这层缝线遮掉，整图再上移居中进入照片态。 */
 	--home-hero-puzzle-line: color-mix(in oklch, var(--deep-text) 13%, transparent);
 	/* 左上标题与右下 contact 都压在纯色底上，统一用正文色 */
 	--home-hero-title-ink: var(--deep-text);
 	--home-hero-contact-ink: var(--deep-text);
+	/* 两条横线之间的画幅量尺：雨与照片态的高度约束都按它算 */
+	--home-hero-band-inset: var(--layer-pad-block) 0;
+	/* 照片态：描边随主题反相（亮色黑边 / 暗色白边，取 --deep-text），
+	   深色阴影把整图从底上抬起来。
+	   --home-hero-photo-w 是照片落位后的实际宽度，控制器测量后回写精确 px，
+	   这里的值是 JS 未接管前（减弱动效等）的兜底 */
+	--home-hero-photo-edge: color-mix(in oklch, var(--deep-text) 92%, transparent);
+	--home-hero-photo-shadow: color-mix(in oklch, var(--home-hero-surface) 70%, transparent);
+	--home-hero-photo-w: min(58vw, 52rem);
 	position: relative;
 	width: 100vw;
 	height: 100svh;
@@ -47,10 +56,28 @@ html:has(.home-hero) #top-row {
    绑定 --page-bg 的旧方案反而把 ink 褪成浅灰，已废弃 */
 
 .home-hero__visual,
+.home-hero__backdrop,
 .home-hero__puzzle,
 .home-hero__rain {
 	position: absolute;
 	inset: 0;
+}
+
+/* 拼合完成后随导引线展开同步淡入的纯色底：把缝线遮干净，
+   让首屏背景与第二层同为 --page-bg，交接处不再有拼图纹理的割裂感 */
+.home-hero__backdrop {
+	z-index: 0;
+	background: var(--page-bg);
+	opacity: 0;
+}
+
+/* 雨只下在井字虚线围出的画幅里：横向收到两条竖虚线之间，纵向仍是两条横线之间。
+   canvas 是替换元素，inset 撑不开宽高，必须显式给；像素缓冲由控制器按这个盒子回写 */
+.home-hero__rain {
+	inset: var(--layer-pad-block) auto auto;
+	left: calc(50% - var(--guide-col) / 2);
+	width: var(--guide-col);
+	height: calc(100% - 2 * var(--layer-pad-block));
 }
 
 /* 首屏拼图底层：纯色底 + 榫头缝线（几何见 utils/home-hero-motion.ts），
@@ -73,9 +100,39 @@ html:has(.home-hero) #top-row {
 	stroke-linecap: round;
 }
 
+/* 井字导引线复用第二层的 HomeGuideFrame，但两层分开摆：
+   竖线留在整图之下（z 序与整图同为 0，DOM 在前），照片态收进列内后竖线全程露在
+   照片两侧，只作衔接上下的背景；横线提到整图与雨之上，压在画幅上下边缘，
+   不会被整图盖掉半根。
+   第一幕不显示：两组线先收成中点（clip-path 收拢），拼合完成后由滚动时间线向两端展开；
+   交叉方向的 -5px 给 4px 粗描边（外沿各占一半）留出余量。
+   竖线虚线改从底边起算、以空隙开头：第二层竖线从顶边以实线段开头，
+   两层在交接处按 14/12 的节奏续上，不受首屏高度能否整除虚线周期影响 */
+.home-hero .home-guide__guide--h {
+	z-index: 21;
+	clip-path: inset(-5px 50% -5px 50%);
+}
+
+.home-hero .home-guide__guide--v {
+	transform: translateX(-50%) scaleY(-1);
+	clip-path: inset(50% -5px 50% -5px);
+}
+
+.home-hero .home-guide__guide--v .g-guide {
+	stroke-dashoffset: 13;
+}
+
 .home-hero__visual {
 	z-index: 0;
 	overflow: hidden;
+}
+
+/* 通栏画幅的量尺：控制器按它算整图的 cover 缩放与外层上下裁切，自身不绘制 */
+.home-hero__mosaic-target {
+	position: absolute;
+	inset: var(--home-hero-band-inset);
+	visibility: hidden;
+	pointer-events: none;
 }
 
 .home-hero__mosaic-frame {
@@ -135,7 +192,80 @@ html:has(.home-hero) #top-row {
 	display: block;
 	opacity: 0;
 	visibility: hidden;
+	overflow: hidden;
+	border-radius: 0.75rem;
+	box-shadow: 0 2.4rem 4.8rem -1.6rem var(--home-hero-photo-shadow);
 	pointer-events: none;
+}
+
+/* 照片描边：8 条 pathLength=1000 的笔画（几何由控制器写入 d），
+   dashoffset 由滚动时间线从 1000 推到 0，边框即从四角向四边中点蔓延闭合 */
+.home-hero__photo-frame {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.home-hero__photo-frame path {
+	fill: none;
+	stroke: var(--home-hero-photo-edge);
+	stroke-width: 0.5rem;
+	stroke-dasharray: 1000;
+	stroke-dashoffset: 1000;
+}
+
+/* 叠加图：在拼合框内，跟着照片一起缩放平移；
+   滑入位移与自己的倾角（PHOTO_OVERLAY_ROTATION）由滚动时间线驱动 */
+.home-hero__photo-overlay {
+	position: absolute;
+	top: 64%;
+	left: 12%;
+	z-index: 3;
+	width: 74%;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	will-change: transform, opacity;
+}
+
+.home-hero__photo-overlay-image {
+	display: block;
+	width: 100%;
+	border: 0.4rem solid var(--home-hero-photo-edge);
+	border-radius: 0.9rem;
+	box-shadow: 0 1.8rem 3.6rem -1.4rem var(--home-hero-photo-shadow);
+}
+
+/* 图片右上角作者标牌：深色磨砂小片，压在图片内容上所以不随主题反色 */
+.home-hero__photo-author {
+	position: absolute;
+	top: 0.9rem;
+	right: 0.9rem;
+	z-index: 4;
+	padding: 0.2em 0.65em;
+	border-radius: 0.45rem;
+	background: rgb(6 7 9 / 55%);
+	-webkit-backdrop-filter: blur(0.35rem);
+	backdrop-filter: blur(0.35rem);
+	color: rgb(255 255 255 / 92%);
+	font-size: 0.8rem;
+	font-weight: 600;
+	line-height: 1.5;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+/* 主图标牌在拼合框内会随照片缩放，字号按落位比例放大回补偿；
+   淡入由控制器时间线驱动，接管前先藏住 */
+.home-hero__mosaic-frame > .home-hero__photo-author {
+	top: 1.4rem;
+	right: 1.4rem;
+	font-size: 1.3rem;
+	opacity: 0;
+	visibility: hidden;
+	will-change: opacity;
 }
 
 .home-hero__mosaic-complete img {
@@ -153,6 +283,42 @@ html:has(.home-hero) #top-row {
 
 .home-hero__rain.is-active {
 	opacity: 1;
+}
+
+/* 介绍卡片列：右缘钉在右虚线上、宽度随最宽卡片收缩，
+   单行卡片超出的部分自然叠到左侧照片上 */
+.home-hero__intro {
+	position: absolute;
+	top: 50%;
+	right: calc(50% - var(--guide-col) / 2);
+	z-index: 25;
+	transform: translateY(-50%);
+	pointer-events: none;
+}
+
+/* 介绍卡片：无边框半透明磨砂，单行不换行。初始竖立（rotate 90° 绕右下角），
+   滚动时顶部往左倒下归位；动效脚本接管前先藏住 */
+.home-hero__intro-card {
+	position: relative;
+	margin: 0 0 1.1em;
+	padding: 0.85rem 1.35rem;
+	white-space: nowrap;
+	border-radius: 0.7rem;
+	background: color-mix(in oklch, var(--deep-text) 14%, transparent);
+	-webkit-backdrop-filter: blur(0.5rem);
+	backdrop-filter: blur(0.5rem);
+	color: var(--deep-text);
+	font-size: clamp(1rem, 1.2vw, 1.2rem);
+	font-weight: 600;
+	line-height: 1.65;
+	opacity: 0;
+	visibility: hidden;
+	transform-origin: 100% 100%;
+	will-change: transform, opacity;
+}
+
+.home-hero__intro-card:last-child {
+	margin-bottom: 0;
 }
 
 .home-hero__identity {
@@ -291,90 +457,6 @@ html:has(.home-hero) #top-row {
 	outline-offset: 0.5rem;
 }
 
-.home-hero__quick-panel {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	z-index: 6;
-	width: min(26rem, calc(100vw - 2rem));
-	max-width: none;
-	transform: translate(-50%, -50%);
-	pointer-events: none;
-}
-
-.home-hero__quick-actions {
-	display: flex;
-	flex-direction: column;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-3);
-}
-
-.home-hero__quick-action {
-	display: inline-flex;
-	min-width: min(24rem, calc(100vw - 3rem));
-	min-height: 4rem;
-	align-items: center;
-	justify-content: center;
-	gap: var(--space-2);
-	padding: var(--space-3) var(--space-5);
-	border: 0;
-	border-radius: 1.5rem 1.5rem 0.35rem 1.5rem;
-	background: color-mix(in oklch, var(--home-hero-surface) 52%, transparent);
-	backdrop-filter: blur(8px);
-	color: var(--home-hero-ink);
-	font: inherit;
-	font-size: 1.2rem;
-	font-weight: 650;
-	letter-spacing: 0;
-	line-height: 1.2;
-	text-decoration: none;
-	cursor: pointer;
-	pointer-events: auto;
-	opacity: 0;
-	visibility: hidden;
-	will-change: transform, opacity;
-	transition: background-color 160ms ease, transform 160ms ease;
-}
-
-.home-hero__quick-action svg {
-	width: 1.5rem;
-	height: 1.5rem;
-	flex: 0 0 auto;
-}
-
-.home-hero__quick-action:hover,
-.home-hero__quick-action:focus-visible {
-	background: color-mix(in oklch, var(--home-hero-ink) 18%, transparent);
-	color: var(--home-hero-ink);
-	transform: translateY(-2px);
-}
-
-.home-hero__quick-action:focus-visible,
-.home-hero__dialogue-restore:focus-visible {
-	outline: 2px solid var(--home-hero-ink);
-	outline-offset: 3px;
-}
-
-.home-hero__dialogue-restore {
-	display: none;
-	font-size: 1rem;
-}
-
-.home-hero__dialogue-restore svg {
-	width: 1rem;
-	height: 1rem;
-	flex: 0 0 auto;
-}
-
-.home-hero[data-layer-active="true"] .home-hero__dialogue-restore.is-dialogue-closed {
-	display: inline-flex;
-	opacity: 1;
-	visibility: visible;
-	transform: none;
-}
-
 @keyframes home-hero-melt {
 	to {
 		background-position: var(--home-hero-melt-size) 0;
@@ -479,26 +561,6 @@ html:has(.home-hero) #top-row {
 	.home-hero__contact-link {
 		font-size: clamp(2.6rem, 10vw, 4.5rem);
 	}
-
-	.home-hero__quick-panel {
-		width: calc(100vw - 1rem);
-	}
-
-	.home-hero__quick-actions {
-		gap: var(--space-2);
-	}
-
-	.home-hero__quick-action {
-		min-height: 3rem;
-		min-width: min(22rem, calc(100vw - 2rem));
-		padding-inline: var(--space-4);
-		font-size: 1rem;
-	}
-
-	.home-hero__dialogue-restore {
-		font-size: 0.8125rem;
-	}
-
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -506,10 +568,23 @@ html:has(.home-hero) #top-row {
 		min-height: 32rem;
 	}
 
+	/* 与动效终态一致：整图微倾并左移到左虚线处成照片态、介绍面板落定，
+	   导引线与遮罩底直接到位 */
+	.home-hero .home-guide__guide {
+		clip-path: none;
+	}
+
+	.home-hero__backdrop {
+		opacity: 1;
+	}
+
 	.home-hero__mosaic-frame {
-		inset: 0;
-		width: 100%;
-		height: 100%;
+		top: 50%;
+		bottom: auto;
+		width: min(58vw, 52rem);
+		/* 左缘对齐左虚线：中心再往左挪 (虚线列宽 - 照片宽) / 2 */
+		transform: translateX(calc((var(--home-hero-photo-w) - var(--guide-col)) / 2))
+			translateY(-50%) rotate(-3deg);
 		will-change: auto;
 	}
 
@@ -518,20 +593,33 @@ html:has(.home-hero) #top-row {
 	}
 
 	.home-hero__mosaic-complete {
-		height: 100%;
 		opacity: 1;
 		visibility: visible;
+		/* 无描边蔓延动画，白边回退为整圈 box-shadow */
+		box-shadow:
+			0 0 0 0.5rem var(--home-hero-photo-edge),
+			0 2.4rem 4.8rem -1.6rem var(--home-hero-photo-shadow);
 	}
 
 	.home-hero__mosaic-complete img {
-		height: 100%;
+		max-height: calc(100svh - 2 * var(--layer-pad-block));
 		object-fit: cover;
 	}
 
-	.home-hero__quick-action {
+	.home-hero__intro-card {
 		opacity: 1;
 		visibility: visible;
-		transform: none;
+	}
+
+	.home-hero__photo-overlay {
+		opacity: 1;
+		visibility: visible;
+		transform: rotate(5deg);
+	}
+
+	.home-hero__mosaic-frame > .home-hero__photo-author {
+		opacity: 1;
+		visibility: visible;
 	}
 
 	.home-hero__rain {

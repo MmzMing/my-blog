@@ -299,41 +299,12 @@ export type HomeBlindsConfig = {
 	};
 };
 
-/** galgame 对话框：单句台词 */
-export type HeroDialogueLine = {
-	/** 说话者：host=站长 / visitor=访客(你)，默认 host。左上角名牌随之切换 */
-	speaker?: "host" | "visitor";
-	/** 台词文本（逐字打字机播放） */
-	text: string;
-};
-
-/** galgame 对话框：话题（点击进入其逐句台词） */
-export type HeroDialogueTopic = {
-	/** 话题菜单标题，如「关于我」 */
-	title: string;
-	/** 该话题的逐句台词 */
-	lines: HeroDialogueLine[];
-};
-
-/** 首页 Hero galgame 对话框配置（写死暗黑主题，config 驱动内容） */
+/** 首页左下角角色的想法气泡：点击角色逐句弹出，末句后从头循环 */
 export type HeroDialogueConfig = {
-	/** 是否启用对话框；关闭则 Hero 不渲染对话框 */
+	/** 是否启用；关闭则不渲染角色与气泡 */
 	enabled?: boolean;
-	/** 说话者名称 */
-	speakers?: {
-		host?: string; // 站长名，如「哈基墩」
-		visitor?: string; // 访客名，如「访客」
-	};
-	/** 默认展示的简介台词，逐句播放；末句后可打开话题菜单 */
-	intro: HeroDialogueLine[];
-	/** 话题列表；点击某话题进入其逐句台词，末句后返回菜单 */
-	topics: HeroDialogueTopic[];
-	/** 话题菜单提示语，默认「想聊点什么？」 */
-	menuTitle?: string;
-	/** 打字机速度（毫秒/字），默认 45 */
-	typingSpeed?: number;
-	/** 自动播放时每句停留时间（毫秒），默认 1600 */
-	autoDelay?: number;
+	/** 气泡台词，按顺序弹出 */
+	lines: string[];
 };
 
 export type HeroMosaicInitialTile = {
@@ -408,11 +379,25 @@ export type HomeConfig = {
 	occupation?: string; // 职业/身份标签（如 后端开发 / 技术博主）
 	bio?: string | string[];
 	hero: {
-		backgroundImage: string;
 		mosaic: HeroMosaicConfig;
 		contact?: HeroContactConfig;
 		sticker: HeroStickerConfig;
-		/** galgame 对话框（写死暗黑主题）。配置后替代底部简介气泡 */
+		/** 拼合完成后的照片态：居中微倾后左移，右侧介绍卡片 + 下方滑入叠加图 */
+		photo: {
+			/** 拼合照片态的主图；author 为右上角作者标牌，留空不显示 */
+			main: { image: string; author?: string };
+			/** 落位后从下方滑入、叠在照片下缘的第二张图；image 留空不显示 */
+			overlay?: { image: string; author?: string };
+			intro?: {
+				/** 站点方向 */
+				direction: string;
+				/** 个人爱好 */
+				hobby: string;
+				/** 站点 bio */
+				bio: string;
+			};
+		};
+		/** 左下角角色的想法气泡 */
 		dialogue?: HeroDialogueConfig;
 		/** 玻璃雨珠 + 撞击水花动效，移动端自动降低密度。 */
 		rain?: {

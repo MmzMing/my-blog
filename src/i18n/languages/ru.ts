@@ -268,7 +268,6 @@ export const ru: Translation = {
 	[Key.login]: "Войти",
 	[Key.logout]: "Выйти",
 	[Key.gotIt]: "Понятно",
-	[Key.visitor]: "Гость",
 	[Key.viewDetails]: "Подробнее",
 	[Key.backToTop]: "Наверх",
 	[Key.top]: "Вверх",
@@ -289,7 +288,6 @@ export const ru: Translation = {
 	[Key.themeSystem]: "Как в системе",
 	[Key.spineModel]: "Модель Spine",
 	[Key.toggleDock]: "Панель инструментов",
-	[Key.quickActions]: "Быстрые действия",
 	[Key.viewAnnouncement]: "Открыть объявление",
 
 	// ===== 搜索弹窗 =====
@@ -305,13 +303,8 @@ export const ru: Translation = {
 	[Key.searchHintToggle]: "Ctrl+K переключить",
 	// ===== 首页 Hero 对话 =====
 	[Key.techBlogSuffix]: " — техноблог",
-	[Key.dialogueMenuTitle]: "О чём поговорим?",
 	[Key.characterDialogue]: "Диалог с персонажем",
-	[Key.dialoguePrev]: "Предыдущая реплика",
 	[Key.dialogueNext]: "Следующая реплика",
-	[Key.dialogueAutoPlay]: "Автовоспроизведение",
-	[Key.reopenDialogue]: "Снова открыть диалог",
-	[Key.dialogueRestoreHint]: "Мяу? Продолжим беседу?",
 
 	// ===== 首页数据层 =====
 	[Key.siteData]: "Данные сайта",

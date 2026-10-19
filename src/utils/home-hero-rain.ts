@@ -76,7 +76,6 @@ export function initHomeHeroRain(
 	let splashes: SplashParticle[] = [];
 	let hitEdges: HitEdge[] = [];
 	let animationFrame = 0;
-	let frameCount = 0;
 	let active = false;
 	let width = 0;
 	let height = 0;
@@ -90,35 +89,15 @@ export function initHomeHeroRain(
 	}
 
 	function collectHitEdges() {
-		const heroBounds = hero.getBoundingClientRect();
 		hitEdges = [
 			{ x1: 0, x2: width, y: Math.max(0, height - 1), captureRate: 1 },
 		];
-		const dialogue = hero.querySelector<HTMLElement>("[data-hero-dialogue]");
-		const dialogueBox = dialogue?.querySelector<HTMLElement>(
-			"[data-dialogue-box]",
-		);
-		if (
-			!dialogue ||
-			!dialogueBox ||
-			dialogue.dataset.sceneVisible !== "true" ||
-			dialogue.dataset.hidden === "true"
-		) {
-			return;
-		}
-		const bounds = dialogueBox.getBoundingClientRect();
-		const x1 = Math.max(0, bounds.left - heroBounds.left);
-		const x2 = Math.min(width, bounds.right - heroBounds.left);
-		const top = Math.max(0, Math.min(height, bounds.top - heroBounds.top));
-		if (x2 <= x1 || top <= 0 || top >= height) return;
-
-		// 对话框现在是平面矩形，雨滴只需要沿实际可见的上边碰撞。
-		hitEdges.unshift({ x1, x2, y: top, captureRate: 0.62 });
 	}
 
 	function resize() {
 		if (!canvas || !context) return;
-		const bounds = hero.getBoundingClientRect();
+		// 画布由 CSS 摆在井字虚线围出的画幅里（横向两条竖虚线之间），按它自己的盒子回写像素缓冲
+		const bounds = canvas.getBoundingClientRect();
 		width = Math.max(1, Math.round(bounds.width));
 		height = Math.max(1, Math.round(bounds.height));
 		dpr = mobileQuery.matches
@@ -126,8 +105,6 @@ export function initHomeHeroRain(
 			: Math.min(1.5, Math.max(1, window.devicePixelRatio || 1));
 		canvas.width = Math.round(width * dpr);
 		canvas.height = Math.round(height * dpr);
-		canvas.style.width = `${width}px`;
-		canvas.style.height = `${height}px`;
 		context.setTransform(dpr, 0, 0, dpr, 0, 0);
 		const intensity = Math.min(1, Math.max(0, config.intensity ?? 0.6));
 		const areaScale = Math.min(1.4, (width * height) / 1_100_000);
@@ -167,8 +144,6 @@ export function initHomeHeroRain(
 			return;
 		}
 
-		frameCount += 1;
-		if (frameCount % 8 === 0) collectHitEdges();
 		context.clearRect(0, 0, width, height);
 		context.lineCap = "round";
 		context.strokeStyle = config.color || getComputedStyle(hero).color;
@@ -233,7 +208,6 @@ export function initHomeHeroRain(
 		) {
 			return;
 		}
-		collectHitEdges();
 		animationFrame = requestAnimationFrame(draw);
 	}
 
@@ -249,7 +223,7 @@ export function initHomeHeroRain(
 	}
 
 	resize();
-	resizeObserver.observe(hero);
+	resizeObserver.observe(canvas);
 	document.addEventListener("visibilitychange", handleVisibilityChange, {
 		signal: abortController.signal,
 	});

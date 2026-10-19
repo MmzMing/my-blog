@@ -3,25 +3,64 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { HeroMosaicConfig } from "@/types/config";
 import { initHomeHeroDialogue } from "@/utils/home-hero-dialogue";
 import { createFlyText, type FlyTextHandle } from "@/utils/home-hero-fly-text";
-import { getHeroPinEndDistance } from "@/utils/home-hero-motion";
+import {
+	createHeroPhotoFramePaths,
+	getHeroPinEndDistance,
+} from "@/utils/home-hero-motion";
 import { initHomeHeroRain } from "@/utils/home-hero-rain";
 import { initHomeHeroSticker } from "@/utils/home-hero-sticker";
 import {
 	type HomeHeroWordmarkController,
 	initHomeHeroWordmark,
 } from "@/utils/home-hero-wordmark";
-import { navigateToPage } from "@/utils/navigation-utils";
 import { requestScrollTriggerRefresh } from "@/utils/scroll-trigger-refresh";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const RAIN_ACTIVATE_TIME = 0.99;
-const DIALOGUE_REVEAL_TIME = 1.08;
+const RAIN_ACTIVATE_TIME = 1.14;
+const DIALOGUE_REVEAL_TIME = 1.23;
 const DIALOGUE_REVEAL_DURATION = 0.11;
 const DIALOGUE_REVEAL_END_TIME =
 	DIALOGUE_REVEAL_TIME + DIALOGUE_REVEAL_DURATION;
-const QUICK_ACTIONS_REVEAL_TIME = 1.14;
-const INTERACTION_HOLD_START = 1.31;
+/** 问候气泡在角色升起一小截后冒出，仍落在 pin 结束的驻留段之前，解锁前一定看得到 */
+const GREETING_REVEAL_TIME = DIALOGUE_REVEAL_TIME + 0.03;
+const INTERACTION_HOLD_START = 1.46;
+/** 角色在照片左下角探出时的上浮距离（px） */
+const DIALOGUE_REVEAL_LIFT = 56;
+/** 角色从照片左下角滑到视口左下角的终点：驻留段开始前必须到位，才能交给 sticky */
+const DIALOGUE_SLIDE_END = INTERACTION_HOLD_START;
+/** 整图拼合完成（0.75 隐藏碎片）后，导引线与纯色底同时由中点铺开，铺满才开始放大整图 */
+const GUIDE_REVEAL_TIME = 0.75;
+const GUIDE_REVEAL_DURATION = 0.16;
+/** 竖线比横线晚一拍铺开，像先拉横向参考线再拉竖向 */
+const GUIDE_VERTICAL_DELAY = 0.03;
+/** 导引线铺满后的照片落位段：整图上移居中并收成照片尺寸 */
+const PHOTO_SETTLE_TIME = GUIDE_REVEAL_TIME + GUIDE_REVEAL_DURATION;
+const PHOTO_SETTLE_DURATION = 0.2;
+/** 照片态的平面倾斜角度（参考落地照片的摆法，不做 3D 透视） */
+const PHOTO_ROTATION = -3;
+/** 叠加图自己的倾角：与照片反向一点，叠出「随手摆上去」的感觉 */
+const PHOTO_OVERLAY_ROTATION = 5;
+/** 叠加图滑入的起点：从照片盒底部再往下探半张图高 */
+const PHOTO_OVERLAY_SLIDE_IN = 0.55;
+/** 倾斜比平移多走的时长：转动贯穿整段平移、落位后再收一点，避免 3D 角度一把到位 */
+const PHOTO_ROTATION_TAIL = 0.25;
+/** 照片态尺寸相对虚线列宽 / 横线画幅高的比例，先撞到的约束生效 */
+const PHOTO_WIDTH_RATIO = 0.62;
+const PHOTO_HEIGHT_RATIO = 0.8;
+/** 照片描边：粗细与图片圆角（rem），与 .home-hero__photo-frame / mosaic-complete 对齐 */
+const PHOTO_FRAME_THICKNESS_REM = 0.5;
+const PHOTO_FRAME_RADIUS_REM = 0.75;
+/** 介绍面板与照片同批落位后淡入 */
+const INTRO_REVEAL_TIME = PHOTO_SETTLE_TIME + PHOTO_SETTLE_DURATION;
+/** 玩偶角点对齐用的微调：照片逆时针倾斜后真实左下角偏右偏下，玩偶再往左下挪一点 */
+const DIALOGUE_CORNER_SHIFT_X = -40;
+const DIALOGUE_CORNER_SHIFT_Y = 36;
+/** 与 .g-guide 的 stroke-dasharray 一致：一个划 14 + 一个空 12 */
+const GUIDE_DASH_PERIOD = 26;
+/** 竖线视差走的周期数：位移恒为整周期，交接处的虚线相位才不会错位 */
+const GUIDE_DASH_CYCLES = 2;
+const GUIDE_DASH_FLOW = GUIDE_DASH_PERIOD * GUIDE_DASH_CYCLES;
 /** 标题从这一刻开始淡出，字标的 canvas 动画同步停摆 */
 const TITLE_EXIT_TIME = 0.72;
 /** 标题淡出时向上抬的距离（px），与整图离场同向 */
@@ -128,23 +167,6 @@ function getTileStates(hero: HTMLElement): TileState[] {
 	);
 }
 
-function bindQuickActions(hero: HTMLElement, abortController: AbortController) {
-	hero.addEventListener(
-		"click",
-		(event) => {
-			const target = (event.target as Element).closest<HTMLElement>(
-				"[data-hero-action]",
-			);
-			if (!target) return;
-			const href = target.dataset.heroActionHref;
-			if (!href) return;
-			event.preventDefault();
-			navigateToPage(href);
-		},
-		{ signal: abortController.signal },
-	);
-}
-
 /**
  * 摘掉首页的 motion-pending 状态类。
  * 这个类在 index.astro 上静态渲染，CSS 会按住 identity 与 contact 不显示，
@@ -161,12 +183,8 @@ function setReducedMotionState(
 	dialogue: ReturnType<typeof initHomeHeroDialogue>,
 ) {
 	hero.dataset.reducedMotion = "true";
-	hero.dataset.layerActive = "true";
-	hero.querySelectorAll<HTMLElement>("[data-hero-action]").forEach((action) => {
-		action.tabIndex = 0;
-		action.setAttribute("aria-hidden", "false");
-	});
 	dialogue.setSceneVisible(true);
+	dialogue.setGreetingVisible(true);
 	clearMotionPending();
 }
 
@@ -199,8 +217,15 @@ export function mountHomeHero(): () => void {
 	// revert 既回收动画也恢复挂载前样式，断点切换会在同一批 DOM 上重新挂载。
 	const animationContext = gsap.context(() => {}, hero);
 	const abortController = new AbortController();
-	const dialogue = initHomeHeroDialogue(hero);
-	const destroySticker = initHomeHeroSticker(hero);
+	// 角色气泡渲染在第二层之后（sticky 才能一路停到第二层底部），不在 hero 里
+	const dialogueRoot = document.querySelector<HTMLElement>(
+		"[data-hero-dialogue]",
+	);
+	const dialogueAnchor = dialogueRoot?.querySelector<HTMLElement>(
+		"[data-dialogue-anchor]",
+	);
+	const dialogue = initHomeHeroDialogue(dialogueRoot);
+	const destroySticker = initHomeHeroSticker(dialogueRoot);
 	const rain = initHomeHeroRain(hero, config.rain);
 	const reducedMotionQuery = window.matchMedia(
 		"(prefers-reduced-motion: reduce)",
@@ -209,14 +234,33 @@ export function mountHomeHero(): () => void {
 	const title = hero.querySelector<HTMLElement>("[data-hero-title]");
 	const contact = hero.querySelector<HTMLElement>("[data-hero-contact]");
 	const mosaic = hero.querySelector<HTMLElement>("[data-hero-mosaic]");
+	const mosaicTarget = hero.querySelector<HTMLElement>(
+		"[data-hero-mosaic-target]",
+	);
 	const mosaicComplete = hero.querySelector<HTMLElement>(
 		"[data-hero-mosaic-complete]",
 	);
 	const mosaicGrid = hero.querySelector<HTMLElement>("[data-hero-mosaic-grid]");
 	const mosaicImage = mosaicComplete?.querySelector("img");
-	const dialogueRoot = hero.querySelector<HTMLElement>("[data-hero-dialogue]");
-	const quickActions = Array.from(
-		hero.querySelectorAll<HTMLElement>("[data-hero-action]"),
+	const backdrop = hero.querySelector<HTMLElement>(".home-hero__backdrop");
+	const guideRows = hero.querySelector<SVGSVGElement>(".home-guide__guide--h");
+	const guideColumns = hero.querySelector<SVGSVGElement>(
+		".home-guide__guide--v",
+	);
+	const guideColumnLines = Array.from(
+		guideColumns?.querySelectorAll<SVGLineElement>("line") ?? [],
+	);
+	const introCards = Array.from(
+		hero.querySelectorAll<HTMLElement>(".home-hero__intro-card"),
+	);
+	const photoOverlay = hero.querySelector<HTMLElement>(
+		"[data-hero-photo-overlay]",
+	);
+	const photoAuthor = hero.querySelector<HTMLElement>(
+		"[data-hero-photo-author]",
+	);
+	const photoFramePaths = Array.from(
+		hero.querySelectorAll<SVGPathElement>("[data-hero-photo-frame] path"),
 	);
 	const tiles = getTileStates(hero);
 	const tileElements = tiles.map((tile) => tile.element);
@@ -240,11 +284,13 @@ export function mountHomeHero(): () => void {
 		heroHeight: 0,
 		width: 1,
 		height: 1,
+		photoW: 1,
+		photoH: 1,
+		guideW: 1,
+		x: 0,
 		y: 0,
 		scale: 1,
 	};
-
-	bindQuickActions(hero, abortController);
 
 	// 用户开始滚动时立即完成进行中的入场动画，交由 scrub 时间线接管
 	const completePendingIntros = () => {
@@ -288,15 +334,12 @@ export function mountHomeHero(): () => void {
 		const timelineTime = progress * (timeline?.duration() ?? 1);
 		const rainActive = timelineTime >= RAIN_ACTIVATE_TIME;
 		const dialogueVisible = timelineTime >= DIALOGUE_REVEAL_TIME;
-		const layerActive = timelineTime >= QUICK_ACTIONS_REVEAL_TIME;
+		const greetingWanted = timelineTime >= GREETING_REVEAL_TIME;
+		// 先摘掉问候再同步角色可见性：快速滚动时两个阈值会在同一帧一起跨过，
+		// 若先把 scene 置 true，greeting 的 false→true 会被「角色不可见」挡掉，气泡就再也不冒了
+		if (!greetingWanted) dialogue.setGreetingVisible(false);
 		dialogue.setSceneVisible(dialogueVisible);
-		if (hero.dataset.layerActive !== String(layerActive)) {
-			hero.dataset.layerActive = String(layerActive);
-			quickActions.forEach((action) => {
-				action.tabIndex = layerActive ? 0 : -1;
-				action.setAttribute("aria-hidden", String(!layerActive));
-			});
-		}
+		if (greetingWanted) dialogue.setGreetingVisible(true);
 		rainWanted = rainActive;
 		syncRain();
 		wordmark?.setActive(timelineTime < TITLE_EXIT_TIME);
@@ -304,28 +347,85 @@ export function mountHomeHero(): () => void {
 
 	// computed width / height 不受 transform 影响且保留小数；只在挂载和 refresh 时读布局。
 	const measureMosaic = (): boolean => {
-		if (!mosaic) return false;
+		if (!mosaic || !mosaicTarget) return false;
 		const style = getComputedStyle(mosaic);
+		const frameStyle = getComputedStyle(mosaicTarget);
 		const heroWidth = hero.clientWidth;
 		const heroHeight = hero.clientHeight;
 		const width = Math.max(1, Number.parseFloat(style.width));
 		const height = Math.max(1, Number.parseFloat(style.height));
-		const y = Number.parseFloat(style.bottom) + height / 2 - heroHeight / 2;
+		const bandHeight = Math.max(1, Number.parseFloat(frameStyle.height));
+		const guideWidth = guideColumns
+			? Number.parseFloat(getComputedStyle(guideColumns).width)
+			: Number.NaN;
+		// 照片态不再把整图铺满画幅：宽度受虚线列比例约束、高度受横线画幅比例约束，
+		// 先撞到的生效；落位是「垂直居中 + 左移到左虚线处」，右腾出的列放介绍面板
+		const guideW = Number.isFinite(guideWidth) ? guideWidth : heroWidth;
+		const columnWidth = Number.isFinite(guideWidth)
+			? guideWidth * PHOTO_WIDTH_RATIO
+			: width;
+		const scale = Math.min(
+			1,
+			columnWidth / width,
+			(bandHeight * PHOTO_HEIGHT_RATIO) / height,
+		);
+		const photoW = width * scale;
+		const center = Number.parseFloat(style.top) + height / 2;
+		const y = heroHeight / 2 - center;
+		const x = (photoW - guideW) / 2;
+		// 照片实际宽度回写成 CSS 变量，介绍面板靠它贴到照片右侧
+		hero.style.setProperty("--home-hero-photo-w", `${Math.round(photoW)}px`);
 		const hasChanged =
 			heroWidth !== mosaicGeometry.heroWidth ||
 			heroHeight !== mosaicGeometry.heroHeight ||
 			width !== mosaicGeometry.width ||
 			height !== mosaicGeometry.height ||
-			y !== mosaicGeometry.y;
+			x !== mosaicGeometry.x ||
+			y !== mosaicGeometry.y ||
+			scale !== mosaicGeometry.scale;
 		Object.assign(mosaicGeometry, {
 			heroWidth,
 			heroHeight,
 			width,
 			height,
+			photoW,
+			photoH: height * scale,
+			guideW,
+			x,
 			y,
-			scale: Math.max(heroWidth / width, heroHeight / height),
+			scale,
 		});
 		return hasChanged;
+	};
+
+	// 照片左下角相对「视口左下角静止位」的偏移：角色先在这里探出，
+	// 再随滚动滑回 (0, 0)，之后由 sticky 带进第二层。
+	// 照片左缘停在左虚线上，角点再按 SHIFT 往左下挪，贴住倾斜后的真实角落
+	const getDialoguePhotoOffset = () => ({
+		x:
+			(mosaicGeometry.heroWidth - mosaicGeometry.guideW) / 2 +
+			DIALOGUE_CORNER_SHIFT_X,
+		y:
+			-Math.max(0, (mosaicGeometry.heroHeight - mosaicGeometry.photoH) / 2) +
+			DIALOGUE_CORNER_SHIFT_Y,
+	});
+
+	// 照片描边是 8 条从四角出发到边中点的笔画，d 按拼合框实测尺寸生成；
+	// 减弱动效路径不会调用这里，SVG 保持无 d、不渲染
+	const updatePhotoFrame = () => {
+		if (!mosaic || photoFramePaths.length === 0) return;
+		const rem =
+			Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
+			16;
+		const paths = createHeroPhotoFramePaths(
+			mosaic.offsetWidth,
+			mosaic.offsetHeight,
+			PHOTO_FRAME_THICKNESS_REM * rem,
+			PHOTO_FRAME_RADIUS_REM * rem,
+		);
+		photoFramePaths.forEach((path, index) => {
+			path.setAttribute("d", paths[index] ?? "");
+		});
 	};
 
 	const getTileEntranceTransform = (tile: TileState): TileEntranceTransform => {
@@ -493,6 +593,7 @@ export function mountHomeHero(): () => void {
 
 	const refreshMosaicGeometry = () => {
 		if (!timeline || !measureMosaic()) return;
+		updatePhotoFrame();
 		const progress = timeline.totalProgress();
 		// 入场只作用于内层图片，刷新外层几何时保留渐入进度。
 		timeline.totalProgress(0, true);
@@ -513,15 +614,24 @@ export function mountHomeHero(): () => void {
 			return;
 
 		measureMosaic();
-		gsap.set(mosaic, { y: 0, scale: 1 });
+		updatePhotoFrame();
+		gsap.set(mosaic, {
+			x: 0,
+			y: 0,
+			scale: 1,
+			rotation: 0,
+		});
 		gsap.set(mosaicComplete, { autoAlpha: 0 });
 		// 先记录 CSS 的 display，卸载时才能清掉延迟 fromTo 留下的内联起点。
 		gsap.set(mosaicGrid, { display: "block" });
-		if (dialogueRoot) {
-			gsap.set(dialogueRoot, { autoAlpha: 0, y: 16, scale: 0.96 });
-		}
-		if (quickActions.length) {
-			gsap.set(quickActions, { autoAlpha: 0, y: 38, scale: 0.42 });
+		if (dialogueAnchor) {
+			const corner = getDialoguePhotoOffset();
+			gsap.set(dialogueAnchor, {
+				autoAlpha: 0,
+				x: corner.x,
+				y: corner.y,
+				yPercent: 0,
+			});
 		}
 		gsap.set(tileElements, { ...initialTileVars });
 
@@ -595,7 +705,7 @@ export function mountHomeHero(): () => void {
 			{ autoAlpha: 1, duration: 0.03, ease: "none" },
 			0.72,
 		);
-		// 整图与碎片完全对齐后隐藏碎片 DOM，避免 24 个合成层随全屏放大继续绘制。
+		// 整图与碎片完全对齐后隐藏碎片 DOM，避免 24 个合成层随整图缩放继续绘制。
 		timeline.fromTo(
 			mosaicGrid,
 			{ display: "block" },
@@ -618,48 +728,174 @@ export function mountHomeHero(): () => void {
 			TITLE_EXIT_TIME,
 		);
 
-		if (dialogueRoot) {
+		if (dialogueAnchor) {
+			// 角色先在照片左下角探出，再随滚动滑到视口左下角，
+			// 之后由 sticky 带着一路停到第二层左下角
 			timeline.fromTo(
-				dialogueRoot,
-				{ autoAlpha: 0, y: 16, scale: 0.96 },
+				dialogueAnchor,
+				{
+					autoAlpha: 0,
+					x: () => getDialoguePhotoOffset().x,
+					y: () => getDialoguePhotoOffset().y + DIALOGUE_REVEAL_LIFT,
+				},
 				{
 					autoAlpha: 1,
-					y: 0,
-					scale: 1,
+					x: () => getDialoguePhotoOffset().x,
+					y: () => getDialoguePhotoOffset().y,
 					duration: DIALOGUE_REVEAL_DURATION,
 					ease: "power3.out",
 				},
 				DIALOGUE_REVEAL_TIME,
 			);
+			timeline.fromTo(
+				dialogueAnchor,
+				{
+					x: () => getDialoguePhotoOffset().x,
+					y: () => getDialoguePhotoOffset().y,
+				},
+				{
+					x: 0,
+					y: 0,
+					duration: Math.max(
+						0.001,
+						DIALOGUE_SLIDE_END - DIALOGUE_REVEAL_END_TIME,
+					),
+					ease: "power1.inOut",
+				},
+				DIALOGUE_REVEAL_END_TIME,
+			);
 		}
 
-		// 同一张自然比例整图从拼合持续放大到 cover，并保留为背景，不再切换图片层。
+		// 导引线铺满后整图不再铺满画幅：上移居中并左移到左虚线处、收成照片尺寸；
+		// 立体阴影由 CSS 落在整图上，右腾出的列给介绍面板
 		timeline.fromTo(
 			mosaic,
-			{ y: 0, scale: 1 },
+			{ x: 0, y: 0, scale: 1 },
 			{
+				x: () => mosaicGeometry.x,
 				y: () => mosaicGeometry.y,
 				scale: () => mosaicGeometry.scale,
-				duration: 0.2,
+				duration: PHOTO_SETTLE_DURATION,
 				ease: "power3.inOut",
 			},
-			0.76,
+			PHOTO_SETTLE_TIME,
 		);
-
-		quickActions.forEach((action, index) => {
-			timeline?.fromTo(
-				action,
-				{ autoAlpha: 0, y: 38, scale: 0.42 },
+		// 倾斜与平移同帧起步、但走得更长：平移全程都在转，落位后再收一段才停，
+		// 角度不会在平移起点一把到位
+		timeline.fromTo(
+			mosaic,
+			{ rotation: 0 },
+			{
+				rotation: PHOTO_ROTATION,
+				duration: PHOTO_SETTLE_DURATION + PHOTO_ROTATION_TAIL,
+				ease: "power1.inOut",
+			},
+			PHOTO_SETTLE_TIME,
+		);
+		if (photoFramePaths.length) {
+			// 拼合一完成（碎片隐藏、导引线同段铺开时）边框就从四角沿四边向中点蔓延，
+			// 不等照片落位；描边在拼合框内，之后跟着照片一起左移倾斜。
+			// 1000 与 pathLength 对齐：px 补间会被取整，用 1 会退化成 1/0 跳变
+			timeline.fromTo(
+				photoFramePaths,
+				{ strokeDashoffset: 1000 },
+				{
+					strokeDashoffset: 0,
+					duration: GUIDE_REVEAL_DURATION,
+					ease: "power2.inOut",
+				},
+				GUIDE_REVEAL_TIME,
+			);
+		}
+		if (introCards.length) {
+			// 三张介绍卡初始绕右下角竖立，照片落位后顶部往左倒下归位、错峰分层
+			timeline.fromTo(
+				introCards,
+				{ autoAlpha: 0, rotate: 90 },
+				{
+					autoAlpha: 1,
+					rotate: 0,
+					duration: 0.16,
+					ease: "power2.out",
+					stagger: 0.05,
+				},
+				INTRO_REVEAL_TIME,
+			);
+		}
+		if (photoAuthor) {
+			// 主图作者标牌随介绍卡同拍淡入，此时照片已缩到落位比例
+			timeline.fromTo(
+				photoAuthor,
+				{ autoAlpha: 0 },
+				{ autoAlpha: 1, duration: 0.1, ease: "power1.out" },
+				INTRO_REVEAL_TIME,
+			);
+		}
+		if (photoOverlay) {
+			// 叠加图与介绍卡同拍：从照片下缘外滑入、带自己的倾角叠上去。
+			// 它在拼合框内，会跟着照片一起缩放平移，像随手压在上面的第二张
+			timeline.fromTo(
+				photoOverlay,
+				{
+					autoAlpha: 0,
+					y: () => mosaicGeometry.height * PHOTO_OVERLAY_SLIDE_IN,
+					rotation: 0,
+				},
 				{
 					autoAlpha: 1,
 					y: 0,
-					scale: 1,
-					duration: 0.14,
-					ease: "back.out(2.1)",
+					rotation: PHOTO_OVERLAY_ROTATION,
+					duration: 0.16,
+					ease: "power3.out",
 				},
-				QUICK_ACTIONS_REVEAL_TIME + index * 0.03,
+				INTRO_REVEAL_TIME,
 			);
-		});
+		}
+		if (backdrop && guideRows && guideColumns) {
+			// 纯色底淡入遮掉缝线，与导引线由中点铺开同一段进行
+			timeline.fromTo(
+				backdrop,
+				{ opacity: 0 },
+				{
+					opacity: 1,
+					duration: GUIDE_REVEAL_DURATION,
+					ease: "power2.inOut",
+				},
+				GUIDE_REVEAL_TIME,
+			);
+			timeline.fromTo(
+				guideRows,
+				{ clipPath: "inset(-5px 50% -5px 50%)" },
+				{
+					clipPath: "inset(-5px 0% -5px 0%)",
+					duration: GUIDE_REVEAL_DURATION,
+					ease: "power2.inOut",
+				},
+				GUIDE_REVEAL_TIME,
+			);
+			timeline.fromTo(
+				guideColumns,
+				{ clipPath: "inset(50% -5px 50% -5px)" },
+				{
+					clipPath: "inset(0% -5px 0% -5px)",
+					duration: GUIDE_REVEAL_DURATION,
+					ease: "power2.inOut",
+				},
+				GUIDE_REVEAL_TIME + GUIDE_VERTICAL_DELAY,
+			);
+			// 竖线视差：只让虚线整体往下流，线两端不动、且只走整数个周期，
+			// 既保住与第二层竖线在交接处的相位，也不会看着像线被拉断
+			timeline.fromTo(
+				guideColumnLines,
+				{ strokeDashoffset: 13 },
+				{
+					strokeDashoffset: 13 + GUIDE_DASH_FLOW,
+					duration: GUIDE_REVEAL_DURATION + PHOTO_SETTLE_DURATION,
+					ease: "power2.inOut",
+				},
+				GUIDE_REVEAL_TIME,
+			);
+		}
 
 		timeline.to(
 			{},
@@ -898,7 +1134,6 @@ export function mountHomeHero(): () => void {
 		wordmark?.destroy();
 		wordmark = null;
 		delete hero.dataset.heroMounted;
-		delete hero.dataset.layerActive;
 		delete hero.dataset.reducedMotion;
 	};
 }

@@ -1,8 +1,7 @@
 ---
 import HeroContact from "@components/layout/HeroContact.astro";
-import HeroDialogue from "@components/layout/HeroDialogue.astro";
 import HeroMosaic from "@components/layout/HeroMosaic.astro";
-import HeroQuickActions from "@components/layout/HeroQuickActions.astro";
+import HomeGuideFrame from "@components/layout/HomeGuideFrame.astro";
 import { homeConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
@@ -10,8 +9,6 @@ import { createHeroPuzzleLayout } from "@/utils/home-hero-motion";
 
 const { hero } = homeConfig;
 const puzzle = createHeroPuzzleLayout();
-const dialogueEnabled =
-	hero.dialogue?.enabled !== false && Boolean(hero.dialogue);
 const runtimeConfig = {
 	mosaic: hero.mosaic,
 	rain: {
@@ -20,6 +17,12 @@ const runtimeConfig = {
 		color: hero.rain?.color ?? "",
 	},
 };
+
+// 照片左移后腾出的右侧列放介绍卡片：方向 / 爱好 / bio 各一张
+const intro = hero.photo.intro;
+const introCards = intro
+	? [intro.direction, intro.hobby, intro.bio].filter((text) => text.length > 0)
+	: [];
 ---
 
 <section
@@ -50,10 +53,16 @@ const runtimeConfig = {
 		}
 	</svg>
 
+	<div class="home-hero__backdrop" aria-hidden="true"></div>
+
+	<HomeGuideFrame />
+
 	<HeroMosaic
-		desktopImage={hero.backgroundImage}
-		mobileImage={hero.backgroundImage}
+		desktopImage={hero.photo.main.image}
+		mobileImage={hero.photo.main.image}
 		config={hero.mosaic}
+		mainAuthor={hero.photo.main.author ?? ""}
+		overlay={hero.photo.overlay}
 	/>
 
 	<header class="home-hero__identity" data-hero-title>
@@ -93,15 +102,15 @@ const runtimeConfig = {
 
 	{hero.contact && <HeroContact contact={hero.contact} />}
 
-	<HeroQuickActions />
-
-	{dialogueEnabled && hero.dialogue && (
-		<HeroDialogue
-			config={hero.dialogue}
-			sticker={hero.sticker}
-			fallbackHostName={homeConfig.displayName || homeConfig.name}
-		/>
-	)}
+	{
+		introCards.length > 0 && (
+			<div class="home-hero__intro" data-hero-intro>
+				{introCards.map((text) => (
+					<p class="home-hero__intro-card">{text}</p>
+				))}
+			</div>
+		)
+	}
 
 	<canvas class="home-hero__rain" data-hero-rain aria-hidden="true"></canvas>
 </section>

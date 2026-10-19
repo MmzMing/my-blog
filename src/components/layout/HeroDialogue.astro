@@ -1,74 +1,42 @@
 ---
-import Icon from "@components/common/Icon.astro";
+/**
+ * 左下角的角色 + 想法气泡。必须渲染在第二层之后：外层 sticky 贴着视口底边，
+ * 正常流位置就在第二层底部，于是从首屏一路浮到第二层，再停在第二层左下角。
+ * 何时出现由 hero 滚动时间线控制，见 home-hero-controller.ts。
+ */
 import HeroSticker from "@components/layout/HeroSticker.astro";
+import { homeConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
-import type { HeroDialogueConfig, HeroStickerConfig } from "@/types/config";
 
-interface Props {
-	config: HeroDialogueConfig;
-	sticker: HeroStickerConfig;
-	fallbackHostName: string;
-}
-
-const { config, sticker, fallbackHostName } = Astro.props;
-const dialogueConfig = {
-	speakers: {
-		host: config.speakers?.host || fallbackHostName,
-		visitor: config.speakers?.visitor || i18n(I18nKey.visitor),
-	},
-	menuTitle: config.menuTitle || i18n(I18nKey.dialogueMenuTitle),
-	typingSpeed: config.typingSpeed ?? 45,
-	autoDelay: config.autoDelay ?? 1600,
-	intro: config.intro,
-	topics: config.topics,
-};
+const { dialogue, sticker } = homeConfig.hero;
+const lines = dialogue?.enabled === false ? [] : (dialogue?.lines ?? []);
 ---
 
-<section
-	class="home-hero__dialogue"
-	aria-label={i18n(I18nKey.characterDialogue)}
-	aria-hidden="true"
-	data-hero-dialogue
-	data-dialogue={JSON.stringify(dialogueConfig)}
-	data-hidden="false"
-	data-scene-visible="false"
->
-	<ul class="home-hero__dialogue-menu" data-dialogue-menu hidden></ul>
-
-	<div class="home-hero__dialogue-layout">
-		<HeroSticker config={sticker} />
-
-		<div class="home-hero__dialogue-box" data-dialogue-box data-speaker="host">
-			<div class="home-hero__dialogue-body" data-dialogue-click>
-				<div class="home-hero__dialogue-nameplate">
-					<span class="home-hero__dialogue-name" data-dialogue-name>{dialogueConfig.speakers.host}</span>
-				</div>
-				<p class="home-hero__dialogue-text" data-dialogue-text aria-live="polite"></p>
-			</div>
-
-			<div class="home-hero__dialogue-footer">
-				<div class="home-hero__dialogue-controls">
-					<button type="button" class="home-hero__dialogue-button" data-dialogue-action="back" aria-label={i18n(I18nKey.dialoguePrev)} title={i18n(I18nKey.dialoguePrev)}>
-						<Icon name="material-symbols:undo-rounded" is:inline aria-hidden="true" />
-					</button>
-					<button type="button" class="home-hero__dialogue-button" data-dialogue-action="auto" aria-label={i18n(I18nKey.dialogueAutoPlay)} title={i18n(I18nKey.dialogueAutoPlay)} aria-pressed="false">
-						<Icon name="material-symbols:play-arrow-rounded" class="home-hero__dialogue-icon-play" is:inline aria-hidden="true" />
-						<Icon name="material-symbols:pause-rounded" class="home-hero__dialogue-icon-pause" is:inline aria-hidden="true" />
-					</button>
-				</div>
+{
+	lines.length > 0 && (
+		<aside
+			class="home-hero__dialogue"
+			aria-label={i18n(I18nKey.characterDialogue)}
+			data-hero-dialogue
+			data-lines={JSON.stringify(lines)}
+			data-scene-visible="false"
+		>
+			<div class="home-hero__dialogue-anchor" data-dialogue-anchor>
+				<p
+					class="home-hero__dialogue-bubble"
+					data-dialogue-bubble
+					data-open="false"
+					aria-live="polite"
+				/>
+				<HeroSticker config={sticker} />
 				<button
 					type="button"
-					class="home-hero__dialogue-advance"
-					data-dialogue-advance
-					data-ready="false"
-					aria-hidden="true"
-					tabindex="-1"
-				>
-					<span class="sr-only" data-dialogue-advance-label>{i18n(I18nKey.dialogueNext)}</span>
-					<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline aria-hidden="true" />
-				</button>
+					class="home-hero__dialogue-trigger"
+					aria-label={i18n(I18nKey.dialogueNext)}
+					title={i18n(I18nKey.dialogueNext)}
+				/>
 			</div>
-		</div>
-	</div>
-</section>
+		</aside>
+	)
+}

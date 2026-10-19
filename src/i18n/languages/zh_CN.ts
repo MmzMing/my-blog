@@ -262,7 +262,6 @@ export const zh_CN: Translation = {
 	[Key.login]: "登录",
 	[Key.logout]: "退出",
 	[Key.gotIt]: "我知道了",
-	[Key.visitor]: "访客",
 	[Key.viewDetails]: "查看详情",
 	[Key.backToTop]: "回到顶部",
 	[Key.top]: "顶部",
@@ -283,7 +282,6 @@ export const zh_CN: Translation = {
 	[Key.themeSystem]: "跟随系统",
 	[Key.spineModel]: "Spine 模型",
 	[Key.toggleDock]: "工具坞",
-	[Key.quickActions]: "快捷入口",
 	[Key.viewAnnouncement]: "查看公告",
 
 	// ===== 搜索弹窗 =====
@@ -299,13 +297,8 @@ export const zh_CN: Translation = {
 	[Key.searchHintToggle]: "Ctrl+K 切换",
 	// ===== 首页 Hero 对话 =====
 	[Key.techBlogSuffix]: "的技术博客",
-	[Key.dialogueMenuTitle]: "想聊点什么？",
 	[Key.characterDialogue]: "角色对话",
-	[Key.dialoguePrev]: "上一句",
 	[Key.dialogueNext]: "下一句",
-	[Key.dialogueAutoPlay]: "自动播放",
-	[Key.reopenDialogue]: "重新打开对话",
-	[Key.dialogueRestoreHint]: "喵？还想继续聊聊吗",
 
 	// ===== 首页数据层 =====
 	[Key.siteData]: "站点数据",
