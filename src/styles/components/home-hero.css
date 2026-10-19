@@ -29,7 +29,7 @@ html:has(.home-hero) #top-row {
 	   这里的值是 JS 未接管前（减弱动效等）的兜底 */
 	--home-hero-photo-edge: color-mix(in oklch, var(--deep-text) 92%, transparent);
 	--home-hero-photo-shadow: color-mix(in oklch, var(--home-hero-surface) 70%, transparent);
-	--home-hero-photo-w: min(58vw, 52rem);
+	--home-hero-photo-w: min(58vw, 52rem, calc((100svh - 2 * var(--layer-pad-block)) * 1.05));
 	position: relative;
 	width: 100vw;
 	height: 100svh;
@@ -285,40 +285,107 @@ html:has(.home-hero) #top-row {
 	opacity: 1;
 }
 
-/* 介绍卡片列：右缘钉在右虚线上、宽度随最宽卡片收缩，
-   单行卡片超出的部分自然叠到左侧照片上 */
+/* 票签使用照片落位后剩余的列宽；上下拉开、左右轻微错位，延续拼贴节奏。 */
 .home-hero__intro {
+	--intro-ink: var(--deep-text);
+	--intro-paper: color-mix(in oklch, var(--page-bg) 92%, var(--deep-text));
+	--intro-stagger: clamp(0.75rem, 1.5vw, 1.75rem);
 	position: absolute;
 	top: 50%;
 	right: calc(50% - var(--guide-col) / 2);
 	z-index: 25;
+	display: grid;
+	gap: clamp(1.5rem, 5svh, 3.5rem);
+	width: calc(var(--guide-col) - var(--home-hero-photo-w) - var(--space-6));
 	transform: translateY(-50%);
 	pointer-events: none;
 }
 
-/* 介绍卡片：无边框半透明磨砂，单行不换行。初始竖立（rotate 90° 绕右下角），
-   滚动时顶部往左倒下归位；动效脚本接管前先藏住 */
+/* 双线之间的环带完全透明，内框填纯色；墨色和底色随主题切换，不加阴影。 */
 .home-hero__intro-card {
 	position: relative;
-	margin: 0 0 1.1em;
-	padding: 0.85rem 1.35rem;
-	white-space: nowrap;
-	border-radius: 0.7rem;
-	background: color-mix(in oklch, var(--deep-text) 14%, transparent);
-	-webkit-backdrop-filter: blur(0.5rem);
-	backdrop-filter: blur(0.5rem);
-	color: var(--deep-text);
-	font-size: clamp(1rem, 1.2vw, 1.2rem);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	align-items: center;
+	min-width: 0;
+	min-height: clamp(5.5rem, 10svh, 7rem);
+	margin: 0;
+	padding: var(--space-5) 11%;
+	padding-left: calc(clamp(4rem, 5.5vw, 6rem) + var(--space-3));
+	color: var(--intro-ink);
+	isolation: isolate;
+	font-size: clamp(0.9rem, 1.05vw, 1.125rem);
 	font-weight: 600;
-	line-height: 1.65;
+	line-height: 1.75;
 	opacity: 0;
 	visibility: hidden;
 	transform-origin: 100% 100%;
 	will-change: transform, opacity;
 }
 
-.home-hero__intro-card:last-child {
-	margin-bottom: 0;
+.home-hero__intro-card:nth-child(odd) {
+	margin-right: var(--intro-stagger);
+}
+
+.home-hero__intro-card:nth-child(even) {
+	margin-left: var(--intro-stagger);
+}
+
+.home-hero__intro-frame {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	fill: none;
+	stroke: var(--intro-ink);
+	stroke-width: 1.25;
+}
+
+.home-hero__intro-frame path {
+	vector-effect: non-scaling-stroke;
+}
+
+.home-hero__intro-frame .home-hero__intro-paper {
+	fill: var(--intro-paper);
+}
+
+.home-hero__intro-frame .home-hero__intro-outline {
+	stroke-width: 2;
+}
+
+/* 只提供 clipPath 定义，不参与布局 */
+.home-hero__intro-defs {
+	position: absolute;
+	width: 0;
+	height: 0;
+	overflow: hidden;
+}
+
+.home-hero__intro-index {
+	/* 序号当装饰大字嵌进票签：整字压在左边线上，只被边框吃掉一点点，探出边框的部分沿
+	   内框纸面形状裁掉（左边线带凸出的标签，直刀切会悬空，故用 clipPath 贴着边框），
+	   右边再用一段铺满字身的 mask 渐变溶进纸面。独立于正文排版，不撑高票签。 */
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center start;
+	clip-path: url(#home-hero-intro-paper);
+	color: color-mix(in oklch, var(--intro-ink) 34%, var(--intro-paper));
+	font-family: "KaiTi", "STKaiti", "Kaiti SC", "Songti SC", "SimSun", serif;
+	font-size: clamp(4.5rem, 6vw, 6.5rem);
+	font-weight: 700;
+	line-height: 1;
+	mask-image: linear-gradient(to right, #000 0, transparent 0.92em);
+	-webkit-mask-image: linear-gradient(to right, #000 0, transparent 0.92em);
+	user-select: none;
+}
+
+.home-hero__intro-text {
+	margin: 0;
+	overflow-wrap: anywhere;
+	text-wrap: pretty;
 }
 
 .home-hero__identity {
@@ -579,12 +646,15 @@ html:has(.home-hero) #top-row {
 	}
 
 	.home-hero__mosaic-frame {
-		top: 50%;
+		top: 42%;
+		left: calc(50% - var(--guide-col) / 2);
+		right: auto;
 		bottom: auto;
-		width: min(58vw, 52rem);
-		/* 左缘对齐左虚线：中心再往左挪 (虚线列宽 - 照片宽) / 2 */
-		transform: translateX(calc((var(--home-hero-photo-w) - var(--guide-col)) / 2))
-			translateY(-50%) rotate(-3deg);
+		/* 为叠图伸出主图的部分和两张照片的倾角一起预留高度。 */
+		width: var(--home-hero-photo-w);
+		/* left 的百分比按舞台宽度计算，避免在 transform 中误按照片自身宽度落位。 */
+		margin-inline: 0;
+		transform: translateY(-50%) rotate(-3deg);
 		will-change: auto;
 	}
 
@@ -602,8 +672,7 @@ html:has(.home-hero) #top-row {
 	}
 
 	.home-hero__mosaic-complete img {
-		max-height: calc(100svh - 2 * var(--layer-pad-block));
-		object-fit: cover;
+		height: auto;
 	}
 
 	.home-hero__intro-card {

@@ -8,7 +8,6 @@ import {
 	getHeroPinEndDistance,
 } from "@/utils/home-hero-motion";
 import { initHomeHeroRain } from "@/utils/home-hero-rain";
-import { initHomeHeroSticker } from "@/utils/home-hero-sticker";
 import {
 	type HomeHeroWordmarkController,
 	initHomeHeroWordmark,
@@ -47,7 +46,7 @@ const PHOTO_OVERLAY_SLIDE_IN = 0.55;
 const PHOTO_ROTATION_TAIL = 0.25;
 /** 照片态尺寸相对虚线列宽 / 横线画幅高的比例，先撞到的约束生效 */
 const PHOTO_WIDTH_RATIO = 0.62;
-const PHOTO_HEIGHT_RATIO = 0.8;
+const PHOTO_HEIGHT_RATIO = 0.96;
 /** 照片描边：粗细与图片圆角（rem），与 .home-hero__photo-frame / mosaic-complete 对齐 */
 const PHOTO_FRAME_THICKNESS_REM = 0.5;
 const PHOTO_FRAME_RADIUS_REM = 0.75;
@@ -225,7 +224,6 @@ export function mountHomeHero(): () => void {
 		"[data-dialogue-anchor]",
 	);
 	const dialogue = initHomeHeroDialogue(dialogueRoot);
-	const destroySticker = initHomeHeroSticker(dialogueRoot);
 	const rain = initHomeHeroRain(hero, config.rain);
 	const reducedMotionQuery = window.matchMedia(
 		"(prefers-reduced-motion: reduce)",
@@ -358,8 +356,17 @@ export function mountHomeHero(): () => void {
 		const guideWidth = guideColumns
 			? Number.parseFloat(getComputedStyle(guideColumns).width)
 			: Number.NaN;
-		// 照片态不再把整图铺满画幅：宽度受虚线列比例约束、高度受横线画幅比例约束，
-		// 先撞到的生效；落位是「垂直居中 + 左移到左虚线处」，右腾出的列放介绍面板
+		// 按整组照片占用的高度缩放，叠图伸出的部分和倾角都必须留在画幅内。
+		const stackBottom = Math.max(
+			height,
+			photoOverlay
+				? photoOverlay.offsetTop + photoOverlay.offsetHeight
+				: height,
+		);
+		const rotationPadding =
+			width * Math.abs(Math.sin((PHOTO_ROTATION * Math.PI) / 180)) +
+			(photoOverlay?.offsetWidth ?? 0) *
+				Math.abs(Math.sin((PHOTO_OVERLAY_ROTATION * Math.PI) / 180));
 		const guideW = Number.isFinite(guideWidth) ? guideWidth : heroWidth;
 		const columnWidth = Number.isFinite(guideWidth)
 			? guideWidth * PHOTO_WIDTH_RATIO
@@ -367,11 +374,11 @@ export function mountHomeHero(): () => void {
 		const scale = Math.min(
 			1,
 			columnWidth / width,
-			(bandHeight * PHOTO_HEIGHT_RATIO) / height,
+			(bandHeight * PHOTO_HEIGHT_RATIO) / (stackBottom + rotationPadding),
 		);
 		const photoW = width * scale;
 		const center = Number.parseFloat(style.top) + height / 2;
-		const y = heroHeight / 2 - center;
+		const y = heroHeight / 2 - center - ((stackBottom - height) * scale) / 2;
 		const x = (photoW - guideW) / 2;
 		// 照片实际宽度回写成 CSS 变量，介绍面板靠它贴到照片右侧
 		hero.style.setProperty("--home-hero-photo-w", `${Math.round(photoW)}px`);
@@ -1080,8 +1087,9 @@ export function mountHomeHero(): () => void {
 			buildTimeline();
 			playTilesIntro();
 			// 慢速图片先建立 pin；图片撑出自然高度后统一刷新几何，再播放碎片入场。
-			if (mosaicImage && !mosaicImage.complete) {
-				mosaicImage.addEventListener(
+			for (const image of [mosaicImage, photoOverlay?.querySelector("img")]) {
+				if (!image || image.complete) continue;
+				image.addEventListener(
 					"load",
 					() => requestScrollTriggerRefresh(ScrollTrigger),
 					{ once: true, signal: abortController.signal },
@@ -1119,7 +1127,6 @@ export function mountHomeHero(): () => void {
 		heroVisibility.disconnect();
 		rain.destroy();
 		dialogue.destroy();
-		destroySticker();
 		abortController.abort();
 		animationContext.revert();
 		heroScrollTrigger = null;

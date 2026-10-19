@@ -350,23 +350,10 @@ export type HeroContactConfig = {
 export type HeroStickerConfig = {
 	image: string;
 	alt: string;
-	eye: {
-		xPercent: number;
-		yPercent: number;
-		travelXPercent: number;
-		travelYPercent: number;
-	};
-	rightEye: {
-		xPercent: number;
-		yPercent: number;
-	};
-	mouth: {
-		xPercent: number;
-		yPercent: number;
-		widthPercent: number;
-		heightPercent: number;
-		rotation: number;
-		travelScale: number;
+	/** 按下与松开的音效，留空则不出声 */
+	sounds: {
+		press: string;
+		loosen: string;
 	};
 };
 

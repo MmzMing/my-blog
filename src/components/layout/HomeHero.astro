@@ -18,7 +18,7 @@ const runtimeConfig = {
 	},
 };
 
-// 照片左移后腾出的右侧列放介绍卡片：方向 / 爱好 / bio 各一张
+// 照片左移后腾出的右侧列放介绍票签：方向 / 爱好 / bio 各一张
 const intro = hero.photo.intro;
 const introCards = intro
 	? [intro.direction, intro.hobby, intro.bio].filter((text) => text.length > 0)
@@ -105,8 +105,31 @@ const introCards = intro
 	{
 		introCards.length > 0 && (
 			<div class="home-hero__intro" data-hero-intro>
-				{introCards.map((text) => (
-					<p class="home-hero__intro-card">{text}</p>
+				<!-- 序号大字的裁切形状：内框纸面路径按 640×112 归一化，三张票签共用 -->
+				<svg class="home-hero__intro-defs" aria-hidden="true" focusable="false">
+					<defs>
+						<clipPath id="home-hero-intro-paper" clipPathUnits="objectBoundingBox">
+							<path d="M0.0516 0.0893H0.9484Q0.9547 0.2589 0.9844 0.2857V0.7143Q0.9547 0.7411 0.9484 0.9107H0.0516Q0.0453 0.7411 0.0156 0.7143V0.2857Q0.0453 0.2589 0.0516 0.0893Z" />
+						</clipPath>
+					</defs>
+				</svg>
+				{introCards.map((text, index) => (
+					<div class="home-hero__intro-card">
+						<svg
+							class="home-hero__intro-frame"
+							viewBox="0 0 640 112"
+							preserveAspectRatio="none"
+							aria-hidden="true"
+							focusable="false"
+						>
+							<path class="home-hero__intro-outline" d="M26 3H614Q614 25 637 25V87Q614 87 614 109H26Q26 87 3 87V25Q26 25 26 3Z" />
+							<path class="home-hero__intro-paper" d="M33 10H607Q611 29 630 32V80Q611 83 607 102H33Q29 83 10 80V32Q29 29 33 10Z" />
+						</svg>
+						<span class="home-hero__intro-index" aria-hidden="true">
+							{["壹", "贰", "叁"][index]}
+						</span>
+						<p class="home-hero__intro-text">{text}</p>
+					</div>
 				))}
 			</div>
 		)
