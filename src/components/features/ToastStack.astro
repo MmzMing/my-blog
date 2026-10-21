@@ -1,0 +1,363 @@
+---
+// 全站提示栈视口（全局常驻，位于 Swup 容器外）。
+//
+// 卡片节点由 src/utils/toast-stack-controller.ts 在运行时插入，Astro 的 scoped
+// 属性只加在模板里写死的节点上，所以这里的样式必须 is:global 才命中得到；
+// 类名统一 toast-stack 前缀的 BEM，不占用全局。
+// aria-live 区域要随服务端 HTML 一起落地，提示才有可播报的落点。
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+
+const label = i18n(I18nKey.toastStackLabel);
+---
+
+<section
+	id="toast-stack"
+	class="toast-stack"
+	aria-label={`${label} (Alt+T)`}
+	aria-live="polite"
+	aria-relevant="additions text"
+	aria-atomic="false"
+>
+	<ol class="toast-stack__list"></ol>
+</section>
+
+<style is:global>
+	.toast-stack {
+		/* 让开右下角常驻悬浮坞：坞的右间距 1.25rem + 按钮宽 3.125rem + 0.75rem 间隙 */
+		--toast-stack-edge: calc(1.25rem + 3.125rem + 0.75rem);
+		/* 实际下缘还要叠上 dock 那条 max(0.5rem, 安全区) 的底座 */
+		--toast-stack-lift: 1rem;
+		--toast-stack-radius: 1rem;
+		--toast-stack-width: min(23rem, calc(100vw - 2 * var(--toast-stack-edge)));
+		--toast-stack-motion: cubic-bezier(0.22, 1, 0.36, 1);
+		--toast-stack-enter-motion: cubic-bezier(0.16, 1, 0.3, 1);
+		--toast-stack-standard-motion: cubic-bezier(0.2, 0, 0, 1);
+		--toast-stack-snap-motion: cubic-bezier(0.34, 1.36, 0.64, 1);
+		--toast-stack-stack: 500ms;
+		--toast-stack-morph-stack: 340ms;
+		--toast-stack-fade: 300ms;
+		--toast-stack-snap: 320ms;
+		--toast-stack-tone: var(--deep-text);
+		position: fixed;
+		right: max(var(--toast-stack-edge), env(safe-area-inset-right, 0px));
+		bottom: calc(
+			var(--toast-stack-lift) + max(0.5rem, env(safe-area-inset-bottom, 0px))
+		);
+		z-index: 90;
+		pointer-events: none;
+		color: var(--deep-text);
+	}
+
+	.toast-stack__list {
+		position: relative;
+		display: block;
+		width: var(--toast-stack-width);
+		height: 0;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		/* 悬停靶子：收起时高度只剩最前面那张，展开时盖住整列，卡片之间的缝也算在内 */
+		pointer-events: auto;
+	}
+
+	.toast-stack__item {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		display: flex;
+		align-items: flex-end;
+		width: 100%;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		transform-origin: bottom right;
+		will-change: transform, height;
+		transition:
+			transform var(--toast-stack-stack) var(--toast-stack-motion),
+			height var(--toast-stack-stack) var(--toast-stack-motion),
+			opacity var(--toast-stack-fade) var(--toast-stack-standard-motion);
+	}
+
+	/* 开合栈是整列同时改几何，比单张卡进出更短促 */
+	.toast-stack__item[data-morph="true"] {
+		transition-duration: var(--toast-stack-morph-stack);
+		transition-timing-function: var(--toast-stack-enter-motion);
+	}
+
+	.toast-stack__item[inert] {
+		pointer-events: none;
+	}
+
+	/* 进场首帧与拖拽跟手都要瞬时值，不能让 transition 插值 */
+	.toast-stack__item.is-instant,
+	.toast-stack__item.is-instant .toast-stack__card,
+	.toast-stack__item.is-instant .toast-stack__content {
+		transition: none;
+	}
+
+	.toast-stack__card {
+		position: relative;
+		width: 100%;
+		background: var(--float-panel-bg);
+		border: 1px solid var(--line-divider);
+		border-radius: var(--toast-stack-radius);
+		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 14%);
+		transition:
+			transform var(--toast-stack-snap) var(--toast-stack-snap-motion),
+			opacity var(--toast-stack-fade) var(--toast-stack-standard-motion);
+	}
+
+	:root.dark .toast-stack__card {
+		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 34%);
+	}
+
+	.toast-stack__card[data-dragging] {
+		transition: none;
+		cursor: grabbing;
+		touch-action: pan-y;
+		user-select: none;
+	}
+
+	.toast-stack__content {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		padding: 0.8125rem 0.5rem 0.8125rem 0.875rem;
+		transition: opacity var(--toast-stack-fade) var(--toast-stack-standard-motion);
+	}
+
+	/* 充能倒计时：整张卡当进度条，随剩余寿命从满格收到空 */
+	.toast-stack__progress {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		border-radius: inherit;
+		pointer-events: none;
+	}
+
+	.toast-stack__card[data-countdown="false"] .toast-stack__progress {
+		display: none;
+	}
+
+	.toast-stack__progress-fill {
+		display: block;
+		width: 100%;
+		height: 100%;
+		background: color-mix(in oklab, var(--deep-text) 14%, transparent);
+		transform-origin: left center;
+	}
+
+	.toast-stack__icon {
+		position: relative;
+		display: grid;
+		place-items: center;
+		flex: 0 0 auto;
+		color: var(--toast-stack-tone);
+	}
+
+	.toast-stack__icon[data-type="success"] {
+		--toast-stack-tone: oklch(0.6 0.17 145);
+	}
+
+	.toast-stack__icon[data-type="info"] {
+		--toast-stack-tone: oklch(0.58 0.15 245);
+	}
+
+	.toast-stack__icon[data-type="warning"] {
+		--toast-stack-tone: oklch(0.66 0.15 75);
+	}
+
+	.toast-stack__icon[data-type="error"] {
+		--toast-stack-tone: oklch(0.56 0.19 25);
+	}
+
+	.toast-stack__icon[data-type="loading"] {
+		--toast-stack-tone: var(--content-meta);
+	}
+
+	:root.dark .toast-stack__icon[data-type="success"] {
+		--toast-stack-tone: oklch(0.76 0.16 145);
+	}
+
+	:root.dark .toast-stack__icon[data-type="info"] {
+		--toast-stack-tone: oklch(0.76 0.13 245);
+	}
+
+	:root.dark .toast-stack__icon[data-type="warning"] {
+		--toast-stack-tone: oklch(0.82 0.14 80);
+	}
+
+	:root.dark .toast-stack__icon[data-type="error"] {
+		--toast-stack-tone: oklch(0.73 0.17 25);
+	}
+
+	.toast-stack__glyph {
+		display: grid;
+		place-items: center;
+	}
+
+	.toast-stack__glyph[data-leaving] {
+		position: absolute;
+		inset: 0;
+	}
+
+	.toast-stack__spinner {
+		width: 0.875rem;
+		height: 0.875rem;
+		border: 2px solid color-mix(in oklab, currentColor 28%, transparent);
+		border-top-color: currentColor;
+		border-radius: 50%;
+		animation: toast-stack-spin 720ms linear infinite;
+	}
+
+	@keyframes toast-stack-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.toast-stack__copy {
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		gap: 0.125rem;
+		min-width: 0;
+	}
+
+	.toast-stack__title {
+		position: relative;
+		display: block;
+		font-size: 0.875rem;
+		font-weight: 600;
+		line-height: 1.375;
+	}
+
+	.toast-stack__description {
+		position: relative;
+		display: block;
+		font-size: 0.8125rem;
+		line-height: 1.375;
+		color: var(--content-meta);
+	}
+
+	.toast-stack__line {
+		display: block;
+		overflow-wrap: anywhere;
+	}
+
+	/* 换出去的那份脱流，新内容立刻占位，容器高度变化由栈体的形变动画消化 */
+	.toast-stack__line[data-leaving] {
+		position: absolute;
+		inset: 0;
+	}
+
+	.toast-stack__sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.toast-stack__action-slot {
+		display: grid;
+		flex: 0 0 auto;
+		grid-template-columns: 0fr;
+		transition: grid-template-columns var(--toast-stack-stack) var(
+				--toast-stack-motion
+			);
+	}
+
+	.toast-stack__action-slot[data-open="true"] {
+		grid-template-columns: 1fr;
+	}
+
+	.toast-stack__action {
+		min-width: 0;
+		overflow: hidden;
+		border: 1px solid var(--line-divider);
+		border-radius: 999px;
+		background: transparent;
+		padding: 0.3125rem 0.75rem;
+		color: var(--deep-text);
+		font-size: 0.8125rem;
+		font-weight: 600;
+		line-height: 1.375;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	.toast-stack__action:hover {
+		background: color-mix(in oklab, var(--deep-text) 10%, transparent);
+	}
+
+	.toast-stack__close {
+		display: grid;
+		place-items: center;
+		flex: 0 0 auto;
+		width: 1.75rem;
+		height: 1.75rem;
+		padding: 0;
+		border: 0;
+		border-radius: 50%;
+		background: transparent;
+		color: var(--content-meta);
+		cursor: pointer;
+		transition:
+			color 160ms var(--toast-stack-standard-motion),
+			background-color 160ms var(--toast-stack-standard-motion);
+	}
+
+	.toast-stack__close:hover {
+		color: var(--deep-text);
+		background-color: color-mix(in oklab, var(--deep-text) 10%, transparent);
+	}
+
+	.toast-stack__close:focus-visible,
+	.toast-stack__action:focus-visible {
+		outline: 2px solid var(--deep-text);
+		outline-offset: 2px;
+	}
+
+	@media (max-width: 768px) {
+		.toast-stack {
+			/* 与 mobile-dock.css 的 --mobile-dock-edge 同值 */
+			--toast-stack-edge: 0.75rem;
+			/* 让位给底部 dock：胶囊高 3.65rem + 0.6rem 间隙 */
+			--toast-stack-lift: 4.25rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.toast-stack__item {
+			transition-property: opacity;
+			transition-duration: var(--toast-stack-fade);
+		}
+
+		.toast-stack__card,
+		.toast-stack__action-slot {
+			transition-property: opacity;
+		}
+
+		.toast-stack__spinner {
+			animation: none;
+		}
+	}
+</style>
+
+<script>
+	import { definePersistentIsland } from "@/utils/swup-lifecycle";
+	import { mountToastStack } from "@/utils/toast-stack-controller";
+
+	definePersistentIsland("toast-stack", () => {
+		const root = document.getElementById("toast-stack");
+		if (root) mountToastStack(root);
+	});
+</script>

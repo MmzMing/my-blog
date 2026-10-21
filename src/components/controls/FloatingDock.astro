@@ -39,6 +39,15 @@ import { i18n } from "@/i18n/translation";
 {/* 抽屉容器 */}
 
 <div class="dock-drawer dock-drawer-toc dock-drawer-closed" id="dock-drawer-toc">
+	<button
+		type="button"
+		class="dock-drawer-grabber"
+		id="dock-toc-grabber"
+		aria-label={i18n(I18nKey.expand)}
+		aria-expanded="false"
+	>
+		<span class="dock-drawer-grabber-bar" aria-hidden="true"></span>
+	</button>
 	<div class="dock-drawer-title">
 		<Icon name="material-symbols:format-list-bulleted" class="dock-drawer-title-icon" />
 		<span>{i18n(I18nKey.tableOfContents)}</span>
@@ -68,6 +77,197 @@ import { i18n } from "@/i18n/translation";
 		/* 目录抽屉：首次打开懒建 TOC，导航后销毁重建（标题集合随页面变化） */
 		let dockTocManager: { cleanup: () => void } | null = null;
 
+		const tocDrawer = document.getElementById("dock-drawer-toc");
+		const tocGrabber = document.getElementById("dock-toc-grabber") as HTMLButtonElement | null;
+		let tocExpanded = false;
+		let tocPeekHeight = 0;
+		let tocMaxHeight = 0;
+		let tocDrag: { pointerId: number; startY: number; startHeight: number; moved: boolean } | null = null;
+		let tocDragCleanup: (() => void) | null = null;
+		/** 拖拽结束后浏览器补发的 click 需要忽略；触摸端的 click 可能延迟远超过 300ms，不能按时间窗口判断。 */
+		let suppressNextTocClick = false;
+		let tocCollapseTimer = 0;
+		const handledTocClicks = new WeakSet<Event>();
+
+		const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+		function updateTocGrabber() {
+			if (!tocGrabber) return;
+			tocGrabber.setAttribute("aria-expanded", String(tocExpanded));
+			tocGrabber.setAttribute("aria-label", i18n(tocExpanded ? I18nKey.collapse : I18nKey.expand));
+		}
+
+		function measureTocHeight() {
+			if (!tocDrawer) return;
+
+			const height = tocDrawer.style.height;
+			const maxHeight = tocDrawer.style.maxHeight;
+			const transition = tocDrawer.style.transition;
+
+			tocDrawer.style.transition = "none";
+			tocDrawer.style.height = "";
+			tocDrawer.style.maxHeight = "";
+			void tocDrawer.offsetHeight;
+
+			tocPeekHeight = tocDrawer.offsetHeight;
+			const scroll = tocDrawer.querySelector<HTMLElement>(".dock-toc-scroll");
+			const extra = scroll ? Math.max(0, scroll.scrollHeight - scroll.clientHeight) : 0;
+			tocMaxHeight = Math.min(
+				tocPeekHeight + extra,
+				Math.max(tocPeekHeight, window.innerHeight * 0.92),
+			);
+
+			tocDrawer.style.height = height;
+			tocDrawer.style.maxHeight = maxHeight;
+			void tocDrawer.offsetHeight;
+			tocDrawer.style.transition = transition;
+		}
+
+		function updateTocHeight(expanded: boolean, animate = true) {
+			if (!tocDrawer) return;
+
+			window.clearTimeout(tocCollapseTimer);
+			measureTocHeight();
+			const canExpand = tocMaxHeight > tocPeekHeight + 1;
+			const nextExpanded = expanded && canExpand;
+			const start = tocDrawer.offsetHeight;
+			const target = nextExpanded ? tocMaxHeight : tocPeekHeight;
+
+			tocExpanded = nextExpanded;
+			updateTocGrabber();
+
+			if (!animate || reduceMotion() || Math.abs(target - start) < 1) {
+				tocDrawer.style.maxHeight = nextExpanded ? `${tocMaxHeight}px` : "";
+				tocDrawer.style.height = nextExpanded ? `${tocMaxHeight}px` : "";
+				return;
+			}
+
+			tocDrawer.style.maxHeight = `${tocMaxHeight}px`;
+			tocDrawer.style.height = `${start}px`;
+			void tocDrawer.offsetHeight;
+			tocDrawer.style.height = `${target}px`;
+
+			if (!nextExpanded) {
+				// 收起后交还 CSS 的默认高度，避免窗口变矮时残留更大的内联尺寸。
+				tocCollapseTimer = window.setTimeout(() => {
+					if (!tocDrawer || tocExpanded) return;
+					tocDrawer.style.height = "";
+					tocDrawer.style.maxHeight = "";
+				}, 400);
+			}
+		}
+
+		function resetTocDrawer() {
+			tocExpanded = false;
+			window.clearTimeout(tocCollapseTimer);
+			tocDragCleanup?.();
+			tocDragCleanup = null;
+			tocDrag = null;
+			if (!tocDrawer) return;
+			tocDrawer.removeAttribute("data-dragging");
+			tocDrawer.style.height = "";
+			tocDrawer.style.maxHeight = "";
+			updateTocGrabber();
+		}
+
+		function beginTocDrag(event: PointerEvent) {
+			const drawer = tocDrawer;
+			const grabber = tocGrabber;
+			if (!drawer || !grabber) return;
+
+			const drawerEl: HTMLElement = drawer;
+			const grabberEl: HTMLButtonElement = grabber;
+			if (tocDrag) return;
+			if (event.pointerType === "mouse" && event.button !== 0) return;
+			if (drawerEl.classList.contains("dock-drawer-closed")) return;
+
+			suppressNextTocClick = false;
+			grabberEl.focus({ preventScroll: true });
+			measureTocHeight();
+
+			const startHeight = drawerEl.offsetHeight;
+			tocDrag = {
+				pointerId: event.pointerId,
+				startY: event.clientY,
+				startHeight,
+				moved: false,
+			};
+			drawerEl.setAttribute("data-dragging", "");
+			drawerEl.style.maxHeight = `${tocMaxHeight}px`;
+			drawerEl.style.height = `${startHeight}px`;
+
+			try {
+				grabberEl.setPointerCapture(event.pointerId);
+			} catch {
+				// 指针已经离开，窗口级监听仍然能接住后续移动
+			}
+
+			function move(moveEvent: PointerEvent) {
+				if (!tocDrag || moveEvent.pointerId !== tocDrag.pointerId) return;
+				const delta = tocDrag.startY - moveEvent.clientY;
+				if (!tocDrag.moved && Math.abs(delta) > 3) {
+					tocDrag.moved = true;
+					if (moveEvent.cancelable) moveEvent.preventDefault();
+				}
+				const next = Math.min(
+					Math.max(tocDrag.startHeight + delta, tocPeekHeight),
+					tocMaxHeight,
+				);
+				drawerEl.style.height = `${next}px`;
+			}
+
+			function cleanup() {
+				window.removeEventListener("pointermove", move);
+				window.removeEventListener("pointerup", onUp);
+				window.removeEventListener("pointercancel", onCancel);
+				tocDragCleanup = null;
+			}
+
+			function finish(endEvent: PointerEvent, cancelled = false) {
+				if (!tocDrag || endEvent.pointerId !== tocDrag.pointerId) return;
+
+				const drag = tocDrag;
+				tocDrag = null;
+				cleanup();
+				drawerEl.removeAttribute("data-dragging");
+				try {
+					if (grabberEl.hasPointerCapture(endEvent.pointerId)) {
+						grabberEl.releasePointerCapture(endEvent.pointerId);
+					}
+				} catch {
+					// 指针已经释放
+				}
+
+				suppressNextTocClick = true;
+				if (cancelled) {
+					updateTocHeight(tocExpanded, true);
+					return;
+				}
+
+				const heightDelta = Math.abs(drawerEl.offsetHeight - drag.startHeight);
+				if (!drag.moved || heightDelta <= 6) {
+					updateTocHeight(!tocExpanded, true);
+					return;
+				}
+
+				const threshold = tocPeekHeight + (tocMaxHeight - tocPeekHeight) * 0.35;
+				updateTocHeight(drawerEl.offsetHeight > threshold, true);
+			}
+
+			function onUp(upEvent: PointerEvent) {
+				finish(upEvent);
+			}
+
+			function onCancel(cancelEvent: PointerEvent) {
+				finish(cancelEvent, true);
+			}
+
+			tocDragCleanup = cleanup;
+			window.addEventListener("pointermove", move);
+			window.addEventListener("pointerup", onUp);
+			window.addEventListener("pointercancel", onCancel);
+		}
+
 		async function ensureDockToc() {
 			const tocContent = document.getElementById("dock-drawer-toc-content");
 			if (!tocContent) return;
@@ -89,7 +289,14 @@ import { i18n } from "@/i18n/translation";
 		}
 
 		function closeAllDrawers() {
-			document.querySelectorAll(".dock-drawer").forEach((drawer) => drawer.classList.add("dock-drawer-closed"));
+			document.querySelectorAll(".dock-drawer").forEach((drawer) => {
+				drawer.classList.add("dock-drawer-closed");
+				if (drawer.id === "dock-drawer-toc") {
+					window.setTimeout(() => {
+						if (drawer.classList.contains("dock-drawer-closed")) resetTocDrawer();
+					}, 340);
+				}
+			});
 		}
 
 		function setButtonVisibility(id: string, visible: boolean) {
@@ -111,11 +318,44 @@ import { i18n } from "@/i18n/translation";
 				if (!isOpen) {
 					// 先建好目录再打开：否则首次打开时卡片高度会从空列表长到完整高度，
 					// 底边固定会看到顶边跳一下，底部上滑的动画不再连贯。
-					if (drawerId === "dock-drawer-toc") await ensureDockToc();
+					if (drawerId === "dock-drawer-toc") {
+						await ensureDockToc();
+						resetTocDrawer();
+						measureTocHeight();
+					}
 					drawer.classList.remove("dock-drawer-closed");
 				}
 			}, { signal: dockSignal });
 		});
+
+		if (tocGrabber && tocDrawer) {
+			tocGrabber.addEventListener("click", (event) => {
+				if (handledTocClicks.has(event)) return;
+				handledTocClicks.add(event);
+				event.stopPropagation();
+				if (suppressNextTocClick) {
+					suppressNextTocClick = false;
+					return;
+				}
+				updateTocHeight(!tocExpanded, true);
+			}, { signal: dockSignal });
+
+			tocGrabber.addEventListener("keydown", (event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					suppressNextTocClick = false;
+				}
+				if (event.key === "ArrowUp" || event.key === "Home") {
+					event.preventDefault();
+					updateTocHeight(true, true);
+				} else if (event.key === "ArrowDown" || event.key === "End") {
+					event.preventDefault();
+					updateTocHeight(false, true);
+				}
+			}, { signal: dockSignal });
+
+			tocGrabber.addEventListener("pointerdown", beginTocDrag, { signal: dockSignal });
+			updateTocGrabber();
+		}
 
 		document.addEventListener("click", (event) => {
 			const target = event.target;
@@ -182,6 +422,14 @@ import { i18n } from "@/i18n/translation";
 		window.addEventListener("scroll", updateScrollDependent, { passive: true, signal: dockSignal });
 		// 跨过 96rem 断点时目录按钮显隐/抽屉状态需要重算
 		window.addEventListener("resize", updatePathDependent, { passive: true, signal: dockSignal });
+		window.addEventListener("resize", () => {
+			if (!tocDrawer || tocDrawer.classList.contains("dock-drawer-closed") || tocDrag) return;
+			measureTocHeight();
+			if (tocExpanded) {
+				tocDrawer.style.maxHeight = `${tocMaxHeight}px`;
+				tocDrawer.style.height = `${tocMaxHeight}px`;
+			}
+		}, { passive: true, signal: dockSignal });
 		// 只在导航后收抽屉、重算路径相关按钮；首次加载的初始态由上面两行直接调用负责
 		onNavigation(() => {
 			closeAllDrawers();

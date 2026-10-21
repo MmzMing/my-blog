@@ -53,49 +53,92 @@
 
 .dock-drawer { z-index: 70; }
 
-/* 目录抽屉：改为视窗底部的宽纸张面板，复用顶部元信息手风琴的撕纸表面。
-   纸张画在 ::before 上并整体挂 --paper-deckle-filter；抽屉自身不裁切，
-   否则毛边与落影会被 overflow 切掉，列表滚动交给内部 .dock-toc-scroll。 */
+/* 目录抽屉：贴住视窗底部的宽面板，顶部圆角，列表在内部滚动。 */
 .dock-drawer-toc {
 	left: 50%;
 	right: auto;
-	bottom: 1.25rem;
-	width: min(55rem, calc(100vw - 2.5rem));
+	bottom: 0;
+	width: min(48rem, calc(100vw - 2.5rem));
 	max-height: min(70vh, 34rem);
-	padding: 1.25rem 1.5rem;
+	padding: 0.75rem 1.5rem max(1.25rem, env(safe-area-inset-bottom));
 	overflow: visible;
-	background: transparent;
-	border: 0;
-	border-radius: 0;
+	background: var(--card-surface);
+	border: 1px solid var(--line-divider);
+	border-bottom: 0;
+	border-radius: 1.25rem 1.25rem 0 0;
+	box-shadow: 0 -18px 40px -28px rgb(0 0 0 / 0.45);
 	isolation: isolate;
 	display: flex;
 	flex-direction: column;
 	visibility: visible;
+	opacity: 1;
 	transform: translateX(-50%);
 	transform-origin: bottom center;
+	will-change: transform, height;
 	transition:
 		opacity 0.22s ease,
-		transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+		transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+		height 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+		max-height 0.34s cubic-bezier(0.22, 1, 0.36, 1),
 		visibility 0s linear;
 }
 
-.dock-drawer-toc::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	z-index: -1;
-	background: var(--card-surface);
-	pointer-events: none;
-	filter: var(--paper-deckle-filter);
+.dock-drawer-toc[data-dragging] {
+	user-select: none;
+	transition: none !important;
 }
 
+.dock-drawer-grabber {
+	display: flex;
+	width: 100%;
+	height: 1.25rem;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	margin: -0.25rem 0 0.25rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	cursor: grab;
+	touch-action: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.dock-drawer-grabber-bar {
+	width: 2.75rem;
+	height: 0.25rem;
+	border-radius: 999px;
+	background: var(--line-divider);
+	transition:
+		background-color 0.18s ease,
+		width 0.18s ease;
+}
+
+.dock-drawer-grabber:hover .dock-drawer-grabber-bar,
+.dock-drawer-grabber:focus-visible .dock-drawer-grabber-bar {
+	background: var(--content-meta);
+}
+
+.dock-drawer-grabber:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+	border-radius: var(--radius-small);
+}
+
+.dock-drawer-toc[data-dragging] .dock-drawer-grabber {
+	cursor: grabbing;
+}
+
+/* 目录抽屉：干净的面板表面，顶部圆角，底边贴合视口。 */
 .dock-drawer-toc.dock-drawer-closed {
 	visibility: hidden;
-	transform: translate(-50%, calc(100% + 1.25rem));
+	opacity: 0;
+	transform: translate(-50%, 100%);
 	transition:
 		opacity 0.18s ease,
-		transform 0.28s cubic-bezier(0.4, 0, 1, 1),
-		visibility 0s linear 0.28s;
+		transform 0.3s cubic-bezier(0.4, 0, 1, 1),
+		visibility 0s linear 0.3s;
 }
 
 /* 平板宽度下让开右侧悬浮坞，面板改用左右边缘定位，宽度随之收缩。 */
@@ -108,7 +151,7 @@
 	}
 
 	.dock-drawer-toc.dock-drawer-closed {
-		transform: translateY(calc(100% + 1.25rem));
+		transform: translateY(100%);
 	}
 }
 

@@ -1,0 +1,840 @@
+---
+title: 本站 MDX 组件介绍与使用方法
+image: ./assets/others-blog-mdx-components.webp
+published: 2026-10-22
+description: 本站 MDX 组件使用说明：介绍 MDX 如何在 Markdown 中嵌入 Astro 组件，系统整理行级与行内组件的用途、参数和写法，并为每个组件提供可直接复制的语法示例与渲染演示，方便在文章、关于页和项目记录中快速选用与组合。
+tags: [MDX, 前端, 博客, Markdown]
+category: 学习文档
+draft: false
+---
+
+import Accordion from "@components/mdx/Accordion.astro";
+import Badge from "@components/mdx/Badge.astro";
+import Blur from "@components/mdx/Blur.astro";
+import CardList from "@components/mdx/CardList.astro";
+import Chat from "@components/mdx/Chat.astro";
+import Folding from "@components/mdx/Folding.astro";
+import Key from "@components/mdx/Key.astro";
+import LinkCard from "@components/mdx/LinkCard.astro";
+import LinkBanner from "@components/mdx/LinkBanner.astro";
+import ProfileCard from "@components/mdx/ProfileCard.astro";
+import SocialLinks from "@components/mdx/SocialLinks.astro";
+import Timeline from "@components/mdx/Timeline.astro";
+import Tip from "@components/mdx/Tip.astro";
+import Alert from "@components/mdx/Alert.astro";
+import ArtText from "@components/mdx/ArtText.astro";
+import CodeLang from "@components/mdx/CodeLang.astro";
+import Copy from "@components/mdx/Copy.astro";
+import EmojiTail from "@components/mdx/EmojiTail.astro";
+import Pic from "@components/mdx/Pic.astro";
+import Quote from "@components/mdx/Quote.astro";
+import Tab from "@components/mdx/Tab.astro";
+import Tabs from "@components/mdx/Tabs.astro";
+import Title from "@components/mdx/Title.astro";
+import VideoEmbed from "@components/mdx/VideoEmbed.astro";
+import { siteConfig } from "@/config";
+
+export const ownerAvatar = siteConfig.avatar.owner;
+
+MDX 是 Markdown 的超集：在普通 Markdown 里可以直接写 JSX/Astro 组件，让文章从纯文本变成可交互的内容。本站把常用的正文能力封装成 MDX 组件，写文章时用一套简短的指令即可插入提示框、标签页、时间线、链接卡片、图片和视频等内容。
+
+组件按写法分为两类：
+
+- **行级**：以 `::name{...}` 或 `:::name{...}` 独占一行，适合提示框、时间线、标签页、链接卡片等块状内容。
+- **行内**：以 `:name[文字]{...}` 嵌在句子中，适合徽章、键帽、术语提示、复制、艺术字等文字级标记。
+
+本站目前提供的组件：
+
+**行级组件**
+
+| 组件 | 说明 |
+| --- | --- |
+| [手风琴 Accordion](#手风琴-accordion) | 分组卡片，适合技术栈和入口列表 |
+| [时间线 Timeline](#时间线-timeline) | 可展开的时间线记录 |
+| [对话 Chat](#对话-chat) | 用户、助手和系统消息气泡 |
+| [社交链接 SocialLinks](#社交链接-sociallinks) | 行级容器，渲染为行内社交头像组 |
+| [折叠面板 Folding](#折叠面板-folding) | 纸面折叠内容，带展开过渡 |
+| [卡片列表 CardList](#卡片列表-cardlist) | 把 Markdown 列表渲染成卡片 |
+| [链接卡片 LinkCard](#链接卡片-linkcard) | 站外链接卡片，可组成响应式网格 |
+| [链接横幅 LinkBanner](#链接横幅-linkbanner) | 横向大图链接横幅 |
+| [提示框 Alert](#提示框-alert) | 带类型配色的提示块，支持 card 和 flat |
+| [标签页 Tabs](#标签页-tabs) | 多标签内容容器 |
+| [金句 Quote](#金句-quote) | 带装饰图标的引用块 |
+| [标题装饰 Title](#标题装饰-title) | 带装饰线的标题块 |
+| [图片画廊 Pic](#图片画廊-pic) | 单图与多种宫格画廊 |
+| [视频嵌入 VideoEmbed](#视频嵌入-videoembed) | 嵌入 Bilibili 或 YouTube 视频 |
+| [表情包背景 EmojiTail](#表情包背景-emojitail) | 正文后方堆叠表情装饰 |
+
+**行内组件**
+
+| 组件 | 说明 |
+| --- | --- |
+| [徽章 Badge](#徽章-badge) | 行内胶囊标签 |
+| [键帽 Key](#键帽-key) | 键帽样式，适合快捷键说明 |
+| [术语提示 Tip](#术语提示-tip) | 术语下划线加悬停解释 |
+| [行内复制 Copy](#行内复制-copy) | 点击复制正文内容 |
+| [代码语言标 CodeLang](#代码语言标-codelang) | 带语言标签的行内代码 |
+| [人物名片 ProfileCard](#人物名片-profilecard) | 悬停或聚焦展开的人物名片 |
+| [模糊 Blur](#模糊-blur) | 悬停或聚焦后显现，支持块级 |
+| [艺术字 ArtText](#艺术字-arttext) | 四种行内艺术字变体 |
+
+使用前有三条约定：
+
+1. 组件要在 MDX 顶部 `import`，指令只负责生成对应的组件。
+2. 非字符串参数用 `$变量`，变量在顶层 import 或 `export const` 定义。
+3. `{}` 会被 MDX 当作表达式，Accordion / Timeline 的行式 DSL 必须放在代码围栏内。
+
+## 行级组件
+
+### 手风琴 Accordion
+
+分组卡片手风琴。分组行控制标题和默认展开状态，卡品行定义名称、描述、链接和图标。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `label` | 否 | 组件 aria-label，默认“手风琴” |
+| 分组行 | 是 | `{标题 · open}`；`open` 控制默认展开 |
+| 卡品行 | 是 | 依次填写名称、描述、URL、图标、颜色、深色颜色；最后一项可省略 |
+
+**语法**
+
+````mdx
+:::accordion{label="MDX 组件速查"}
+```accordion
+{基础组件 · open}
+- Badge | 行内小标签 | https://mdxjs.com | material-symbols:label | #00a29b
+- Key | 键帽样式 | https://developer.mozilla.org/docs/Web/HTML/Element/kbd | material-symbols:keyboard-arrow-up-rounded | #8b5cf6
+
+{内容容器}
+- Folding | 折叠面板 | https://developer.mozilla.org/docs/Web/HTML/Element/details | material-symbols:folder-outline | #2563eb
+- CardList | 卡片式列表 | https://developer.mozilla.org/docs/Web/HTML/Element/ul | material-symbols:format-list-bulleted-rounded | #d97706
+```
+:::
+````
+
+**演示**
+
+:::accordion{label="MDX 组件速查"}
+```accordion
+{基础组件 · open}
+- Badge | 行内小标签 | https://mdxjs.com | material-symbols:label | #00a29b
+- Key | 键帽样式 | https://developer.mozilla.org/docs/Web/HTML/Element/kbd | material-symbols:keyboard-arrow-up-rounded | #8b5cf6
+
+{内容容器}
+- Folding | 折叠面板 | https://developer.mozilla.org/docs/Web/HTML/Element/details | material-symbols:folder-outline | #2563eb
+- CardList | 卡片式列表 | https://developer.mozilla.org/docs/Web/HTML/Element/ul | material-symbols:format-list-bulleted-rounded | #d97706
+```
+:::
+
+### 时间线 Timeline
+
+可展开的时间线。每条记录包含时间、标题、可选标签、图标和色调，详情写在记录行下方。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `label` | 否 | 组件 aria-label，默认“时间线” |
+| 记录行 | 是 | `{时间 · 标题 · 可选标签 · icon=图标 · tone=色调}` |
+| 详情 | 是 | 记录行下方的文本，多行合并成一段 |
+| `tone` | 否 | `neutral`、`success`、`danger` |
+
+**语法**
+
+````mdx
+:::timeline{label="MDX 组件时间线"}
+```timeline
+{2026.05 · 建立组件目录 · 起点 · icon=mdi:source-fork}
+把散落在关于页的专属组件收进统一的 MDX 组件库。
+
+{2026.10 · 接入指令糖 · icon=material-symbols:auto-awesome · tone=success}
+::: 容器与 :badge[] 行内指令可以直接映射到 Astro 组件。
+
+{2026.10 · 补齐通用组件 · icon=material-symbols:sync-rounded}
+新增 Chat、Folding、LinkCard 等正文组件。
+```
+:::
+````
+
+**演示**
+
+:::timeline{label="MDX 组件时间线"}
+```timeline
+{2026.05 · 建立组件目录 · 起点 · icon=mdi:source-fork}
+把散落在关于页的专属组件收进统一的 MDX 组件库。
+
+{2026.10 · 接入指令糖 · icon=material-symbols:auto-awesome · tone=success}
+::: 容器与 :badge[] 行内指令可以直接映射到 Astro 组件。
+
+{2026.10 · 补齐通用组件 · icon=material-symbols:sync-rounded}
+新增 Chat、Folding、LinkCard 等正文组件。
+```
+:::
+
+### 对话 Chat
+
+对话气泡。角色行区分用户、助手和系统消息，消息文本按纯文本渲染。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `:u` | 是 | 用户消息 |
+| `:a` | 是 | 助手回复 |
+| `:s` | 否 | 系统提示 |
+| `:u{name="..."}` | 否 | 指定用户显示名 |
+| 消息文本 | 是 | 写在角色前缀之后，不解析 Markdown |
+
+**语法**
+
+````mdx
+::chat
+:s 下面是一段组件演示
+:u{name="访客"} 这些指令需要提前 import 吗
+:a 要的，指令只负责换节点，组件作用域还得自己建。
+::
+````
+
+**演示**
+
+::chat
+:s 下面是一段组件演示
+:u{name="访客"} 这些指令需要提前 import 吗
+:a 要的，指令只负责换节点，组件作用域还得自己建。
+::
+
+### 社交链接 SocialLinks
+
+社交头像组。账号行按固定字段顺序填写，渲染时并入前一段末尾；超过 `max` 会折叠为 `+N`。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `label` | 否 | 组件 aria-label，默认“社交账号” |
+| `max` | 否 | 最多显示数量，默认 4 |
+| 账号行 | 是 | 依次填写平台、昵称、备注、URL、图标、brand、状态；备注、brand、状态可空 |
+| `brand` | 否 | `github`、`bilibili`、`qq` |
+| `status` | 否 | `online`、`offline`、`none` |
+
+**语法**
+
+````mdx
+头像组会自动接在上一段文字末尾，适合放在一句介绍之后：
+
+:::social-links{label="演示社交账号"}
+- GitHub | MmzMing | 代码与项目 | https://github.com/MmzMing | fa7-brands:github | github | online
+- B站 | Mmz明崽 | 关注一下 | https://space.bilibili.com/15446538 | fa7-brands:bilibili | bilibili | offline
+- QQ群 | 加入群聊 | 吹水摸鱼 | https://qm.qq.com/q/2R07cjGTZ0 | fa7-brands:qq | qq | none
+:::
+````
+
+**演示**
+
+头像组会自动接在上一段文字末尾，适合放在一句介绍之后：
+
+:::social-links{label="演示社交账号"}
+- GitHub | MmzMing | 代码与项目 | https://github.com/MmzMing | fa7-brands:github | github | online
+- B站 | Mmz明崽 | 关注一下 | https://space.bilibili.com/15446538 | fa7-brands:bilibili | bilibili | offline
+- QQ群 | 加入群聊 | 吹水摸鱼 | https://qm.qq.com/q/2R07cjGTZ0 | fa7-brands:qq | qq | none
+:::
+
+### 折叠面板 Folding
+
+纸面折叠面板，正文支持普通 Markdown；沿用 Accordion 的毛边纸面，但内边距、字号和展开动效更轻量。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `title` | 否 | 折叠标题，默认“展开查看” |
+| 内容 | 是 | 容器内的 Markdown |
+
+**语法**
+
+````mdx
+:::folding{title="展开查看参数说明"}
+- `title`：折叠标题，默认“展开查看”。
+- 正文支持列表、代码块、链接等 Markdown 语法。
+:::
+````
+
+**演示**
+
+:::folding{title="展开查看参数说明"}
+- `title`：折叠标题，默认“展开查看”。
+- 正文支持列表、代码块、链接等 Markdown 语法。
+:::
+
+### 卡片列表 CardList
+
+把一组 Markdown 列表项渲染成卡片，桌面默认三列，窄屏自动降为两列或一列。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| 内容 | 是 | 容器内的 Markdown 列表 |
+
+**语法**
+
+````mdx
+:::card-list
+- **行级指令**：`::` 或 `:::` 开头的指令独占一行，渲染为块级组件。
+- **行内指令**：`:name[文字]` 嵌在段落中，适合标签、键帽、术语解释。
+- **数据驱动**：Accordion、Timeline 只接收结构化数据，内容仍留在 MDX。
+:::
+````
+
+**演示**
+
+:::card-list
+- **行级指令**：`::` 或 `:::` 开头的指令独占一行，渲染为块级组件。
+- **行内指令**：`:name[文字]` 嵌在段落中，适合标签、键帽、术语解释。
+- **数据驱动**：Accordion、Timeline 只接收结构化数据，内容仍留在 MDX。
+:::
+
+### 链接卡片 LinkCard
+
+站外链接卡片。外观与友链卡片一致：1px 边框、卡片底色、双层投影，悬停时放大到 1.03 并加深背景、边框和阴影。单张最大宽度 `24rem` 并水平居中；连续写多个会自动合并为水平居中的网格，网格宽度 ≥ `44rem` 时 3 列，≥ `29rem` 时 2 列，其余 1 列；末行未占满时整体居中。
+
+设置 `banner` 后，封面固定高度 `9.5rem`，图片居中裁切，下方保留图标、标题和描述；无图卡片保持紧凑横向布局。连续卡片之间插入段落、标题等块级内容会打断自动合并。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `link` | 是 | 跳转地址，新标签页打开 |
+| `title` | 否 | 卡片标题，缺省时使用域名 |
+| `desc` | 否 | 卡片描述，缺省时使用域名 |
+| `icon` | 否 | 图标名或图片地址，显示在标题左侧 |
+| `banner` | 否 | 封面图地址；固定高度 `9.5rem`，直接作为 `<img src>`，不走 Astro 图片优化 |
+
+**语法**
+
+````mdx
+::link-card{link="https://astro.build/" title="Astro 官方站点" desc="内容驱动的静态站点框架" icon="simple-icons:astro" banner="/assets/images/example.webp"}
+
+::link-card{link="https://mdxjs.com/" title="MDX 官方文档" desc="在 Markdown 中直接写 JSX" icon="simple-icons:mdx" banner="/assets/images/example.webp"}
+
+::link-card{link="https://github.com/MmzMing/my-blog" title="博客源码" desc="本站的完整实现" icon="fa7-brands:github" banner="/assets/images/example.webp"}
+
+::link-card{link="https://developer.mozilla.org/" title="MDN Web Docs" desc="Web 开发文档" icon="simple-icons:mdnwebdocs"}
+````
+
+**演示**
+
+::link-card{link="https://astro.build/" title="Astro 官方站点" desc="内容驱动的静态站点框架" icon="simple-icons:astro" banner="/assets/images/example.webp"}
+
+::link-card{link="https://mdxjs.com/" title="MDX 官方文档" desc="在 Markdown 中直接写 JSX" icon="simple-icons:mdx" banner="/assets/images/example.webp"}
+
+::link-card{link="https://github.com/MmzMing/my-blog" title="博客源码" desc="本站的完整实现" icon="fa7-brands:github" banner="/assets/images/example.webp"}
+
+::link-card{link="https://developer.mozilla.org/" title="MDN Web Docs" desc="Web 开发文档" icon="simple-icons:mdnwebdocs"}
+
+### 链接横幅 LinkBanner
+
+横向大图链接横幅，适合展示站点入口或专题；外观与友链卡片一致。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `link` | 是 | 跳转地址，新标签页打开 |
+| `title` | 否 | 横幅标题，缺省时使用域名 |
+| `desc` | 否 | 横幅描述，缺省时使用域名 |
+| `banner` | 否 | 横幅图片地址，固定高度 `12rem` |
+| `icon` | 否 | 图标名或图片地址 |
+
+**语法**
+
+```mdx
+::link-banner{link="https://astro.build/" title="Astro 官方站点" desc="内容驱动的静态站点框架" banner="/assets/images/example.webp" icon="simple-icons:astro"}
+```
+
+**演示**
+
+::link-banner{link="https://astro.build/" title="Astro 官方站点" desc="内容驱动的静态站点框架" banner="/assets/images/example.webp" icon="simple-icons:astro"}
+
+### 提示框 Alert
+
+带类型配色的提示块，支持普通、卡片和轻量三种外观。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `type` | 否 | `tip`、`info`、`question`、`warning`、`error`，默认 `tip` |
+| `title` | 否 | 覆盖类型默认标题 |
+| `card` | 否 | 卡片风格，带顶部光晕与阴影 |
+| `flat` | 否 | 轻量风格；与 `card` 同时设置时优先 |
+| `color` | 否 | 自定义主题色，支持 hex、rgb、hsl、oklch、var |
+| `icon` | 否 | 覆盖默认图标，写 Iconify 名称 |
+| `text` | 否 | 无正文时的回落内容 |
+
+**语法**
+
+```mdx
+:::alert{type="tip" title="小提示"}
+这里是提示框正文，支持 **加粗** 与 [链接](/about)。
+:::
+
+:::alert{type="warning" title="自定义配色" color="#7c3aed" card}
+卡片风格使用顶部光晕和阴影，适合放在重点段落前。
+:::
+```
+
+**演示**
+
+:::alert{type="tip" title="小提示"}
+这里是提示框正文，支持 **加粗** 与 [链接](/about)。
+:::
+
+:::alert{type="warning" title="自定义配色" color="#7c3aed" card}
+卡片风格使用顶部光晕和阴影，适合放在重点段落前。
+:::
+
+### 标签页 Tabs
+
+多标签内容容器。提供 `pill`、`underline` 两种样式：`pill` 为胶囊分段，`underline` 为底部下划线。标签由子 `Tab` 提供；外层用 4 个冒号包裹内层 `:::tab`。设置 `centered` 可让标签栏水平居中，切换标签时指示器会平滑滑动到目标标签，面板按方向淡入淡出，容器高度平滑过渡。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `Tabs.label` | 否 | 标签栏 aria-label，默认“标签页” |
+| `Tabs.variant` | 否 | `pill`、`underline`，默认 `underline` |
+| `Tabs.centered` | 否 | 标签栏水平居中，默认关闭 |
+| `Tab.label` | 是 | 子标签标题 |
+
+**语法**
+
+````mdx
+**Pill**
+
+::::tabs{label="Pill 示例" variant="pill"}
+:::tab{label="概览"}
+高层摘要。
+:::
+:::tab{label="动态"}
+最近的用户活动与日志。
+:::
+:::tab{label="设置"}
+管理账户偏好。
+:::
+::::
+
+**Underline**
+
+::::tabs{label="Underline 示例"}
+:::tab{label="全部"}
+显示全部工单。
+:::
+:::tab{label="进行中"}
+显示需要处理的工单。
+:::
+:::tab{label="已关闭"}
+已归档和已解决的请求。
+:::
+::::
+
+**Pill + centered**
+
+::::tabs{label="居中示例" variant="pill" centered}
+:::tab{label="概览"}
+标签栏在容器内水平居中。
+:::
+:::tab{label="设置"}
+切换标签后内容同步更新。
+:::
+::::
+````
+
+**演示**
+
+**Pill**
+
+::::tabs{label="Pill 示例" variant="pill"}
+:::tab{label="概览"}
+高层摘要。
+:::
+:::tab{label="动态"}
+最近的用户活动与日志。
+:::
+:::tab{label="设置"}
+管理账户偏好。
+:::
+::::
+
+**Underline**
+
+::::tabs{label="Underline 示例"}
+:::tab{label="全部"}
+显示全部工单。
+:::
+:::tab{label="进行中"}
+显示需要处理的工单。
+:::
+:::tab{label="已关闭"}
+已归档和已解决的请求。
+:::
+::::
+
+**Pill + centered**
+
+::::tabs{label="居中示例" variant="pill" centered}
+:::tab{label="概览"}
+标签栏在容器内水平居中。
+:::
+:::tab{label="设置"}
+切换标签后内容同步更新。
+:::
+::::
+
+### 金句 Quote
+
+带装饰图标的引用块，正文支持 Markdown。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `icon` | 否 | 装饰图标，默认消息气泡图标 |
+| 内容 | 是 | 容器内的 Markdown |
+
+**语法**
+
+```mdx
+:::quote
+知识要能被重新发现，而不是只靠标题记忆。
+:::
+```
+
+**演示**
+
+:::quote
+知识要能被重新发现，而不是只靠标题记忆。
+:::
+
+### 标题装饰 Title
+
+在正文中插入带装饰线的标题块。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| 内容 | 是 | 标题文字 |
+
+**语法**
+
+```mdx
+:::title
+这里是装饰标题
+:::
+```
+
+**演示**
+
+:::title
+这里是装饰标题
+:::
+
+### 图片画廊 Pic
+
+单图或宫格图片。单图默认限制在 `36rem × 24rem` 内完整显示，设置 `full` 可取消上限；宫格提供 `duo` 双列、`feature` 首图放大两种布局，图片按格子裁切填充。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `src` | 单图 | 图片地址 |
+| `layout` | 否 | 宫格布局：`duo`、`feature`，默认 `duo` |
+| `caption` | 否 | 单图说明 |
+| `mirror` | 否 | 单图水平镜像 |
+| `full` | 否 | 单图取消默认尺寸上限，按内容宽度完整显示 |
+
+**语法**
+
+```mdx
+::pic{src="/assets/images/example.webp" caption="示例图片"}
+```
+
+**演示**
+
+::pic{src="/assets/images/example.webp" caption="示例图片"}
+
+**宫格布局**
+
+`feature` 首图占左侧两行，右侧由一张宽图和两张小图填充；`duo` 是等宽双列。容器内每行一张图片，格式为 `- 地址 | 说明 | alt`，说明和 alt 可省略；宫格图片不带外框和背景，说明文字居中排在图片下方。
+
+**语法**
+
+```mdx
+:::pic{layout="feature"}
+- /assets/images/example.webp | 示例图片一
+- /assets/images/example.webp | 示例图片二
+- /assets/images/example.webp | 示例图片三
+- /assets/images/example.webp | 示例图片四
+:::
+
+:::pic{layout="duo"}
+- /assets/images/example.webp | 示例图片一
+- /assets/images/example.webp | 示例图片二
+- /assets/images/example.webp | 示例图片三
+- /assets/images/example.webp | 示例图片四
+:::
+```
+
+**演示**
+
+:::pic{layout="feature"}
+- /assets/images/example.webp | 示例图片一
+- /assets/images/example.webp | 示例图片二
+- /assets/images/example.webp | 示例图片三
+- /assets/images/example.webp | 示例图片四
+:::
+
+:::pic{layout="duo"}
+- /assets/images/example.webp | 示例图片一
+- /assets/images/example.webp | 示例图片二
+- /assets/images/example.webp | 示例图片三
+- /assets/images/example.webp | 示例图片四
+:::
+
+### 视频嵌入 VideoEmbed
+
+嵌入白名单域名下的视频，目前支持 Bilibili 与 YouTube；其他地址回退为原链接。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `src` | 是 | 视频页面地址，仅支持 Bilibili 与 YouTube |
+| `title` | 否 | iframe 标题，默认“嵌入视频” |
+
+**语法**
+
+```mdx
+::video-embed{src="https://www.bilibili.com/video/BV1GJ411x7h7"}
+```
+
+**演示**
+
+::video-embed{src="https://www.bilibili.com/video/BV1GJ411x7h7"}
+
+### 表情包背景 EmojiTail
+
+表情堆叠在正文后方，悬停时整体提亮并轻微上浮。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `emojis` | 否 | 表情列表，逗号分隔或 JSON 数组，最多 6 个 |
+| 内容 | 是 | 容器内的 Markdown |
+
+**语法**
+
+```mdx
+:::emoji-tail{emojis="📄,🦌,🙌"}
+这是配了表情包背景装饰的正文，透明底无边框，hover 会让表情轻轻上浮。
+:::
+```
+
+**演示**
+
+:::emoji-tail{emojis="📄,🦌,🙌"}
+这是配了表情包背景装饰的正文，透明底无边框，hover 会让表情轻轻上浮。
+:::
+
+## 行内组件
+
+行内组件直接嵌在句子里，适合强调、标注和补充信息。
+
+### 徽章 Badge
+
+胶囊标签，可选外链。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| 文字 | 是 | 徽章内容，写在 `:badge[...]` 中 |
+| `link` | 否 | 外链地址 |
+
+**语法**
+
+```mdx
+状态标签 :badge[Astro 7]、:badge[MDX]，带链接的 :badge[组件文档]{link="https://docs.astro.build/"}。
+```
+
+**演示**
+
+状态标签 :badge[Astro 7]、:badge[MDX]，带链接的 :badge[组件文档]{link="https://docs.astro.build/"}。
+
+### 键帽 Key
+
+键帽样式，适合快捷键说明。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| 文字 | 是 | 键帽内容 |
+
+**语法**
+
+```mdx
+在编辑器里按 :key[Ctrl] + :key[K] 打开命令面板。
+```
+
+**演示**
+
+在编辑器里按 :key[Ctrl] + :key[K] 打开命令面板。
+
+### 术语提示 Tip
+
+术语下划线加悬停提示。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| 文字 | 是 | 术语文字 |
+| `tip` | 否 | 悬停提示；缺省时只保留普通文本 |
+
+**语法**
+
+```mdx
+Astro 的岛屿架构会把交互组件单独 :tip[水合]{tip="浏览器接管静态 HTML 并绑定事件的过程"}，其余部分保持静态。
+```
+
+**演示**
+
+Astro 的岛屿架构会把交互组件单独 :tip[水合]{tip="浏览器接管静态 HTML 并绑定事件的过程"}，其余部分保持静态。
+
+### 行内复制 Copy
+
+点击复制正文内容，适合命令和短代码。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| 内容 | 是 | 要显示并复制的文本 |
+
+**语法**
+
+```mdx
+构建命令：:copy[npm run build]。
+```
+
+**演示**
+
+构建命令：:copy[npm run build]。
+
+### 代码语言标 CodeLang
+
+带语言标签的行内代码。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `lang` | 否 | 语言标签 |
+| 内容 | 是 | 行内代码内容 |
+
+**语法**
+
+```mdx
+构建命令：:code[npm run build]{lang="bash"}。
+```
+
+**演示**
+
+构建命令：:code[npm run build]{lang="bash"}。
+
+### 人物名片 ProfileCard
+
+人物名片。正文里显示触发词，悬停或聚焦后展开姓名、身份和简介。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `id` | 是 | 全篇唯一标识 |
+| `name` | 是 | 姓名 |
+| `role` | 是 | 身份或职位 |
+| `description` | 是 | 简介 |
+| `trigger` | 否 | 触发词，默认使用 `name` |
+| `avatar` | 否 | 头像图片，用 `$变量` 传入 |
+
+**语法**
+
+```mdx
+有没有想过，这个博客背后其实是一个 :profile-card{id="owner" trigger="全干工程师" name="MmzMing" role="全干工程师" description="白天处理业务代码，空闲时折腾 AI、博客和各种小项目。" avatar="$ownerAvatar"} 在维护？
+```
+
+**演示**
+
+有没有想过，这个博客背后其实是一个 :profile-card{id="owner" trigger="全干工程师" name="MmzMing" role="全干工程师" description="白天处理业务代码，空闲时折腾 AI、博客和各种小项目。" avatar="$ownerAvatar"} 在维护？
+
+### 模糊 Blur
+
+模糊文字，悬停或键盘聚焦后显现；支持行内与块级。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| 内容 | 是 | 行内文字或容器内的 Markdown |
+
+**语法**
+
+````mdx
+遇到报错时，正确的顺序是 :blur[先看文档再改代码]。整段内容也可以隐藏：
+
+:::blur
+块级模糊会把整段内容一起遮住，适合答案、剧透或折叠前的提示。
+:::
+````
+
+**演示**
+
+遇到报错时，正确的顺序是 :blur[先看文档再改代码]。整段内容也可以隐藏：
+
+:::blur
+块级模糊会把整段内容一起遮住，适合答案、剧透或折叠前的提示。
+:::
+
+### 艺术字 ArtText
+
+四种行内艺术字变体：`cre` 流动渐变、`story` 衬线批注、`zoom` 滚动放大、`repeat` 跟手回声（悬停拖影，点击扩散）。
+
+**参数**
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `variant` | 是 | `cre`、`story`、`zoom`、`repeat` |
+| 内容 | 是 | 文字 |
+
+**语法**
+
+```mdx
+四种效果：[!cre:流动渐变] [!story:故事感] [!zoom:放大] [!repeat:回声]。
+```
+
+**演示**
+
+四种效果：[!cre:流动渐变] [!story:故事感] [!zoom:放大] [!repeat:回声]。
+
+以上是本站 MDX 组件的完整说明。`::github`、callout、Mermaid 属于 Markdown 扩展，不在这批组件范围内。
+
+## 参考来源
+
+本文的组件设计参考了 RAGnote 的组件语法指南：
+
+::link-card{link="https://ragnote.top/article/c636666dc6644140919010e78008e287" title="RAGnote 组件语法完全指南" desc="参考来源：RAGnote 富文本组件说明" icon="https://api.ragnote.top/files/bussiness/site_logo/4543f719e787499f8f3fb47782532368_1544604283489600.webp"}

@@ -1,0 +1,17 @@
+---
+interface Props {
+	label: string;
+}
+
+const { label } = Astro.props;
+---
+
+<section
+	class="mdx-tabs__panel"
+	data-mdx-tab-panel
+	data-label={label}
+	role="tabpanel"
+>
+	<span class="mdx-tabs__fallback-label">{label}</span>
+	<slot />
+</section>

@@ -274,6 +274,14 @@ enum I18nKey {
 	copyTemplate = "copyTemplate",
 	copyNotice = "copyNotice",
 
+	// ===== 提示栈 =====
+	toastStackLabel = "toastStackLabel",
+	toastTypeSuccess = "toastTypeSuccess",
+	toastTypeInfo = "toastTypeInfo",
+	toastTypeWarning = "toastTypeWarning",
+	toastTypeError = "toastTypeError",
+	toastTypeLoading = "toastTypeLoading",
+
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	switchToDark = "switchToDark",
 	switchToLight = "switchToLight",

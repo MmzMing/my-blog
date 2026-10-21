@@ -279,6 +279,14 @@ export const zh_CN: Translation = {
 	[Key.copyTemplate]: "复制模板",
 	[Key.copyNotice]: "复制成功，转载请标注本文地址",
 
+	// ===== 提示栈 =====
+	[Key.toastStackLabel]: "通知",
+	[Key.toastTypeSuccess]: "成功",
+	[Key.toastTypeInfo]: "信息",
+	[Key.toastTypeWarning]: "警告",
+	[Key.toastTypeError]: "错误",
+	[Key.toastTypeLoading]: "处理中",
+
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "暗色",
 	[Key.switchToLight]: "亮色",

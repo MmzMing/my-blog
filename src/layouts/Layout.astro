@@ -11,6 +11,7 @@ import MusicManager from "@components/features/MusicManager.astro";
 import MusicPlayer from "@components/features/MusicPlayer.astro";
 import PageLoader from "@components/features/PageLoader.astro";
 import PrivacyModal from "@components/features/PrivacyModal.astro";
+import ToastStack from "@components/features/ToastStack.astro";
 import UserAgreementModal from "@components/features/UserAgreementModal.astro";
 import WikiLinkCardManager from "@components/features/WikiLinkCardManager.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
@@ -282,6 +283,7 @@ const siteLang = lang.replace("_", "-");
     <UserAgreementModal />
     <FancyboxManager />
     <CodeGroupManager />
+    <ToastStack />
     <CopyNoticeManager />
     <WikiLinkCardManager />
   </body>

@@ -30,13 +30,15 @@ const isUrlIcon = icon?.startsWith("/") || icon?.startsWith("http");
 	rel="noopener noreferrer"
 >
 	{banner && (
-		<img
-			class="mdx-link-card__banner"
-			src={banner}
-			alt=""
-			loading="lazy"
-			decoding="async"
-		/>
+		<span class="mdx-link-card__media" aria-hidden="true">
+			<img
+				class="mdx-link-card__banner"
+				src={banner}
+				alt=""
+				loading="lazy"
+				decoding="async"
+			/>
+		</span>
 	)}
 	<span class="mdx-link-card__main">
 		<span class="mdx-link-card__icon" aria-hidden="true">
@@ -54,33 +56,63 @@ const isUrlIcon = icon?.startsWith("/") || icon?.startsWith("http");
 			<span class="mdx-link-card__title">{displayTitle}</span>
 			<span class="mdx-link-card__desc">{desc || host}</span>
 		</span>
-		<Icon
-			name="material-symbols:arrow-outward-rounded"
-			class="mdx-link-card__arrow"
-			aria-hidden="true"
-		/>
+		{!banner && (
+			<Icon
+				name="material-symbols:arrow-outward-rounded"
+				class="mdx-link-card__arrow"
+				aria-hidden="true"
+			/>
+		)}
 	</span>
 </a>
 
 <style is:global>
 .mdx-link-card {
-	display: block;
-	margin: 1rem 0;
+	--mdx-link-card-shadow:
+		0 1px 2px color-mix(in srgb, var(--deep-text) 5%, transparent),
+		0 8px 20px -8px color-mix(in srgb, var(--deep-text) 12%, transparent);
+	--mdx-link-card-shadow-hover:
+		0 2px 4px color-mix(in srgb, var(--deep-text) 6%, transparent),
+		0 14px 28px -10px color-mix(in srgb, var(--deep-text) 18%, transparent);
+	--mdx-link-card-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--mdx-link-card-pop: 1.03;
+
+	position: relative;
+	display: flex;
+	width: 100%;
+	max-width: 24rem;
+	flex-direction: column;
+	margin: 1rem auto;
 	overflow: hidden;
-	border: 1px solid var(--line-divider);
+	border: 1px solid var(--card-border);
 	border-radius: var(--radius-large);
-	background: var(--article-surface-bg);
+	background: var(--card-surface);
+	box-shadow: var(--mdx-link-card-shadow);
 	color: var(--deep-text);
 	text-decoration: none;
 	transition:
-		border-color 0.18s ease,
-		transform 0.18s ease;
+		scale 260ms var(--mdx-link-card-ease-spring),
+		box-shadow 260ms ease,
+		background-color 260ms ease,
+		border-color 260ms ease;
+}
+
+:root.dark .mdx-link-card {
+	--mdx-link-card-shadow:
+		0 1px 2px rgb(0 0 0 / 40%),
+		0 8px 20px -8px rgb(0 0 0 / 60%);
+	--mdx-link-card-shadow-hover:
+		0 2px 4px rgb(0 0 0 / 45%),
+		0 14px 28px -10px rgb(0 0 0 / 70%);
 }
 
 .mdx-link-card:hover,
 .mdx-link-card:focus-visible {
-	border-color: var(--deep-text);
-	transform: translateY(-2px);
+	z-index: 1;
+	scale: var(--mdx-link-card-pop);
+	border-color: var(--card-border-hover);
+	background: var(--card-surface-hover);
+	box-shadow: var(--mdx-link-card-shadow-hover);
 }
 
 .mdx-link-card:focus-visible {
@@ -88,12 +120,56 @@ const isUrlIcon = icon?.startsWith("/") || icon?.startsWith("http");
 	outline-offset: 3px;
 }
 
+.mdx-link-card--banner .mdx-link-card__media {
+	display: block;
+	width: 100%;
+	height: 9.5rem;
+	overflow: hidden;
+}
+
+.mdx-link-card__banner {
+	display: block;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	border-radius: 0;
+	object-fit: cover;
+	object-position: center;
+}
+
+.mdx-link-card .mdx-link-card__banner,
+.mdx-link-card .mdx-link-card__icon img {
+	margin: 0;
+	border-radius: 0;
+	cursor: inherit;
+	pointer-events: none;
+}
+
 .mdx-link-card__main {
 	display: grid;
+	flex: 1;
 	grid-template-columns: 2.25rem minmax(0, 1fr) 1.25rem;
 	gap: 0.75rem;
 	align-items: center;
-	padding: 0.85rem 1rem;
+	padding: 0.75rem 1rem;
+}
+
+.mdx-link-card--banner .mdx-link-card__main {
+	grid-template-columns: 2rem minmax(0, 1fr);
+	gap: 0.75rem;
+	padding: 0.75rem 1rem;
+}
+
+.mdx-link-card--banner .mdx-link-card__icon {
+	width: 2rem;
+	height: 2rem;
+	border-radius: var(--radius-medium);
+}
+
+.mdx-link-card--banner .mdx-link-card__icon svg,
+.mdx-link-card--banner .mdx-link-card__icon img {
+	width: 1.125rem;
+	height: 1.125rem;
 }
 
 .mdx-link-card__icon {
@@ -119,13 +195,13 @@ const isUrlIcon = icon?.startsWith("/") || icon?.startsWith("http");
 	display: flex;
 	min-width: 0;
 	flex-direction: column;
-	gap: 0.15rem;
+	gap: 0.2rem;
 }
 
 .mdx-link-card__title {
 	overflow: hidden;
 	color: var(--deep-text);
-	font-size: 0.9rem;
+	font-size: 0.95rem;
 	font-weight: 700;
 	line-height: 1.4;
 	text-overflow: ellipsis;
@@ -135,7 +211,7 @@ const isUrlIcon = icon?.startsWith("/") || icon?.startsWith("http");
 .mdx-link-card__desc {
 	overflow: hidden;
 	color: var(--content-meta);
-	font-size: 0.78rem;
+	font-size: 0.8rem;
 	line-height: 1.4;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -153,16 +229,34 @@ const isUrlIcon = icon?.startsWith("/") || icon?.startsWith("http");
 	color: var(--deep-text);
 }
 
-.mdx-link-card--banner .mdx-link-card__banner {
-	display: block;
+.mdx-link-card-grid {
+	display: flex;
 	width: 100%;
-	height: 8rem;
-	object-fit: cover;
+	max-width: 48rem;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 1rem;
+	align-items: stretch;
+	margin: 1.25rem auto;
+	container-type: inline-size;
 }
 
-@media (max-width: 768px) {
-	.mdx-link-card--banner .mdx-link-card__banner {
-		height: 6rem;
+.mdx-link-card-grid > .mdx-link-card {
+	height: 100%;
+	max-width: none;
+	margin: 0;
+	flex: 0 0 100%;
+}
+
+@container (min-width: 29rem) {
+	.mdx-link-card-grid > .mdx-link-card {
+		flex-basis: calc((100% - 1rem) / 2);
+	}
+}
+
+@container (min-width: 44rem) {
+	.mdx-link-card-grid > .mdx-link-card {
+		flex-basis: calc((100% - 2rem) / 3);
 	}
 }
 

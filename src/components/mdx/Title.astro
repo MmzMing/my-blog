@@ -1,0 +1,52 @@
+---
+---
+
+<div class="mdx-title" role="heading" aria-level="3">
+	<span class="mdx-title__mark" aria-hidden="true"></span>
+	<span class="mdx-title__text"><slot /></span>
+	<span class="mdx-title__line" aria-hidden="true"></span>
+</div>
+
+<style is:global>
+.mdx-title {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	margin: 2rem 0 1rem;
+	color: var(--deep-text);
+}
+
+.mdx-title__mark {
+	width: 0.35rem;
+	height: 1.35rem;
+	flex: none;
+	border-radius: 999px;
+	background: #00a29b;
+}
+
+.mdx-title__text {
+	font-size: 1.3rem;
+	font-weight: 800;
+	letter-spacing: 0.01em;
+	line-height: 1.35;
+}
+
+.mdx-title__line {
+	height: 1px;
+	flex: 1;
+	background: linear-gradient(
+		to right,
+		var(--line-divider),
+		transparent
+	);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.mdx-title__mark {
+		transition: transform 0.2s ease;
+	}
+	.mdx-title:hover .mdx-title__mark {
+		transform: scaleY(1.12);
+	}
+}
+</style>

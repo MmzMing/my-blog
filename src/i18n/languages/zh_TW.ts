@@ -280,6 +280,14 @@ export const zh_TW: Translation = {
 	[Key.copyTemplate]: "複製範本",
 	[Key.copyNotice]: "複製成功，轉載請標註本文地址",
 
+	// ===== 提示栈 =====
+	[Key.toastStackLabel]: "通知",
+	[Key.toastTypeSuccess]: "成功",
+	[Key.toastTypeInfo]: "資訊",
+	[Key.toastTypeWarning]: "警告",
+	[Key.toastTypeError]: "錯誤",
+	[Key.toastTypeLoading]: "處理中",
+
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "切換深色",
 	[Key.switchToLight]: "切換淺色",

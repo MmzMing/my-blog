@@ -9,18 +9,21 @@
 }
 
 .mdx-card-list ul {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.75rem;
+	align-items: stretch;
 	margin: 0;
 	padding: 0;
 	list-style: none;
 }
 
 .mdx-card-list li {
+	height: 100%;
 	padding: 0.7rem 0.9rem;
+	border: 1px solid var(--card-border);
 	border-radius: var(--radius-medium);
-	background: var(--tag-graph-surface);
+	background: var(--card-surface);
 	color: var(--deep-text);
 	line-height: 1.7;
 }
@@ -32,5 +35,17 @@
 .mdx-card-list li strong {
 	color: var(--deep-text);
 	font-weight: 700;
+}
+
+@media (max-width: 1024px) {
+	.mdx-card-list ul {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.mdx-card-list ul {
+		grid-template-columns: 1fr;
+	}
 }
 </style>

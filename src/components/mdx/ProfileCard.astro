@@ -27,24 +27,26 @@ const cardId = `profile-card-inline-${id}`;
 		<span class="profile-card-inline__trigger-label">{triggerText}</span>
 	</span>
 	<span id={cardId} class="profile-card-inline__card" role="tooltip">
-		<span class="profile-card-inline__avatar" aria-hidden="true">
-			{avatarSrc ? (
-				<img
-					class="profile-card-inline__avatar-image"
-					src={avatarSrc}
-					alt=""
-					loading="lazy"
-					decoding="async"
-				/>
-			) : (
-				<span class="profile-card-inline__avatar-fallback">{name}</span>
-			)}
+		<span class="profile-card-inline__header">
+			<span class="profile-card-inline__avatar" aria-hidden="true">
+				{avatarSrc ? (
+					<img
+						class="profile-card-inline__avatar-image"
+						src={avatarSrc}
+						alt=""
+						loading="lazy"
+						decoding="async"
+					/>
+				) : (
+					<span class="profile-card-inline__avatar-fallback">{name}</span>
+				)}
+			</span>
+			<span class="profile-card-inline__identity">
+				<span class="profile-card-inline__name">{name}</span>
+				<span class="profile-card-inline__role">{role}</span>
+			</span>
 		</span>
-		<span class="profile-card-inline__content">
-			<span class="profile-card-inline__name">{name}</span>
-			<span class="profile-card-inline__role">{role}</span>
-			<span class="profile-card-inline__description">{description}</span>
-		</span>
+		<span class="profile-card-inline__description">{description}</span>
 	</span>
 </span>
 
@@ -161,11 +163,10 @@ const cardId = `profile-card-inline-${id}`;
 	top: calc(100% + 0.625rem);
 	left: var(--profile-card-left, 0);
 	z-index: 20;
-	display: grid;
-	width: min(19rem, calc(100vw - 3rem));
-	grid-template-columns: 3rem minmax(0, 1fr);
-	gap: 0.75rem;
-	padding: 0.75rem;
+	display: flex;
+	flex-direction: column;
+	width: min(14rem, calc(100vw - 3rem));
+	padding: 0.75rem 1rem;
 	border: 1.5px solid var(--deep-text);
 	border-radius: var(--radius-medium);
 	background: var(--float-panel-bg);
@@ -204,14 +205,20 @@ const cardId = `profile-card-inline-${id}`;
 	visibility: visible;
 }
 
-.profile-card-inline__avatar {
+.profile-card-inline__header {
 	display: flex;
 	align-items: center;
+	gap: 0.75rem;
+}
+
+.profile-card-inline__avatar {
+	display: flex;
+	flex: none;
+	align-items: center;
 	justify-content: center;
-	width: 3rem;
-	height: 3rem;
+	width: 3.5rem;
+	height: 3.5rem;
 	overflow: hidden;
-	border: 1px solid var(--deep-text);
 	border-radius: var(--radius-full);
 }
 
@@ -223,34 +230,42 @@ const cardId = `profile-card-inline-${id}`;
 }
 
 .profile-card-inline__avatar-fallback {
-	font-size: 0.6875rem;
+	font-size: 0.75rem;
 	font-weight: 700;
 }
 
-.profile-card-inline__content {
+.profile-card-inline__identity {
 	display: flex;
 	min-width: 0;
 	flex-direction: column;
+	gap: 0.1rem;
 }
 
 .profile-card-inline__name {
 	color: var(--article-title-marker);
-	font-size: 0.875rem;
+	font-size: 1.0625rem;
 	font-weight: 700;
+	line-height: 1.25;
 }
 
 .profile-card-inline__role {
 	color: var(--content-meta);
 	font-size: 0.75rem;
+	line-height: 1.3;
 }
 
 .profile-card-inline__description {
-	margin-top: 0.25rem;
+	margin-top: 0.5rem;
+	color: var(--content-meta);
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	text-wrap: balance;
 }
 
 @media (max-width: 768px) {
 	.profile-card-inline__card {
-		width: min(17rem, calc(100vw - 2.5rem));
+		width: min(13rem, calc(100vw - 2.5rem));
+		padding: 0.75rem 1rem;
 	}
 }
 

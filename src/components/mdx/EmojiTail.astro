@@ -1,0 +1,140 @@
+---
+interface Props {
+	emojis?: string | string[];
+}
+
+const { emojis: emojisInput } = Astro.props;
+
+function parseEmojis(value: string | string[] | undefined): string[] {
+	if (Array.isArray(value)) {
+		return value.filter((item) => typeof item === "string" && item).slice(0, 6);
+	}
+	if (typeof value !== "string" || !value.trim()) return [];
+
+	const trimmed = value.trim();
+	if (trimmed.startsWith("[")) {
+		try {
+			const parsed: unknown = JSON.parse(trimmed);
+			return Array.isArray(parsed)
+				? parsed.filter((item) => typeof item === "string" && item).slice(0, 6)
+				: [];
+		} catch {
+			return [];
+		}
+	}
+
+	return trimmed
+		.split(/[,，\s]+/)
+		.filter(Boolean)
+		.slice(0, 6);
+}
+
+const emojis = parseEmojis(emojisInput);
+---
+
+<div class="mdx-emoji-tail">
+	{
+		emojis.length > 0 && (
+			<span class="mdx-emoji-tail__layer" aria-hidden="true">
+				{emojis.map((emoji, index) => (
+					<span
+						class="mdx-emoji-tail__emoji"
+						style={`--index: ${index}`}
+					>
+						{emoji}
+					</span>
+				))}
+			</span>
+		)
+	}
+	<div class="mdx-emoji-tail__content"><slot /></div>
+</div>
+
+<style is:global>
+.mdx-emoji-tail {
+	--mdx-emoji-size: 5rem;
+	--mdx-emoji-opacity: 0.2;
+	position: relative;
+	display: flex;
+	min-height: calc(var(--mdx-emoji-size) + 1.2em);
+	flex-direction: column;
+	justify-content: center;
+	margin: 1.2em 0;
+	padding: 0.7em 1.2em;
+	overflow: hidden;
+	color: var(--content-meta);
+	font-size: 1.05em;
+	line-height: 1.7;
+	isolation: isolate;
+}
+
+.mdx-emoji-tail__layer {
+	position: absolute;
+	inset: 0 1.2em;
+	z-index: -1;
+	display: flex;
+	flex-wrap: wrap;
+	align-content: center;
+	align-items: center;
+	justify-content: flex-start;
+	gap: calc(var(--mdx-emoji-size) * 0.08);
+	opacity: var(--mdx-emoji-opacity);
+	pointer-events: none;
+	transition: opacity 0.3s ease;
+}
+
+.mdx-emoji-tail__emoji {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: var(--mdx-emoji-size);
+	line-height: 1;
+	transition: transform 0.36s cubic-bezier(0.34, 1.4, 0.64, 1);
+	transition-delay: calc(var(--index) * 0.06s);
+	will-change: transform;
+	user-select: none;
+}
+
+.mdx-emoji-tail__content {
+	position: relative;
+	z-index: 1;
+	color: inherit;
+}
+
+.mdx-emoji-tail__content > :first-child {
+	margin-top: 0;
+}
+
+.mdx-emoji-tail__content > :last-child {
+	margin-bottom: 0;
+}
+
+.mdx-emoji-tail:hover .mdx-emoji-tail__layer,
+.mdx-emoji-tail:focus-within .mdx-emoji-tail__layer {
+	opacity: min(calc(var(--mdx-emoji-opacity) * 2.5), 0.6);
+}
+
+.mdx-emoji-tail:hover .mdx-emoji-tail__emoji,
+.mdx-emoji-tail:focus-within .mdx-emoji-tail__emoji {
+	transform: translateY(-10px);
+}
+
+@media (max-width: 640px) {
+	.mdx-emoji-tail {
+		--mdx-emoji-size: 3.2rem;
+		padding: 0.7em 1rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mdx-emoji-tail__layer,
+	.mdx-emoji-tail__emoji {
+		transition: none;
+	}
+
+	.mdx-emoji-tail:hover .mdx-emoji-tail__emoji,
+	.mdx-emoji-tail:focus-within .mdx-emoji-tail__emoji {
+		transform: none;
+	}
+}
+</style>

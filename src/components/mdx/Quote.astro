@@ -1,0 +1,95 @@
+---
+import Icon from "@components/common/Icon.astro";
+
+interface Props {
+	icon?: string;
+}
+
+const { icon = "mingcute:message-2-line" } = Astro.props;
+---
+
+<blockquote class="mdx-quote">
+	<span class="mdx-quote__icon" aria-hidden="true">
+		<Icon name={icon} />
+	</span>
+	<div class="mdx-quote__content">
+		<slot />
+	</div>
+</blockquote>
+
+<style is:global>
+.mdx-quote {
+	position: relative;
+	isolation: isolate;
+	margin: 1.6em 0;
+	padding: 0.4em 1.2em 0.4em 1.6em;
+	border: 0;
+	background: transparent;
+	color: var(--content-meta);
+	font-size: 1.14em;
+	line-height: 1.7;
+}
+
+/* 正文的 blockquote 默认会挂一个引号伪元素，这里换成组件自己的图标 */
+.mdx-quote.mdx-quote::before {
+	content: none;
+}
+
+.mdx-quote__icon {
+	position: absolute;
+	top: -0.25em;
+	left: 0;
+	z-index: -1;
+	display: block;
+	width: 1em;
+	height: 1em;
+	color: var(--article-title-marker);
+	font-size: 3.2em;
+	line-height: 1;
+	opacity: 0.55;
+	mask-image: linear-gradient(white, transparent);
+	-webkit-mask-image: linear-gradient(white, transparent);
+	transition:
+		opacity 0.2s ease,
+		transform 0.25s ease;
+	pointer-events: none;
+}
+
+.mdx-quote__icon svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.mdx-quote:hover .mdx-quote__icon,
+.mdx-quote:focus-within .mdx-quote__icon {
+	opacity: 0.85;
+	transform: translateY(-4px) scale(1.18);
+}
+
+.mdx-quote__content {
+	position: relative;
+	min-width: 0;
+	font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+	font-style: italic;
+}
+
+.mdx-quote__content > :first-child {
+	margin-top: 0;
+}
+
+.mdx-quote__content > :last-child {
+	margin-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mdx-quote__icon {
+		transition: none;
+	}
+
+	.mdx-quote:hover .mdx-quote__icon,
+	.mdx-quote:focus-within .mdx-quote__icon {
+		transform: none;
+	}
+}
+</style>

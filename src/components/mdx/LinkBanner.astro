@@ -1,0 +1,259 @@
+---
+import Icon from "@components/common/Icon.astro";
+
+interface Props {
+	title?: string;
+	desc?: string;
+	link: string;
+	icon?: string;
+	banner?: string;
+}
+
+const { title, desc, link, icon, banner } = Astro.props;
+
+const host = (() => {
+	try {
+		return new URL(link).hostname;
+	} catch {
+		return link;
+	}
+})();
+
+const displayTitle = title || host;
+const isUrlIcon = icon?.startsWith("/") || icon?.startsWith("http");
+---
+
+<a
+	class:list={[
+		"mdx-link-banner no-styling",
+		banner && "mdx-link-banner--with-banner",
+	]}
+	href={link}
+	target="_blank"
+	rel="noopener noreferrer"
+>
+	{banner && (
+		<span class="mdx-link-banner__media" aria-hidden="true">
+			<img
+				class="mdx-link-banner__image"
+				src={banner}
+				alt=""
+				loading="lazy"
+				decoding="async"
+			/>
+		</span>
+	)}
+	<span
+		class:list={[
+			"mdx-link-banner__body",
+			icon && "mdx-link-banner__body--with-icon",
+		]}
+	>
+		{icon && (
+			<span class="mdx-link-banner__icon" aria-hidden="true">
+				{isUrlIcon ? (
+					<img src={icon} alt="" loading="lazy" decoding="async" />
+				) : (
+					<Icon name={icon} />
+				)}
+			</span>
+		)}
+		<span class="mdx-link-banner__content">
+			<span class="mdx-link-banner__title">{displayTitle}</span>
+			<span class="mdx-link-banner__desc">{desc || host}</span>
+		</span>
+		<Icon
+			name="material-symbols:arrow-outward-rounded"
+			class="mdx-link-banner__arrow"
+			aria-hidden="true"
+		/>
+	</span>
+</a>
+
+<style is:global>
+.mdx-link-banner {
+	--mdx-link-banner-shadow:
+		0 1px 2px color-mix(in srgb, var(--deep-text) 5%, transparent),
+		0 8px 20px -8px color-mix(in srgb, var(--deep-text) 12%, transparent);
+	--mdx-link-banner-shadow-hover:
+		0 2px 4px color-mix(in srgb, var(--deep-text) 6%, transparent),
+		0 14px 28px -10px color-mix(in srgb, var(--deep-text) 18%, transparent);
+
+	position: relative;
+	display: flex;
+	width: 100%;
+	max-width: 48rem;
+	flex-direction: column;
+	margin: 1.5rem auto;
+	overflow: hidden;
+	border: 1px solid var(--card-border);
+	border-radius: var(--radius-large);
+	background: var(--card-surface);
+	box-shadow: var(--mdx-link-banner-shadow);
+	color: var(--deep-text);
+	text-decoration: none;
+	transition:
+		scale 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+		box-shadow 260ms ease,
+		background-color 260ms ease,
+		border-color 260ms ease;
+}
+
+:root.dark .mdx-link-banner {
+	--mdx-link-banner-shadow:
+		0 1px 2px rgb(0 0 0 / 40%),
+		0 8px 20px -8px rgb(0 0 0 / 60%);
+	--mdx-link-banner-shadow-hover:
+		0 2px 4px rgb(0 0 0 / 45%),
+		0 14px 28px -10px rgb(0 0 0 / 70%);
+}
+
+.mdx-link-banner:hover,
+.mdx-link-banner:focus-visible {
+	z-index: 1;
+	scale: 1.03;
+	border-color: var(--card-border-hover);
+	background: var(--card-surface-hover);
+	box-shadow: var(--mdx-link-banner-shadow-hover);
+}
+
+.mdx-link-banner:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 3px;
+}
+
+.mdx-link-banner__media {
+	display: block;
+	width: 100%;
+	height: 12rem;
+	overflow: hidden;
+}
+
+.mdx-link-banner .mdx-link-banner__image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	border-radius: 0;
+	object-fit: cover;
+	object-position: center;
+	cursor: inherit;
+	pointer-events: none;
+}
+
+.mdx-link-banner .mdx-link-banner__icon img {
+	margin: 0;
+	border-radius: 0;
+	cursor: inherit;
+	pointer-events: none;
+}
+
+.mdx-link-banner__body {
+	display: grid;
+	flex: 1;
+	grid-template-columns: minmax(0, 1fr) 1.25rem;
+	gap: 1rem;
+	align-items: center;
+	padding: 0.9rem 1.1rem;
+}
+
+.mdx-link-banner__body--with-icon {
+	grid-template-columns: 2.25rem minmax(0, 1fr) 1.25rem;
+	gap: 0.75rem;
+}
+
+.mdx-link-banner__icon {
+	display: flex;
+	width: 2.25rem;
+	height: 2.25rem;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	border-radius: var(--radius-medium);
+	background: var(--page-bg);
+	color: var(--deep-text);
+}
+
+.mdx-link-banner__icon svg,
+.mdx-link-banner__icon img {
+	width: 1.25rem;
+	height: 1.25rem;
+	object-fit: contain;
+}
+
+.mdx-link-banner__content {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: 0.2rem;
+}
+
+.mdx-link-banner__title {
+	overflow: hidden;
+	color: var(--deep-text);
+	font-size: 1rem;
+	font-weight: 700;
+	line-height: 1.4;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.mdx-link-banner__desc {
+	overflow: hidden;
+	color: var(--content-meta);
+	font-size: 0.82rem;
+	line-height: 1.4;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.mdx-link-banner__arrow {
+	width: 1.25rem;
+	height: 1.25rem;
+	color: var(--content-meta);
+	transition: color 0.18s ease;
+}
+
+.mdx-link-banner:hover .mdx-link-banner__arrow,
+.mdx-link-banner:focus-visible .mdx-link-banner__arrow {
+	color: var(--deep-text);
+}
+
+@media (max-width: 640px) {
+	.mdx-link-banner__media {
+		height: 8.5rem;
+	}
+
+	.mdx-link-banner__body {
+		padding: 0.8rem 0.9rem;
+	}
+
+	.mdx-link-banner__body--with-icon {
+		grid-template-columns: 1.75rem minmax(0, 1fr) 1rem;
+		gap: 0.6rem;
+	}
+
+	.mdx-link-banner__icon {
+		width: 1.75rem;
+		height: 1.75rem;
+	}
+
+	.mdx-link-banner__icon svg,
+	.mdx-link-banner__icon img {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.mdx-link-banner__arrow {
+		width: 1rem;
+		height: 1rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mdx-link-banner,
+	.mdx-link-banner__arrow {
+		transition: none;
+	}
+}
+</style>

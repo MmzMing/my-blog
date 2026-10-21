@@ -1,0 +1,145 @@
+---
+import Icon from "@components/common/Icon.astro";
+
+interface Props {
+	src: string;
+	title?: string;
+}
+
+const { src, title = "嵌入视频" } = Astro.props;
+
+function normalizeVideoUrl(input: string): string | null {
+	try {
+		const url = new URL(input);
+		return url.protocol === "http:" || url.protocol === "https:"
+			? url.toString()
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+function getEmbedUrl(input: string): string | null {
+	let url: URL;
+	try {
+		url = new URL(input);
+	} catch {
+		return null;
+	}
+
+	const host = url.hostname.replace(/^www\./, "");
+
+	if (
+		host === "bilibili.com" ||
+		host === "m.bilibili.com" ||
+		host === "player.bilibili.com"
+	) {
+		if (host === "player.bilibili.com") {
+			return `https://player.bilibili.com${url.pathname}${url.search}`;
+		}
+
+		const bv = url.pathname.match(/\/video\/(BV[0-9A-Za-z]+)/i)?.[1];
+		if (bv) {
+			return `https://player.bilibili.com/player.html?bvid=${encodeURIComponent(bv)}&autoplay=0`;
+		}
+
+		const av = url.pathname.match(/\/video\/av(\d+)/i)?.[1];
+		if (av) {
+			return `https://player.bilibili.com/player.html?aid=${encodeURIComponent(av)}&autoplay=0`;
+		}
+		return null;
+	}
+
+	if (host === "youtu.be") {
+		const id = url.pathname.split("/").filter(Boolean)[0];
+		return id
+			? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`
+			: null;
+	}
+
+	if (
+		host === "youtube.com" ||
+		host === "m.youtube.com" ||
+		host === "youtube-nocookie.com"
+	) {
+		const embedId = url.pathname.match(/^\/embed\/([^/]+)/)?.[1];
+		const id = embedId || url.searchParams.get("v") || "";
+		return id
+			? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`
+			: null;
+	}
+
+	return null;
+}
+
+const sourceUrl = normalizeVideoUrl(src);
+const embedUrl = sourceUrl ? getEmbedUrl(sourceUrl) : null;
+---
+
+{
+	embedUrl ? (
+		<div class="mdx-video">
+			<iframe
+				src={embedUrl}
+				title={title}
+				loading="lazy"
+				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+				referrerpolicy="strict-origin-when-cross-origin"
+			/>
+		</div>
+	) : (
+		<div class="mdx-video mdx-video--fallback">
+			<Icon name="material-symbols:movie" aria-hidden="true" />
+			<span>暂不支持该视频地址</span>
+			{sourceUrl && (
+				<a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+					打开原链接
+				</a>
+			)}
+		</div>
+	)
+}
+
+<style is:global>
+.mdx-video {
+	position: relative;
+	width: 100%;
+	margin: 1.5rem 0;
+	overflow: hidden;
+	border: 1px solid var(--card-border);
+	border-radius: var(--radius-large);
+	background: #000;
+	aspect-ratio: 16 / 9;
+}
+
+.mdx-video iframe {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
+}
+
+.mdx-video--fallback {
+	display: flex;
+	min-height: 8rem;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	background: var(--article-surface-bg);
+	color: var(--content-meta);
+	font-size: 0.85rem;
+	aspect-ratio: auto;
+}
+
+.mdx-video--fallback > svg {
+	width: 1.75rem;
+	height: 1.75rem;
+	color: var(--content-meta);
+}
+
+.mdx-video--fallback a {
+	color: var(--link-color);
+	font-weight: 600;
+}
+</style>

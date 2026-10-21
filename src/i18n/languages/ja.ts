@@ -285,6 +285,14 @@ export const ja: Translation = {
 	[Key.copyTemplate]: "テンプレートをコピー",
 	[Key.copyNotice]: "コピーしました。転載の際は本文のURLを明記してください",
 
+	// ===== 提示栈 =====
+	[Key.toastStackLabel]: "通知",
+	[Key.toastTypeSuccess]: "成功",
+	[Key.toastTypeInfo]: "情報",
+	[Key.toastTypeWarning]: "警告",
+	[Key.toastTypeError]: "エラー",
+	[Key.toastTypeLoading]: "処理中",
+
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "ダークモードに切替",
 	[Key.switchToLight]: "ライトモードに切替",

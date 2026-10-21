@@ -1,0 +1,33 @@
+---
+interface Props {
+	lang?: string;
+}
+
+const { lang } = Astro.props;
+---
+
+<code class="mdx-code-lang">
+	<slot />
+	{lang && <span class="mdx-code-lang__tag">{lang}</span>}
+</code>
+
+<style is:global>
+.mdx-code-lang {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	vertical-align: 0.05em;
+}
+
+.mdx-code-lang__tag {
+	padding-left: 0.35rem;
+	border-left: 1px solid var(--line-divider);
+	color: var(--content-meta);
+	font-family: var(--font-sans);
+	font-size: 0.72em;
+	font-weight: 600;
+	line-height: 1;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+}
+</style>

@@ -970,7 +970,21 @@ if (toolsButton && toolsPanel) {
 		toolsPointerInside = true;
 		cancelToolsClose();
 	});
-	toolsPanel.addEventListener("mouseleave", () => {
+	toolsPanel.addEventListener("mouseleave", (event) => {
+		const rect = toolsPanel.getBoundingClientRect();
+		const stillInside =
+			event.clientX >= rect.left &&
+			event.clientX <= rect.right &&
+			event.clientY >= rect.top &&
+			event.clientY <= rect.bottom;
+		// 主题切换的 View Transition 会把指针命中转交给快照层，
+		// 指针没离开箱体也会补发 mouseleave；按坐标确认后再收起
+		if (
+			stillInside &&
+			document.documentElement.classList.contains("is-theme-transitioning")
+		) {
+			return;
+		}
 		toolsPointerInside = false;
 		scheduleToolsClose();
 	});

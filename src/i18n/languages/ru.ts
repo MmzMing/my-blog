@@ -285,6 +285,14 @@ export const ru: Translation = {
 	[Key.copyTemplate]: "Копировать шаблон",
 	[Key.copyNotice]: "Скопировано. При перепечатке укажите ссылку на эту статью",
 
+	// ===== 提示栈 =====
+	[Key.toastStackLabel]: "Уведомления",
+	[Key.toastTypeSuccess]: "Готово",
+	[Key.toastTypeInfo]: "Информация",
+	[Key.toastTypeWarning]: "Внимание",
+	[Key.toastTypeError]: "Ошибка",
+	[Key.toastTypeLoading]: "Выполняется",
+
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "Включить тёмную тему",
 	[Key.switchToLight]: "Включить светлую тему",

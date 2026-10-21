@@ -1,0 +1,218 @@
+---
+import Icon from "@components/common/Icon.astro";
+
+type AlertType = "tip" | "info" | "question" | "warning" | "error";
+
+interface Props {
+	type?: AlertType;
+	title?: string;
+	card?: boolean | string;
+	flat?: boolean | string;
+	color?: string;
+	icon?: string;
+	text?: string;
+}
+
+const {
+	type: typeInput = "tip",
+	title,
+	card = false,
+	flat = false,
+	color,
+	icon,
+	text,
+} = Astro.props;
+
+const types: AlertType[] = ["tip", "info", "question", "warning", "error"];
+const type = types.includes(typeInput) ? typeInput : "tip";
+
+const defaults: Record<AlertType, { title: string; icon: string }> = {
+	tip: { title: "提醒", icon: "material-symbols:lightbulb-outline" },
+	info: { title: "信息", icon: "material-symbols:info-outline" },
+	question: { title: "问题", icon: "material-symbols:help-outline" },
+	warning: { title: "警告", icon: "material-symbols:warning-outline" },
+	error: { title: "错误", icon: "material-symbols:error-outline" },
+};
+
+const displayTitle = title || defaults[type].title;
+const displayIcon = icon || defaults[type].icon;
+const isCard = card === true || card === "true";
+const isFlat = flat === true || flat === "true";
+const variant = isFlat ? "flat" : isCard ? "card" : "default";
+const hasContent = Astro.slots.has("default");
+
+const safeColor =
+	typeof color === "string" &&
+	/^(#[0-9a-f]{3,8}|(?:rgb|hsl|oklch|oklab)\([^)]*\)|var\(--[\w-]+\))$/i.test(
+		color.trim(),
+	)
+		? color.trim()
+		: undefined;
+---
+
+<div
+	class:list={["mdx-alert", `mdx-alert--${variant}`]}
+	data-type={type}
+	role="note"
+	style={safeColor ? `--mdx-alert-color: ${safeColor}` : undefined}
+>
+	<span class="mdx-alert__icon" aria-hidden="true">
+		<Icon name={displayIcon} />
+	</span>
+	<div class="mdx-alert__main">
+		<div class="mdx-alert__title">{displayTitle}</div>
+		{
+			hasContent ? (
+				<div class="mdx-alert__body">
+					<slot />
+				</div>
+			) : text ? (
+				<div class="mdx-alert__body">{text}</div>
+			) : null
+		}
+	</div>
+</div>
+
+<style is:global>
+.mdx-alert {
+	--mdx-alert-color: #00a29b;
+	position: relative;
+	display: grid;
+	grid-template-columns: 1.5rem minmax(0, 1fr);
+	gap: 0.75rem;
+	margin: 1.25rem 0;
+	padding: 0.9rem 1rem;
+	overflow: hidden;
+	border: 1px solid
+		color-mix(in srgb, var(--mdx-alert-color) 24%, var(--line-divider));
+	border-radius: var(--radius-large);
+	background: color-mix(
+		in srgb,
+		var(--mdx-alert-color) 7%,
+		var(--article-surface-bg)
+	);
+	color: var(--deep-text);
+}
+
+.mdx-alert[data-type="info"] {
+	--mdx-alert-color: #3b82f6;
+}
+
+.mdx-alert[data-type="question"] {
+	--mdx-alert-color: #8b5cf6;
+}
+
+.mdx-alert[data-type="warning"] {
+	--mdx-alert-color: #f59e0b;
+}
+
+.mdx-alert[data-type="error"] {
+	--mdx-alert-color: #ef4444;
+}
+
+.mdx-alert--card {
+	border-color: color-mix(
+		in srgb,
+		var(--mdx-alert-color) 30%,
+		var(--card-border)
+	);
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--mdx-alert-color) 12%, var(--card-surface)),
+		var(--card-surface) 72%
+	);
+	box-shadow:
+		0 1px 2px color-mix(in srgb, var(--deep-text) 5%, transparent),
+		0 12px 26px -18px color-mix(in srgb, var(--mdx-alert-color) 35%, transparent);
+}
+
+.mdx-alert--card::before {
+	position: absolute;
+	top: -55%;
+	left: 10%;
+	width: 80%;
+	height: 110%;
+	border-radius: 50%;
+	background: radial-gradient(
+		closest-side,
+		color-mix(in srgb, var(--mdx-alert-color) 22%, transparent),
+		transparent
+	);
+	content: "";
+	pointer-events: none;
+}
+
+.mdx-alert--card .mdx-alert__icon,
+.mdx-alert--card .mdx-alert__main {
+	position: relative;
+	z-index: 1;
+}
+
+.mdx-alert--flat {
+	border-color: color-mix(
+		in srgb,
+		var(--mdx-alert-color) 16%,
+		var(--line-divider)
+	);
+	background: color-mix(
+		in srgb,
+		var(--mdx-alert-color) 3%,
+		var(--article-surface-bg)
+	);
+	box-shadow: none;
+}
+
+.mdx-alert__icon {
+	display: flex;
+	width: 1.5rem;
+	height: 1.5rem;
+	margin-top: 0.08rem;
+	align-items: center;
+	justify-content: center;
+	color: var(--mdx-alert-color);
+}
+
+.mdx-alert__icon svg {
+	width: 100%;
+	height: 100%;
+}
+
+.mdx-alert__main {
+	min-width: 0;
+}
+
+.mdx-alert__title {
+	color: color-mix(in oklab, var(--mdx-alert-color) 65%, var(--deep-text));
+	font-size: 0.9rem;
+	font-weight: 700;
+	line-height: 1.45;
+}
+
+.mdx-alert__body {
+	margin-top: 0.2rem;
+	color: var(--deep-text);
+	font-size: 0.88rem;
+	line-height: 1.7;
+}
+
+.mdx-alert__body > :first-child {
+	margin-top: 0;
+}
+
+.mdx-alert__body > :last-child {
+	margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+	.mdx-alert {
+		grid-template-columns: 1.25rem minmax(0, 1fr);
+		gap: 0.6rem;
+		padding: 0.8rem 0.85rem;
+	}
+
+	.mdx-alert__icon {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+}
+</style>

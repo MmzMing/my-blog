@@ -283,6 +283,14 @@ export const en: Translation = {
 	[Key.copyTemplate]: "Copy template",
 	[Key.copyNotice]: "Copied. Please credit this article's URL when reposting.",
 
+	// ===== 提示栈 =====
+	[Key.toastStackLabel]: "Notifications",
+	[Key.toastTypeSuccess]: "Success",
+	[Key.toastTypeInfo]: "Info",
+	[Key.toastTypeWarning]: "Warning",
+	[Key.toastTypeError]: "Error",
+	[Key.toastTypeLoading]: "In progress",
+
 	// ===== 悬浮坞 / 导航 / 主题 =====
 	[Key.switchToDark]: "Switch to dark mode",
 	[Key.switchToLight]: "Switch to light mode",

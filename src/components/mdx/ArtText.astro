@@ -1,0 +1,574 @@
+---
+interface Props {
+	variant?: string;
+}
+
+const variants = ["cre", "story", "zoom", "repeat"] as const;
+type ArtVariant = (typeof variants)[number];
+
+const { variant: variantInput = "cre" } = Astro.props;
+const variant = variants.includes(variantInput as ArtVariant)
+	? (variantInput as ArtVariant)
+	: "cre";
+---
+
+<span
+	class:list={["mdx-art-text", `mdx-art-text--${variant}`]}
+	data-art-text-echo={variant === "repeat" ? "true" : undefined}
+>
+	{variant === "repeat" ? (
+		<>
+			<span
+				class="mdx-art-text__bursts"
+				data-art-text-bursts
+				aria-hidden="true"
+			></span>
+			<span
+				class="mdx-art-text__echo mdx-art-text__echo--front"
+				data-art-text-front
+			>
+				<slot />
+			</span>
+		</>
+	) : (
+		<slot />
+	)}
+</span>
+
+<script is:inline>
+	(function () {
+		const roots = document.querySelectorAll("[data-art-text-echo]");
+		if (!roots.length) {
+			window.__mdxArtTextEcho?.scan();
+			return;
+		}
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+		if (window.__mdxArtTextEcho) {
+			window.__mdxArtTextEcho.scan();
+			return;
+		}
+
+		const ECHO_COUNT = 12;
+		const LAG = 0.24;
+		const FADE = 0.72;
+		const CURSOR_RADIUS = 320;
+		const ENTRANCE_DURATION = 900;
+		const BURST_LIFE = 1100;
+		const BURST_GAP = 80;
+		const DIRECTION = { x: 1, y: 0 };
+
+		const states = [];
+		const stateByRoot = new WeakMap();
+		let frame = 0;
+		let lastFrame = 0;
+
+		const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+		const easeOut = (value) => 1 - Math.pow(1 - value, 3);
+
+		function scan() {
+			for (let index = states.length - 1; index >= 0; index -= 1) {
+				if (states[index].root.isConnected) continue;
+				if (states[index].observer) states[index].observer.disconnect();
+				states[index].burstList.forEach((burst) =>
+					burst.nodes.forEach((node) => node.remove()),
+				);
+				states.splice(index, 1);
+			}
+
+			document.querySelectorAll("[data-art-text-echo]").forEach((root) => {
+				if (root.dataset.echoReady) return;
+				root.dataset.echoReady = "1";
+				const state = createState(root);
+				if (!state) return;
+				states.push(state);
+				stateByRoot.set(root, state);
+			});
+		}
+
+		function createState(root) {
+			const front = root.querySelector("[data-art-text-front]");
+			const bursts = root.querySelector("[data-art-text-bursts]");
+			if (!front || !bursts) return null;
+
+			// 正文行内字号远小于展示标题，偏移和模糊按字号缩放
+			const fontSize = Number.parseFloat(getComputedStyle(root).fontSize) || 16;
+			const offset = clamp(fontSize * 0.6, 8, 48);
+			const blur = clamp(fontSize * 0.08, 0.8, 3);
+			const echoes = [front];
+			const positions = [{ x: 0, y: 0 }];
+
+			for (let index = 1; index <= ECHO_COUNT; index += 1) {
+				const copy = front.cloneNode(true);
+				copy.removeAttribute("data-art-text-front");
+				copy.setAttribute("aria-hidden", "true");
+				copy.classList.remove("mdx-art-text__echo--front");
+				copy.style.color = `color-mix(in srgb, var(--article-title-marker) ${Math.min(72, 18 + index * 5)}%, currentColor)`;
+				copy.style.filter = `blur(${((blur * index) / ECHO_COUNT).toFixed(2)}px)`;
+				copy.style.opacity = "0";
+				root.insertBefore(copy, bursts);
+				echoes.push(copy);
+				positions.push({
+					x: DIRECTION.x * offset * (index + 0.35),
+					y: DIRECTION.y * offset * (index + 0.35),
+				});
+			}
+
+			const state = {
+				root,
+				bursts,
+				echoes,
+				positions,
+				offset,
+				blur,
+				targetX: 0,
+				targetY: 0,
+				lastTargetX: 0,
+				lastTargetY: 0,
+				activity: 0,
+				entranceStarted: false,
+				startTime: 0,
+				pointerNear: false,
+				burstList: [],
+				observer: null,
+			};
+
+			root.style.cursor = "pointer";
+
+			const start = () => {
+				if (state.entranceStarted) return;
+				state.entranceStarted = true;
+				state.startTime = performance.now();
+				state.activity = 1;
+				wake();
+			};
+
+			if ("IntersectionObserver" in window) {
+				state.observer = new IntersectionObserver((entries) => {
+					if (!entries[entries.length - 1]?.isIntersecting) return;
+					state.observer?.disconnect();
+					state.observer = null;
+					start();
+				});
+				state.observer.observe(root);
+			} else {
+				start();
+			}
+
+			return state;
+		}
+
+		function renderBursts(state, now) {
+			state.burstList = state.burstList.filter((burst) => {
+				let alive = false;
+				burst.nodes.forEach((node, index) => {
+					const local = (now - burst.start - index * BURST_GAP) / BURST_LIFE;
+					if (local < 1) alive = true;
+					const progress = clamp(local, 0, 1);
+					const spread = 1 - Math.pow(1 - progress, 3);
+					const scale = 1 + spread * 0.34;
+					const opacity =
+						local <= 0
+							? 0
+							: Math.min(1, progress * 8) *
+								Math.pow(1 - progress, 1.5) *
+								0.75 *
+								Math.pow(FADE, index * 0.5);
+					node.style.transform = `translate3d(${burst.x.toFixed(2)}px, ${burst.y.toFixed(2)}px, 0) scale(${scale.toFixed(4)})`;
+					node.style.opacity = opacity.toFixed(3);
+					node.style.filter = `blur(${(state.blur * 0.3 * spread).toFixed(2)}px)`;
+				});
+				if (!alive) burst.nodes.forEach((node) => node.remove());
+				return alive;
+			});
+		}
+
+		function applyEchoFrame(state, now, dt) {
+			if (!state.entranceStarted) {
+				renderBursts(state, now);
+				return state.burstList.length > 0;
+			}
+
+			const step = dt / 16.67;
+			const progress = clamp(
+				(now - state.startTime) / ENTRANCE_DURATION,
+				0,
+				1,
+			);
+			const entranceRest = 1 - easeOut(progress);
+			const targetVelocity = Math.hypot(
+				state.targetX - state.lastTargetX,
+				state.targetY - state.lastTargetY,
+			);
+			state.lastTargetX = state.targetX;
+			state.lastTargetY = state.targetY;
+
+			let maxSeparation = 0;
+			let maxGap = 0;
+
+			for (let index = 0; index < state.echoes.length; index += 1) {
+				const copy = state.echoes[index];
+				const current = state.positions[index];
+				if (!copy || !current) continue;
+				const entranceAmount =
+					entranceRest * state.offset * (index + 0.35);
+				const desiredX = state.targetX + DIRECTION.x * entranceAmount;
+				const desiredY = state.targetY + DIRECTION.y * entranceAmount;
+				const lerp =
+					1 -
+					Math.pow(
+						1 -
+							clamp(
+								0.34 / (1 + index * LAG * 4.2),
+								0.018,
+								0.36,
+							),
+						step,
+					);
+
+				current.x += (desiredX - current.x) * lerp;
+				current.y += (desiredY - current.y) * lerp;
+				maxGap = Math.max(
+					maxGap,
+					Math.abs(desiredX - current.x),
+					Math.abs(desiredY - current.y),
+				);
+				copy.style.transform = `translate3d(${current.x.toFixed(3)}px, ${current.y.toFixed(3)}px, 0)`;
+
+				if (index > 0) {
+					const frontPosition = state.positions[0];
+					maxSeparation = Math.max(
+						maxSeparation,
+						Math.hypot(
+							current.x - frontPosition.x,
+							current.y - frontPosition.y,
+						),
+					);
+				}
+			}
+
+			const separationActivity = clamp(
+				maxSeparation / (state.offset * 2.25),
+				0,
+				1,
+			);
+			const velocityActivity = clamp(
+				targetVelocity / (state.offset * 0.35),
+				0,
+				1,
+			);
+			const nextActivity = Math.max(
+				entranceRest,
+				separationActivity,
+				velocityActivity,
+			);
+			state.activity +=
+				(nextActivity - state.activity) *
+				(1 - Math.pow(0.82, step));
+
+			for (let index = 1; index < state.echoes.length; index += 1) {
+				const copy = state.echoes[index];
+				if (copy) {
+					copy.style.opacity = String(
+						Math.pow(FADE, index) * state.activity,
+					);
+				}
+			}
+
+			renderBursts(state, now);
+
+			return (
+				progress < 1 ||
+				state.activity > 0.002 ||
+				maxGap > 0.05 ||
+				state.burstList.length > 0
+			);
+		}
+
+		function renderFrame(now) {
+			frame = 0;
+			const dt = lastFrame ? clamp(now - lastFrame, 0, 64) : 16.67;
+			lastFrame = now;
+			let running = false;
+
+			for (let index = states.length - 1; index >= 0; index -= 1) {
+				const state = states[index];
+				if (!state.root.isConnected) {
+					if (state.observer) state.observer.disconnect();
+					state.burstList.forEach((burst) =>
+						burst.nodes.forEach((node) => node.remove()),
+					);
+					states.splice(index, 1);
+					continue;
+				}
+				if (applyEchoFrame(state, now, dt)) running = true;
+			}
+
+			if (running) {
+				frame = requestAnimationFrame(renderFrame);
+			} else {
+				lastFrame = 0;
+			}
+		}
+
+		function wake() {
+			if (frame) return;
+			lastFrame = 0;
+			frame = requestAnimationFrame(renderFrame);
+		}
+
+		function spawnBurst(state, event) {
+			const rect = state.root.getBoundingClientRect();
+			if (!rect.width || !rect.height) return;
+			const originX =
+				clamp((event.clientX - rect.left) / rect.width, 0, 1) * 100;
+			const originY =
+				clamp((event.clientY - rect.top) / rect.height, 0, 1) * 100;
+			const count = clamp(Math.round(ECHO_COUNT / 3) + 2, 3, 6);
+			const nodes = [];
+
+			for (let index = 0; index < count; index += 1) {
+				const sourceIndex =
+					1 +
+					Math.round(
+						(index / Math.max(1, count - 1)) * (ECHO_COUNT - 1),
+					);
+				const source = state.echoes[sourceIndex];
+				if (!source) continue;
+				const node = source.cloneNode(true);
+				node.removeAttribute("data-echo-index");
+				node.style.transformOrigin = `${originX.toFixed(1)}% ${originY.toFixed(1)}%`;
+				node.style.opacity = "0";
+				state.bursts.appendChild(node);
+				nodes.push(node);
+			}
+
+			if (!nodes.length) return;
+			const frontPosition = state.positions[0];
+			state.burstList.push({
+				start: performance.now(),
+				x: frontPosition?.x || 0,
+				y: frontPosition?.y || 0,
+				nodes,
+			});
+			while (state.burstList.length > 4) {
+				const removed = state.burstList.shift();
+				removed?.nodes.forEach((node) => node.remove());
+			}
+			wake();
+		}
+
+		document.addEventListener(
+			"pointermove",
+			(event) => {
+				for (const state of states) {
+					const rect = state.root.getBoundingClientRect();
+					if (!rect.width || !rect.height) continue;
+					const deltaX =
+						event.clientX - (rect.left + rect.width / 2);
+					const deltaY =
+						event.clientY - (rect.top + rect.height / 2);
+					const distance = Math.hypot(deltaX, deltaY);
+					const wasNear = state.pointerNear;
+
+					if (distance <= CURSOR_RADIUS) {
+						const reach =
+							distance > 0
+								? clamp(distance / CURSOR_RADIUS, 0, 1)
+								: 0;
+						const directionX = distance > 0 ? deltaX / distance : 0;
+						const directionY = distance > 0 ? deltaY / distance : 0;
+						state.targetX =
+							directionX * reach * state.offset;
+						state.targetY =
+							directionY * reach * state.offset * 0.72;
+						state.pointerNear = true;
+						wake();
+					} else if (wasNear) {
+						state.targetX = 0;
+						state.targetY = 0;
+						state.pointerNear = false;
+						wake();
+					}
+				}
+			},
+			{ passive: true },
+		);
+
+		document.addEventListener("pointerout", (event) => {
+			if (event.relatedTarget) return;
+			for (const state of states) {
+				state.targetX = 0;
+				state.targetY = 0;
+				state.pointerNear = false;
+			}
+			wake();
+		});
+
+		document.addEventListener("click", (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) return;
+			const root = target.closest("[data-art-text-echo]");
+			if (!root) return;
+			const state = stateByRoot.get(root);
+			if (state) spawnBurst(state, event);
+		});
+
+		document.addEventListener("astro:before-swap", () => {
+			if (frame) cancelAnimationFrame(frame);
+			frame = 0;
+			lastFrame = 0;
+			for (const state of states) {
+				if (state.observer) state.observer.disconnect();
+				state.burstList.forEach((burst) =>
+					burst.nodes.forEach((node) => node.remove()),
+				);
+			}
+			states.length = 0;
+		});
+
+		window.__mdxArtTextEcho = { scan };
+		scan();
+	})();
+</script>
+
+<style is:global>
+.mdx-art-text {
+	display: inline-block;
+	line-height: 1.25;
+}
+
+.mdx-art-text--cre {
+	background-image: linear-gradient(
+		115deg,
+		var(--article-title-marker),
+		var(--primary) 38%,
+		var(--deep-text) 62%,
+		var(--article-title-marker)
+	);
+	background-position: 0% 50%;
+	background-size: 300% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	font-weight: 900;
+	letter-spacing: -0.035em;
+	-webkit-text-fill-color: transparent;
+	animation: mdx-art-flow 8s ease-in-out infinite alternate;
+}
+
+@keyframes mdx-art-flow {
+	from {
+		background-position: 0% 50%;
+	}
+
+	to {
+		background-position: 100% 50%;
+	}
+}
+
+.mdx-art-text--story {
+	position: relative;
+	display: inline-block;
+	isolation: isolate;
+	padding: 0 0.14em;
+	color: var(--deep-text);
+	font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+	font-style: italic;
+	letter-spacing: 0.03em;
+}
+
+/* 微微倾斜、边缘不规则的青色荧光笔底纹，像书页上的手写批注 */
+.mdx-art-text--story::before {
+	position: absolute;
+	inset: 0.16em -0.06em 0.06em -0.06em;
+	z-index: -1;
+	border-radius: 0.2em 0.45em 0.3em 0.15em / 0.4em 0.2em 0.5em 0.3em;
+	background: color-mix(
+		in oklch,
+		var(--article-title-marker) 22%,
+		transparent
+	);
+	content: "";
+	transform: rotate(-1.2deg);
+	transform-origin: left center;
+}
+
+.mdx-art-text--zoom {
+	transform-origin: left center;
+}
+
+@supports (animation-timeline: view()) {
+	.mdx-art-text--zoom {
+		animation: mdx-art-zoom linear both;
+		animation-timeline: view();
+		animation-range: entry 0% entry 60%;
+	}
+}
+
+@keyframes mdx-art-zoom {
+	from {
+		transform: scale(0.8);
+	}
+
+	to {
+		transform: scale(1.25);
+	}
+}
+
+.mdx-art-text--repeat {
+	position: relative;
+	display: inline-block;
+	white-space: nowrap;
+	line-height: 0.9;
+	letter-spacing: -0.04em;
+	user-select: none;
+	contain: layout style;
+	font-kerning: normal;
+	text-rendering: geometricPrecision;
+}
+
+.mdx-art-text__echo {
+	position: absolute;
+	inset: 0;
+	display: block;
+	pointer-events: none;
+	transform-origin: 50% 50%;
+	will-change: transform, opacity;
+	backface-visibility: hidden;
+}
+
+.mdx-art-text__bursts {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.mdx-art-text__echo--front {
+	position: relative;
+	z-index: 2;
+	opacity: 1;
+	filter: none;
+	text-shadow: 0 0.035em 0 rgb(255 255 255 / 0.04);
+	will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mdx-art-text--cre {
+		animation: none;
+		background-position: 50% 50%;
+	}
+
+	.mdx-art-text__echo:not(.mdx-art-text__echo--front) {
+		display: none;
+	}
+
+	.mdx-art-text__echo--front {
+		transform: none !important;
+	}
+
+	.mdx-art-text--zoom {
+		animation: none;
+		transform: none;
+	}
+}
+</style>

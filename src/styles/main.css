@@ -285,25 +285,22 @@ html {
     }
     .floating-dock > * { pointer-events: auto; }
     .dock-btn {
+        /* 齿轮切换：图标转出、文字转进，移出时反向转回图标 */
+        --dock-btn-gear-time: 300ms;
+        --dock-btn-gear-motion: cubic-bezier(0.34, 1.56, 0.64, 1);
         width: 3.125rem;
         height: 3.125rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         border-radius: 1.25rem;
-        border: 2px solid var(--deep-text);
-        background: var(--page-bg);
+        border: none;
+        background-color: var(--navbar-bg);
         color: var(--deep-text);
-        transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
         overflow: hidden;
         position: relative;
         flex-shrink: 0;
         cursor: pointer;
-    }
-    .dock-btn:hover {
-        background: var(--deep-text);
-        color: var(--page-bg);
-        border-color: var(--page-bg);
     }
     .dock-btn .dock-btn-icon {
         position: absolute;
@@ -311,7 +308,9 @@ html {
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: transform 200ms ease-out, opacity 200ms ease-out;
+        transition:
+            transform var(--dock-btn-gear-time) var(--dock-btn-gear-motion),
+            opacity 180ms ease-out;
     }
     .dock-btn .dock-btn-label {
         position: absolute;
@@ -327,18 +326,31 @@ html {
         text-align: center;
         padding: 0.125rem;
         opacity: 0;
-        transition: opacity 160ms ease-out;
+        transform: rotate(-90deg) scale(0.7);
+        transition:
+            transform var(--dock-btn-gear-time) var(--dock-btn-gear-motion),
+            opacity 180ms ease-in;
         pointer-events: none;
         word-break: break-word;
     }
     .dock-btn:hover .dock-btn-icon,
     .dock-btn:focus-visible .dock-btn-icon {
-        transform: translateY(-6px);
+        transform: rotate(90deg) scale(0.7);
         opacity: 0;
     }
     .dock-btn:hover .dock-btn-label,
     .dock-btn:focus-visible .dock-btn-label {
+        transform: rotate(0deg) scale(1);
         opacity: 1;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .dock-btn .dock-btn-icon,
+        .dock-btn .dock-btn-label,
+        .dock-btn:hover .dock-btn-icon,
+        .dock-btn:hover .dock-btn-label {
+            transform: none;
+            transition: opacity 120ms linear;
+        }
     }
     .dock-drawer {
         --dock-drawer-radius: 1rem;

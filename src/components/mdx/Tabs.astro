@@ -1,0 +1,543 @@
+---
+type TabsVariant = "pill" | "underline";
+
+interface Props {
+	label?: string;
+	variant?: TabsVariant;
+	centered?: boolean | string;
+}
+
+const variants: TabsVariant[] = ["pill", "underline"];
+const {
+	label = "标签页",
+	variant: variantInput = "underline",
+	centered = false,
+} = Astro.props;
+const variant = variants.includes(variantInput) ? variantInput : "underline";
+const isCentered = centered === true || centered === "true";
+---
+
+<div
+	class:list={[
+		"mdx-tabs",
+		`mdx-tabs--${variant}`,
+		isCentered && "mdx-tabs--centered",
+	]}
+	data-mdx-tabs
+>
+	<div class="mdx-tabs__nav-wrap">
+		<div class="mdx-tabs__nav" role="tablist" aria-label={label}></div>
+	</div>
+	<div class="mdx-tabs__panels"><slot /></div>
+</div>
+
+<script is:inline>
+	(function () {
+		if (window.__mdxTabsReady) return;
+		window.__mdxTabsReady = true;
+
+		var sequence = 0;
+		var scheduled = false;
+
+		function initialize(root) {
+			var nav = root.querySelector(".mdx-tabs__nav");
+			var panels = Array.prototype.slice.call(
+				root.querySelectorAll(
+					":scope > .mdx-tabs__panels > [data-mdx-tab-panel]",
+				),
+			);
+			if (!nav || panels.length === 0) return;
+
+			var buttons = [];
+			var currentIndex = 0;
+
+			nav.textContent = "";
+
+			var indicator = document.createElement("span");
+			indicator.className = "mdx-tabs__indicator";
+			indicator.setAttribute("aria-hidden", "true");
+			nav.appendChild(indicator);
+
+			panels.forEach(function (panel, index) {
+				var label = panel.getAttribute("data-label") || "标签 " + (index + 1);
+				var id = "mdx-tab-" + (++sequence);
+				var button = document.createElement("button");
+
+				panel.id = id + "-panel";
+				button.type = "button";
+				button.id = id + "-tab";
+				button.className = "mdx-tabs__tab";
+				button.setAttribute("role", "tab");
+				button.setAttribute("aria-controls", id + "-panel");
+				button.setAttribute("aria-selected", index === 0 ? "true" : "false");
+				button.tabIndex = index === 0 ? 0 : -1;
+				button.textContent = label;
+				panel.setAttribute("aria-labelledby", button.id);
+
+				button.addEventListener("click", function () {
+					activate(index);
+				});
+
+				button.addEventListener("keydown", function (event) {
+					var next = null;
+
+					if (event.key === "ArrowRight") {
+						next = (index + 1) % panels.length;
+					} else if (event.key === "ArrowLeft") {
+						next = (index - 1 + panels.length) % panels.length;
+					} else if (event.key === "Home") {
+						next = 0;
+					} else if (event.key === "End") {
+						next = panels.length - 1;
+					}
+
+					if (next === null) return;
+					event.preventDefault();
+					buttons[next].focus();
+					activate(next);
+				});
+
+				nav.appendChild(button);
+				buttons.push(button);
+			});
+
+			function moveIndicator(index) {
+				var button = buttons[index];
+				if (!button) return;
+
+				indicator.style.width = button.offsetWidth + "px";
+				indicator.style.transform =
+					"translateX(" + button.offsetLeft + "px)";
+			}
+
+			function revealTab(index) {
+				var button = buttons[index];
+				if (!button) return;
+
+				var navRect = nav.getBoundingClientRect();
+				var buttonRect = button.getBoundingClientRect();
+				var delta = 0;
+
+				if (buttonRect.left < navRect.left) {
+					delta = buttonRect.left - navRect.left;
+				} else if (buttonRect.right > navRect.right) {
+					delta = buttonRect.right - navRect.right;
+				}
+
+				if (!delta) return;
+				nav.scrollBy({
+					left: delta,
+					behavior: window.matchMedia(
+						"(prefers-reduced-motion: reduce)",
+					).matches
+						? "auto"
+						: "smooth",
+				});
+			}
+
+			var transitionToken = 0;
+			var activeTransition = null;
+			var hasActivated = false;
+
+			function finishPanelTransition() {
+				if (!activeTransition) return;
+
+				var transition = activeTransition;
+				activeTransition = null;
+				transitionToken += 1;
+
+				transition.animations.forEach(function (animation) {
+					try {
+						animation.cancel();
+					} catch {
+						// 动画可能已经结束
+					}
+				});
+				transition.outgoing.hidden = true;
+				transition.outgoing.inert = false;
+				transition.outgoing.style.zIndex = "";
+				transition.incoming.inert = false;
+				transition.incoming.style.zIndex = "";
+				transition.wrapper.style.height = "";
+				transition.wrapper.style.overflow = "";
+			}
+
+			function updateButtons(index) {
+				panels.forEach(function (panel, panelIndex) {
+					var isActive = panelIndex === index;
+
+					panel.toggleAttribute("data-active", isActive);
+
+					if (!buttons[panelIndex]) return;
+					buttons[panelIndex].setAttribute(
+						"aria-selected",
+						String(isActive),
+					);
+					buttons[panelIndex].tabIndex = isActive ? 0 : -1;
+				});
+			}
+
+			function animatePanelSwitch(outgoing, incoming, direction) {
+				var wrapper = incoming.parentElement;
+				if (!wrapper) {
+					outgoing.hidden = true;
+					incoming.hidden = false;
+					return;
+				}
+
+				var reduced = window.matchMedia(
+					"(prefers-reduced-motion: reduce)",
+				).matches;
+				var oldHeight = wrapper.offsetHeight;
+
+				outgoing.hidden = true;
+				incoming.hidden = false;
+				var newHeight = wrapper.offsetHeight;
+				outgoing.hidden = false;
+
+				outgoing.inert = true;
+				incoming.inert = false;
+				outgoing.style.zIndex = "0";
+				incoming.style.zIndex = "1";
+
+				if (!reduced) {
+					wrapper.style.height = oldHeight + "px";
+					wrapper.style.overflow = "clip";
+				}
+
+				var enterOffset = reduced ? 0 : direction * 8;
+				var exitOffset = reduced ? 0 : direction * -6;
+				var enter = incoming.animate(
+					[
+						{
+							opacity: 0,
+							transform: "translateX(" + enterOffset + "px)",
+						},
+						{ opacity: 1, transform: "translateX(0)" },
+					],
+					{
+						duration: reduced ? 60 : 240,
+						easing: reduced
+							? "linear"
+							: "cubic-bezier(0.22, 1, 0.36, 1)",
+						fill: "both",
+					},
+				);
+				var exit = outgoing.animate(
+					[
+						{ opacity: 1, transform: "translateX(0)" },
+						{
+							opacity: 0,
+							transform: "translateX(" + exitOffset + "px)",
+						},
+					],
+					{
+						duration: reduced ? 60 : 140,
+						easing: reduced
+							? "linear"
+							: "cubic-bezier(0.4, 0, 1, 1)",
+						fill: "both",
+					},
+				);
+				var animations = [enter, exit];
+
+				if (!reduced && Math.abs(newHeight - oldHeight) > 1) {
+					animations.push(
+						wrapper.animate(
+							[
+								{ height: oldHeight + "px" },
+								{ height: newHeight + "px" },
+							],
+							{
+								duration: 260,
+								easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+								fill: "both",
+							},
+						),
+					);
+				}
+
+				var token = ++transitionToken;
+				activeTransition = {
+					outgoing: outgoing,
+					incoming: incoming,
+					wrapper: wrapper,
+					animations: animations,
+				};
+
+				Promise.all(
+					animations.map(function (animation) {
+						return animation.finished.catch(function () {});
+					}),
+				).then(function () {
+					if (token !== transitionToken) return;
+
+					outgoing.hidden = true;
+					outgoing.inert = false;
+					outgoing.style.zIndex = "";
+					incoming.inert = false;
+					incoming.style.zIndex = "";
+					wrapper.style.height = "";
+					wrapper.style.overflow = "";
+					animations.forEach(function (animation) {
+						try {
+							animation.cancel();
+						} catch {
+							// 动画可能已经结束
+						}
+					});
+					activeTransition = null;
+				});
+			}
+
+			function activate(index) {
+				var previousIndex = currentIndex;
+
+				if (hasActivated && index === previousIndex) {
+					finishPanelTransition();
+					updateButtons(index);
+					moveIndicator(index);
+					revealTab(index);
+					return;
+				}
+
+				finishPanelTransition();
+
+				var direction = index > previousIndex ? 1 : -1;
+				currentIndex = index;
+				updateButtons(index);
+				moveIndicator(index);
+				revealTab(index);
+
+				if (!hasActivated) {
+					panels.forEach(function (panel, panelIndex) {
+						panel.hidden = panelIndex !== index;
+					});
+					hasActivated = true;
+					return;
+				}
+
+				animatePanelSwitch(
+					panels[previousIndex],
+					panels[index],
+					direction,
+				);
+			}
+
+			activate(0);
+			root.setAttribute("data-ready", "");
+
+			if (typeof ResizeObserver !== "undefined") {
+				var resizeObserver = new ResizeObserver(function () {
+					moveIndicator(currentIndex);
+				});
+				resizeObserver.observe(nav);
+				buttons.forEach(function (button) {
+					resizeObserver.observe(button);
+				});
+			}
+
+			if (document.fonts && document.fonts.ready) {
+				document.fonts.ready.then(function () {
+					moveIndicator(currentIndex);
+				});
+			}
+
+			window.addEventListener("resize", function () {
+				moveIndicator(currentIndex);
+			});
+		}
+
+		function initAll() {
+			scheduled = false;
+			document
+				.querySelectorAll("[data-mdx-tabs]:not([data-ready])")
+				.forEach(initialize);
+		}
+
+		function schedule() {
+			if (scheduled) return;
+			scheduled = true;
+			window.requestAnimationFrame(initAll);
+		}
+
+		schedule();
+
+		var observer = new MutationObserver(schedule);
+		observer.observe(document.body, { childList: true, subtree: true });
+	})();
+</script>
+
+<style is:global>
+.mdx-tabs {
+	margin: 1.25rem 0 1.75rem;
+}
+
+.mdx-tabs__nav-wrap {
+	display: flex;
+	width: 100%;
+}
+
+.mdx-tabs--centered .mdx-tabs__nav-wrap {
+	justify-content: center;
+}
+
+.mdx-tabs__nav {
+	position: relative;
+	display: flex;
+	gap: 0.25rem;
+	overflow-x: auto;
+	scrollbar-width: thin;
+}
+
+.mdx-tabs--underline .mdx-tabs__nav {
+	width: 100%;
+	border-bottom: 1px solid var(--line-divider);
+}
+
+.mdx-tabs--centered.mdx-tabs--underline .mdx-tabs__nav {
+	justify-content: center;
+}
+
+.mdx-tabs__nav:empty {
+	display: none;
+}
+
+.mdx-tabs__tab {
+	position: relative;
+	z-index: 1;
+	appearance: none;
+	flex: none;
+	padding: 0.55rem 0.75rem;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	border-radius: var(--radius-small) var(--radius-small) 0 0;
+	background: transparent;
+	color: var(--content-meta);
+	font: inherit;
+	font-size: 0.875rem;
+	font-weight: 600;
+	line-height: 1.4;
+	cursor: pointer;
+	transition:
+		color 0.18s ease,
+		border-color 0.18s ease,
+		background-color 0.18s ease;
+}
+
+.mdx-tabs__tab:hover {
+	color: var(--deep-text);
+	background: color-mix(in srgb, var(--deep-text) 5%, transparent);
+}
+
+.mdx-tabs__tab:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: -2px;
+}
+
+.mdx-tabs__tab[aria-selected="true"] {
+	color: var(--deep-text);
+}
+
+.mdx-tabs__tab[aria-selected="true"]:hover {
+	background: transparent;
+}
+
+.mdx-tabs--pill .mdx-tabs__nav {
+	width: max-content;
+	max-width: 100%;
+	gap: 0.125rem;
+	padding: 0.25rem;
+	border: 1px solid var(--line-divider);
+	border-radius: 999px;
+	background: var(--article-surface-bg);
+}
+
+.mdx-tabs--pill .mdx-tabs__tab {
+	border-bottom: 0;
+	border-radius: 999px;
+}
+
+.mdx-tabs--pill .mdx-tabs__tab[aria-selected="true"] {
+	color: var(--page-bg);
+}
+
+.mdx-tabs__indicator {
+	position: absolute;
+	left: 0;
+	z-index: 0;
+	pointer-events: none;
+	transition:
+		transform 0.34s cubic-bezier(0.34, 1.3, 0.64, 1),
+		width 0.34s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.mdx-tabs:not([data-ready]) .mdx-tabs__indicator {
+	transition: none;
+}
+
+.mdx-tabs--pill .mdx-tabs__indicator {
+	top: 0.25rem;
+	height: calc(100% - 0.5rem);
+	border-radius: 999px;
+	background: var(--deep-text);
+}
+
+.mdx-tabs--underline .mdx-tabs__indicator {
+	bottom: 0;
+	height: 2px;
+	background: var(--article-title-marker);
+}
+
+.mdx-tabs__panels {
+	padding-top: 0.75rem;
+}
+
+.mdx-tabs[data-ready] .mdx-tabs__panels {
+	display: grid;
+	align-items: start;
+}
+
+.mdx-tabs[data-ready] .mdx-tabs__panel {
+	grid-area: 1 / 1;
+	min-width: 0;
+}
+
+.mdx-tabs__panel[hidden] {
+	display: none;
+}
+
+.mdx-tabs__panel > :first-child {
+	margin-top: 0;
+}
+
+.mdx-tabs__panel > :last-child {
+	margin-bottom: 0;
+}
+
+.mdx-tabs__fallback-label {
+	display: block;
+	margin-bottom: 0.4rem;
+	color: var(--deep-text);
+	font-size: 0.9rem;
+	font-weight: 700;
+}
+
+.mdx-tabs[data-ready] .mdx-tabs__fallback-label {
+	display: none;
+}
+
+@media (max-width: 640px) {
+	.mdx-tabs__tab {
+		padding: 0.5rem 0.65rem;
+		font-size: 0.82rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mdx-tabs__tab,
+	.mdx-tabs__indicator {
+		transition: none;
+	}
+}
+</style>

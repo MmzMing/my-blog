@@ -13,7 +13,9 @@ import { visit } from "unist-util-visit";
  *   ::chat + :u 用户 / :a 助手 / :s 系统 / :u{name="昵称"} 用户 + ::
  *   :::chat + 上述角色行 / :::（容器写法）
  *   :::folding{title="..."}、:::blur、:::card-list + Markdown 内容 / :::
- *   ::link-card{...} / ::link-banner{...}
+ *   ::link-card{...}（连续多个会合并为响应式网格）、::link-banner{...}
+ *   :::alert、:::quote、:::title、:::tabs + :::tab、:::emoji-tail
+ *   ::pic、::video-embed、:copy、:code；[!cre:/story:/zoom:/repeat:] 艺术字
  * 行内：:profile-card{... avatar="$avatar"}、:badge[文字]、:key[Ctrl]、
  *       :tip[术语]{tip="解释"}、:blur[文字]
  *
@@ -24,6 +26,10 @@ const COMPONENTS = {
 	accordion: {
 		name: "Accordion",
 		types: ["leafDirective", "containerDirective"],
+	},
+	alert: {
+		name: "Alert",
+		types: ["containerDirective"],
 	},
 	badge: {
 		name: "Badge",
@@ -41,6 +47,18 @@ const COMPONENTS = {
 		name: "Chat",
 		types: ["leafDirective", "containerDirective"],
 	},
+	code: {
+		name: "CodeLang",
+		types: ["textDirective"],
+	},
+	copy: {
+		name: "Copy",
+		types: ["textDirective", "leafDirective"],
+	},
+	"emoji-tail": {
+		name: "EmojiTail",
+		types: ["containerDirective"],
+	},
 	folding: {
 		name: "Folding",
 		types: ["containerDirective"],
@@ -50,20 +68,36 @@ const COMPONENTS = {
 		types: ["textDirective", "leafDirective"],
 	},
 	"link-banner": {
-		name: "LinkCard",
+		name: "LinkBanner",
 		types: ["leafDirective"],
 	},
 	"link-card": {
 		name: "LinkCard",
 		types: ["leafDirective"],
 	},
+	pic: {
+		name: "Pic",
+		types: ["leafDirective", "containerDirective"],
+	},
 	"profile-card": {
 		name: "ProfileCard",
 		types: ["textDirective", "leafDirective"],
 	},
+	quote: {
+		name: "Quote",
+		types: ["containerDirective"],
+	},
 	"social-links": {
 		name: "SocialLinks",
 		types: ["textDirective", "leafDirective", "containerDirective"],
+	},
+	tab: {
+		name: "Tab",
+		types: ["containerDirective"],
+	},
+	tabs: {
+		name: "Tabs",
+		types: ["containerDirective"],
 	},
 	timeline: {
 		name: "Timeline",
@@ -73,6 +107,14 @@ const COMPONENTS = {
 		name: "Tip",
 		types: ["textDirective", "leafDirective"],
 	},
+	title: {
+		name: "Title",
+		types: ["containerDirective"],
+	},
+	"video-embed": {
+		name: "VideoEmbed",
+		types: ["leafDirective"],
+	},
 };
 
 const EXPRESSION_PROPS = {
@@ -81,6 +123,12 @@ const EXPRESSION_PROPS = {
 	"profile-card": ["avatar"],
 	"social-links": ["links"],
 	timeline: ["items"],
+};
+
+const BOOLEAN_PROPS = {
+	alert: ["card", "flat"],
+	pic: ["mirror", "full"],
+	tabs: ["centered"],
 };
 
 function labelChildren(label) {
@@ -340,6 +388,31 @@ function parseSocialLinksBody(body) {
 	return links;
 }
 
+function parsePicBody(body) {
+	const items = [];
+
+	for (const rawLine of body.split(/\r?\n/)) {
+		const line = rawLine.trim();
+		if (!line) continue;
+
+		const match = line.match(/^[-*+]\s+(.+)$/);
+		if (!match) continue;
+
+		const [src, caption, alt] = match[1]
+			.split("|")
+			.map((field) => field.trim());
+		if (!src) continue;
+
+		items.push({
+			src,
+			...(caption ? { caption } : {}),
+			...(alt ? { alt } : {}),
+		});
+	}
+
+	return items;
+}
+
 function nodeText(node) {
 	if (node.type === "text" || node.type === "inlineCode") return node.value;
 	if (Array.isArray(node.children)) {
@@ -397,10 +470,22 @@ export function remarkMdxDirectiveComponents() {
 			if (!config?.types.includes(node.type)) return;
 
 			const expressionProps = EXPRESSION_PROPS[componentName] ?? [];
+			const booleanProps = BOOLEAN_PROPS[componentName] ?? [];
 			const attributes = Object.entries(node.attributes ?? {}).map(
 				([name, value]) => {
 					const stringValue =
 						value === null || value === undefined ? null : String(value);
+
+					if (
+						booleanProps.includes(name) &&
+						(stringValue === null || stringValue === "")
+					) {
+						return {
+							type: "mdxJsxAttribute",
+							name,
+							value: "true",
+						};
+					}
 
 					if (
 						typeof stringValue === "string" &&
@@ -488,6 +573,26 @@ export function remarkMdxDirectiveComponents() {
 				children = [];
 				handled = true;
 				inlineSocialLinks = links.length > 0;
+			} else if (isContainer && componentName === "pic") {
+				const code = children.find((child) => child.type === "code");
+				const body =
+					code && typeof code.value === "string"
+						? code.value
+						: getDirectiveBody(node, file, children);
+				const gallery = parsePicBody(body);
+
+				if (gallery.length > 0) {
+					if (!attributes.some((attribute) => attribute.name === "items")) {
+						attributes.push({
+							type: "mdxJsxAttribute",
+							name: "items",
+							value: JSON.stringify(gallery),
+						});
+					}
+
+					children = [];
+					handled = true;
+				}
 			} else if (componentName === "chat") {
 				const body = isContainer
 					? getDirectiveBody(node, file, children)
@@ -551,8 +656,131 @@ export function remarkMdxDirectiveComponents() {
 			node.data = inlineSocialLinks ? { inlineSocialLinks: true } : {};
 		});
 
+		transformArtText(tree);
+		groupLinkCards(tree);
 		mergeInlineSocialLinks(tree);
 	};
+}
+
+const ART_TEXT_PATTERN = /\[!(cre|story|zoom|repeat):([^\]]+)\]/g;
+
+/**
+ * 把 [!cre:文字] 这类轻量标记转换成行内 ArtText 组件。
+ */
+function transformArtText(parent) {
+	if (!Array.isArray(parent.children)) return;
+
+	const children = [];
+
+	for (const child of parent.children) {
+		if (child.type === "text" && child.value.includes("[!")) {
+			const value = child.value;
+			let lastIndex = 0;
+			ART_TEXT_PATTERN.lastIndex = 0;
+			let match = ART_TEXT_PATTERN.exec(value);
+
+			while (match !== null) {
+				if (match.index > lastIndex) {
+					children.push({
+						type: "text",
+						value: value.slice(lastIndex, match.index),
+					});
+				}
+
+				children.push({
+					type: "mdxJsxTextElement",
+					name: "ArtText",
+					attributes: [
+						{
+							type: "mdxJsxAttribute",
+							name: "variant",
+							value: match[1],
+						},
+					],
+					children: [{ type: "text", value: match[2] }],
+					data: {},
+				});
+				lastIndex = match.index + match[0].length;
+				match = ART_TEXT_PATTERN.exec(value);
+			}
+
+			if (lastIndex < value.length) {
+				children.push({
+					type: "text",
+					value: value.slice(lastIndex),
+				});
+			}
+			continue;
+		}
+
+		transformArtText(child);
+		children.push(child);
+	}
+
+	parent.children = children;
+}
+
+/**
+ * 连续的 LinkCard 合并进一个网格容器，单张卡片保持独立居中。
+ */
+function groupLinkCards(parent) {
+	if (!Array.isArray(parent.children)) return;
+
+	for (const child of parent.children) {
+		groupLinkCards(child);
+	}
+
+	let index = 0;
+	while (index < parent.children.length) {
+		const node = parent.children[index];
+		const isLinkCard =
+			node.type === "mdxJsxFlowElement" && node.name === "LinkCard";
+
+		if (!isLinkCard) {
+			index += 1;
+			continue;
+		}
+
+		const cards = [];
+		let cursor = index;
+
+		while (cursor < parent.children.length) {
+			const child = parent.children[cursor];
+
+			if (child.type === "mdxJsxFlowElement" && child.name === "LinkCard") {
+				cards.push(child);
+				cursor += 1;
+				continue;
+			}
+
+			if (child.type === "text" && /^\s*$/.test(child.value)) {
+				cursor += 1;
+				continue;
+			}
+
+			break;
+		}
+
+		if (cards.length < 2) {
+			index = cursor;
+			continue;
+		}
+
+		parent.children.splice(index, cursor - index, {
+			type: "mdxJsxFlowElement",
+			name: "div",
+			attributes: [
+				{
+					type: "mdxJsxAttribute",
+					name: "class",
+					value: "mdx-link-card-grid",
+				},
+			],
+			children: cards,
+			data: {},
+		});
+		index += 1;
+	}
 }
 
 /**
