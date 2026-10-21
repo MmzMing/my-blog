@@ -4,31 +4,33 @@
 }
 
 .post-hero__content {
-  /* 左右内边距抽成变量：标题上方的导航行要靠它反向外扩贴到两边
-     （post-header-nav.css），避免两处各写一份数字 */
   --post-hero-inline-pad: 1.25rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  /* 顶部留白（导航栏 → 返回上一页行）在原值 1.25rem 基础上增至 1.5 倍 */
-  padding: 1.875rem var(--post-hero-inline-pad) 0.5rem;
+  /* 返回行靠左贴正文左缘，标题单独占行并居中 */
+  align-items: flex-start;
+  text-align: start;
+  /* 导航栏与返回行之间留出一段明显空白，避免标题区顶在导航条下沿 */
+  padding: 2.5rem var(--post-hero-inline-pad) 0.5rem;
 }
 
 @media (min-width: 768px) {
   .post-hero__content {
     --post-hero-inline-pad: 2rem;
-    /* 桌面原值 2rem，同样增至 1.5 倍 */
-    padding: 3rem var(--post-hero-inline-pad) 0.75rem;
+    padding: 4rem var(--post-hero-inline-pad) 0.75rem;
   }
 }
 
 .post-hero__title {
+  width: 100%;
   font-weight: 700;
   font-size: 1.5rem;
   line-height: 1.3;
   color: var(--deep-text);
-  margin-bottom: 0.375rem;
+  text-align: center;
+  /* 居中排版本身不带侧向呼吸，标题文字要离开发卡左右缘（窄屏留 0.5rem） */
+  padding-inline: 0.5rem;
+  margin-bottom: 0.75rem;
   word-break: break-word;
 }
 
@@ -36,138 +38,21 @@
   .post-hero__title {
     font-size: 2.25rem;
     line-height: 2.75rem;
+    /* 叠加 hero 自身的 2rem 内边距，标题左右各离卡缘约 4.5rem */
+    padding-inline: 2.5rem;
   }
 }
 
-.post-hero__info {
-  width: min(100%, 56rem);
-}
-
-/* Metadata row */
-.post-hero__meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem 0.35rem;
-  color: var(--content-meta);
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-.post-hero__meta-item {
-  white-space: nowrap;
-}
-
-.post-hero__meta-dot {
-  color: var(--line-color);
-  user-select: none;
-  margin: 0 0.1rem;
-}
-
-/* View count — green */
-.post-hero__views,
-.post-hero__views .text-50 {
-  color: #22c55e;
-}
-
-.post-hero__taxonomy-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.25rem 0.35rem;
-  margin-top: 0.375rem;
-}
-
-.post-hero__taxonomy-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--content-meta);
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color 0.2s ease;
-}
-
-/* 悬停/聚焦只染青色（--article-title-marker，与标题标记同色相），不画下划线 */
-.post-hero__taxonomy-link:hover,
-.post-hero__taxonomy-link:focus-visible {
-  color: var(--article-title-marker);
-}
-
-.post-hero__taxonomy-link:focus-visible,
+/* 元信息已整体下沉到 post-accordion，这里只留分享弹窗的宿主与内部样式。
+   .post-hero__share-menu 不再渲染触发按钮，仅承载 <dialog>，供正文与右侧目录共用 */
 .post-hero__share-action:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
 
-/* 纯文本入口沿用分类链接的排版，只补图标的间距与尺寸；字号跟随元信息行 */
-.post-hero__plaintext-link {
-  gap: 0.3rem;
-  font-size: inherit;
-}
-
-.post-hero__plaintext-link svg {
-  width: 1rem;
-  height: 1rem;
-  flex: 0 0 auto;
-}
-
-.post-hero__share-menu:focus-visible .post-hero__share-trigger {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
-}
-
-.post-hero__taxonomy-link--category {
-  color: var(--deep-text);
-  font-weight: 600;
-}
-
-.post-hero__taxonomy-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.post-hero__taxonomy-separator {
-  color: var(--line-color);
-  user-select: none;
-  margin: 0 0.1rem;
-}
-
 .post-hero__share-menu {
   position: relative;
   flex: 0 0 auto;
-}
-
-.post-hero__share-trigger {
-  display: inline-flex;
-  min-height: 1.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  padding: 0 0.2rem;
-  border: 0;
-  background: transparent;
-  color: var(--content-meta);
-  cursor: pointer;
-  list-style: none;
-  transition: color 0.2s ease;
-}
-
-.post-hero__share-trigger svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.post-hero__share-menu:hover .post-hero__share-trigger,
-.post-hero__share-menu:focus-within .post-hero__share-trigger {
-  color: var(--article-title-marker);
 }
 
 .post-hero__share-popover {
@@ -396,186 +281,280 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .post-hero__taxonomy-link,
-  .post-hero__share-trigger,
-  .post-hero__share-popover,
-  .post-hero__share-action-icon,
-  .post-intro-card__summary,
-  .post-intro-card__summary-arrow {
-    transition-duration: 0.01ms;
+/* ============================================
+   许可协议卡：撕纸毛边面板。描边和底色都挪到 __surface 这一层，
+   由共用的 --paper-deckle-filter 推出凹凸纸口 —— 所以这里既没有 border 也没有圆角。
+   __body / __actions 各带一层 surface，父级 isolation 兜住负 z-index；
+   滤镜只吃 surface，文字层不参与，否则正文会跟着抖。
+   ============================================ */
+.license-card {
+  position: relative;
+}
+
+.license-card__body,
+.license-card__actions {
+  position: relative;
+  isolation: isolate;
+}
+
+.license-card__surface {
+  position: absolute;
+  inset: 0;
+  z-index: -10;
+  background: var(--card-surface);
+  pointer-events: none;
+  filter: var(--paper-deckle-filter);
+}
+
+.license-card__surface--actions {
+  background: var(--article-surface-bg);
+}
+
+/* CC 水印要溢出裁切，所以单独包这一层；surface 在它外面，不受 overflow 影响 */
+.license-card__content {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 1.25rem;
+}
+
+.license-card__title {
+  color: var(--deep-text);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* 正文地址：不做下划线，悬停才从次级色抬到正文色 */
+.license-card__url {
+  display: block;
+  margin-top: 0.375rem;
+  color: var(--content-meta);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition: color 160ms ease;
+}
+
+.license-card__url:hover,
+.license-card__url:focus-visible {
+  color: var(--deep-text);
+}
+
+.license-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2.5rem;
+  margin: 1rem 0 0;
+}
+
+.license-card__meta-item {
+  min-width: 8rem;
+}
+
+.license-card__meta dt {
+  margin: 0 0 0.375rem;
+  color: var(--content-meta);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.license-card__meta dd {
+  margin: 0;
+  color: var(--deep-text);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.license-card__meta dd a {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.license-card__mark {
+  position: absolute;
+  top: 50%;
+  right: var(--space-6);
+  z-index: -1;
+  translate: 0 -50%;
+  font-size: 15rem;
+  line-height: 1;
+  color: color-mix(in srgb, var(--deep-text) 5%, transparent);
+  pointer-events: none;
+}
+
+/* 底部动作条：右侧目录面板可见时那一排动作已在面板里，这里整体收起。
+   条件与 .related-posts--bottom 完全一致 */
+.license-card__actions {
+  min-height: var(--control-size);
+  margin: -1px var(--space-8) 0;
+  padding: 0 var(--space-6);
+}
+
+@media (min-width: 96rem) and (hover: hover) and (pointer: fine) {
+  .license-card__actions {
+    display: none;
+  }
+}
+
+.license-card__action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem var(--space-6);
+}
+
+.license-card__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding-block: 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--content-meta);
+  font-size: 0.875rem;
+  /* 同一套样式既挂 <button> 也挂 <a>，链接不带下划线 */
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+
+.license-card__action:hover,
+.license-card__action:focus-visible {
+  color: var(--deep-text);
+}
+
+.license-card__action-icon {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+/* ============================================
+   底部分隔线：细线居中嵌标题，线在文字处断开。
+   整段底部只此一条线，相关文章与上下篇都挂在它下面。
+   ============================================ */
+.post-section-divider {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-6);
+}
+
+.post-section-divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  border-top: 1px solid var(--line-divider);
+}
+
+/* 标签垫一层页面底色把身后的线断掉；正文卡本身透明，取页面色即可 */
+.post-section-divider__label {
+  position: relative;
+  padding-inline: var(--space-4);
+  background: var(--page-bg);
+  color: var(--content-meta);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+}
+
+/* 默认「其他文章」；底部确实摆了相关文章区块才改口「相关文章」 */
+.post-section-divider__label--related {
+  display: none;
+}
+
+#post-container:has(.related-posts--bottom) .post-section-divider__label--related {
+  display: inline;
+}
+
+#post-container:has(.related-posts--bottom) .post-section-divider__label--other {
+  display: none;
+}
+
+/* 宽屏下相关文章由右侧目录面板接管、底部区块 display:none，退回「其他文章」 */
+@media (min-width: 96rem) and (hover: hover) and (pointer: fine) {
+  .post-section-divider__label--related {
+    display: none;
+  }
+
+  .post-section-divider__label--other {
+    display: inline;
   }
 }
 
 /* ============================================
-   AI 摘要折叠框
+   底部上一篇 / 下一篇：分隔线之下的两条无边框文字链
    ============================================ */
-.post-intro-card {
-  /* 整卡一圈细描边：取分隔线变量再压淡，亮色/暗色主题下都只做轻分隔 */
-  border: 1px solid color-mix(in oklab, var(--line-divider) 60%, transparent);
-  border-radius: var(--radius-large);
-  background: var(--article-surface-bg);
-  overflow: hidden;
-}
-
-.post-intro-card__section {
-  padding: 0.75rem 1.125rem;
-}
-
-.post-intro-card__section--summary {
-  padding: 0.25rem 1.125rem 0.875rem;
-}
-
-@media (min-width: 768px) {
-  .post-intro-card__section {
-    padding: 0.875rem 1.125rem;
-  }
-}
-
-.post-intro-card__row {
+.post-pager {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.post-intro-card__summary {
-  display: flex;
-  min-height: 2.75rem;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.625rem 1.125rem;
-  cursor: pointer;
-  list-style: none;
-  transition: background-color 0.2s ease;
+  gap: 0.75rem 2rem;
+  /* 与许可卡、分隔线、相关文章共用 24px 节奏：正文卡 pb-4 + 外层 mb-2 已经凑够 */
+  margin-top: 0;
+  margin-bottom: 2rem;
+  font-size: 0.875rem;
 }
 
-.post-intro-card__summary::-webkit-details-marker {
-  display: none;
-}
-
-.post-intro-card__summary:hover {
-  background: var(--btn-plain-bg-hover);
-}
-
-.post-intro-card__summary:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
-}
-
-.post-intro-card__summary-title {
-  display: flex;
-  min-width: 0;
+.post-pager__link {
+  display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  color: var(--deep-text);
-  font-size: 0.9rem;
-  font-weight: 600;
-  line-height: 1.4;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--content-meta);
+  text-decoration: none;
+  transition: color 160ms ease-out;
 }
 
-.post-intro-card__summary-icon,
-.post-intro-card__summary-arrow {
+.post-pager__link--next {
+  margin-left: auto;
+}
+
+.post-pager__link:hover,
+.post-pager__link:focus-visible {
+  color: var(--link-color);
+}
+
+.post-pager__link:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 3px;
+  border-radius: var(--radius-small);
+}
+
+.post-pager__icon {
+  width: 1.125rem;
+  height: 1.125rem;
   flex: 0 0 auto;
 }
 
-.post-intro-card__summary-icon {
-  width: 1.125rem;
-  height: 1.125rem;
-  color: var(--primary);
-}
-
-.post-intro-card__summary-model {
-  color: var(--content-meta);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.post-intro-card__summary-arrow {
-  width: 1.25rem;
-  height: 1.25rem;
-  color: var(--content-meta);
-  transition: transform 0.2s ease;
-}
-
-.post-intro-card__details[open] .post-intro-card__summary-arrow {
-  transform: rotate(180deg);
-}
-
-.post-intro-card__icon {
-  flex-shrink: 0;
-  font-size: 1rem;
-  color: var(--primary);
-  opacity: 0.8;
-}
-
-.post-intro-card__outdated .post-intro-card__icon {
-  color: #ef4444;
-}
-
-.post-intro-card__text {
-  font-size: 0.8rem;
-  color: var(--content-meta);
-  white-space: nowrap;
+.post-pager__text {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.post-intro-card__outdated {
-  display: block;
-}
-
-.post-intro-card__outdated.hidden {
-  display: none;
-}
-
-.post-intro-card__outdated.hidden + .post-intro-card__divider {
-  display: none;
-}
-
-.post-intro-card__outdated .outdated-days {
-  color: var(--content-meta);
-}
-
-.post-intro-card__divider {
-  height: 1px;
-  background: var(--line-divider);
-  opacity: 0.5;
-}
-
-.post-intro-card__desc {
-  font-size: 0.85rem;
-  line-height: 1.6;
-  color: var(--content-meta);
-  margin: 0;
-  min-width: 0;
-}
-
-/* 封面图层内边距与 AI 摘要层一致，图片不贴卡边 */
-.post-intro-card__section--cover {
-  padding: 0.25rem 1.125rem 0.875rem;
-}
-
-/* 图片圆角：沿用原独立封面的 --radius-large，容器 overflow 裁切四角（含 LQIP 占位底） */
-.post-intro-card__cover {
-  overflow: hidden;
-  border-radius: var(--radius-large);
-}
-
-.post-intro-card__cover picture {
-  display: block;
-}
-
-.post-intro-card__cover img {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 480px;
-  object-fit: cover;
+  white-space: nowrap;
 }
 
 @media (min-width: 768px) {
-  .post-intro-card__cover img {
-    max-height: 560px;
+  .post-pager__link {
+    max-width: 45%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-hero__share-popover,
+  .post-hero__share-action-icon,
+  .post-pager__link,
+  .license-card__url,
+  .license-card__action {
+    transition-duration: 0.01ms;
   }
 }

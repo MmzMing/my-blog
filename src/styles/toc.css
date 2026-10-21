@@ -70,6 +70,30 @@
 	background: transparent;
 }
 
+/* 当前章节的左侧青色竖条；不再用虚线活动框。 */
+.toc-item::before {
+	content: "";
+	position: absolute;
+	top: 0.42rem;
+	bottom: 0.42rem;
+	left: 0.08rem;
+	width: 2px;
+	border-radius: 999px;
+	background: var(--article-title-marker);
+	opacity: 0;
+	transform: scaleY(0.4);
+	transform-origin: center;
+	transition:
+		opacity 160ms ease,
+		transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+	pointer-events: none;
+}
+
+.toc-item.visible::before {
+	opacity: 1;
+	transform: scaleY(1);
+}
+
 .toc-item.toc-level-1 {
 	padding-left: 1.08rem;
 }
@@ -130,67 +154,23 @@
 }
 
 .toc-item.visible .toc-label {
-	color: color-mix(in oklab, var(--content-meta) 58%, var(--primary));
+	color: var(--article-title-marker);
 	opacity: 1;
 }
 
 .toc-item.visible .toc-badge-dot,
 .toc-item.visible .toc-badge-dot-sm {
-	background: var(--primary);
+	background: var(--article-title-marker);
 }
 
-/* 活动指示器：无背景，黑白实线边框 */
+.toc-item.visible .toc-badge-index {
+	color: var(--article-title-marker);
+}
+
+/* 活动指示器仍由 JS 更新位置/高度，但不再绘制虚线活动框；
+   当前章节的外观改由 .toc-item.visible 的左侧竖条和青色文字承担。 */
 .toc-active-indicator {
-	position: absolute;
-	left: 0;
-	right: 0;
-	top: 0;
-	background: transparent;
-	border-radius: 0.875rem;
-	transition: transform 0.18s ease, height 0.18s ease, opacity 0.14s ease,
-		border-top-style 0.12s ease, border-right-style 0.12s ease,
-		border-bottom-style 0.12s ease, border-left-style 0.12s ease;
-	box-shadow: none;
-	/* z-index 0 而非 -1，这样 :hover 才能触发；
-	   pointer-events: none 让点击穿透到下层链接 */
-	z-index: 0;
-	pointer-events: none;
-	/* 四条边默认实线 */
-	border-top: 1px solid oklch(0.15 0 0);
-	border-right: 1px solid oklch(0.15 0 0);
-	border-bottom: 1px solid oklch(0.15 0 0);
-	border-left: 1px solid oklch(0.15 0 0);
-}
-
-/* 暗色模式 */
-:root.dark .toc-active-indicator {
-	border-top-color: oklch(0.85 0 0);
-	border-right-color: oklch(0.85 0 0);
-	border-bottom-color: oklch(0.85 0 0);
-	border-left-color: oklch(0.85 0 0);
-}
-
-/* toc-content hover 时，indicator 变虚线
-   （因为 indicator pointer-events:none，用父容器 hover 代替） */
-.toc-content:hover .toc-active-indicator {
-	border-top-style: dashed;
-	border-right-style: dashed;
-	border-bottom-style: dashed;
-	border-left-style: dashed;
-}
-
-/* 鼠标靠近哪条边，那条边恢复实线（由 JS 设置 data-hover-edge） */
-.toc-active-indicator[data-hover-edge="top"] {
-	border-top-style: solid;
-}
-.toc-active-indicator[data-hover-edge="right"] {
-	border-right-style: solid;
-}
-.toc-active-indicator[data-hover-edge="bottom"] {
-	border-bottom-style: solid;
-}
-.toc-active-indicator[data-hover-edge="left"] {
-	border-left-style: solid;
+	display: none !important;
 }
 
 @media (max-width: 768px) {

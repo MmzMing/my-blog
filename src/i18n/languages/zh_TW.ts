@@ -163,6 +163,7 @@ export const zh_TW: Translation = {
 
 	// 相關文章推薦
 	[Key.relatedPosts]: "相關文章",
+	[Key.otherPosts]: "其他文章",
 
 	// 加密
 
@@ -215,6 +216,10 @@ export const zh_TW: Translation = {
 	[Key.plainTextVersion]: "純文字",
 
 	// 代碼區塊折疊配置
+	[Key.codeCollapsibleShowMore]: "展開",
+	[Key.codeCollapsibleShowLess]: "收合",
+	[Key.codeCollapsibleExpanded]: "程式碼區塊已展開",
+	[Key.codeCollapsibleCollapsed]: "程式碼區塊已收合",
 
 	// 相簿頁面
 	[Key.gallery]: "相簿",
@@ -447,7 +452,10 @@ export const zh_TW: Translation = {
 	[Key.sponsorChooseMethod]: "選擇你喜歡的支付方式",
 	[Key.sponsorNotAvailable]: "暫不開通",
 	[Key.sponsorMetaTemplate]: "{date} · {method}",
-	[Key.postAiSummaryLabel]: "AI 摘要",
+	[Key.postStatsLabel]: "文章資料",
+	[Key.postCategoryLabel]: "文章分類",
+	[Key.readTimes]: "次閱讀",
+	[Key.postIntroLabel]: "文章介紹",
 	[Key.postCoverLabel]: "封面圖",
 	[Key.coverImageAltSuffix]: "封面圖",
 
@@ -590,8 +598,7 @@ export const zh_TW: Translation = {
 	[Key.kgResetView]: "重設視圖",
 	[Key.kgLayoutMindmap]: "切換為腦圖版面",
 	[Key.kgLayoutForce]: "切換為力導向版面",
-	[Key.postNavBack]: "返回上一頁",
-	[Key.postNavCategory]: "切換分類",
+	[Key.postNavBack]: "返回",
 	[Key.archiveMotto]: "時間不曾回頭，卻把走過的路都留在了這裡。",
 	[Key.collectionsMotto]: "好的工具從不喧嘩，它只是讓你離想做的事更近一點。",
 	[Key.aboutMotto]: "我是誰，大概只能由我寫下的那些東西慢慢回答。",

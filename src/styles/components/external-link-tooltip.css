@@ -1,0 +1,32 @@
+/* 外链跳转提示：跟随鼠标的浮层，由 external-link-tooltip-controller.ts 控制显隐与定位 */
+.external-link-tooltip {
+	position: fixed;
+	left: 0;
+	top: 0;
+	z-index: 90;
+	max-width: min(28rem, calc(100vw - 16px));
+	padding: 4px 9px;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-medium);
+	background: var(--float-panel-bg);
+	color: var(--content-meta);
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 1.4;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.12s ease-out;
+}
+
+.external-link-tooltip.is-visible {
+	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.external-link-tooltip {
+		transition-duration: 0.01ms;
+	}
+}

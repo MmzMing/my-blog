@@ -104,13 +104,15 @@ import { i18n } from "@/i18n/translation";
 			const button = document.getElementById(buttonId);
 			const drawer = document.getElementById(drawerId);
 			if (!button || !drawer) return;
-			button.addEventListener("click", (event) => {
+			button.addEventListener("click", async (event) => {
 				event.stopPropagation();
 				const isOpen = !drawer.classList.contains("dock-drawer-closed");
 				closeAllDrawers();
 				if (!isOpen) {
+					// 先建好目录再打开：否则首次打开时卡片高度会从空列表长到完整高度，
+					// 底边固定会看到顶边跳一下，底部上滑的动画不再连贯。
+					if (drawerId === "dock-drawer-toc") await ensureDockToc();
 					drawer.classList.remove("dock-drawer-closed");
-					if (drawerId === "dock-drawer-toc") void ensureDockToc();
 				}
 			}, { signal: dockSignal });
 		});

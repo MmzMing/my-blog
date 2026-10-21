@@ -11,8 +11,10 @@ import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import QRCode from "qrcode";
 import PostHeaderNav from "@/components/misc/PostHeaderNav.astro";
+import "@/styles/components/post-accordion.css";
 import "@/styles/components/post-hero.css";
 import "@/styles/components/post-header-nav.css";
+import { getCategoryHue } from "@utils/article-list-posts";
 import { getSortedPosts } from "@utils/content-utils";
 import {
 	getCategoryArchiveUrl,
@@ -25,13 +27,15 @@ import {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import CoverImage from "@/components/common/CoverImage.astro";
+import PaperDeckleDefs from "@/components/common/PaperDeckleDefs.astro";
 import PostFooterActions from "@/components/misc/PostFooterActions.astro";
+import PostSectionDivider from "@/components/misc/PostSectionDivider.astro";
 import RelatedPosts from "@/components/misc/RelatedPosts.astro";
 import { coverImageConfig } from "@/config/coverImageConfig";
 import { homeConfig } from "@/config/homeConfig";
 import { siteConfig } from "@/config/siteConfig";
 import { buildCoverImage } from "@/utils/cover-image";
-import { formatDateI18nParts, formatDateToYYYYMMDD } from "@/utils/date-utils";
+import { formatDateI18n, formatDateToYYYYMMDD } from "@/utils/date-utils";
 import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
 import { isPublicWikiPost, toWikiPath } from "@/utils/llm-wiki";
 import {
@@ -60,8 +64,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content, remarkPluginFrontmatter } = await render(entry);
-const publishedDateParts = formatDateI18nParts(entry.data.published);
-const postAiSummaryModel = "DeepSeek";
+const publishedDateLabel = formatDateI18n(entry.data.published, false, true);
 
 const bannerPostMeta = {
 	title: entry.data.title,
@@ -238,6 +241,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
   setOGTypeArticle={true}
   postSlug={entry.id}
   postCategory={entry.data.category || undefined}
+  wikiMarkdownUrl={wikiMarkdownUrl}
   relatedCards={relatedPostCards}
   ogImage={structuredImageUrl}
   bannerPostMeta={bannerPostMeta}
@@ -272,284 +276,270 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
         {entry.data.title}
       </h1>
 
-      <div class="post-hero__info">
-        <div class="post-hero__meta-row">
-          {publishedDateParts.map((part, index) => (
-            <>
-              <span class="post-hero__meta-item">{part}</span>
-              {index < publishedDateParts.length - 1 && (
-                <span class="post-hero__meta-dot" aria-hidden="true">·</span>
-              )}
-            </>
-          ))}
-
-          <span class="post-hero__meta-dot">·</span>
-
-          <span class="post-hero__meta-item">
-            {remarkPluginFrontmatter.words} {i18n(I18nKey.wordsCount)}
-          </span>
-
-          <span class="post-hero__meta-dot">·</span>
-
-          <span class="post-hero__meta-item">
-            {remarkPluginFrontmatter.minutes} {i18n(remarkPluginFrontmatter.minutes === 1 ? I18nKey.minuteCount : I18nKey.minutesCount)}
-          </span>
-
-          <span class="post-hero__meta-dot">·</span>
-
-          <span class="post-hero__views"><VisitorCount id={entry.id} compact /></span>
-
-          {siteConfig.postShare && (
-            <>
-              <span class="post-hero__meta-dot" aria-hidden="true">·</span>
-
-              <div
-                class="post-hero__share-menu"
-                role="group"
-                aria-label={i18n(I18nKey.shareArticle)}
-                data-share-title={shareTitle}
-                data-share-text={shareDescription}
-                data-share-url={canonicalUrl}
-                data-pagefind-ignore
-              >
-                <button type="button" class="post-hero__share-trigger" data-post-share-native>
-                  <Icon name="material-symbols:share" aria-hidden="true" />
-                  <span>{i18n(I18nKey.shareArticle)}</span>
-                </button>
-
-                <dialog class="post-hero__share-popover" data-post-share-dialog aria-label={i18n(I18nKey.shareArticle)}>
-                  <header class="post-hero__share-dialog-header">
-                    <span><Icon name="material-symbols:share" aria-hidden="true" />{i18n(I18nKey.shareArticle)}</span>
-                    <button type="button" class="post-hero__share-close" data-post-share-close aria-label={i18n(I18nKey.close)}>
-                      <Icon name="material-symbols:close-rounded" aria-hidden="true" />
-                    </button>
-                  </header>
-                  <div class="post-hero__share-qr">
-                    <img
-                      class="post-hero__share-qr-image"
-                      src={shareQrCode}
-                      alt={i18n(I18nKey.scanToShare)}
-                      width="96"
-                      height="96"
-                    />
-                    <span class="post-hero__share-qr-label">{i18n(I18nKey.scanToShare)}</span>
-                  </div>
-
-                  <div class="post-hero__share-content">
-                    <span class="post-hero__share-title">{shareTitle}</span>
-                    <input class="post-hero__share-url" data-post-share-url type="text" value={canonicalUrl} readonly aria-label={i18n(I18nKey.copyLink)} />
-
-                    <div class="post-hero__share-actions">
-                      <a
-                        class="post-hero__share-action post-hero__share-action--qq"
-                        href={qqShareUrl.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={i18n(I18nKey.shareToQQ)}
-                        title={i18n(I18nKey.shareToQQ)}
-                      >
-                        <span class="post-hero__share-action-icon"><Icon name="fa7-brands:qq" aria-hidden="true" /></span>
-                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareQQ)}</span>
-                      </a>
-                      <a
-                        class="post-hero__share-action post-hero__share-action--email"
-                        href={emailShareUrl}
-                        aria-label={i18n(I18nKey.shareByEmail)}
-                        title={i18n(I18nKey.shareByEmail)}
-                      >
-                        <span class="post-hero__share-action-icon"><Icon name="material-symbols:mail-outline-rounded" aria-hidden="true" /></span>
-                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareEmail)}</span>
-                      </a>
-                      <a
-                        class="post-hero__share-action post-hero__share-action--feishu"
-                        href={feishuShareUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={i18n(I18nKey.shareToFeishu)}
-                        title={i18n(I18nKey.shareToFeishu)}
-                      >
-                        <span class="post-hero__share-action-icon"><Icon name="material-symbols:send-outline-rounded" aria-hidden="true" /></span>
-                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareFeishu)}</span>
-                      </a>
-                      <a
-                        class="post-hero__share-action post-hero__share-action--x"
-                        href={xShareUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={i18n(I18nKey.shareToX)}
-                        title={i18n(I18nKey.shareToX)}
-                      >
-                        <span class="post-hero__share-action-icon"><Icon name="fa7-brands:x-twitter" aria-hidden="true" /></span>
-                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareX)}</span>
-                      </a>
-                      <a
-                        class="post-hero__share-action post-hero__share-action--whatsapp"
-                        href={whatsAppShareUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={i18n(I18nKey.shareToWhatsApp)}
-                        title={i18n(I18nKey.shareToWhatsApp)}
-                      >
-                        <span class="post-hero__share-action-icon"><Icon name="fa7-brands:whatsapp" aria-hidden="true" /></span>
-                        <span class="post-hero__share-action-label">{i18n(I18nKey.shareWhatsApp)}</span>
-                      </a>
-                      <button
-                        class="post-hero__share-action post-hero__share-action--copy"
-                        type="button"
-                        data-post-share-copy
-                        data-copy-link={canonicalUrl}
-                        data-copy-label={i18n(I18nKey.copyLink)}
-                        data-copied-label={i18n(I18nKey.copied)}
-                        data-failed-label={i18n(I18nKey.shareCopyFailed)}
-                        aria-label={i18n(I18nKey.copyLink)}
-                        title={i18n(I18nKey.copyLink)}
-                      >
-                        <span class="post-hero__share-action-icon"><Icon name="material-symbols:content-copy-outline-rounded" aria-hidden="true" /></span>
-                        <span class="post-hero__share-action-label" data-post-share-copy-label>{i18n(I18nKey.copyLink)}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <span class="post-hero__share-status" role="status" aria-live="polite" data-post-share-status></span>
-                </dialog>
-              </div>
-            </>
-          )}
-
-          {wikiMarkdownUrl && (
-            <>
-              <span class="post-hero__meta-dot" aria-hidden="true">·</span>
-
-              <a
-                class="post-hero__taxonomy-link post-hero__plaintext-link"
-                href={wikiMarkdownUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={i18n(I18nKey.plainTextVersion)}
-                data-pagefind-ignore
-              >
-                <Icon
-                  name="material-symbols:description-outline-rounded"
-                  aria-hidden="true"
-                />
-                <span>{i18n(I18nKey.plainTextVersion)}</span>
-              </a>
-            </>
-          )}
-        </div>
-
-        <div class="post-hero__taxonomy-row">
-          <a
-            href={getCategoryArchiveUrl(entry.data.category || null)}
-            class="post-hero__taxonomy-link post-hero__taxonomy-link--category"
+      {/* 元信息已整体下沉到 post-accordion；这里只保留分享弹窗宿主，触发入口在右侧目录面板 */}
+      {siteConfig.postShare && (
+        <>
+          <div
+            class="post-hero__share-menu"
+            role="group"
+            aria-label={i18n(I18nKey.shareArticle)}
+            data-share-title={shareTitle}
+            data-share-text={shareDescription}
+            data-share-url={canonicalUrl}
+            data-pagefind-ignore
           >
-            {entry.data.category || i18n(I18nKey.uncategorized)}
-          </a>
+            <dialog class="post-hero__share-popover" data-post-share-dialog aria-label={i18n(I18nKey.shareArticle)}>
+              <header class="post-hero__share-dialog-header">
+                <span><Icon name="material-symbols:share" aria-hidden="true" />{i18n(I18nKey.shareArticle)}</span>
+                <button type="button" class="post-hero__share-close" data-post-share-close aria-label={i18n(I18nKey.close)}>
+                  <Icon name="material-symbols:close-rounded" aria-hidden="true" />
+                </button>
+              </header>
+              <div class="post-hero__share-qr">
+                <img
+                  class="post-hero__share-qr-image"
+                  src={shareQrCode}
+                  alt={i18n(I18nKey.scanToShare)}
+                  width="96"
+                  height="96"
+                />
+                <span class="post-hero__share-qr-label">{i18n(I18nKey.scanToShare)}</span>
+              </div>
 
-          {entry.data.tags && entry.data.tags.length > 0 && entry.data.tags.map((tag) => (
-            <span class="post-hero__taxonomy-item">
-              <span class="post-hero__taxonomy-separator" aria-hidden="true">/</span>
-              <a href={getTagArchiveUrl(tag)} class="post-hero__taxonomy-link post-hero__taxonomy-link--tag">
-                {tag.trim()}
-              </a>
-            </span>
-          ))}
-        </div>
+              <div class="post-hero__share-content">
+                <span class="post-hero__share-title">{shareTitle}</span>
+                <input class="post-hero__share-url" data-post-share-url type="text" value={canonicalUrl} readonly aria-label={i18n(I18nKey.copyLink)} />
 
-      </div>
+                <div class="post-hero__share-actions">
+                  <a
+                    class="post-hero__share-action post-hero__share-action--qq"
+                    href={qqShareUrl.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={i18n(I18nKey.shareToQQ)}
+                    title={i18n(I18nKey.shareToQQ)}
+                  >
+                    <span class="post-hero__share-action-icon"><Icon name="fa7-brands:qq" aria-hidden="true" /></span>
+                    <span class="post-hero__share-action-label">{i18n(I18nKey.shareQQ)}</span>
+                  </a>
+                  <a
+                    class="post-hero__share-action post-hero__share-action--email"
+                    href={emailShareUrl}
+                    aria-label={i18n(I18nKey.shareByEmail)}
+                    title={i18n(I18nKey.shareByEmail)}
+                  >
+                    <span class="post-hero__share-action-icon"><Icon name="material-symbols:mail-outline-rounded" aria-hidden="true" /></span>
+                    <span class="post-hero__share-action-label">{i18n(I18nKey.shareEmail)}</span>
+                  </a>
+                  <a
+                    class="post-hero__share-action post-hero__share-action--feishu"
+                    href={feishuShareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={i18n(I18nKey.shareToFeishu)}
+                    title={i18n(I18nKey.shareToFeishu)}
+                  >
+                    <span class="post-hero__share-action-icon"><Icon name="material-symbols:send-outline-rounded" aria-hidden="true" /></span>
+                    <span class="post-hero__share-action-label">{i18n(I18nKey.shareFeishu)}</span>
+                  </a>
+                  <a
+                    class="post-hero__share-action post-hero__share-action--x"
+                    href={xShareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={i18n(I18nKey.shareToX)}
+                    title={i18n(I18nKey.shareToX)}
+                  >
+                    <span class="post-hero__share-action-icon"><Icon name="fa7-brands:x-twitter" aria-hidden="true" /></span>
+                    <span class="post-hero__share-action-label">{i18n(I18nKey.shareX)}</span>
+                  </a>
+                  <a
+                    class="post-hero__share-action post-hero__share-action--whatsapp"
+                    href={whatsAppShareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={i18n(I18nKey.shareToWhatsApp)}
+                    title={i18n(I18nKey.shareToWhatsApp)}
+                  >
+                    <span class="post-hero__share-action-icon"><Icon name="fa7-brands:whatsapp" aria-hidden="true" /></span>
+                    <span class="post-hero__share-action-label">{i18n(I18nKey.shareWhatsApp)}</span>
+                  </a>
+                  <button
+                    class="post-hero__share-action post-hero__share-action--copy"
+                    type="button"
+                    data-post-share-copy
+                    data-copy-link={canonicalUrl}
+                    data-copy-label={i18n(I18nKey.copyLink)}
+                    data-copied-label={i18n(I18nKey.copied)}
+                    data-failed-label={i18n(I18nKey.shareCopyFailed)}
+                    aria-label={i18n(I18nKey.copyLink)}
+                    title={i18n(I18nKey.copyLink)}
+                  >
+                    <span class="post-hero__share-action-icon"><Icon name="material-symbols:content-copy-outline-rounded" aria-hidden="true" /></span>
+                    <span class="post-hero__share-action-label" data-post-share-copy-label>{i18n(I18nKey.copyLink)}</span>
+                  </button>
+                </div>
+              </div>
+
+              <span class="post-hero__share-status" role="status" aria-live="polite" data-post-share-status></span>
+            </dialog>
+          </div>
+        </>
+      )}
     </div>
   </div>
 
-  <!-- Layer 2: 过期提示 / AI 摘要 / 封面图 -->
+  <!-- 撕纸毛边滤镜：手风琴与许可卡共用这一份定义，整页只挂一次 -->
+  <PaperDeckleDefs />
+
+  <!-- Layer 2: 元信息手风琴 —— 提示 / 数据 / 分类 / 介绍 / 封面 -->
   {
-    (entry.data.description || siteConfig.showLastModified || (showPostCover && postCover)) && (() => {
+    (() => {
       const lastModified = dayjs(entry.data.updated || entry.data.published);
       const dateStr = lastModified.format("YYYY-MM-DD");
       const outdatedThreshold = siteConfig.outdatedThreshold ?? 1;
+      const categoryName = entry.data.category?.trim() || i18n(I18nKey.uncategorized);
+      const tags = (entry.data.tags ?? []).filter((tag) => tag.trim());
       return (
-        <div class="post-intro-card mb-8">
-          {
-            siteConfig.showLastModified && (
-              <div
-                id="outdated-info"
-                class="post-intro-card__outdated hidden"
-                data-date={lastModified.toISOString()}
-                data-threshold={outdatedThreshold}
-              >
-                <div class="post-intro-card__section">
-                  <div class="post-intro-card__row">
-                    <Icon name="material-symbols:info-outline-rounded" class="post-intro-card__icon" />
-                    <span class="post-intro-card__text">
+        <div class="post-accordion mb-8" data-post-accordion>
+          {siteConfig.showLastModified && (
+            <section class="post-accordion__item">
+              <div class="post-accordion__static">
+                <div class="post-accordion__title-wrap">
+                  <div
+                    id="outdated-info"
+                    class="post-accordion__notice"
+                    data-date={lastModified.toISOString()}
+                    data-threshold={outdatedThreshold}
+                  >
+                    <Icon name="material-symbols:schedule-outline" class="post-accordion__notice-icon" />
+                    <span>
                       {i18n(I18nKey.lastModifiedPrefix)}{dateStr}
-                      <span id="days-ago-text-intro" class="outdated-days" data-template={i18n(I18nKey.lastModifiedDaysAgo)}></span>
-                      <span id="outdated-warning-intro" class="outdated-warning hidden">，{i18n(I18nKey.lastModifiedOutdated)}</span>
+                      <span id="days-ago-text-intro" data-template={i18n(I18nKey.lastModifiedDaysAgo)}></span>
+                      <span id="outdated-warning-intro" class="hidden">，{i18n(I18nKey.lastModifiedOutdated)}</span>
                     </span>
                   </div>
                 </div>
               </div>
-            )
-          }
-          {entry.data.description && (
-            <>
-              {siteConfig.showLastModified && <div class="post-intro-card__divider" />}
-              <details class="post-intro-card__details" open>
-                <summary class="post-intro-card__summary">
-                  <span class="post-intro-card__summary-title">
-                    <Icon
-                      name="material-symbols:auto-awesome"
-                      class="post-intro-card__summary-icon"
-                      aria-hidden="true"
-                    />
-                    <span>{i18n(I18nKey.postAiSummaryLabel)}</span>
-                    <span class="post-intro-card__summary-model">- {postAiSummaryModel}</span>
-                  </span>
-                  <Icon
-                    name="material-symbols:keyboard-arrow-down-rounded"
-                    class="post-intro-card__summary-arrow"
-                    aria-hidden="true"
-                  />
-                </summary>
-                <div class="post-intro-card__section post-intro-card__section--summary">
-                  <p class="post-intro-card__desc">{entry.data.description}</p>
-                </div>
-              </details>
-            </>
+            </section>
           )}
-          {showPostCover && postCover && (
-            <>
-              {(siteConfig.showLastModified || entry.data.description) && (
-                <div class="post-intro-card__divider" />
-              )}
-              <details class="post-intro-card__details" open>
-                <summary class="post-intro-card__summary">
-                  <span class="post-intro-card__summary-title">
-                    <Icon
-                      name="material-symbols:image-outline-rounded"
-                      class="post-intro-card__summary-icon"
-                      aria-hidden="true"
-                    />
-                    <span>{i18n(I18nKey.postCoverLabel)}</span>
-                  </span>
-                  <Icon
-                    name="material-symbols:keyboard-arrow-down-rounded"
-                    class="post-intro-card__summary-arrow"
-                    aria-hidden="true"
-                  />
-                </summary>
-                <div class="post-intro-card__section post-intro-card__section--cover">
-                  <div id="post-cover" class="post-intro-card__cover" style={postCover.lqipStyle}>
-                    <CoverImage
-                      cover={postCover}
-                      alt={`${entry.data.title} - ${i18n(I18nKey.coverImageAltSuffix)}`}
-                      loading="eager"
-                      fetchpriority="high"
-                      apiUrls={coverApiUrls}
-                      fallbackSrc={coverFallbackUrl || undefined}
-                    />
+
+          <section class="post-accordion__item" data-post-accordion-item data-open>
+            <button type="button" class="post-accordion__header" aria-expanded="true" aria-controls="post-accordion-stats">
+              <span class="post-accordion__title-wrap">
+                <span class="post-accordion__title">{i18n(I18nKey.postStatsLabel)}</span>
+              </span>
+              <Icon name="material-symbols:keyboard-arrow-down-rounded" class="post-accordion__arrow" aria-hidden="true" />
+            </button>
+            <div class="post-accordion__panel" id="post-accordion-stats">
+              <div class="post-accordion__panel-inner">
+                <div class="post-accordion__content">
+                  <div class="post-accordion__stats">
+                    <span class="post-accordion__stat">
+                      <Icon name="material-symbols:calendar-month-outline" aria-hidden="true" />
+                      <span>{publishedDateLabel}</span>
+                    </span>
+                    <span class="post-accordion__stat-separator" aria-hidden="true">·</span>
+                    <span class="post-accordion__stat">
+                      <Icon name="material-symbols:article-outline" aria-hidden="true" />
+                      <span>{remarkPluginFrontmatter.words} {i18n(I18nKey.wordsCount)}</span>
+                    </span>
+                    <span class="post-accordion__stat-separator" aria-hidden="true">·</span>
+                    <span class="post-accordion__stat">
+                      <Icon name="material-symbols:schedule-outline" aria-hidden="true" />
+                      <span>{remarkPluginFrontmatter.minutes} {i18n(remarkPluginFrontmatter.minutes === 1 ? I18nKey.minuteCount : I18nKey.minutesCount)}</span>
+                    </span>
+                    <span class="post-accordion__stat-separator" aria-hidden="true">·</span>
+                    <span class="post-accordion__stat post-accordion__stat--views">
+                      <Icon name="material-symbols:visibility-outline" aria-hidden="true" />
+                      <VisitorCount id={entry.id} compact />
+                    </span>
                   </div>
                 </div>
-              </details>
-            </>
+              </div>
+            </div>
+          </section>
+
+          <section class="post-accordion__item" data-post-accordion-item data-open>
+            <button type="button" class="post-accordion__header" aria-expanded="true" aria-controls="post-accordion-terms">
+              <span class="post-accordion__title-wrap">
+                <span class="post-accordion__title">{i18n(I18nKey.postCategoryLabel)}</span>
+              </span>
+              <Icon name="material-symbols:keyboard-arrow-down-rounded" class="post-accordion__arrow" aria-hidden="true" />
+            </button>
+            <div class="post-accordion__panel" id="post-accordion-terms">
+              <div class="post-accordion__panel-inner">
+                <div class="post-accordion__content">
+                  <div class="post-accordion__terms">
+                    <a
+                      href={getCategoryArchiveUrl(entry.data.category || null)}
+                      class="post-accordion__term-link post-accordion__term-link--category"
+                      style={`--article-category-hue: ${getCategoryHue(categoryName)}`}
+                    >
+                      <Icon name="material-symbols:folder-outline" aria-hidden="true" />
+                      <span>{categoryName}</span>
+                    </a>
+
+                    {tags.length > 0 && (
+                      <>
+                        <span class="post-accordion__term-separator" aria-hidden="true">/</span>
+                        {tags.map((tag) => (
+                          <a href={getTagArchiveUrl(tag)} class="post-accordion__term-link">
+                            <Icon name="material-symbols:sell-outline" aria-hidden="true" />
+                            <span>{tag.trim()}</span>
+                          </a>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {entry.data.description && (
+            <section class="post-accordion__item" data-post-accordion-item data-open>
+              <button type="button" class="post-accordion__header" aria-expanded="true" aria-controls="post-accordion-intro">
+                <span class="post-accordion__title-wrap">
+                  <span class="post-accordion__title">{i18n(I18nKey.postIntroLabel)}</span>
+                </span>
+                <Icon name="material-symbols:keyboard-arrow-down-rounded" class="post-accordion__arrow" aria-hidden="true" />
+              </button>
+              <div class="post-accordion__panel" id="post-accordion-intro">
+                <div class="post-accordion__panel-inner">
+                  <div class="post-accordion__content">
+                    <p class="post-accordion__desc">{entry.data.description}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {showPostCover && postCover && (
+            <section class="post-accordion__item" data-post-accordion-item>
+              <button type="button" class="post-accordion__header" aria-expanded="false" aria-controls="post-accordion-cover">
+                <span class="post-accordion__title-wrap">
+                  <span class="post-accordion__title">{i18n(I18nKey.postCoverLabel)}</span>
+                </span>
+                <Icon name="material-symbols:keyboard-arrow-down-rounded" class="post-accordion__arrow" aria-hidden="true" />
+              </button>
+              <div class="post-accordion__panel" id="post-accordion-cover">
+                <div class="post-accordion__panel-inner">
+                  <div class="post-accordion__content">
+                    <div id="post-cover" class="post-accordion__cover" style={postCover.lqipStyle}>
+                      <CoverImage
+                        cover={postCover}
+                        alt={`${entry.data.title} - ${i18n(I18nKey.coverImageAltSuffix)}`}
+                        loading="eager"
+                        fetchpriority="high"
+                        apiUrls={coverApiUrls}
+                        fallbackSrc={coverFallbackUrl || undefined}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           )}
         </div>
       );
@@ -560,7 +550,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
     <div id="post-container" class="card-base z-10 px-3 pb-4 pt-0 relative w-full">
       {entry.data.password ? (
         <EncryptedPost password={entry.data.password} slug={entry.id} hint={entry.data.passwordHint}>
-          <Markdown class="mb-6 markdown-content onload-animation">
+          <Markdown class="mb-6! markdown-content onload-animation">
             <Content />
           </Markdown>
 
@@ -572,7 +562,9 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
             sourceLink={entry.data.sourceLink}
             licenseName={entry.data.licenseName}
             licenseUrl={entry.data.licenseUrl}
+            wikiMarkdownUrl={wikiMarkdownUrl}
           />
+          <PostSectionDivider />
           <RelatedPosts
             cards={relatedPostCards}
             currentId={entry.id}
@@ -582,7 +574,7 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
         </EncryptedPost>
       ) : (
         <>
-          <Markdown class="mb-6 markdown-content onload-animation">
+          <Markdown class="mb-6! markdown-content onload-animation">
             <Content />
           </Markdown>
 
@@ -594,7 +586,9 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
             sourceLink={entry.data.sourceLink}
             licenseName={entry.data.licenseName}
             licenseUrl={entry.data.licenseUrl}
+            wikiMarkdownUrl={wikiMarkdownUrl}
           />
+          <PostSectionDivider />
           <RelatedPosts
             cards={relatedPostCards}
             currentId={entry.id}
@@ -608,10 +602,12 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
 
   <script>
     import dayjs from "dayjs";
+    import { mountPostAccordion } from "@/utils/post-accordion-controller";
     import { mountPostShare } from "@/utils/post-share-controller";
     import { definePageIsland } from "@/utils/swup-lifecycle";
 
     let cleanupPostShare: (() => void) | null = null;
+    let cleanupPostAccordion: (() => void) | null = null;
 
     function initPostCoverImage() {
       const cover = document.getElementById("post-cover");
@@ -666,7 +662,8 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
       const threshold = Number(info.dataset.threshold);
 
       if (daysDiff >= threshold) {
-        info.classList.remove('hidden');
+        // 提示行本身常驻，这里只标记「已过时」让图标转红，并补出天数与警告文案
+        info.classList.add('is-outdated');
         if (daysDiff >= 1) {
           const textEl = document.getElementById('days-ago-text-intro');
           if (textEl && textEl.dataset.template) {
@@ -680,62 +677,43 @@ const serializedJsonLd = serializeJsonLd(jsonLd);
 
     // checkOutdated 原先只挂在 astro:page-load 上、顶层没调，
     // 而该事件首次加载并不触发 —— 直接打开文章页时「内容可能过时」提示从来不显示。
-    // 三个初始化统一走 definePageIsland，首次加载与每次导航各跑一次
+    // 这些初始化统一走 definePageIsland，首次加载与每次导航各跑一次
     definePageIsland({
       name: "post-detail",
       mount: () => {
         initPostCoverImage();
         checkOutdated();
         cleanupPostShare = mountPostShare();
+        cleanupPostAccordion = mountPostAccordion();
       },
       unmount: () => {
         cleanupPostShare?.();
         cleanupPostShare = null;
+        cleanupPostAccordion?.();
+        cleanupPostAccordion = null;
       },
     });
   </script>
 
-  <div
-    class="post-pager-row flex flex-col md:flex-row justify-between mb-4 gap-4 overflow-hidden w-full"
-  >
-    <!-- 上一篇：左卡，大图标垂直撑满两层文字（标签+文章名），背景与相关文章卡一致 -->
+  <div class="post-pager-row post-pager">
+    <!-- 上一篇：细线下方靠左的单行文字链，无边框卡，悬停染青 -->
     <a
+      class="post-pager__link post-pager__link--prev"
       href={entry.data.prevSlug ? getPostUrlBySlug(entry.data.prevSlug) : url("/")}
-      class="w-full overflow-hidden active:scale-95"
+      title={entry.data.prevTitle || i18n(I18nKey.home)}
     >
-      <div class="rounded-2xl w-full h-20 max-w-full px-5 flex items-center gap-4 bg-(--article-surface-bg) transition-colors duration-150 hover:bg-(--btn-card-bg-hover)">
-        <Icon
-          name="material-symbols:chevron-left-rounded"
-          class="text-[2.75rem] text-(--primary) shrink-0"
-          aria-hidden="true"
-        />
-        <div class="flex flex-col justify-center gap-0.5 overflow-hidden min-w-0">
-          <span class="text-xs text-(--content-meta)">{i18n(I18nKey.prevPost)}</span>
-          <span class="font-bold truncate">
-            {entry.data.prevTitle || i18n(I18nKey.home)}
-          </span>
-        </div>
-      </div>
+      <Icon name="material-symbols:arrow-left-alt-rounded" class="post-pager__icon" aria-hidden="true" />
+      <span class="post-pager__text">{entry.data.prevTitle || i18n(I18nKey.home)}</span>
     </a>
 
-    <!-- 下一篇：右卡，镜像布局 -->
+    <!-- 下一篇：镜像靠右 -->
     <a
+      class="post-pager__link post-pager__link--next"
       href={entry.data.nextSlug ? getPostUrlBySlug(entry.data.nextSlug) : url("/")}
-      class="w-full overflow-hidden active:scale-95"
+      title={entry.data.nextTitle || i18n(I18nKey.home)}
     >
-      <div class="rounded-2xl w-full h-20 max-w-full px-5 flex items-center justify-end gap-4 bg-(--article-surface-bg) transition-colors duration-150 hover:bg-(--btn-card-bg-hover)">
-        <div class="flex flex-col justify-center items-end gap-0.5 overflow-hidden min-w-0 text-right">
-          <span class="text-xs text-(--content-meta)">{i18n(I18nKey.nextPost)}</span>
-          <span class="font-bold truncate">
-            {entry.data.nextTitle || i18n(I18nKey.home)}
-          </span>
-        </div>
-        <Icon
-          name="material-symbols:chevron-right-rounded"
-          class="text-[2.75rem] text-(--primary) shrink-0"
-          aria-hidden="true"
-        />
-      </div>
+      <span class="post-pager__text">{entry.data.nextTitle || i18n(I18nKey.home)}</span>
+      <Icon name="material-symbols:arrow-right-alt-rounded" class="post-pager__icon" aria-hidden="true" />
     </a>
   </div>
 

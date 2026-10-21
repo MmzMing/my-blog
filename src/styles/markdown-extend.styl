@@ -74,9 +74,14 @@
   img
     border-radius: 0.75rem
 
+  /* 分节线：prose 默认的 1px 实线在正文里几乎看不出段落边界，
+     改成 0.25em 粗虚线并拉开上下呼吸，让分隔本身承担排版节奏 */
   hr
+    margin: 2.5em 0
+    border-width: 0.25em 0 0
+    border-style: dashed none none
     border-color: var(--line-divider)
-    border-style: dashed
+    background: transparent
 
   iframe
     border-radius: 0.75rem
@@ -699,11 +704,20 @@ a.card-github.fetch-error
 .dark .mermaid-svg-dark
   display: flex
 
-// Mermaid 内联 SVG 自带主题样式，使用 !important 保证节点与站点表面色一致。
-.mermaid-svg-light svg .node > rect,
-.dark .mermaid-svg-dark svg .node > rect
-  fill: var(--article-surface-bg) !important
-  stroke: var(--deep-text) !important
+// Mermaid 内联 SVG 自带主题样式，这里只补两件事：圆角，以及把节点表面色钉成站点色板。
+// 色值与 rehype-mermaid 的 LIGHT/DARK_PALETTE 对应（#f5f5f5 / #d4d4d4 / #161616 / #2e2e2e）；
+// 描边不能用 --deep-text，否则节点框在浅色下会变成纯黑粗边。
+.mermaid-svg-light svg .node > rect
+  fill: #f5f5f5 !important
+  stroke: #d4d4d4 !important
+  stroke-width: 1.5px !important
+  stroke-linejoin: round
+  rx: 0.75rem
+  ry: 0.75rem
+
+:root.dark .mermaid-svg-dark svg .node > rect
+  fill: #161616 !important
+  stroke: #2e2e2e !important
   stroke-width: 1.5px !important
   stroke-linejoin: round
   rx: 0.75rem
@@ -794,7 +808,8 @@ a.card-github.fetch-error
   justify-content: center
   overflow: hidden
   touch-action: none
-  background: transparent
+  // 不能是透明：浅色 SVG 落在暗色遮罩上会整体发灰，与页内常态不一致
+  background: var(--float-panel-bg)
 
   &:active
     cursor: grabbing

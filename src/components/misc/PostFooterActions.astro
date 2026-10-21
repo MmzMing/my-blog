@@ -10,10 +10,20 @@ export interface Props {
 	sourceLink?: string;
 	licenseName?: string;
 	licenseUrl?: string;
+	/** 纯文本（llm-wiki）版地址，透传给许可卡的交互层 */
+	wikiMarkdownUrl?: string;
 }
 
-const { title, published, id, author, sourceLink, licenseName, licenseUrl } =
-	Astro.props;
+const {
+	title,
+	published,
+	id,
+	author,
+	sourceLink,
+	licenseName,
+	licenseUrl,
+	wikiMarkdownUrl,
+} = Astro.props;
 ---
 
 {licenseConfig.enable && (
@@ -25,6 +35,7 @@ const { title, published, id, author, sourceLink, licenseName, licenseUrl } =
     sourceLink={sourceLink ?? ""}
     licenseName={licenseName ?? ""}
     licenseUrl={licenseUrl ?? ""}
-    class="mb-6 rounded-xl license-container onload-animation"
+    wikiMarkdownUrl={wikiMarkdownUrl}
+    class="license-container onload-animation"
   />
 )}

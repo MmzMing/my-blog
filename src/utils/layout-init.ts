@@ -14,7 +14,9 @@
 
 import { ArticleTocPanelRuntime } from "@/utils/article-toc-panel-controller";
 import { scheduleContentOverflowEnhancements } from "@/utils/content-overflow";
+import { installExternalLinkTooltipController } from "@/utils/external-link-tooltip-controller";
 import { installLazyCollapsibleCodeController } from "@/utils/lazy-collapsible-code-controller";
+import { scheduleMermaidLabelFit } from "@/utils/mermaid-label-fit";
 import { initPageLoader } from "@/utils/page-loader-controller.js";
 import { installSwupCssPrefetch } from "@/utils/swup-css-prefetch";
 import {
@@ -31,6 +33,12 @@ export function initLayout(): void {
 	definePersistentIsland(
 		"layout:lazy-collapsible-code",
 		installLazyCollapsibleCodeController,
+	);
+
+	// 正文外链的跳转提示：同样是 document 级事件委托
+	definePersistentIsland(
+		"layout:external-link-tooltip",
+		installExternalLinkTooltipController,
 	);
 
 	// 文章右侧大纲面板：运行时内部已按页面级孤岛登记，这里只负责创建它
@@ -54,6 +62,12 @@ export function initLayout(): void {
 	definePageIsland({
 		name: "layout:content-overflow",
 		mount: scheduleContentOverflowEnhancements,
+	});
+
+	// 构建期字体度量偏窄，用浏览器真实度量把 Mermaid 节点撑开
+	definePageIsland({
+		name: "layout:mermaid-label-fit",
+		mount: scheduleMermaidLabelFit,
 	});
 
 	definePersistentIsland("layout:decrypt-rescan", () => {

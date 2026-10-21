@@ -27,6 +27,17 @@
 }
 
 /* 底部版本（窄屏/无面板设备）：横向多列，与参考图一致；面板内保持单列纵向 */
+.related-posts--bottom {
+	/* 许可卡自身不再带下边距，这一档间距统一由区块顶部提供 */
+	margin-top: var(--space-6);
+}
+
+/* 底部整段只留一条分隔线，标题已由 PostSectionDivider 挂在线上当标签，
+   组件自带的那行标题（含它自己的下划线）在这里是重复的；面板内仍需要它 */
+.related-posts--bottom .related-cards__title {
+	display: none;
+}
+
 .related-posts--bottom .related-cards__list {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));

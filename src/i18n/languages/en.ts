@@ -165,6 +165,7 @@ export const en: Translation = {
 
 	// Related Posts
 	[Key.relatedPosts]: "Related Posts",
+	[Key.otherPosts]: "Other Posts",
 
 	// Encrypted
 
@@ -216,6 +217,10 @@ export const en: Translation = {
 	[Key.plainTextVersion]: "Plain text",
 
 	// Code Block Collapsible Configuration
+	[Key.codeCollapsibleShowMore]: "Show more",
+	[Key.codeCollapsibleShowLess]: "Show less",
+	[Key.codeCollapsibleExpanded]: "Code block expanded",
+	[Key.codeCollapsibleCollapsed]: "Code block collapsed",
 
 	// Gallery Page
 	[Key.gallery]: "Gallery",
@@ -451,7 +456,10 @@ export const en: Translation = {
 	[Key.sponsorChooseMethod]: "Choose your preferred payment method",
 	[Key.sponsorNotAvailable]: "Not available yet",
 	[Key.sponsorMetaTemplate]: "{date} by {method}",
-	[Key.postAiSummaryLabel]: "AI Summary",
+	[Key.postStatsLabel]: "Article stats",
+	[Key.postCategoryLabel]: "Categories",
+	[Key.readTimes]: "reads",
+	[Key.postIntroLabel]: "Introduction",
 	[Key.postCoverLabel]: "Cover",
 	[Key.coverImageAltSuffix]: " cover image",
 
@@ -603,7 +611,6 @@ export const en: Translation = {
 	[Key.kgLayoutMindmap]: "Switch to mind map layout",
 	[Key.kgLayoutForce]: "Switch to force layout",
 	[Key.postNavBack]: "Back",
-	[Key.postNavCategory]: "Switch category",
 	[Key.archiveMotto]:
 		"Time never turns back, yet it leaves every road it walked right here.",
 	[Key.collectionsMotto]:

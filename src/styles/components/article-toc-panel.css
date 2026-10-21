@@ -291,6 +291,8 @@
 		background: transparent;
 		color: var(--article-toc-panel-muted);
 		font-size: 0.8rem;
+		/* 该样式同时挂在 <button> 与纯文本入口 <a> 上，链接不带下划线 */
+		text-decoration: none;
 		cursor: pointer;
 		transition: background-color 160ms ease, color 160ms ease;
 	}

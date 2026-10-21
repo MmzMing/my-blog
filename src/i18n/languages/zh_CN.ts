@@ -161,6 +161,7 @@ export const zh_CN: Translation = {
 
 	// 相关文章推荐
 	[Key.relatedPosts]: "相关文章",
+	[Key.otherPosts]: "其他文章",
 
 	// 加密
 
@@ -213,6 +214,10 @@ export const zh_CN: Translation = {
 	[Key.plainTextVersion]: "纯文本",
 
 	// 代码块折叠配置
+	[Key.codeCollapsibleShowMore]: "展开",
+	[Key.codeCollapsibleShowLess]: "收起",
+	[Key.codeCollapsibleExpanded]: "代码块已展开",
+	[Key.codeCollapsibleCollapsed]: "代码块已折叠",
 
 	// 相册页面
 	[Key.gallery]: "相册",
@@ -445,7 +450,10 @@ export const zh_CN: Translation = {
 	[Key.sponsorChooseMethod]: "选择你喜欢的支付方式",
 	[Key.sponsorNotAvailable]: "暂不开通",
 	[Key.sponsorMetaTemplate]: "{date} · {method}",
-	[Key.postAiSummaryLabel]: "AI 摘要",
+	[Key.postStatsLabel]: "文章数据",
+	[Key.postCategoryLabel]: "文章分类",
+	[Key.readTimes]: "次阅读",
+	[Key.postIntroLabel]: "文章介绍",
 	[Key.postCoverLabel]: "封面图",
 	[Key.coverImageAltSuffix]: "封面图",
 	// ===== 留言板 =====
@@ -587,8 +595,7 @@ export const zh_CN: Translation = {
 	[Key.kgResetView]: "重置视图",
 	[Key.kgLayoutMindmap]: "切换为脑图布局",
 	[Key.kgLayoutForce]: "切换为力导向布局",
-	[Key.postNavBack]: "返回上一页",
-	[Key.postNavCategory]: "切换分类",
+	[Key.postNavBack]: "返回",
 	[Key.archiveMotto]: "时间不曾回头，却把走过的路都留在了这里。",
 	[Key.collectionsMotto]: "好的工具从不喧哗，它只是让你离想做的事更近一点。",
 	[Key.aboutMotto]: "我是谁，大概只能由我写下的那些东西慢慢回答。",

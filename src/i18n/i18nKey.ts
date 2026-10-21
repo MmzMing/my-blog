@@ -144,6 +144,9 @@ enum I18nKey {
 	// 相关文章推荐
 	relatedPosts = "relatedPosts",
 
+	// 底部没有相关文章区块时的分隔线标题
+	otherPosts = "otherPosts",
+
 	// 加密
 
 	// 文章布局
@@ -193,6 +196,10 @@ enum I18nKey {
 	plainTextVersion = "plainTextVersion",
 
 	// 代码块折叠配置
+	codeCollapsibleShowMore = "codeCollapsibleShowMore",
+	codeCollapsibleShowLess = "codeCollapsibleShowLess",
+	codeCollapsibleExpanded = "codeCollapsibleExpanded",
+	codeCollapsibleCollapsed = "codeCollapsibleCollapsed",
 
 	// 相册页面
 	gallery = "gallery",
@@ -426,7 +433,6 @@ enum I18nKey {
 	kgLayoutMindmap = "kgLayoutMindmap",
 	kgLayoutForce = "kgLayoutForce",
 	postNavBack = "postNavBack",
-	postNavCategory = "postNavCategory",
 	archiveMotto = "archiveMotto",
 	collectionsMotto = "collectionsMotto",
 	aboutMotto = "aboutMotto",
@@ -467,7 +473,10 @@ enum I18nKey {
 	sponsorChooseMethod = "sponsorChooseMethod",
 	sponsorNotAvailable = "sponsorNotAvailable",
 	sponsorMetaTemplate = "sponsorMetaTemplate",
-	postAiSummaryLabel = "postAiSummaryLabel",
+	postStatsLabel = "postStatsLabel",
+	postCategoryLabel = "postCategoryLabel",
+	readTimes = "readTimes",
+	postIntroLabel = "postIntroLabel",
 	postCoverLabel = "postCoverLabel",
 	coverImageAltSuffix = "coverImageAltSuffix",
 

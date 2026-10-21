@@ -376,7 +376,7 @@ export class ArticleTocPanelController {
 	private railHeight = 0;
 	private modeTriggerHeight = 0;
 	private appliedRailTop: number | null = null;
-	/** 顶部跟随锚点（过期提示/AI 摘要/封面图信息卡）：初始与卡顶对齐，不存在则恒停靠 */
+	/** 顶部跟随锚点（元信息手风琴：提示/数据/分类/介绍/封面）：初始与其顶边对齐，不存在则恒停靠 */
 	private introAnchor: HTMLElement | null = null;
 	/** 底部钳制锚点：面板底边触到页脚顶边后随文档滚走，不悬浮在页脚上 */
 	private footerEl: HTMLElement | null = null;
@@ -431,8 +431,8 @@ export class ArticleTocPanelController {
 		}
 
 		this.root.hidden = false;
-		// 信息卡缺省（无摘要/过期/封面）时为 null，syncDock 退化为恒停靠在 railBaseTop
-		this.introAnchor = document.querySelector(".post-intro-card");
+		// 手风琴缺省（极少见：无提示/数据/分类/介绍/封面）时为 null，syncDock 退化为恒停靠在 railBaseTop
+		this.introAnchor = document.querySelector(".post-accordion");
 		// 页脚在容器外常驻，缓存引用安全（不随 Swup 换页重建）
 		this.footerEl = document.querySelector("[data-site-footer]");
 		// 相关文章视图存在才启用转换；锚点优先许可协议卡，缺省兜底正文卡底

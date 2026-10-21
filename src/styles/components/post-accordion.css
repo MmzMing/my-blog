@@ -1,0 +1,366 @@
+/* 文章元信息手风琴 —— 复刻参考实现（Radix Accordion + motion）的动效与线条样式：
+   面板高度走不回弹的 smooth 曲线（收过头会把内容整块抽走），内容落位带轻微过冲，
+   收起的面板在动画结束后退出无障碍树与 Tab 序列，reduced-motion 下终态不变、过程抹平。
+   参考实现的 spring.smooth ≈ cubic-bezier(0.22,1,0.36,1)，spring.snappy ≈ 带过冲的
+   cubic-bezier(0.34,1.56,0.64,1)，blur.subtle = 2px，content y = -6px。 */
+
+.post-accordion {
+  --pa-panel-duration: 420ms;
+  --pa-content-duration: 460ms;
+  --pa-fade-in: 260ms;
+  --pa-fade-out: 160ms;
+  --pa-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --pa-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --pa-ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --pa-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --pa-content-lift: -0.375rem;
+  --pa-content-blur: 2px;
+  --pa-inline-pad: 1.125rem;
+}
+
+/* 整组一张纸：底色与毛边画在 .post-accordion 的 ::before 上，五段同宽同内缩。
+   段与段之间只留一条行内细线，两端收进内边距里 —— 细线不顶到纸边，
+   免得被撕口咬断后露出线头。外框的顶边与末段底边不再画线，那是纸自己的边 */
+.post-accordion {
+  position: relative;
+  isolation: isolate;
+}
+
+.post-accordion::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--card-surface);
+  pointer-events: none;
+  filter: var(--paper-deckle-filter);
+}
+
+.post-accordion__item {
+  position: relative;
+}
+
+.post-accordion__item + .post-accordion__item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: var(--pa-inline-pad);
+  left: var(--pa-inline-pad);
+  border-top: 1px solid var(--line-divider);
+}
+
+/* ===== 行头：静态层与可展开层共用同一套排版 ===== */
+
+.post-accordion__header,
+.post-accordion__static {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.875rem var(--pa-inline-pad);
+  text-align: start;
+  background: transparent;
+  border: none;
+  color: inherit;
+}
+
+.post-accordion__header {
+  cursor: pointer;
+}
+
+.post-accordion__header:focus-visible {
+  outline: 2px solid var(--article-title-marker);
+  outline-offset: -2px;
+}
+
+.post-accordion__title-wrap {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.post-accordion__title {
+  color: var(--deep-text);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 180ms var(--pa-ease-standard);
+}
+
+.post-accordion__header:hover .post-accordion__title,
+.post-accordion__header:focus-visible .post-accordion__title {
+  text-decoration-line: underline;
+  text-decoration-color: currentColor;
+}
+
+/* 右侧箭头：snappy 弹性过冲翻转，与面板的不回弹曲线刻意区分 */
+.post-accordion__arrow {
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--content-meta);
+  transition:
+    rotate 360ms var(--pa-ease-spring),
+    color 200ms var(--pa-ease-standard);
+}
+
+.post-accordion__header:hover .post-accordion__arrow {
+  color: var(--deep-text);
+}
+
+.post-accordion__item[data-open] .post-accordion__arrow {
+  rotate: 180deg;
+}
+
+/* ===== 面板：grid-template-rows 当高度用（合成层友好） =====
+   三层分工：panel 收高度，panel-inner 裁内容并管淡入淡出与无障碍树，content 做下沉与失焦 */
+
+.post-accordion__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--pa-panel-duration) var(--pa-ease-settle);
+}
+
+.post-accordion__item[data-open] .post-accordion__panel {
+  grid-template-rows: 1fr;
+}
+
+.post-accordion__panel-inner {
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--pa-fade-out) linear,
+    visibility 0s linear var(--pa-panel-duration);
+}
+
+.post-accordion__item[data-open] .post-accordion__panel-inner {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--pa-fade-in) linear 80ms,
+    visibility 0s;
+}
+
+.post-accordion__content {
+  translate: 0 var(--pa-content-lift);
+  filter: blur(var(--pa-content-blur));
+  padding: 0.25rem var(--pa-inline-pad) 1.125rem;
+  transition:
+    translate 200ms var(--pa-ease-settle),
+    filter 200ms linear;
+}
+
+/* 面板起幅后再落位并带一点过冲；落位后 filter 收成 none 而不是 blur(0) ——
+   留着滤镜会把整块内容钉在合成层上，小号中文的反锯齿会跟着发糊 */
+.post-accordion__item[data-open] .post-accordion__content {
+  translate: 0 0;
+  filter: none;
+  transition:
+    translate var(--pa-content-duration) var(--pa-ease-spring) 60ms,
+    filter var(--pa-panel-duration) linear;
+}
+
+/* ===== 第 1 层：过期提示（静态，不可展开） ===== */
+
+.post-accordion__notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: var(--content-meta);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.post-accordion__notice-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+.post-accordion__notice.is-outdated .post-accordion__notice-icon {
+  color: #ef4444;
+}
+
+/* ===== 第 2 层：文章数据（静态，带图标） ===== */
+
+.post-accordion__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  min-width: 0;
+}
+
+.post-accordion__stat-separator {
+  color: var(--line-color);
+  user-select: none;
+}
+
+.post-accordion__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--content-meta);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* 图标不单独着色，跟随数据项文字的中性灰阶 */
+.post-accordion__stat svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
+/* VisitorCount 内部带 text-50 工具类，这里显式取同一个灰阶，与其它数据项完全同色 */
+.post-accordion__stat--views,
+.post-accordion__stat--views .text-50 {
+  color: var(--content-meta);
+}
+
+/* ===== 第 3 层：分类与标签，分类走公用配色 ===== */
+
+.post-accordion__terms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.post-accordion__term-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--card-surface);
+  color: var(--content-meta);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-decoration: none;
+  transition:
+    color 180ms var(--pa-ease-standard),
+    border-color 180ms var(--pa-ease-standard),
+    background-color 180ms var(--pa-ease-standard);
+}
+
+.post-accordion__term-link:hover,
+.post-accordion__term-link:focus-visible {
+  color: var(--article-title-marker);
+  border-color: currentcolor;
+}
+
+.post-accordion__term-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* 分类芯片：与归档面板、文章列表卡同一套 oklch 派生（hue 由 getCategoryHue 给到） */
+.post-accordion__term-link--category {
+  border-color: color-mix(
+    in oklch,
+    oklch(
+        var(--article-category-lightness) var(--article-category-chroma)
+        var(--article-category-hue)
+      )
+      45%,
+    transparent
+  );
+  background: color-mix(
+    in oklch,
+    oklch(
+        var(--article-category-lightness) var(--article-category-chroma)
+        var(--article-category-hue)
+      )
+      12%,
+    transparent
+  );
+  color: oklch(
+    var(--article-category-lightness) var(--article-category-chroma)
+    var(--article-category-hue)
+  );
+  font-weight: 600;
+}
+
+.post-accordion__term-link--category:hover,
+.post-accordion__term-link--category:focus-visible {
+  color: oklch(
+    var(--article-category-lightness) var(--article-category-chroma)
+    var(--article-category-hue)
+  );
+  border-color: currentcolor;
+  background: color-mix(
+    in oklch,
+    oklch(
+        var(--article-category-lightness) var(--article-category-chroma)
+        var(--article-category-hue)
+      )
+      20%,
+    transparent
+  );
+}
+
+.post-accordion__term-separator {
+  color: var(--line-color);
+  user-select: none;
+}
+
+/* ===== 第 4 层：文章介绍 ===== */
+
+.post-accordion__desc {
+  margin: 0;
+  color: var(--content-meta);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+/* ===== 第 5 层：封面图 ===== */
+
+/* 图片圆角沿用独立封面的 --radius-large，容器 overflow 裁切四角（含 LQIP 占位底） */
+.post-accordion__cover {
+  overflow: hidden;
+  border-radius: var(--radius-large);
+}
+
+.post-accordion__cover picture {
+  display: block;
+}
+
+.post-accordion__cover img {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  height: auto;
+  object-fit: cover;
+}
+
+@media (min-width: 768px) {
+  .post-accordion__cover img {
+    max-height: 560px;
+  }
+}
+
+/* 减少动态：终态保持不变，只把过程抹平 —— 面板瞬开瞬合、内容不沉不糊、箭头不弹。
+   连 delay 一起清零，否则收起时那 420ms 的 visibility 延后会残留一段可 Tab 的隐藏面板 */
+@media (prefers-reduced-motion: reduce) {
+  .post-accordion__panel,
+  .post-accordion__panel-inner,
+  .post-accordion__content,
+  .post-accordion__arrow,
+  .post-accordion__title,
+  .post-accordion__term-link {
+    transition-duration: 0s;
+    transition-delay: 0s;
+  }
+}

@@ -48,6 +48,8 @@ interface Props {
 		category?: string;
 		tags?: string[];
 	};
+	/** 文章纯文本（llm-wiki）版地址；缺省则目录面板不渲染该入口 */
+	wikiMarkdownUrl?: string;
 }
 
 const {
@@ -64,6 +66,7 @@ const {
 	ogImage,
 	bannerPostMeta: _bannerPostMeta,
 	articleMeta,
+	wikiMarkdownUrl,
 } = Astro.props;
 
 const isPostPage = !!postSlug;
@@ -99,7 +102,12 @@ const navLinks = navBarConfig.links.map((item) => {
 			<div id="right-sidebar-dynamic" class="hidden"></div>
 
 			<main id="swup-container" class="transition-swup-main" data-current-post-category={postCategory || ""}>
-				{isPostPage && <ArticleTocPanel relatedCards={relatedCards} />}
+				{isPostPage && (
+					<ArticleTocPanel
+						relatedCards={relatedCards}
+						wikiMarkdownUrl={wikiMarkdownUrl}
+					/>
+				)}
 				{/* 页面组件有自己的 H1 时不再输出布局兜底标题，确保每页只有一个 H1。 */}
 				{!isPostPage && !hasOwnH1 && <h1 class="sr-only">{title}</h1>}
 

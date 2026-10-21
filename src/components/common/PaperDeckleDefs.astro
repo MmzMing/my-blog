@@ -1,0 +1,16 @@
+---
+/**
+ * 撕纸毛边滤镜定义，整页只渲染一份。
+ * 手风琴的 .post-accordion__item::before 与许可卡的 .license-card__surface
+ * 都通过 var(--paper-deckle-filter) 引用这里的 #paper-deckle，
+ * id 重复会让引用方全部退化成直角矩形，所以不要在组件里各写一份。
+ * 滤镜盒的下边距要留够，否则链式 drop-shadow 的落影会被滤镜盒裁掉。
+ */
+---
+
+<svg style="position:absolute;width:0;height:0" aria-hidden="true" focusable="false">
+  <filter id="paper-deckle" x="-10%" y="-10%" width="120%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="9" result="t" />
+    <feDisplacementMap in="SourceGraphic" in2="t" scale="5" xChannelSelector="R" yChannelSelector="G" />
+  </filter>
+</svg>

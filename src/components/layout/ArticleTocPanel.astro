@@ -19,9 +19,11 @@ interface Props {
 	/** 相关文章卡片数据（[...slug] 一次性算好经 MainGridLayout 透传）；
 	    缺省或为空时不渲染相关视图，面板退化为纯目录（加密文章走此分支） */
 	relatedCards?: RelatedPostCard[];
+	/** 纯文本（llm-wiki）版地址；缺省不渲染入口 */
+	wikiMarkdownUrl?: string;
 }
 
-const { relatedCards } = Astro.props;
+const { relatedCards, wikiMarkdownUrl } = Astro.props;
 const switchable = !!relatedCards && relatedCards.length > 0;
 
 const outlineLabel = i18n(I18nKey.tableOfContents);
@@ -183,6 +185,19 @@ const statsSentences = [
 					<button type="button" class="article-toc-panel__action-btn" data-post-share-native aria-label={i18n(I18nKey.shareArticle)} title={i18n(I18nKey.shareArticle)}>
 						<Icon name="material-symbols:share" class="h-4 w-4" aria-hidden="true" />
 					</button>
+				)}
+				{wikiMarkdownUrl && (
+					<a
+						href={wikiMarkdownUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="article-toc-panel__action-btn"
+						aria-label={i18n(I18nKey.plainTextVersion)}
+						title={i18n(I18nKey.plainTextVersion)}
+						data-pagefind-ignore
+					>
+						<Icon name="material-symbols:description-outline-rounded" class="h-4 w-4" aria-hidden="true" />
+					</a>
 				)}
 			</div>
 			<span class="article-toc-panel__progress-label" data-toc-progress-label aria-hidden="true">0%</span>

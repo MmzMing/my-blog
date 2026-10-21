@@ -1,199 +1,538 @@
+/* Expressive Code 代码块
+   设计目标：去掉主题自带的卡片背景与描边，让代码直接铺在正文背景上；
+   左上角是带图标的语言徽章，右上角复制按钮默认隐藏、悬停/聚焦时出现；
+   折叠时底部用遮罩渐隐，并把展开按钮叠在渐隐区中央。 */
+
 .expressive-code {
-  --code-block-bg: var(--codeblock-bg);
-  --code-block-topbar-bg: var(--codeblock-topbar-bg);
-  --code-block-border: var(--codeblock-border);
-  --code-block-accent: #00A29B;
-  --code-window-control-close: #ff5f57;
-  --code-window-control-minimize: #ffbd2e;
-  --code-window-control-zoom: #28c840;
-
-  .frame {
-    @apply shadow-none!;
-    background: var(--code-block-bg) !important;
-    border-color: var(--code-block-border) !important;
-  }
-
-  .frame pre,
-  .frame code,
-  .frame .code,
-  .frame .ec-code,
-  .frame .ec-code__inner {
-    background: var(--code-block-bg) !important;
-  }
-
-  .frame pre {
-    border-color: var(--code-block-border) !important;
-  }
-
-  .frame.is-terminal .header {
-    background: var(--code-block-topbar-bg) !important;
-    border-color: var(--code-block-border) !important;
-  }
-
-  /* 使用与 iOS/macOS 窗口控制一致的红、黄、绿圆点。 */
-  .frame.is-terminal .header::before {
-    width: 2.1rem;
-    height: 0.56rem;
-    background:
-      radial-gradient(circle at 0.28rem 50%, var(--code-window-control-close) 0 0.28rem, transparent 0.3rem),
-      radial-gradient(circle at 1.05rem 50%, var(--code-window-control-minimize) 0 0.28rem, transparent 0.3rem),
-      radial-gradient(circle at 1.82rem 50%, var(--code-window-control-zoom) 0 0.28rem, transparent 0.3rem) !important;
-    opacity: 1 !important;
-    -webkit-mask-image: none !important;
-    mask-image: none !important;
-  }
-
-  .frame.is-terminal .header::after {
-    border-bottom-color: var(--code-block-border) !important;
-  }
-
-  .title {
-    font-family:
-      "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco,
-      Consolas, "Liberation Mono", "Courier New", monospace;
-  }
-
-  /* Language Badge 样式适配主题色和亮暗色 */
-  /* 覆盖 expressive-code-language-badge 插件的默认样式 */
-  [data-language]::before {
-    color: var(--code-block-accent) !important;
-    background: var(--btn-regular-bg) !important;
-  }
-
-  /* 复制按钮与语言徽章使用同一青色强调色。 */
-  .frame .copy button {
-    border: 1px solid var(--code-block-accent) !important;
-    background: var(--code-block-accent) !important;
-  }
-
-  .frame .copy button > div {
-    background: transparent !important;
-  }
-
-  .frame .copy button::before {
-    border-color: var(--code-block-accent) !important;
-    opacity: 1 !important;
-  }
-
-  .frame .copy button::after {
-    background-color: #000 !important;
-  }
-
-  .frame .copy button:hover {
-    filter: brightness(1.08);
-  }
-
-  .frame .copy button:active {
-    filter: brightness(0.92);
-  }
-
-  .frame .copy .feedback {
-    --tooltip-bg: var(--code-block-accent);
-    color: #000;
-  }
-
-  /* 折叠按钮样式适配主题色和亮暗色 */
-  /* 只针对底部的toggle按钮，不改header-toggle */
-  .ec-collapse__toggle {
-    color: var(--btn-content) !important;
-    background-color: var(--btn-regular-bg) !important;
-    border-color: var(--line-color) !important;
-    transition:
-      opacity var(--duration-normal) var(--ease-standard),
-      background-color var(--duration-normal) var(--ease-standard) !important;
-
-    &:hover {
-      background-color: var(--btn-regular-bg-hover) !important;
-    }
-
-    &:active {
-      background-color: var(--btn-regular-bg-active) !important;
-    }
-  }
-
-  /* 收起态：截断从外层容器移到 pre 自身（插件把带边框的 frame 包在被裁切的
-     容器里，overflow 会把 pre 的底部边框一起裁掉，看起来像断开）。
-     pre 自己裁切后底部边框始终可见，再在其下追加一层独立的 "•••" 指示层，
-     不遮挡任何内容；悬停时 "•••" 原地变为「查看更多」，点击由下方透明的
-     toggle 按钮承接。 */
-  .ec-collapse--collapsed .ec-collapse__content {
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
-  .ec-collapse--collapsed .ec-collapse__gradient {
-    display: none;
-  }
-
-  /* 12 行整数倍截断（行高 1.5rem），避免出现被切一半的残行；
-     下角改直角让左右边框垂直延伸，与下方指示层的边框连续（层自身负责底部圆角） */
-  .ec-collapse--collapsed .frame pre {
-    max-height: calc(12 * 1.5rem);
-    overflow: hidden;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-
-  .ec-collapse--collapsed .frame::after {
-    content: "•••";
-    display: block;
-    height: 2.75rem;
-    text-align: center;
-    color: var(--code-block-accent);
-    font-size: 1rem;
-    line-height: 2.75rem;
-    letter-spacing: 0.5rem;
-    text-indent: 0.5rem;
-    border: 1px solid var(--codeblock-border);
-    border-top: none;
-    border-radius: 0 0 0.75rem 0.75rem;
-    transition: color var(--duration-normal) var(--ease-standard);
-  }
-
-  /* 悬停时 "•••" 原地变为「查看更多」 */
-  .ec-collapse--collapsed:hover .frame::after {
-    content: "查看更多";
-    font-size: 0.8rem;
-    letter-spacing: 0.15rem;
-    text-indent: 0.15rem;
-  }
-
-  .ec-collapse--collapsed .ec-collapse__toggle {
-    opacity: 0;
-  }
-
-  /* 键盘聚焦时显示按钮本体（胶囊样式），鼠标路径走 "•••" → 「查看更多」 */
-  .ec-collapse--collapsed .ec-collapse__toggle:focus-visible {
-    opacity: 1;
-  }
+	--code-lang-size: 0.95rem;
+	--code-lang-gap: 0.4rem;
+	--code-lang-top: 1.02rem;
+	--code-lang-left: 0rem;
+	--code-inline: var(--ec-codePadInl, 1.35rem);
+	--code-lang-fg: var(--content-meta);
+	--code-lang-fg-hover: var(--deep-text);
 }
 
-/* Tab 代码块（rehype-code-group）：保留插件结构，仅适配本站主题变量。 */
+/* 代码框本体：保留排版，去掉背景、描边、圆角与阴影。 */
+.expressive-code .frame {
+	position: relative;
+	background: transparent !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+}
+
+.expressive-code .frame pre,
+.expressive-code .frame pre > code,
+.expressive-code .frame code,
+.expressive-code .frame .ec-code,
+.expressive-code .frame .ec-code__inner {
+	background: transparent !important;
+}
+
+.expressive-code .frame pre {
+	border: 0 !important;
+	border-radius: 0 !important;
+}
+
+/* 行号槽默认左右各 2ch；无背景卡片时左侧会留出一整段空白，
+   去掉左 padding，让行号、徽章都贴齐正文左边缘。 */
+.expressive-code .gutter .ln {
+	padding-inline: 0 1.5ch !important;
+}
+
+/* 顶部留出徽章与复制按钮的高度；带标题/终端时标题自己占一行。 */
+.expressive-code .frame pre > code {
+	padding-block-start: 2.75rem !important;
+	padding-block-end: 1rem !important;
+}
+
+.expressive-code .frame.has-title,
+.expressive-code .frame.is-terminal {
+	--code-lang-top: 2.6rem;
+}
+
+.expressive-code .frame.has-title pre > code,
+.expressive-code .frame.is-terminal pre > code {
+	padding-block-start: 2.15rem !important;
+}
+
+/* 标题头：同样只保留文字，不带底与边框。 */
+.expressive-code .frame .header {
+	background: none !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+}
+
+.expressive-code .frame.has-title .header {
+	padding: 0.35rem 3rem 0.25rem var(--code-inline) !important;
+}
+
+.expressive-code .frame.has-title .title {
+	margin: 0 !important;
+	padding: 0 !important;
+	background: none !important;
+	border: 0 !important;
+	color: var(--code-lang-fg) !important;
+	font-family:
+		"JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco,
+		Consolas, "Liberation Mono", "Courier New", monospace !important;
+	font-size: 0.75rem !important;
+	font-weight: 500 !important;
+}
+
+.expressive-code .frame.has-title .title::after {
+	display: none !important;
+}
+
+.expressive-code .frame.is-terminal .header {
+	padding: 0.35rem var(--code-inline) !important;
+	background: none !important;
+	border: 0 !important;
+	color: var(--code-lang-fg) !important;
+}
+
+.expressive-code .frame.is-terminal .header::after {
+	display: none !important;
+}
+
+/* 语言徽章：::before 画图标（mask 取图标轮廓），::after 写语言名。
+   两者都相对 frame 定位，放在代码顶部预留的空白里。 */
+.expressive-code .frame pre[data-language]::before {
+	content: "" !important;
+	position: absolute !important;
+	top: var(--code-lang-top) !important;
+	left: var(--code-lang-left) !important;
+	right: auto !important;
+	z-index: 2;
+	width: var(--code-lang-size) !important;
+	height: var(--code-lang-size) !important;
+	padding: 0 !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	background-color: var(--code-lang-fg) !important;
+	opacity: 0.85 !important;
+	-webkit-mask-image: var(--ec-lang-icon, var(--ec-lang-icon-default));
+	mask-image: var(--ec-lang-icon, var(--ec-lang-icon-default));
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+	pointer-events: none;
+	transition:
+		background-color 150ms ease,
+		opacity 150ms ease;
+}
+
+.expressive-code .frame pre[data-language]::after {
+	content: attr(data-language);
+	position: absolute;
+	top: var(--code-lang-top);
+	left: calc(var(--code-lang-left) + var(--code-lang-size) + var(--code-lang-gap));
+	right: 4.75rem;
+	z-index: 2;
+	height: var(--code-lang-size);
+	overflow: hidden;
+	color: var(--code-lang-fg);
+	font-family:
+		"JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco,
+		Consolas, "Liberation Mono", "Courier New", monospace;
+	font-size: 0.72rem;
+	font-weight: 600;
+	line-height: var(--code-lang-size);
+	letter-spacing: 0.01em;
+	text-transform: capitalize;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	pointer-events: none;
+	transition: color 150ms ease;
+}
+
+/* 悬停代码块时徽章加深，和复制按钮的出现保持同一节奏。 */
+.expressive-code .frame:hover pre[data-language]::before {
+	opacity: 1 !important;
+	background-color: var(--code-lang-fg-hover) !important;
+}
+
+.expressive-code .frame:hover pre[data-language]::after {
+	color: var(--code-lang-fg-hover);
+}
+
+/* 语言名的大小写与缩写修正；未列出的语言走 text-transform: capitalize。 */
+.expressive-code .frame
+	pre:is([data-language="ts" i], [data-language="typescript" i])::after {
+	content: "TypeScript";
+}
+
+.expressive-code .frame
+	pre:is([data-language="js" i], [data-language="javascript" i])::after {
+	content: "JavaScript";
+}
+
+.expressive-code .frame
+	pre:is([data-language="tsx" i])::after {
+	content: "TSX";
+}
+
+.expressive-code .frame
+	pre:is([data-language="jsx" i])::after {
+	content: "JSX";
+}
+
+.expressive-code .frame
+	pre:is([data-language="sql" i])::after {
+	content: "SQL";
+}
+
+.expressive-code .frame
+	pre:is(
+		[data-language="shell" i],
+		[data-language="sh" i],
+		[data-language="shellscript" i],
+		[data-language="shellsession" i]
+	)::after {
+	content: "Shell";
+}
+
+.expressive-code .frame
+	pre:is([data-language="yaml" i], [data-language="yml" i])::after {
+	content: "YAML";
+}
+
+.expressive-code .frame
+	pre:is([data-language="json" i])::after {
+	content: "JSON";
+}
+
+.expressive-code .frame
+	pre:is([data-language="md" i], [data-language="markdown" i])::after {
+	content: "Markdown";
+}
+
+.expressive-code .frame
+	pre:is([data-language="xml" i])::after {
+	content: "XML";
+}
+
+.expressive-code .frame
+	pre:is([data-language="html" i])::after {
+	content: "HTML";
+}
+
+.expressive-code .frame
+	pre:is([data-language="css" i])::after {
+	content: "CSS";
+}
+
+.expressive-code .frame
+	pre:is([data-language="py" i], [data-language="python" i])::after {
+	content: "Python";
+}
+
+.expressive-code .frame
+	pre:is([data-language="cpp" i], [data-language="c++" i])::after {
+	content: "C++";
+}
+
+.expressive-code .frame
+	pre:is([data-language="cs" i], [data-language="csharp" i])::after {
+	content: "C#";
+}
+
+.expressive-code .frame
+	pre:is([data-language="php" i])::after {
+	content: "PHP";
+}
+
+.expressive-code .frame
+	pre:is([data-language="scss" i])::after {
+	content: "SCSS";
+}
+
+.expressive-code .frame
+	pre:is([data-language="graphql" i], [data-language="gql" i])::after {
+	content: "GraphQL";
+}
+
+.expressive-code .frame
+	pre:is([data-language="http" i])::after {
+	content: "HTTP";
+}
+
+.expressive-code .frame
+	pre:is([data-language="toml" i])::after {
+	content: "TOML";
+}
+
+.expressive-code .frame
+	pre:is([data-language="ini" i])::after {
+	content: "INI";
+}
+
+/* 复制按钮：固定在右上角，默认不占视觉焦点；触摸设备保持可见。 */
+.expressive-code .copy {
+	inset-block-start: 0.6rem !important;
+	inset-inline-end: 0.7rem !important;
+	z-index: 5;
+}
+
+.expressive-code .copy button {
+	width: 1.9rem !important;
+	height: 1.9rem !important;
+	border-radius: 0.45rem !important;
+	background: transparent !important;
+	opacity: 1 !important;
+}
+
+.expressive-code .copy button > div {
+	border-radius: inherit !important;
+	background: var(--btn-plain-bg-hover) !important;
+	opacity: 0 !important;
+}
+
+.expressive-code .copy button:hover > div,
+.expressive-code .copy button:focus-visible > div {
+	opacity: 1 !important;
+}
+
+.expressive-code .copy button::before {
+	display: none !important;
+}
+
+.expressive-code .copy button::after {
+	margin: 0.52rem !important;
+	background-color: var(--content-meta) !important;
+}
+
+.expressive-code .copy button:hover::after,
+.expressive-code .copy button:focus-visible::after {
+	background-color: var(--deep-text) !important;
+}
+
+/* 有 hover 的设备才隐藏复制按钮；触摸设备直接显示。 */
+@media (hover: hover) {
+	.expressive-code .copy button {
+		opacity: 0 !important;
+	}
+
+	.expressive-code .frame:hover .copy button,
+	.expressive-code .frame:focus-within .copy button,
+	.expressive-code .copy .feedback.show ~ button {
+		opacity: 1 !important;
+	}
+}
+
+.expressive-code .copy .feedback {
+	--tooltip-bg: var(--deep-text) !important;
+	color: var(--page-bg) !important;
+	font-size: 0.72rem;
+}
+
+/* 折叠区：用 mask 从底部淡出，透明渐变不依赖页面背景色。 */
+.expressive-code .ec-collapse__gradient {
+	display: none !important;
+}
+
+/* 插件按「行数 × 行高」算预览高度，没有把顶部留白和底部 padding 算进去；
+   这里补齐头部空间，避免折叠态多裁掉两行、遮罩一开始就压到正文上。
+   带标题/终端的块再把标题行高度补上（:has 只在这种长代码块上求值一次）。 */
+.expressive-code .ec-collapse--collapsed .ec-collapse__content {
+	max-height: calc(
+		var(--ec-collapse-preview-height, 12rem) + 2.75rem + 1rem
+	) !important;
+	-webkit-mask-image: linear-gradient(to bottom, #000 66%, transparent 96%);
+	mask-image: linear-gradient(to bottom, #000 66%, transparent 96%);
+}
+
+.expressive-code
+	.ec-collapse--collapsed:has(.frame.has-title)
+	.ec-collapse__content {
+	max-height: calc(
+		var(--ec-collapse-preview-height, 12rem) + 4.65rem + 1rem
+	) !important;
+}
+
+.expressive-code
+	.ec-collapse--collapsed:has(.frame.is-terminal)
+	.ec-collapse__content {
+	max-height: calc(
+		var(--ec-collapse-preview-height, 12rem) + 4.15rem + 1rem
+	) !important;
+}
+
+/* 展开/收起按钮：去掉插件默认胶囊，做成轻量文字按钮。 */
+.expressive-code .ec-collapse__toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.3rem 0.7rem;
+	border: 0 !important;
+	border-radius: 0.45rem;
+	background: transparent !important;
+	color: var(--content-meta) !important;
+	font-size: 0.78rem;
+	font-weight: 500;
+	line-height: 1;
+	cursor: pointer;
+	transition: color 150ms ease;
+}
+
+/* 与文章左上角「返回」一致：悬停只染青色，不加底色。 */
+.expressive-code .ec-collapse__toggle:hover,
+.expressive-code .ec-collapse__toggle:focus-visible {
+	background-color: transparent !important;
+	color: var(--article-title-marker) !important;
+}
+
+.expressive-code .ec-collapse__toggle:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.expressive-code .ec-collapse__icon {
+	width: 0.85rem;
+	height: 0.85rem;
+}
+
+.expressive-code .ec-collapse--collapsed .ec-collapse__toggle {
+	position: absolute;
+	bottom: 0.15rem;
+	left: 50%;
+	z-index: 20;
+	margin: 0;
+	transform: translateX(-50%);
+}
+
+.expressive-code .ec-collapse--expanded .ec-collapse__toggle {
+	position: relative;
+	margin: 0.45rem auto 0;
+}
+
+/* 标题行里的折叠按钮与底部按钮重复，只保留底部这一个。 */
+.expressive-code .ec-collapse__header-toggle {
+	display: none !important;
+}
+
+/* 语言图标：mask 只读取轮廓，颜色由徽章统一控制，亮暗主题共用一份。 */
+/* 默认语言图标（未单独配置的语言共用） */
+.expressive-code pre[data-language] {
+	--ec-lang-icon-default: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22m14.6%2016.6l4.6-4.6l-4.6-4.6L16%206l6%206l-6%206zm-5.2%200L4.8%2012l4.6-4.6L8%206l-6%206l6%206z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="java"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M16.5%206.08s-6.84%201.71-3.56%205.48c.97%201.11-.25%202.11-.25%202.11s2.45-1.25%201.31-2.85c-1.06-1.47-1.86-2.2%202.5-4.74m-4.47%201.2C16.08%204.08%2014%202%2014%202c.84%203.3-2.96%204.3-4.33%206.36c-.94%201.4.46%202.91%202.33%204.64c-.71-1.7-3.22-3.16.03-5.72M9.37%2017.47c-3.08.86%201.88%202.63%205.79.96c-.38-.15-.75-.33-1.1-.54c-1.36.31-2.76.37-4.14.18c-1.31-.16-.55-.6-.55-.6m5.32-1.68c-1.75.38-3.56.47-5.34.26c-1.31-.13-.45-.77-.45-.77c-3.4%201.13%201.88%202.4%206.6%201.02c-.29-.11-.57-.3-.81-.51m3.42%203.3s.57.47-.61.83c-2.28.68-9.43.89-11.41.03c-.71-.31.63-.74%201.05-.83c.23-.06.46-.08.69-.08c-.79-.54-5.13%201.1-2.19%201.56c7.97%201.3%2014.54-.6%2012.47-1.51m-2.74-4.86c.29-.19.6-.35.92-.49c0%200-1.51.26-3.02.4c-1.6.16-3.21.18-4.81.06c-2.35-.31%201.29-1.2%201.29-1.2c-1.1%200-2.18.26-3.16.75c-2.05%201%205.1%201.45%208.78.48m.9%202.42c-.02.04-.04.07-.08.1c5.01-1.31%203.17-4.64.77-3.81c-.13.06-.24.14-.31.25c.14-.05.28-.09.43-.12c1.2-.24%202.92%201.63-.81%203.58m.13%204.61c-3.01.52-6.09.56-9.12.14c0%200%20.46.38%202.81.53c3.6.23%209.13-.13%209.26-1.83c.03.01-.23.65-2.95%201.16%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre:is([data-language="typescript"], [data-language="ts"]) {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M3%203h18v18H3zm10.71%2014.86c.5.98%201.51%201.73%203.09%201.73c1.6%200%202.8-.83%202.8-2.36c0-1.41-.81-2.04-2.25-2.66l-.42-.18c-.73-.31-1.04-.52-1.04-1.02c0-.41.31-.73.81-.73c.48%200%20.8.21%201.09.73l1.31-.87c-.55-.96-1.33-1.33-2.4-1.33c-1.51%200-2.48.96-2.48%202.23c0%201.38.81%202.03%202.03%202.55l.42.18c.78.34%201.24.55%201.24%201.13c0%20.48-.45.83-1.15.83c-.83%200-1.31-.43-1.67-1.03zM13%2011.25H8v1.5h1.5V20h1.75v-7.25H13z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre:is([data-language="javascript"], [data-language="js"]) {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M3%203h18v18H3zm4.73%2015.04c.4.85%201.19%201.55%202.54%201.55c1.5%200%202.53-.8%202.53-2.55v-5.78h-1.7V17c0%20.86-.35%201.08-.9%201.08c-.58%200-.82-.4-1.09-.87zm5.98-.18c.5.98%201.51%201.73%203.09%201.73c1.6%200%202.8-.83%202.8-2.36c0-1.41-.81-2.04-2.25-2.66l-.42-.18c-.73-.31-1.04-.52-1.04-1.02c0-.41.31-.73.81-.73c.48%200%20.8.21%201.09.73l1.31-.87c-.55-.96-1.33-1.33-2.4-1.33c-1.51%200-2.48.96-2.48%202.23c0%201.38.81%202.03%202.03%202.55l.42.18c.78.34%201.24.55%201.24%201.13c0%20.48-.45.83-1.15.83c-.83%200-1.31-.43-1.67-1.03z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre:is([data-language="tsx"], [data-language="jsx"]) {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20d%3D%22M3%203h18v18H3V3zm1.183%2015.123c.355.753%201.055%201.377%202.26%201.377c1.334%200%202.249-.71%202.249-2.27v-5.144H7.185v5.122c0%20.753-.312.947-.807.947c-.516%200-.732-.355-.968-.775l-1.227.743zm5.327-.162c.44.872%201.345%201.539%202.744%201.539c1.43%200%202.496-.742%202.496-2.098c0-1.26-.721-1.819-2.002-2.368l-.376-.16c-.646-.28-.925-.464-.925-.916c0-.365.28-.645.72-.645c.431%200%20.71.183.969.645l1.173-.753C13.814%2012.334%2013.125%2012%2012.168%2012c-1.345%200-2.206.86-2.206%201.99c0%201.227.72%201.809%201.808%202.271l.376.162c.689.3%201.097.484%201.097%201c0%20.43-.398.743-1.022.743c-.742%200-1.162-.388-1.485-.915l-1.226.71zm8.002-4.092L16.68%2012h-1.5l1.582%203.553l-1.757%203.947h1.5l1.008-2.262L18.52%2019.5h1.5l-1.758-3.947L19.845%2012h-1.5l-.832%201.869z%22%20fill%3D%22currentColor%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="sql"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M12%203C7.58%203%204%204.79%204%207s3.58%204%208%204s8-1.79%208-4s-3.58-4-8-4M4%209v3c0%202.21%203.58%204%208%204s8-1.79%208-4V9c0%202.21-3.58%204-8%204s-8-1.79-8-4m0%205v3c0%202.21%203.58%204%208%204s8-1.79%208-4v-3c0%202.21-3.58%204-8%204s-8-1.79-8-4%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre:is([data-language="bash"], [data-language="shell"], [data-language="shellsession"], [data-language="shellscript"], [data-language="sh"], [data-language="console"]) {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M13%2019v-3h8v3zm-4.5-6L2.47%207h4.24l4.96%204.95c.58.59.58%201.55%200%202.12L6.74%2019H2.5z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre:is([data-language="yaml"], [data-language="yml"]) {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22m0%20.97l4.111%206.453v4.09h2.638v-4.09L11.053.969H8.214L5.58%205.125L2.965.969Zm12.093.024l-4.47%2010.544h2.114l.97-2.345h4.775l.804%202.345h2.26L14.255.994Zm1.133%202.225l1.463%203.87h-3.096zm3.06%209.475v10.29H24v-2.199h-5.454v-8.091zm-12.175.002v10.335h2.217v-7.129l2.32%204.792h1.746l2.4-4.96v7.295h2.127V12.696h-2.904L9.44%2017.37l-2.455-4.674Z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="json"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M5%203h2v2H5v5a2%202%200%200%201-2%202a2%202%200%200%201%202%202v5h2v2H5c-1.07-.27-2-.9-2-2v-4a2%202%200%200%200-2-2H0v-2h1a2%202%200%200%200%202-2V5a2%202%200%200%201%202-2m14%200a2%202%200%200%201%202%202v4a2%202%200%200%200%202%202h1v2h-1a2%202%200%200%200-2%202v4a2%202%200%200%201-2%202h-2v-2h2v-5a2%202%200%200%201%202-2a2%202%200%200%201-2-2V5h-2V3zm-7%2012a1%201%200%200%201%201%201a1%201%200%200%201-1%201a1%201%200%200%201-1-1a1%201%200%200%201%201-1m-4%200a1%201%200%200%201%201%201a1%201%200%200%201-1%201a1%201%200%200%201-1-1a1%201%200%200%201%201-1m8%200a1%201%200%200%201%201%201a1%201%200%200%201-1%201a1%201%200%200%201-1-1a1%201%200%200%201%201-1%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre:is([data-language="markdown"], [data-language="md"]) {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M20.56%2018H3.44C2.65%2018%202%2017.37%202%2016.59V7.41C2%206.63%202.65%206%203.44%206h17.12c.79%200%201.44.63%201.44%201.41v9.18c0%20.78-.65%201.41-1.44%201.41M6.81%2015.19v-3.66l1.92%202.35l1.92-2.35v3.66h1.93V8.81h-1.93l-1.92%202.35l-1.92-2.35H4.89v6.38zM19.69%2012h-1.92V8.81h-1.92V12h-1.93l2.89%203.28z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="nginx"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M12%200L1.605%206v12L12%2024l10.395-6V6zm6%2016.59c0%20.705-.646%201.29-1.529%201.29c-.631%200-1.351-.255-1.801-.81l-6-7.141v6.66c0%20.721-.57%201.29-1.274%201.29H7.32c-.721%200-1.29-.6-1.29-1.29V7.41c0-.705.63-1.29%201.5-1.29c.646%200%201.38.255%201.83.81l5.97%207.141V7.41c0-.721.6-1.29%201.29-1.29h.075c.72%200%201.29.6%201.29%201.29v9.18z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="xml"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22m12.89%203l1.96.4L11.11%2021l-1.96-.4zm6.7%209L16%208.41V5.58L22.42%2012L16%2018.41v-2.83zM1.58%2012L8%205.58v2.83L4.41%2012L8%2015.58v2.83z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre:is([data-language="python"], [data-language="py"]) {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M19.14%207.5A2.86%202.86%200%200%201%2022%2010.36v3.78A2.86%202.86%200%200%201%2019.14%2017H12c0%20.39.32.96.71.96H17v1.68a2.86%202.86%200%200%201-2.86%202.86H9.86A2.86%202.86%200%200%201%207%2019.64v-3.75a2.85%202.85%200%200%201%202.86-2.85h5.25a2.85%202.85%200%200%200%202.85-2.86V7.5zm-4.28%2011.79c-.4%200-.72.3-.72.89s.32.71.72.71a.71.71%200%200%200%20.71-.71c0-.59-.32-.89-.71-.89m-10-1.79A2.86%202.86%200%200%201%202%2014.64v-3.78A2.86%202.86%200%200%201%204.86%208H12c0-.39-.32-.96-.71-.96H7V5.36A2.86%202.86%200%200%201%209.86%202.5h4.28A2.86%202.86%200%200%201%2017%205.36v3.75a2.85%202.85%200%200%201-2.86%202.85H8.89a2.85%202.85%200%200%200-2.85%202.86v2.68zM9.14%205.71c.4%200%20.72-.3.72-.89s-.32-.71-.72-.71c-.39%200-.71.12-.71.71s.32.89.71.89%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="html"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22m12%2017.56l4.07-1.13l.55-6.1H9.38L9.2%208.3h7.6l.2-1.99H7l.56%206.01h6.89l-.23%202.58l-2.22.6l-2.22-.6l-.14-1.66h-2l.29%203.19zM4.07%203h15.86L18.5%2019.2L12%2021l-6.5-1.8z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="css"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22m5%203l-.65%203.34h13.59L17.5%208.5H3.92l-.66%203.33h13.59l-.76%203.81l-5.48%201.81l-4.75-1.81l.33-1.64H2.85l-.79%204l7.85%203l9.05-3l1.2-6.03l.24-1.21L21.94%203z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="vue"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M24%201.61h-9.94L12%205.16L9.94%201.61H0l12%2020.78ZM12%2014.08L5.16%202.23h4.43L12%206.41l2.41-4.18h4.43Z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="lua"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M10.5%205A8.5%208.5%200%200%200%202%2013.5a8.5%208.5%200%200%200%208.5%208.5a8.5%208.5%200%200%200%208.5-8.5A8.5%208.5%200%200%200%2010.5%205m3%208a2.5%202.5%200%200%201-2.5-2.5A2.5%202.5%200%200%201%2013.5%208a2.5%202.5%200%200%201%202.5%202.5a2.5%202.5%200%200%201-2.5%202.5m6-11A2.5%202.5%200%200%200%2017%204.5A2.5%202.5%200%200%200%2019.5%207A2.5%202.5%200%200%200%2022%204.5A2.5%202.5%200%200%200%2019.5%202%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.expressive-code pre[data-language="svelte"] {
+	--ec-lang-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Cpath%20fill%3D%22currentColor%22%20d%3D%22M10.354%2021.125a4.44%204.44%200%200%201-4.765-1.767a4.1%204.1%200%200%201-.703-3.107a4%204%200%200%201%20.134-.522l.105-.321l.287.21a7.2%207.2%200%200%200%202.186%201.092l.208.063l-.02.208a1.25%201.25%200%200%200%20.226.83a1.34%201.34%200%200%200%201.435.533a1.2%201.2%200%200%200%20.343-.15l5.59-3.562a1.16%201.16%200%200%200%20.524-.778a1.24%201.24%200%200%200-.211-.937a1.34%201.34%200%200%200-1.435-.533a1.2%201.2%200%200%200-.343.15l-2.133%201.36a4%204%200%200%201-1.135.499a4.44%204.44%200%200%201-4.765-1.766a4.1%204.1%200%200%201-.702-3.108a3.86%203.86%200%200%201%201.742-2.582l5.589-3.563a4%204%200%200%201%201.135-.499a4.44%204.44%200%200%201%204.765%201.767a4.1%204.1%200%200%201%20.703%203.107a4%204%200%200%201-.134.522l-.105.321l-.286-.21a7.2%207.2%200%200%200-2.187-1.093l-.208-.063l.02-.207a1.25%201.25%200%200%200-.226-.831a1.34%201.34%200%200%200-1.435-.532a1.2%201.2%200%200%200-.343.15L8.62%209.368a1.16%201.16%200%200%200-.524.778a1.24%201.24%200%200%200%20.211.937a1.34%201.34%200%200%200%201.435.533a1.2%201.2%200%200%200%20.344-.151l2.132-1.36a4%204%200%200%201%201.135-.498a4.44%204.44%200%200%201%204.765%201.766a4.1%204.1%200%200%201%20.702%203.108a3.86%203.86%200%200%201-1.742%202.583l-5.589%203.562a4%204%200%200%201-1.135.499m10.358-17.95C18.484-.015%2014.082-.96%2010.9%201.068L5.31%204.63a6.4%206.4%200%200%200-2.896%204.295a6.75%206.75%200%200%200%20.666%204.336a6.4%206.4%200%200%200-.96%202.396a6.83%206.83%200%200%200%201.168%205.167c2.229%203.19%206.63%204.135%209.812%202.108l5.59-3.562a6.4%206.4%200%200%200%202.896-4.295a6.76%206.76%200%200%200-.665-4.336a6.4%206.4%200%200%200%20.958-2.396a6.83%206.83%200%200%200-1.167-5.168%22%2F%3E%3C%2Fsvg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.expressive-code .copy button,
+	.expressive-code .copy button > div,
+	.expressive-code .copy button::after,
+	.expressive-code .frame pre[data-language]::before,
+	.expressive-code .frame pre[data-language]::after,
+	.expressive-code .ec-collapse__toggle {
+		transition: none !important;
+	}
+}
+
+/* Tab 代码块（rehype-code-group）：与无边框代码块保持同一视觉语言。 */
 .rehype-code-group {
 	margin: 1rem 0;
 }
 
 .rehype-code-group .rcg-tab-container {
 	flex-wrap: wrap;
-	border-bottom-color: var(--line-divider);
+	gap: 0.25rem;
+	border-bottom: 0 !important;
 }
 
 .rehype-code-group .rcg-tab {
-	color: var(--btn-content);
-	opacity: var(--opacity-80);
-	transition:
-		color var(--duration-normal) var(--ease-standard),
-		opacity var(--duration-normal) var(--ease-standard);
+	padding: 0.35rem 0.2rem;
+	border: 0 !important;
+	border-bottom: 2px solid transparent !important;
+	border-radius: 0;
+	background: transparent;
+	color: var(--content-meta);
+	font-size: 0.8rem;
+	font-weight: 600;
+	opacity: 1;
+	transition: color var(--duration-normal) var(--ease-standard);
 }
 
 .rehype-code-group .rcg-tab:hover,
 .rehype-code-group .rcg-tab.active {
-	color: var(--primary);
-	opacity: var(--opacity-100);
+	color: var(--deep-text);
+	opacity: 1;
 }
 
 .rehype-code-group .rcg-tab.active {
-	border-bottom-color: var(--primary);
+	border-bottom-color: var(--deep-text) !important;
 }
 
 .rehype-code-group .rcg-tab:focus-visible {
@@ -205,4 +544,3 @@
 .rehype-code-group .rcg-block > .expressive-code {
 	margin: 0 !important;
 }
-

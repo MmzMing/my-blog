@@ -53,11 +53,94 @@
 
 .dock-drawer { z-index: 70; }
 
-/* 目录抽屉：标题固定，列表限高滚动（.toc-scroll-container 提供滚动） */
-.dock-drawer-toc .dock-toc-scroll {
-	max-height: min(52vh, 30rem);
-	overscroll-behavior: contain;
+/* 目录抽屉：改为视窗底部的宽纸张面板，复用顶部元信息手风琴的撕纸表面。
+   纸张画在 ::before 上并整体挂 --paper-deckle-filter；抽屉自身不裁切，
+   否则毛边与落影会被 overflow 切掉，列表滚动交给内部 .dock-toc-scroll。 */
+.dock-drawer-toc {
+	left: 50%;
+	right: auto;
+	bottom: 1.25rem;
+	width: min(55rem, calc(100vw - 2.5rem));
+	max-height: min(70vh, 34rem);
+	padding: 1.25rem 1.5rem;
+	overflow: visible;
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+	isolation: isolate;
+	display: flex;
+	flex-direction: column;
+	visibility: visible;
+	transform: translateX(-50%);
+	transform-origin: bottom center;
+	transition:
+		opacity 0.22s ease,
+		transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+		visibility 0s linear;
 }
+
+.dock-drawer-toc::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: var(--card-surface);
+	pointer-events: none;
+	filter: var(--paper-deckle-filter);
+}
+
+.dock-drawer-toc.dock-drawer-closed {
+	visibility: hidden;
+	transform: translate(-50%, calc(100% + 1.25rem));
+	transition:
+		opacity 0.18s ease,
+		transform 0.28s cubic-bezier(0.4, 0, 1, 1),
+		visibility 0s linear 0.28s;
+}
+
+/* 平板宽度下让开右侧悬浮坞，面板改用左右边缘定位，宽度随之收缩。 */
+@media (max-width: 1023px) {
+	.dock-drawer-toc {
+		left: 1.25rem;
+		right: 5.5rem;
+		width: auto;
+		transform: none;
+	}
+
+	.dock-drawer-toc.dock-drawer-closed {
+		transform: translateY(calc(100% + 1.25rem));
+	}
+}
+
+/* 目录项悬停：与右侧大纲面板一致，用柔和背景高亮，不画实线边框、不做横向位移。 */
+.dock-drawer-toc .toc-item {
+	transition:
+		background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+		color 140ms ease,
+		border-color 120ms ease;
+}
+
+.dock-drawer-toc .toc-item:hover,
+.dock-drawer-toc .toc-item:focus-visible {
+	background: var(--btn-plain-bg-hover);
+	border-color: transparent !important;
+	transform: none;
+}
+
+.dock-drawer-toc .dock-drawer-title {
+	flex: none;
+	align-items: center;
+	gap: 0.625rem;
+	margin-bottom: 0.5rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid var(--line-divider);
+	color: var(--deep-text);
+	font-size: 1.125rem;
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: 0;
+}
+
 .dock-drawer-title {
 	display: flex;
 	align-items: center;
@@ -70,9 +153,30 @@
 	letter-spacing: 0;
 }
 
+/* 目录列表：标题固定，列表内部滚动。 */
+.dock-drawer-toc .dock-toc-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	max-height: none;
+	overscroll-behavior: contain;
+}
+
 .dock-drawer-title-icon {
 	width: 1.875rem;
 	height: 1.875rem;
 	flex-shrink: 0;
 	color: var(--primary);
+}
+
+.dock-drawer-toc .dock-drawer-title-icon {
+	width: 1.5rem;
+	height: 1.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.dock-drawer-toc,
+	.dock-drawer-toc.dock-drawer-closed,
+	.dock-drawer-toc .toc-item {
+		transition: none !important;
+	}
 }

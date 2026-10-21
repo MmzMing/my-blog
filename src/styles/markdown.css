@@ -6,7 +6,7 @@
    用 width 而非 max-width：组件上的 max-w-none!（@layer utilities 内的 !important）
    按 cascade 规则会压过未分层的 !important 声明，但拦不住普通 width。 */
 .post-hero,
-.post-intro-card,
+.post-accordion,
 #post-cover,
 #post-container,
 .post-pager-row {
@@ -21,12 +21,8 @@
 .custom-md {
   overflow-wrap: break-word;
 
-  /* 暗色模式加粗文字色（青色） */
-  --md-heading-accent: oklch(0.72 0.13 210);
   /* 斜体波浪线（紫色） */
   --md-italic-wavy: oklch(0.6 0.15 285);
-  /* 删除线（红色） */
-  --md-del-line: oklch(0.58 0.21 27);
 
   body.sticky-navbar & {
     [id] {
@@ -37,9 +33,7 @@
   /* 一至六级标题：不做额外装饰，跟随 prose 默认样式 */
 
   :root.dark & {
-    --md-heading-accent: oklch(0.8 0.11 210);
     --md-italic-wavy: oklch(0.75 0.12 285);
-    --md-del-line: oklch(0.7 0.19 25);
   }
 
   h1,
@@ -63,29 +57,116 @@
     }
   }
 
-  a:not(.no-styling) {
-    @apply relative bg-none font-medium text-(--link-color) underline decoration-(--link-color) decoration-1 decoration-dashed underline-offset-4;
+  /* 下划线用 border 画而不是 text-decoration：浏览器不支持自定义虚线节奏，
+     这里要的是比默认更粗、更松的短划；标题锚点 .anchor 不参与本规则 */
+  a:not(.no-styling):not(.anchor) {
+    @apply relative bg-none font-medium text-(--tw-prose-links);
+    /* prose 默认给链接加实线下划线，这里让位给 border 画的虚线 */
+    text-decoration-line: none;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
     word-break: break-word;
+    border-bottom: 2px solid transparent;
+    border-image: repeating-linear-gradient(
+        to right,
+        var(--content-meta) 0 6px,
+        transparent 6px 11px
+      )
+      1;
 
     &:hover,
     &:active {
-      @apply decoration-transparent;
-      background: var(--btn-plain-bg-hover);
-      border-bottom: 1px dashed var(--link-color);
-      text-decoration: none;
+      @apply text-(--link-color);
+      border-image: repeating-linear-gradient(
+          to right,
+          var(--link-color) 0 6px,
+          transparent 6px 11px
+        )
+        1;
     }
+  }
+
+  /* 外链正文由插件包进 .external-link__label：虚线只画文字，
+     favicon 和右侧跳转纸飞机不再带下划线。 */
+  a.external-link:not(.no-styling):not(.anchor) {
+    border-bottom: 0;
+    border-image: none;
+  }
+
+  a.external-link:not(.no-styling):not(.anchor) > .external-link__label {
+    border-bottom: 2px solid transparent;
+    border-image: repeating-linear-gradient(
+        to right,
+        var(--content-meta) 0 6px,
+        transparent 6px 11px
+      )
+      1;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  a.external-link:not(.no-styling):not(.anchor):hover
+    > .external-link__label,
+  a.external-link:not(.no-styling):not(.anchor):active
+    > .external-link__label {
+    border-image: repeating-linear-gradient(
+        to right,
+        var(--link-color) 0 6px,
+        transparent 6px 11px
+      )
+      1;
+  }
+
+  /* 标题锚点 #：跟随主题青，不带下划线与底色 */
+  .anchor {
+    @apply text-(--link-color);
+    text-decoration-line: none;
+  }
+
+  /* 外链：左侧 favicon 与右侧纸飞机箭头（线框 / 实心两版，悬停切换）由 rehype-external-links 插入 */
+  .external-link__favicon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin: 0 0.25em 0 0;
+    vertical-align: -0.125em;
+    cursor: inherit;
+  }
+
+  .external-navigation-icon {
+    display: inline-flex;
+    width: 0.95em;
+    height: 0.95em;
+    margin-left: 0.18em;
+    vertical-align: -0.12em;
+    transition: color 0.15s;
+
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      /* 目录纸飞机默认朝正上，链接场景里朝右上更贴合「跳转」语义 */
+      transform: rotate(45deg);
+    }
+
+    .external-navigation-icon__fill {
+      display: none;
+    }
+  }
+
+  a:hover > .external-navigation-icon .external-navigation-icon__line,
+  a:focus-visible > .external-navigation-icon .external-navigation-icon__line {
+    display: none;
+  }
+
+  a:hover > .external-navigation-icon .external-navigation-icon__fill,
+  a:focus-visible > .external-navigation-icon .external-navigation-icon__fill {
+    display: block;
   }
 
   strong,
   b {
     @apply font-bold text-(--strong-color);
-
-    /* 加粗仅深色模式用青色，浅色模式保持默认黑色 */
-    :root.dark & {
-      color: var(--md-heading-accent);
-    }
   }
 
   /* 斜体：保留倾斜 + 紫色波浪下划线 */
@@ -97,16 +178,11 @@
     text-underline-offset: 4px;
   }
 
-  /* 删除线：红色删除线（文字颜色不变） */
-  del,
-  s {
-    text-decoration: line-through;
-    text-decoration-color: var(--md-del-line);
-    text-decoration-thickness: 2px;
-  }
-
+  /* 行内代码：底色与描边对齐导航下拉卡片（--card-border + deep-text 8% 淡底），不做悬停反馈 */
   code {
-    @apply bg-(--inline-code-bg) text-(--inline-code-color) px-1 py-0.5 rounded-md overflow-hidden;
+    @apply text-(--inline-code-color) px-1.5 py-0.5 rounded-lg overflow-hidden;
+    background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
+    border: 1px solid var(--card-border);
 
     font-family:
       "JetBrains Mono Variable",
@@ -172,12 +248,53 @@
     }
   }
 
+  /* 引文：不用左侧色条，改由一枚悬在正文之外的大号衬线引号承担标记。
+     isolation + z-index 把引号压在文字之下、卡片背景之上；
+     mask 让引号下缘淡出，避免与首行文字硬碰成一团 */
   blockquote {
-    @apply not-italic border-transparent relative;
+    @apply not-italic relative isolate;
+    margin: 1.6em 0;
+    padding: 0.4em 1.2em 0.4em 1.6em;
+    border: 0;
+    background: transparent;
+    font-size: 1.14em;
     font-weight: inherit;
+    line-height: 1.7;
+
+    > :first-child {
+      margin-top: 0;
+    }
+
+    > :last-child {
+      margin-bottom: 0;
+    }
 
     &:before {
-      @apply content-[''] absolute -left-1 block transition bg-(--btn-regular-bg) h-full w-1 rounded-full;
+      content: '\201C';
+      position: absolute;
+      top: -0.25em;
+      left: 0;
+      z-index: -1;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 3.2em;
+      line-height: 1;
+      color: var(--article-title-marker);
+      opacity: 0.55;
+      mask-image: linear-gradient(white, transparent);
+      transition: transform 0.25s, opacity 0.25s;
+    }
+
+    &:hover:before {
+      transform: translateY(-4px) scale(1.18);
+      opacity: 0.85;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &:before,
+      &:hover:before {
+        transition: none;
+        transform: none;
+      }
     }
 
     /* Remove the double quotes from default styles */
@@ -250,10 +367,6 @@
     min-width: 120px;
     border: none;
     word-break: break-word;
-
-    &:not(:last-child) {
-      border-right: 1px solid var(--line-color);
-    }
   }
 
   th {
@@ -264,8 +377,14 @@
     @apply bg-(--card-bg);
   }
 
-  tr:nth-child(even) td {
-    @apply bg-(--btn-plain-bg-active);
+  /* 不画竖线：表头下方由 th 的底边分隔，正文行之间只留一条横线。 */
+  tbody tr + tr td {
+    border-top: 1px solid var(--line-divider);
+  }
+
+  /* 斑马纹收成极浅的一层，避免相邻行出现明显的灰阶断层。 */
+  tbody tr:nth-child(even) td {
+    background: color-mix(in oklab, var(--deep-text) 3%, transparent);
   }
 }
 
@@ -282,15 +401,34 @@
   }
 }
 
-/* Callout 提示框（[!NOTE] 等引用块）：增加对应颜色的浅色背景框。
-   注意容器是 <div class="callout">，不是 blockquote */
+/* Callout 提示框（[!NOTE] 等引用块）：统一成圆角淡底，去掉主题自带的左侧色条。
+   标题色往正文色压一档，避免整块高饱和。注意容器是 <div class="callout">，不是 blockquote */
 .custom-md .callout {
-  border-radius: calc(var(--radius-large) - 0.5rem);
-  background: color-mix(in oklab, var(--rc-color-light, var(--rc-color-default, #888)) 12%, transparent);
+  border-left: none;
+  /* 与行内代码 chip 同档圆角；原 calc(--radius-large - 0.5rem) 只有 4px，看不出圆角 */
+  border-radius: var(--radius-medium);
+  padding: 0.75rem 1rem;
+  background: color-mix(in oklab, var(--rc-color-light, var(--rc-color-default, #888)) 8%, transparent);
+}
+
+.custom-md .callout .callout-title {
+  color: color-mix(
+    in oklab,
+    var(--rc-color-light, var(--rc-color-default, #888)) 70%,
+    var(--deep-text)
+  );
 }
 
 :root.dark .custom-md .callout {
-  background: color-mix(in oklab, var(--rc-color-dark, var(--rc-color-default, #888)) 18%, transparent);
+  background: color-mix(in oklab, var(--rc-color-dark, var(--rc-color-default, #888)) 13%, transparent);
+}
+
+:root.dark .custom-md .callout .callout-title {
+  color: color-mix(
+    in oklab,
+    var(--rc-color-dark, var(--rc-color-default, #888)) 60%,
+    var(--deep-text)
+  );
 }
 
 /* 文章详情页正文图片自适应尺寸限制 */

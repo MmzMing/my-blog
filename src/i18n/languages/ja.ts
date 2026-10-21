@@ -165,6 +165,7 @@ export const ja: Translation = {
 
 	// 関連記事
 	[Key.relatedPosts]: "関連記事",
+	[Key.otherPosts]: "その他の記事",
 
 	// 暗号化
 
@@ -218,6 +219,10 @@ export const ja: Translation = {
 	[Key.plainTextVersion]: "テキスト版",
 
 	// コードブロック折りたたみ設定
+	[Key.codeCollapsibleShowMore]: "展開",
+	[Key.codeCollapsibleShowLess]: "折りたたむ",
+	[Key.codeCollapsibleExpanded]: "コードブロックを展開しました",
+	[Key.codeCollapsibleCollapsed]: "コードブロックを折りたたみました",
 
 	// ギャラリーページ
 	[Key.gallery]: "ギャラリー",
@@ -452,7 +457,10 @@ export const ja: Translation = {
 	[Key.sponsorChooseMethod]: "お好みの支払い方法を選択してください",
 	[Key.sponsorNotAvailable]: "現在未対応",
 	[Key.sponsorMetaTemplate]: "{date} · {method}",
-	[Key.postAiSummaryLabel]: "AI 要約",
+	[Key.postStatsLabel]: "記事の情報",
+	[Key.postCategoryLabel]: "カテゴリー",
+	[Key.readTimes]: "ビュー",
+	[Key.postIntroLabel]: "はじめに",
 	[Key.postCoverLabel]: "カバー画像",
 	[Key.coverImageAltSuffix]: "のカバー画像",
 
@@ -613,8 +621,7 @@ export const ja: Translation = {
 	[Key.kgResetView]: "ビューをリセット",
 	[Key.kgLayoutMindmap]: "マインドマップ表示に切替",
 	[Key.kgLayoutForce]: "フォースレイアウトに切替",
-	[Key.postNavBack]: "前のページへ",
-	[Key.postNavCategory]: "カテゴリを切替",
+	[Key.postNavBack]: "戻る",
 	[Key.archiveMotto]:
 		"時は振り返らない。それでも歩いた道は、すべてここに残している。",
 	[Key.collectionsMotto]:

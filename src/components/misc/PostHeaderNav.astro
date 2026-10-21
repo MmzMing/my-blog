@@ -1,7 +1,6 @@
 ---
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
-import { getCategoryList } from "@utils/content-utils";
 import { url } from "@/utils/url-utils";
 
 interface Props {
@@ -11,182 +10,22 @@ interface Props {
 
 const { category } = Astro.props;
 
-const UNCATEGORIZED = "__uncategorized__";
 const archiveUrl = url("/archive/");
-const categories = await getCategoryList();
-
-function toValue(name: string): string {
-	return name === i18n(I18nKey.uncategorized) ? UNCATEGORIZED : name;
-}
-
-function toHref(value: string): string {
-	if (value === "") return archiveUrl;
-	if (value === UNCATEGORIZED) return `${archiveUrl}?uncategorized=true`;
-	return `${archiveUrl}?category=${encodeURIComponent(value)}`;
-}
-
-const options = [
-	{
-		label: `${i18n(I18nKey.archive)} · ${i18n(I18nKey.all)}`,
-		value: "",
-		href: archiveUrl,
-		count: undefined as number | undefined,
-	},
-	...categories.map((item) => {
-		const value = toValue(item.name);
-		return {
-			label: item.name.trim(),
-			value,
-			href: toHref(value),
-			count: item.count as number | undefined,
-		};
-	}),
-];
-
-const currentValue = category ? toValue(category) : UNCATEGORIZED;
-// 分类可能已被删空而不在清单里，兜到「归档 · 全部」
-const current =
-	options.find((option) => option.value === currentValue) ?? options[0];
-// 直接落地文章页（无站内上一页）时，返回键退到当前分类的归档
-const backHref = toHref(currentValue);
+const label = category?.trim() || i18n(I18nKey.uncategorized);
+const backHref = category?.trim()
+	? `${archiveUrl}?category=${encodeURIComponent(label)}`
+	: `${archiveUrl}?uncategorized=true`;
 ---
 
-{/* 标题上一层的导航行：返回键 + 斜杠 + 分类下拉，整行靠左。下拉项是真 <a>，
-    跳转与悬停预载都交给 Swup，脚本只管开合与键盘（CLAUDE.md 4.6） */}
-<nav class="post-nav" data-post-nav aria-label={i18n(I18nKey.postNavCategory)}>
-  <a class="post-nav__back" href={backHref} data-post-nav-back>
+{/* 标题上一层：只有箭头 + 「返回」，整行靠左。
+    直接落在归档（带上当前分类的筛选），不再劫持成 history.back() */}
+<nav class="post-nav" aria-label={i18n(I18nKey.archive)}>
+  <a
+    class="post-nav__back"
+    href={backHref}
+    title={i18n(I18nKey.postNavBack)}
+  >
     <svg class="post-nav__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/></svg>
     <span>{i18n(I18nKey.postNavBack)}</span>
   </a>
-
-  <span class="post-nav__divider" aria-hidden="true">/</span>
-
-  <div class="post-nav__category" data-post-nav-dropdown>
-    <button
-      type="button"
-      class="post-nav__trigger"
-      data-post-nav-trigger
-      aria-haspopup="menu"
-      aria-expanded="false"
-      aria-label={i18n(I18nKey.postNavCategory)}
-    >
-      <span class="post-nav__current">{current.label}</span>
-      <svg class="post-nav__icon post-nav__arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
-    </button>
-
-    {/* 外层只画边框和 45° 小角（角在边框外，不能被 overflow 裁掉），
-        滚动交给内层；role=menu 跟着滚动层，menuitem 才是它的直接子节点 */}
-    <div class="post-nav__menu" data-post-nav-menu>
-      <div class="post-nav__menu-scroll" role="menu">
-        {options.map((option) => (
-          <a
-            href={option.href}
-            role="menuitem"
-            class:list={[
-              "post-nav__item",
-              option.value === currentValue && "is-active",
-            ]}
-            data-post-nav-item
-          >
-            <span class="post-nav__item-label">{option.label}</span>
-            {option.count !== undefined && (
-              <span class="post-nav__item-count">{option.count}</span>
-            )}
-          </a>
-        ))}
-      </div>
-    </div>
-  </div>
 </nav>
-
-<script>
-  import { definePageIsland } from "@/utils/swup-lifecycle";
-
-  let cleanup: (() => void) | null = null;
-
-  function teardown() {
-    cleanup?.();
-    cleanup = null;
-  }
-
-  function init() {
-    teardown();
-    const nav = document.querySelector<HTMLElement>("[data-post-nav]");
-    if (!nav) return;
-
-    const dropdown = nav.querySelector<HTMLElement>("[data-post-nav-dropdown]");
-    const trigger = nav.querySelector<HTMLButtonElement>("[data-post-nav-trigger]");
-    if (!dropdown || !trigger) return;
-
-    const items = () =>
-      Array.from(nav.querySelectorAll<HTMLAnchorElement>("[data-post-nav-item]"));
-
-    const setOpen = (open: boolean) => {
-      dropdown.classList.toggle("is-open", open);
-      trigger.setAttribute("aria-expanded", String(open));
-    };
-
-    const onNavClick = (event: MouseEvent) => {
-      const el = event.target as HTMLElement;
-      if (el.closest("[data-post-nav-trigger]")) {
-        event.preventDefault();
-        // 点击开合，再点一下收起（键盘 Enter 同走这里）；面板比触发键宽，
-        // 悬停开合会被鼠标斜穿间隙误关，所以只用点击
-        setOpen(!dropdown.classList.contains("is-open"));
-        return;
-      }
-      // 菜单项是真链接，只收起菜单，跳转让 Swup 接手
-      if (el.closest("[data-post-nav-item]")) {
-        setOpen(false);
-        return;
-      }
-      // 站内有上一页就真的退一步；直入文章页时 length 为 1，放行 href 兜底
-      if (el.closest("[data-post-nav-back]") && window.history.length > 1) {
-        event.preventDefault();
-        window.history.back();
-      }
-    };
-
-    const onNavKeydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        trigger.focus();
-        return;
-      }
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-      const list = items();
-      if (list.length === 0) return;
-      const target = event.target as HTMLElement;
-
-      if (target.closest("[data-post-nav-trigger]")) {
-        event.preventDefault();
-        setOpen(true);
-        list[event.key === "ArrowDown" ? 0 : list.length - 1].focus();
-        return;
-      }
-      const index = list.indexOf(target as HTMLAnchorElement);
-      if (index < 0) return;
-      event.preventDefault();
-      const step = event.key === "ArrowDown" ? 1 : -1;
-      list[(index + step + list.length) % list.length].focus();
-    };
-
-    // 点面板以外收起。nav 的监听先跑，所以点触发键不会被这里立刻关掉
-    const onDocClick = (event: Event) => {
-      const el = event.target as HTMLElement;
-      if (!el.closest?.("[data-post-nav-dropdown]")) setOpen(false);
-    };
-
-    nav.addEventListener("click", onNavClick);
-    nav.addEventListener("keydown", onNavKeydown);
-    document.addEventListener("click", onDocClick);
-
-    cleanup = () => {
-      nav.removeEventListener("click", onNavClick);
-      nav.removeEventListener("keydown", onNavKeydown);
-      document.removeEventListener("click", onDocClick);
-    };
-  }
-
-  definePageIsland({ name: "post-header-nav", mount: init, unmount: teardown });
-</script>

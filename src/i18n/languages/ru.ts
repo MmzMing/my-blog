@@ -166,6 +166,7 @@ export const ru: Translation = {
 
 	// Похожие статьи
 	[Key.relatedPosts]: "Похожие статьи",
+	[Key.otherPosts]: "Другие статьи",
 
 	// Зашифровано
 
@@ -218,6 +219,10 @@ export const ru: Translation = {
 	[Key.plainTextVersion]: "Обычный текст",
 
 	// Конфигурация блоков коллапсируемого кода
+	[Key.codeCollapsibleShowMore]: "Развернуть",
+	[Key.codeCollapsibleShowLess]: "Свернуть",
+	[Key.codeCollapsibleExpanded]: "Блок кода развёрнут",
+	[Key.codeCollapsibleCollapsed]: "Блок кода свёрнут",
 
 	// Страница галереи
 	[Key.gallery]: "Галерея",
@@ -454,7 +459,10 @@ export const ru: Translation = {
 	[Key.sponsorChooseMethod]: "Выберите способ оплаты",
 	[Key.sponsorNotAvailable]: "Пока недоступно",
 	[Key.sponsorMetaTemplate]: "{date} · {method}",
-	[Key.postAiSummaryLabel]: "AI-сводка",
+	[Key.postStatsLabel]: "Данные статьи",
+	[Key.postCategoryLabel]: "Категории",
+	[Key.readTimes]: "просмотров",
+	[Key.postIntroLabel]: "Описание",
 	[Key.postCoverLabel]: "Обложка",
 	[Key.coverImageAltSuffix]: " — обложка",
 
@@ -609,7 +617,6 @@ export const ru: Translation = {
 	[Key.kgLayoutMindmap]: "Переключить на минд-карту",
 	[Key.kgLayoutForce]: "Переключить на силовой граф",
 	[Key.postNavBack]: "Назад",
-	[Key.postNavCategory]: "Сменить категорию",
 	[Key.archiveMotto]:
 		"Время не оборачивается, но все пройденные дороги оставляет здесь.",
 	[Key.collectionsMotto]:

@@ -1,0 +1,15 @@
+---
+/**
+ * 文章底部分隔线：细线居中嵌标题，线在文字处断开。
+ * 标题按下方实际摆的是哪一组切换——有底部相关文章区块时是「相关文章」，
+ * 否则（宽屏交给右侧目录面板、或本就没有相关区块）是「其他文章」。
+ * 两个标签都渲染，靠 CSS 决定显示哪个，不引 JS。
+ */
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+---
+
+<div class="post-section-divider">
+  <span class="post-section-divider__label post-section-divider__label--related">{i18n(I18nKey.relatedPosts)}</span>
+  <span class="post-section-divider__label post-section-divider__label--other">{i18n(I18nKey.otherPosts)}</span>
+</div>

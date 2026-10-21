@@ -1,10 +1,10 @@
 ---
 import Icon from "@components/common/Icon.astro";
-import { homeConfig } from "@/config/homeConfig";
-import { licenseConfig } from "@/config/licenseConfig";
+import { homeConfig, licenseConfig, siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { formatDateToYYYYMMDD } from "@/utils/date-utils";
+import { url } from "@/utils/url-utils";
 
 interface Props {
 	title: string;
@@ -15,56 +15,92 @@ interface Props {
 	sourceLink: string;
 	licenseName: string;
 	licenseUrl: string;
+	/** 纯文本（llm-wiki）版地址；缺省不渲染入口 */
+	wikiMarkdownUrl?: string;
 }
 
-const { title, pubDate, author, sourceLink, licenseName, licenseUrl } =
-	Astro.props;
+const {
+	title,
+	pubDate,
+	author,
+	sourceLink,
+	licenseName,
+	licenseUrl,
+	wikiMarkdownUrl,
+} = Astro.props;
 const className = Astro.props.class;
 const profileConf = homeConfig;
 const licenseConf = licenseConfig;
 const postUrl = sourceLink || decodeURIComponent(Astro.url.toString());
+const sponsorUrl = url("/sponsor/");
+const hasActions =
+	siteConfig.pages.sponsor || siteConfig.postShare || !!wikiMarkdownUrl;
 ---
 
-<div
-  class={`relative transition overflow-hidden bg-(--article-surface-bg) py-5 px-6 ${className}`}
->
-  <div class="transition font-bold text-black/75 dark:text-white/75">
-    {title}
-  </div>
-  <a href={postUrl} class="link text-(--primary) break-all">
-    {postUrl}
-  </a>
-  <div class="flex flex-col sm:flex-row gap-3 sm:gap-6 mt-2">
-    <div>
-      <div class="transition text-black/30 dark:text-white/30 text-sm">
-        {i18n(I18nKey.author)}
-      </div>
-      <div class="transition text-black/75 dark:text-white/75 line-clamp-2">
-        {author || profileConf.name}
-      </div>
-    </div>
-    <div>
-      <div class="transition text-black/30 dark:text-white/30 text-sm">
-        {i18n(I18nKey.publishedAt)}
-      </div>
-      <div class="transition text-black/75 dark:text-white/75 line-clamp-2">
-        {formatDateToYYYYMMDD(pubDate)}
-      </div>
-    </div>
-    <div>
-      <div class="transition text-black/30 dark:text-white/30 text-sm">
-        {i18n(I18nKey.license)}
-      </div>
-      <a
-        href={licenseName ? licenseUrl || undefined : licenseConf.url}
-        target="_blank"
-        class="link text-(--primary) line-clamp-2"
-        >{licenseName || licenseConf.name}</a
-      >
+<div class={`license-card ${className}`}>
+  <div class="license-card__body">
+    <span class="license-card__surface" aria-hidden="true"></span>
+    <div class="license-card__content">
+      <div class="license-card__title">{title}</div>
+      <a href={postUrl} class="license-card__url">{postUrl}</a>
+      <dl class="license-card__meta">
+        <div class="license-card__meta-item">
+          <dt>{i18n(I18nKey.author)}</dt>
+          <dd>{author || profileConf.name}</dd>
+        </div>
+        <div class="license-card__meta-item">
+          <dt>{i18n(I18nKey.publishedAt)}</dt>
+          <dd>{formatDateToYYYYMMDD(pubDate)}</dd>
+        </div>
+        <div class="license-card__meta-item">
+          <dt>{i18n(I18nKey.license)}</dt>
+          <dd>
+            <a
+              href={licenseName ? licenseUrl || undefined : licenseConf.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >{licenseName || licenseConf.name}</a>
+          </dd>
+        </div>
+      </dl>
+
+      <Icon
+        name="fa7-brands:creative-commons"
+        class="license-card__mark transition"
+        aria-hidden="true"
+      />
     </div>
   </div>
-  <Icon
-    name="fa7-brands:creative-commons"
-    class="transition text-[15rem] absolute pointer-events-none right-6 top-1/2 -translate-y-1/2 text-black/5 dark:text-white/5"
-  />
+
+  {hasActions && (
+    <div class="license-card__actions">
+      <span class="license-card__surface license-card__surface--actions" aria-hidden="true"></span>
+      <div class="license-card__action-row">
+        {siteConfig.pages.sponsor && (
+          <a href={sponsorUrl} class="license-card__action">
+            <Icon name="material-symbols:coffee-outline-rounded" class="license-card__action-icon" aria-hidden="true" />
+            <span>{i18n(I18nKey.sponsor)}</span>
+          </a>
+        )}
+        {siteConfig.postShare && (
+          <button type="button" class="license-card__action" data-post-share-native aria-label={i18n(I18nKey.shareArticle)}>
+            <Icon name="material-symbols:share" class="license-card__action-icon" aria-hidden="true" />
+            <span>{i18n(I18nKey.shareArticle)}</span>
+          </button>
+        )}
+        {wikiMarkdownUrl && (
+          <a
+            href={wikiMarkdownUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="license-card__action"
+            data-pagefind-ignore
+          >
+            <Icon name="material-symbols:description-outline-rounded" class="license-card__action-icon" aria-hidden="true" />
+            <span>{i18n(I18nKey.plainTextVersion)}</span>
+          </a>
+        )}
+      </div>
+    </div>
+  )}
 </div>
