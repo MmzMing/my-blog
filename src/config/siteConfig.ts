@@ -12,6 +12,13 @@ export const siteConfig: SiteConfig = {
 	// 站点副标题
 	subtitle: "MmzMing",
 
+	// 头像：owner=站长，bot=AI bot
+	// 使用 public 目录绝对路径，或远程 URL
+	avatar: {
+		owner: "/assets/images/aut-master.webp",
+		bot: "/assets/images/aut-bot.webp",
+	},
+
 	// 站点 URL
 	site_url: "https://tblog.mmzhiku.xyz",
 

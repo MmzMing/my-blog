@@ -1,0 +1,373 @@
+---
+/**
+ * 通用卡片手风琴（MDX 数据驱动）。
+ * 页面需渲染一次 PaperDeckleDefs，提供 --paper-deckle-filter 引用的 #paper-deckle。
+ */
+import Icon from "@components/common/Icon.astro";
+import { z } from "astro/zod";
+
+export interface AccordionCard {
+	name: string;
+	desc?: string;
+	icon: string;
+	url: string;
+	color: string;
+	darkColor?: string;
+}
+
+export interface AccordionItem {
+	id: string;
+	title: string;
+	open?: boolean;
+	cards: AccordionCard[];
+}
+
+const accordionSchema = z.array(
+	z.object({
+		id: z.string(),
+		title: z.string(),
+		open: z.boolean().optional(),
+		cards: z.array(
+			z.object({
+				name: z.string(),
+				desc: z.string().optional(),
+				icon: z.string(),
+				url: z.string(),
+				color: z.string(),
+				darkColor: z.string().optional(),
+			}),
+		),
+	}),
+);
+
+interface Props {
+	items: AccordionItem[] | string;
+	label?: string;
+}
+
+const { items: itemsInput, label = "手风琴" } = Astro.props;
+const items =
+	typeof itemsInput === "string"
+		? accordionSchema.parse(JSON.parse(itemsInput))
+		: itemsInput;
+---
+
+<section class="accordion" aria-label={label}>
+	{items.map((item) => {
+		const headerId = `accordion-${item.id}-header`;
+		const panelId = `accordion-${item.id}-panel`;
+		return (
+			<div
+				class="accordion__item"
+				data-accordion-item
+				data-open={item.open ? "" : undefined}
+			>
+				<button
+					type="button"
+					id={headerId}
+					class="accordion__header"
+					aria-expanded={item.open ? "true" : "false"}
+					aria-controls={panelId}
+				>
+					<span class="accordion__title">{item.title}</span>
+					<Icon
+						name="material-symbols:keyboard-arrow-down-rounded"
+						class="accordion__arrow"
+						aria-hidden="true"
+					/>
+				</button>
+				<section
+					id={panelId}
+					class="accordion__panel"
+					aria-labelledby={headerId}
+				>
+					<div class="accordion__panel-inner">
+						<div class="accordion__content">
+							<div class="accordion__grid">
+								{item.cards.map((card) => (
+									<a
+										class="accordion-card no-styling"
+										href={card.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label={`${card.name}：${card.desc ?? ""}`}
+										style={`--accordion-card-color: ${card.color};${
+											card.darkColor
+												? `--accordion-card-color-dark: ${card.darkColor};`
+												: ""
+										}`}
+									>
+										<span class="accordion-card__icon" aria-hidden="true">
+											<Icon name={card.icon} />
+										</span>
+										<span class="accordion-card__name">{card.name}</span>
+										{card.desc && (
+											<span class="accordion-card__desc">{card.desc}</span>
+										)}
+									</a>
+								))}
+							</div>
+						</div>
+					</div>
+				</section>
+			</div>
+		);
+	})}
+</section>
+
+<script is:inline>
+	(function () {
+		if (window.__mdxAccordionReady) return;
+		window.__mdxAccordionReady = true;
+
+		document.addEventListener("click", function (e) {
+			var header = e.target.closest(".accordion__header");
+			if (!header) return;
+			var item = header.closest("[data-accordion-item]");
+			if (!item) return;
+			var open = item.toggleAttribute("data-open");
+			header.setAttribute("aria-expanded", String(open));
+		});
+	})();
+</script>
+
+<style is:global>
+/* ==========================================================================
+   通用卡片手风琴
+   复刻文章详情顶部元信息手风琴：纸面 + 内缩分隔线 + 面板高度/内容落位动效
+   ========================================================================== */
+
+.accordion {
+	--acc-panel-duration: 420ms;
+	--acc-content-duration: 460ms;
+	--acc-fade-in: 260ms;
+	--acc-fade-out: 160ms;
+	--acc-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+	--acc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--acc-content-lift: -0.375rem;
+	--acc-content-blur: 2px;
+	--acc-inline-pad: 1.125rem;
+	position: relative;
+	isolation: isolate;
+	margin: 1.25rem 0 1.75rem;
+}
+
+/* 整组一张纸：底色与毛边画在 ::before 上，与文章元信息手风琴同一套纸面 */
+.accordion::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: var(--card-surface);
+	pointer-events: none;
+	filter: var(--paper-deckle-filter);
+}
+
+.accordion__item {
+	position: relative;
+}
+
+/* 段间细线收进内边距，顶边与底边由纸面自身承担 */
+.accordion__item + .accordion__item::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	right: var(--acc-inline-pad);
+	left: var(--acc-inline-pad);
+	border-top: 1px solid var(--line-divider);
+}
+
+/* ── 行头：标题 + 弹性箭头，无 hover 动效 ── */
+.accordion__header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	width: 100%;
+	padding: 0.875rem var(--acc-inline-pad);
+	border: none;
+	background: transparent;
+	color: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.accordion__header:focus-visible {
+	outline: 2px solid var(--article-title-marker);
+	outline-offset: -2px;
+}
+
+.accordion__title {
+	color: var(--deep-text);
+	font-size: 0.9375rem;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.accordion__arrow {
+	flex-shrink: 0;
+	margin-left: auto;
+	width: 1.5rem;
+	height: 1.5rem;
+	color: var(--content-meta);
+	transition: rotate 360ms var(--acc-ease-spring);
+}
+
+.accordion__item[data-open] .accordion__arrow {
+	rotate: 180deg;
+}
+
+/* ── 面板：高度走不回弹的 smooth 曲线，内容落位带轻微过冲 ── */
+.accordion__panel {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows var(--acc-panel-duration) var(--acc-ease-settle);
+}
+
+.accordion__item[data-open] .accordion__panel {
+	grid-template-rows: 1fr;
+}
+
+.accordion__panel-inner {
+	min-height: 0;
+	overflow: hidden;
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		opacity var(--acc-fade-out) linear,
+		visibility 0s linear var(--acc-panel-duration);
+}
+
+.accordion__item[data-open] .accordion__panel-inner {
+	opacity: 1;
+	visibility: visible;
+	transition:
+		opacity var(--acc-fade-in) linear 80ms,
+		visibility 0s;
+}
+
+.accordion__content {
+	translate: 0 var(--acc-content-lift);
+	filter: blur(var(--acc-content-blur));
+	padding: 0.25rem var(--acc-inline-pad) 1.125rem;
+	transition:
+		translate 200ms var(--acc-ease-settle),
+		filter 200ms linear;
+}
+
+.accordion__item[data-open] .accordion__content {
+	translate: 0 0;
+	filter: none;
+	transition:
+		translate var(--acc-content-duration) var(--acc-ease-spring) 60ms,
+		filter var(--acc-panel-duration) linear;
+}
+
+/* ── 卡片网格 ── */
+.accordion__grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+
+.accordion-card {
+	--acc-card-shadow:
+		0 1px 2px color-mix(in srgb, var(--deep-text) 5%, transparent),
+		0 8px 20px -8px color-mix(in srgb, var(--deep-text) 12%, transparent);
+	--acc-card-shadow-hover:
+		0 2px 4px color-mix(in srgb, var(--deep-text) 6%, transparent),
+		0 14px 28px -10px color-mix(in srgb, var(--deep-text) 18%, transparent);
+
+	position: relative;
+	display: flex;
+	min-height: 4.5rem;
+	flex-direction: column;
+	gap: 0.25rem;
+	padding: 0.875rem 1rem;
+	border: 1px solid var(--card-border);
+	border-radius: var(--radius-large);
+	background: var(--card-surface);
+	box-shadow: var(--acc-card-shadow);
+	color: var(--deep-text);
+	text-decoration: none;
+	overflow: hidden;
+	transition:
+		scale 260ms var(--acc-ease-spring),
+		box-shadow 260ms ease,
+		background-color 260ms ease,
+		border-color 260ms ease;
+}
+
+.accordion-card:hover,
+.accordion-card:focus-visible {
+	z-index: 1;
+	scale: 1.03;
+	border-color: var(--card-border-hover);
+	background: var(--card-surface-hover);
+	box-shadow: var(--acc-card-shadow-hover);
+}
+
+:root.dark .accordion-card {
+	--acc-card-shadow:
+		0 1px 2px rgb(0 0 0 / 40%),
+		0 8px 20px -8px rgb(0 0 0 / 60%);
+	--acc-card-shadow-hover:
+		0 2px 4px rgb(0 0 0 / 45%),
+		0 14px 28px -10px rgb(0 0 0 / 70%);
+}
+
+.accordion-card:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.accordion-card__icon {
+	display: block;
+	width: 1.75rem;
+	height: 1.75rem;
+	color: var(--accordion-card-color, var(--deep-text));
+}
+
+.accordion-card__icon svg {
+	width: 100%;
+	height: 100%;
+}
+
+:root.dark .accordion-card__icon {
+	color: var(
+		--accordion-card-color-dark,
+		var(--accordion-card-color, var(--deep-text))
+	);
+}
+
+.accordion-card__name {
+	margin-top: 0.375rem;
+	font-size: 0.875rem;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.accordion-card__desc {
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+	.accordion__grid {
+		grid-template-columns: 1fr;
+		gap: 0.625rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.accordion__panel,
+	.accordion__panel-inner,
+	.accordion__content,
+	.accordion__arrow,
+	.accordion-card,
+	.accordion-card__icon {
+		transition-duration: 0s;
+		transition-delay: 0s;
+	}
+}
+</style>

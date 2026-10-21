@@ -31,8 +31,18 @@
 - **静态优先**：默认静态渲染，仅在需要交互时使用 Svelte 岛，选择满足需求的最小 `client:*` 指令。
 - **逻辑分层**：组件 frontmatter 负责数据准备，复杂逻辑下沉工具模块；工具函数不夹带副作用，控制器不承担数据获取。
 - **客户端模块**：行为放在 `src/utils/*-controller.ts` / `*-lifecycle.ts`，由组件脚本导入，不把业务逻辑内联进组件。
-- **组件归属**：沿用 `src/components/` 现有分类。组件用 `PascalCase.astro` / `PascalCase.svelte`，工具用 `kebab-case.ts`，配置沿用 `xxxConfig.ts`、既有具名导出与对象命名。
+- **组件归属**：沿用 `src/components/` 现有分类；MDX 正文组件按下方独立规范放置。组件用 `PascalCase.astro` / `PascalCase.svelte`，工具用 `kebab-case.ts`，配置沿用 `xxxConfig.ts`、既有具名导出与对象命名。
 - **公共类型**：共享类型放 `src/types/`；组件本地 Props 可就地定义，并明确必填与可选。
+
+# MDX 正文组件
+
+- **目录**：所有在 `.mdx` 正文中渲染的组件统一放在 `src/components/mdx/`，扁平存放；只有形成明确组件族且数量较多时才建子目录。页面外壳、导航、评论、统计等非正文组件仍按现有分类放置。
+- **命名**：组件文件与导出名使用 `PascalCase`，不再加 `About`、`Mdx` 等来源前缀，目录本身已表达用途；例如 `ProfileCard.astro`、`Timeline.astro`。CSS 类名同步去掉来源前缀；若通用类名已被占用，使用语义化后缀（如 `profile-card-inline`）避免样式串台。
+- **样式**：MDX 组件的样式必须写在组件内 `<style is:global>`，不再新建 `src/styles/components/*.css` 独立样式文件，也不得依赖页面统一导入。使用 `is:global` 是为了让插槽内容（如 Markdown 生成的 `code`）和 `:root.dark` 等全局选择器正常生效；类名必须是组件专属的 BEM 命名，避免污染全局。
+- **数据**：内容型组件由 MDX 通过 props 传入数据（如 `items`），组件内不硬编码业务条目；通用组件优先抽象到 `src/components/mdx/`，数据保持在 MDX 可替换。
+- **指令糖**：MDX 中可用 `:::accordion{label="..."}` + `accordion` 代码块（`{分组 · open}` / `- 名称 | 描述 | URL | 图标 | 颜色`）、`:::timeline{label="..."}` + `timeline` 代码块（`{时间 · 标题 · 可选标签 · icon=… · tone=…}` + 详情行）、`:::social-links{label="..."}` + `- 平台 | 昵称 | 备注 | URL | 图标 | brand | 状态（可选）`（容器解析后自动并入前一段末尾，渲染为行内头像组）、`::chat` + `:u` / `:a` / `:s` / `:u{name="昵称"}` 行 + `::`（收尾两冒号）、`:profile-card{... avatar="$avatar"}`、`:::folding{title="..."}` / `:::blur` / `:::card-list`（内部放 Markdown）、`::link-card{...}` / `::link-banner{...}`、`:badge[文字]` / `:key[Ctrl]` / `:tip[术语]{tip="解释"}` / `:blur[文字]`；由 `src/plugins/remark-mdx-directive-components.js` 转成 MDX JSX，行式 DSL 由插件解析、组件用 Zod 校验。MDX 的 `{}` 会被当作表达式，因此 Accordion/Timeline 的 DSL 必须放在代码围栏内；带内容的容器用 `:::`，`::chat` 按源码行读取到收尾 `::`，其余 `::` 指令是 leaf。`items`/`links`/`messages` 也支持 leaf 指令的 `$变量` 写法；图片等非字符串 props 用 `$变量`，变量在 MDX 顶层 import。组件默认 label 为“手风琴 / 时间线”；组件仍需在 MDX 中 import，新增可指令组件要同步登记插件映射。
+- **引用**：MDX 内显式 `import`，路径使用 `@components/mdx/...`；不新增全局自动注册。需要替换 HTML 标签时再使用 `<Content components={...} />`。
+- **边界**：Markdown 语法扩展（`::github`、callout、mermaid、图集等）继续留在 `src/plugins/`；需要客户端生命周期的交互组件按现有岛屿与控制器规范处理，不把全局 controller 放进 `mdx/`。`src/components/about/` 只保留关于页专用且不进 MDX 的组件。
 
 # TypeScript、命名与导入
 

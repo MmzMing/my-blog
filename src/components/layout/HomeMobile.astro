@@ -36,7 +36,7 @@ const bioText = Array.isArray(homeConfig.bio)
 	: homeConfig.bio || "";
 
 let avatarImg: ImageMetadata | null = null;
-const avatarValue = homeConfig.avatar || "";
+const avatarValue = siteConfig.avatar.owner || "";
 if (
 	avatarValue &&
 	!avatarValue.startsWith("/") &&

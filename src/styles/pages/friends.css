@@ -585,28 +585,29 @@
 	flex-direction: column;
 	gap: 0.25rem;
 	padding: 0.625rem 0.875rem;
-	border-radius: 1rem;
-	border: 2px solid var(--deep-text);
-	background: var(--page-bg);
+	border-radius: var(--radius-large);
+	background: var(--article-surface-bg);
+	color: var(--deep-text);
 	/* 撑满消息行的剩余宽度，三条气泡因此始终同宽 */
 	flex: 1;
 	min-width: 0;
 	min-height: 2.5rem;
 }
-/* 气泡尾巴指向头像一侧 */
+/* 与 MDX Chat 一致：靠近头像的上角收小 */
 .friend-chat__item--left .friend-chat__bubble {
-	border-bottom-left-radius: 0.25rem;
+	border-top-left-radius: var(--radius-small);
 }
 .friend-chat__item--right .friend-chat__bubble {
-	border-bottom-right-radius: 0.25rem;
-	background: var(--deep-text);
-	color: var(--page-bg);
+	border: 1px solid var(--line-divider);
+	border-top-right-radius: var(--radius-small);
+	background: var(--page-bg);
+	color: var(--deep-text);
 }
 
 .friend-chat__name {
 	font-size: 0.7rem;
 	font-weight: 700;
-	color: #00a29b;
+	color: var(--article-title-marker);
 	letter-spacing: 0.04em;
 }
 .friend-chat__text {
@@ -652,13 +653,14 @@
 	min-width: 0;
 }
 
-/* 左：注意事项（纯背景无边框） */
+/* 左：注意事项（对齐 MDX Chat 的左侧气泡） */
 .friend-apply__notes {
 	display: flex;
 	flex-direction: column;
 	padding: 1.25rem;
-	border-radius: var(--radius-large, 0.75rem);
-	background: color-mix(in oklch, var(--deep-text) 5%, transparent);
+	border-radius: var(--radius-large);
+	border-top-left-radius: var(--radius-small);
+	background: var(--article-surface-bg);
 }
 
 .friend-apply__notes-title {
@@ -735,11 +737,12 @@
 	flex-shrink: 0;
 }
 
-/* 右：本站信息（用于复制） */
+/* 右：本站信息（用于复制，对齐 MDX Chat 的右侧气泡） */
 .friend-apply__site {
 	padding: 1.25rem;
-	border-radius: var(--radius-large, 0.75rem);
-	border: 2px solid var(--deep-text);
+	border-radius: var(--radius-large);
+	border-top-right-radius: var(--radius-small);
+	border: 1px solid var(--line-divider);
 	background: var(--page-bg);
 }
 

@@ -139,7 +139,7 @@ const ogImages: ImagesInput = {
 		},
 		{
 			src: AVATAR_KEY,
-			data: () => loadAsset(homeConfig.avatar ?? "", "头像"),
+			data: () => loadAsset(siteConfig.avatar.owner, "头像"),
 		},
 	],
 };

@@ -40,7 +40,7 @@ async function resolveCardImage(value: string): Promise<ResolvedCardImage> {
 	return { kind: "optimized", meta: await file() };
 }
 
-const avatarImage = await resolveCardImage(homeConfig.avatar || "");
+const avatarImage = await resolveCardImage(siteConfig.avatar.owner || "");
 const bannerImage = await resolveCardImage(homeConfig.avatarBanner || "");
 
 // 横幅两层同时渲染：糊化头像垫底，真横幅压在上层，

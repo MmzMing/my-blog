@@ -1,0 +1,36 @@
+---
+---
+
+<div class="mdx-card-list"><slot /></div>
+
+<style is:global>
+.mdx-card-list {
+	margin: 1.25rem 0;
+}
+
+.mdx-card-list ul {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mdx-card-list li {
+	padding: 0.7rem 0.9rem;
+	border-radius: var(--radius-medium);
+	background: var(--tag-graph-surface);
+	color: var(--deep-text);
+	line-height: 1.7;
+}
+
+.mdx-card-list li p {
+	margin: 0;
+}
+
+.mdx-card-list li strong {
+	color: var(--deep-text);
+	font-weight: 700;
+}
+</style>

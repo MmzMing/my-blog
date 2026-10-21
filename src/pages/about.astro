@@ -2,14 +2,10 @@
 import { getEntry, render } from "astro:content";
 import ChangelogGraph from "@components/about/ChangelogGraph.astro";
 import Markdown from "@components/common/Markdown.astro";
+import PaperDeckleDefs from "@components/common/PaperDeckleDefs.astro";
 import PageTitle from "@/components/common/PageTitle.astro";
 import SiteStructuredData from "@/components/seo/SiteStructuredData.astro";
 import { siteConfig } from "@/config";
-import "@/styles/components/about-chat-bubble.css";
-import "@/styles/components/about-profile-card.css";
-import "@/styles/components/about-social-links.css";
-import "@/styles/components/about-tech-stack.css";
-import "@/styles/components/about-timeline.css";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
@@ -29,6 +25,7 @@ const { Content } = await render(aboutPost);
 
 <MainGridLayout title={i18n(I18nKey.about)} description={i18n(I18nKey.aboutDescription)} hasOwnH1={true}>
 	<SiteStructuredData slot="head" includeProfilePage={true} />
+	<PaperDeckleDefs />
 	<div class="about-page card-base z-10 px-4 py-6 md:px-9 relative w-full">
 		<div class="mb-6">
 			<PageTitle

@@ -1,0 +1,49 @@
+---
+interface Props {
+	block?: boolean;
+}
+
+const { block = false } = Astro.props;
+const Tag = block ? "div" : "span";
+---
+
+<Tag
+	class:list={["mdx-blur", block && "mdx-blur--block"]}
+	tabindex="0"
+	title="悬停或聚焦查看"
+><slot /></Tag>
+
+<style is:global>
+.mdx-blur {
+	border-radius: 0.2rem;
+	cursor: pointer;
+	filter: blur(0.35em);
+	transition: filter 0.2s ease;
+}
+
+.mdx-blur:hover,
+.mdx-blur:focus-visible {
+	filter: none;
+}
+
+.mdx-blur:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.mdx-blur--block {
+	display: block;
+	margin: 1rem 0;
+	padding: 0.75rem 1rem;
+	border-radius: var(--radius-large);
+	background: var(--article-surface-bg);
+	color: var(--deep-text);
+	line-height: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mdx-blur {
+		transition: none;
+	}
+}
+</style>

@@ -11,6 +11,12 @@ export type SiteConfig = {
 	description?: string; // 网站描述，用于生成 <meta name="description">
 	keywords?: string[]; // 站点关键词，用于生成 <meta name="keywords">
 
+	// 头像配置：owner=站长，bot=AI bot；支持 public 绝对路径与远程 URL
+	avatar: {
+		owner: string;
+		bot: string;
+	};
+
 	lang: "en" | "zh_CN" | "zh_TW" | "ja" | "ru";
 
 	themeColor: {
@@ -358,8 +364,7 @@ export type HeroStickerConfig = {
 };
 
 export type HomeConfig = {
-	avatar?: string;
-	/** 资料卡横幅图；留空则用头像模糊放大兜底。路径约定同 avatar */
+	/** 资料卡横幅图；留空则用站长头像模糊放大兜底。支持 public 绝对路径与远程 URL */
 	avatarBanner?: string;
 	name: string;
 	displayName?: string; // 首页展示名字（如 MmMing）
@@ -763,7 +768,7 @@ export type FriendNote = {
 };
 
 export type FriendChatMessage = {
-	role: "cat" | "owner"; // cat=喵墩（左侧，作者头像），owner=站长（右侧，文字头像）
+	role: "cat" | "owner"; // cat=喵墩（左侧，AI bot 头像），owner=站长（右侧，站长头像）
 	name: string; // 气泡署名
 	text: string; // 气泡文字，打字机逐字显示
 };

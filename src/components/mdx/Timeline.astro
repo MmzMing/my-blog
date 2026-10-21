@@ -1,0 +1,320 @@
+---
+import Icon from "@components/common/Icon.astro";
+import { z } from "astro/zod";
+
+export interface TimelineItem {
+	id?: string;
+	icon: string;
+	title: string;
+	time: string;
+	datetime?: string;
+	tag?: string;
+	tone?: "neutral" | "success" | "danger";
+	detail: string;
+}
+
+const timelineSchema = z.array(
+	z.object({
+		id: z.string().optional(),
+		icon: z.string(),
+		title: z.string(),
+		time: z.string(),
+		datetime: z.string().optional(),
+		tag: z.string().optional(),
+		tone: z.enum(["neutral", "success", "danger"]).optional(),
+		detail: z.string(),
+	}),
+);
+
+interface Props {
+	items: TimelineItem[] | string;
+	label?: string;
+}
+
+const { items: itemsInput, label = "时间线" } = Astro.props;
+const items =
+	typeof itemsInput === "string"
+		? timelineSchema.parse(JSON.parse(itemsInput))
+		: itemsInput;
+---
+
+<section class="timeline-feed" aria-label={label}>
+	<ol class="timeline-feed__list">
+		{items.map((item, index) => {
+			const itemId = item.id ?? `timeline-item-${index}`;
+			const detailId = `${itemId}-detail`;
+			return (
+				<li class="timeline-feed__item" data-timeline-item>
+					<span
+						class="timeline-feed__marker"
+						data-tone={item.tone ?? "neutral"}
+						aria-hidden="true"
+					>
+						<Icon name={item.icon} />
+					</span>
+					<div class="timeline-feed__content">
+						<button
+							type="button"
+							class="timeline-feed__trigger"
+							aria-expanded="false"
+							aria-controls={detailId}
+						>
+							<span class="timeline-feed__text">
+								<span class="timeline-feed__title-row">
+									<span class="timeline-feed__title">{item.title}</span>
+									{item.tag && (
+										<span class="timeline-feed__tag">{item.tag}</span>
+									)}
+								</span>
+								<time class="timeline-feed__time" datetime={item.datetime}>
+									{item.time}
+								</time>
+							</span>
+							<Icon
+								name="material-symbols:keyboard-arrow-down-rounded"
+								class="timeline-feed__arrow"
+								aria-hidden="true"
+							/>
+						</button>
+						<div class="timeline-feed__detail" id={detailId}>
+							<div class="timeline-feed__detail-inner">
+								<p class="timeline-feed__desc">{item.detail}</p>
+							</div>
+						</div>
+					</div>
+				</li>
+			);
+		})}
+	</ol>
+</section>
+
+<script is:inline>
+	(function () {
+		if (window.__mdxTimelineReady) return;
+		window.__mdxTimelineReady = true;
+
+		document.addEventListener("click", function (e) {
+			var trigger = e.target.closest(".timeline-feed__trigger");
+			if (!trigger) return;
+			var item = trigger.closest("[data-timeline-item]");
+			if (!item) return;
+			var open = item.toggleAttribute("data-open");
+			trigger.setAttribute("aria-expanded", String(open));
+		});
+	})();
+</script>
+
+<style is:global>
+/* ==========================================================================
+   关于页 · 可展开时间轴
+   图标头像 + 标题/时间两层信息 + 展开详情 + 纵向连线
+   ========================================================================== */
+
+.timeline-feed {
+	--timeline-gap: 1rem;
+	--timeline-marker-gap: 0.375rem;
+	margin: 1.25rem 0 1.75rem;
+}
+
+.timeline-feed__list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--timeline-gap);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.timeline-feed__item {
+	position: relative;
+	display: grid;
+	grid-template-columns: 2rem minmax(0, 1fr);
+	gap: 0.875rem;
+	/* 重置 Markdown prose 给 li 的缩进和段距，避免图标与连线错位 */
+	margin: 0;
+	padding-inline-start: 0;
+}
+
+/* 连线在图标上下各留一道缝，止于下一枚图标前；展开详情时随行高一起延长 */
+.timeline-feed__item:not(:last-child)::before {
+	position: absolute;
+	top: calc(2rem + var(--timeline-marker-gap));
+	bottom: calc(-1 * (var(--timeline-gap) - var(--timeline-marker-gap)));
+	left: calc(1rem - 0.5px);
+	width: 1px;
+	background: var(--line-divider);
+	content: "";
+}
+
+.timeline-feed__marker {
+	position: relative;
+	z-index: 1;
+	display: grid;
+	width: 2rem;
+	height: 2rem;
+	place-items: center;
+	border: 1px solid var(--card-border);
+	border-radius: 50%;
+	background: var(--btn-plain-bg-hover);
+	color: var(--content-meta);
+}
+
+.timeline-feed__marker[data-tone="success"] {
+	border-color: color-mix(in oklch, #22c55e 35%, transparent);
+	background: color-mix(in srgb, #22c55e 12%, var(--btn-plain-bg-hover));
+	color: #16a34a;
+}
+
+:root.dark .timeline-feed__marker[data-tone="success"] {
+	border-color: color-mix(in oklch, #4ade80 35%, transparent);
+	background: color-mix(in srgb, #4ade80 12%, var(--btn-plain-bg-hover));
+	color: #4ade80;
+}
+
+.timeline-feed__marker[data-tone="danger"] {
+	border-color: color-mix(in oklch, #ef4444 35%, transparent);
+	background: color-mix(in srgb, #ef4444 12%, var(--btn-plain-bg-hover));
+	color: #dc2626;
+}
+
+:root.dark .timeline-feed__marker[data-tone="danger"] {
+	border-color: color-mix(in oklch, #f87171 35%, transparent);
+	background: color-mix(in srgb, #f87171 12%, var(--btn-plain-bg-hover));
+	color: #f87171;
+}
+
+.timeline-feed__marker svg {
+	width: 1.125rem;
+	height: 1.125rem;
+}
+
+.timeline-feed__content {
+	min-width: 0;
+}
+
+.timeline-feed__trigger {
+	display: flex;
+	width: 100%;
+	align-items: flex-start;
+	gap: 0.75rem;
+	padding: 0.5rem 0.75rem;
+	border: 0;
+	border-radius: var(--radius-medium);
+	background: transparent;
+	color: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.timeline-feed__trigger:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.timeline-feed__text {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.timeline-feed__title-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.timeline-feed__title {
+	color: var(--deep-text);
+	font-size: 0.9375rem;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.timeline-feed__tag {
+	padding: 0.125rem 0.5rem;
+	border-radius: 999px;
+	background: rgb(0 162 155 / 0.12);
+	color: #00a29b;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+
+.timeline-feed__time {
+	color: var(--content-meta);
+	font-size: 0.8125rem;
+	line-height: 1.4;
+}
+
+.timeline-feed__arrow {
+	flex: none;
+	width: 1.25rem;
+	height: 1.25rem;
+	margin-top: 0.125rem;
+	color: var(--content-meta);
+	transition: rotate 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.timeline-feed__item[data-open] .timeline-feed__arrow {
+	rotate: 180deg;
+}
+
+/* 详情：高度走不回弹的 smooth 曲线，内容落位带轻微过冲 */
+.timeline-feed__detail {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.timeline-feed__item[data-open] .timeline-feed__detail {
+	grid-template-rows: 1fr;
+}
+
+.timeline-feed__detail-inner {
+	min-height: 0;
+	overflow: hidden;
+	padding: 0 0.75rem;
+	opacity: 0;
+	visibility: hidden;
+	translate: 0 -0.25rem;
+	filter: blur(2px);
+	transition:
+		opacity 160ms linear,
+		translate 200ms cubic-bezier(0.22, 1, 0.36, 1),
+		filter 200ms linear,
+		visibility 0s linear 280ms;
+}
+
+.timeline-feed__item[data-open] .timeline-feed__detail-inner {
+	opacity: 1;
+	visibility: visible;
+	translate: 0 0;
+	filter: none;
+	transition:
+		opacity 220ms linear 60ms,
+		translate 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 60ms,
+		filter 280ms linear,
+		visibility 0s;
+}
+
+.timeline-feed__desc {
+	margin: 0;
+	padding: 0.125rem 0 0.75rem;
+	color: var(--content-meta);
+	font-size: 0.875rem;
+	line-height: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.timeline-feed__detail,
+	.timeline-feed__detail-inner,
+	.timeline-feed__arrow {
+		transition-duration: 0s;
+		transition-delay: 0s;
+	}
+}
+</style>

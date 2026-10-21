@@ -39,6 +39,7 @@ import { rehypeMermaid } from "./src/plugins/rehype-mermaid.mjs";
 import { rehypePlantuml } from "./src/plugins/rehype-plantuml.mjs";
 import { parseDirectiveNode } from "./src/plugins/remark-directive-rehype.js";
 import { remarkExcerpt } from "./src/plugins/remark-excerpt.js";
+import { remarkMdxDirectiveComponents } from "./src/plugins/remark-mdx-directive-components.js";
 import { remarkMermaid } from "./src/plugins/remark-mermaid.js";
 import { remarkPlantuml } from "./src/plugins/remark-plantuml.js";
 import { remarkReadingTime } from "./src/plugins/remark-reading-time.mjs";
@@ -274,6 +275,7 @@ export default defineConfig({
 				remarkExcerpt,
 				remarkDirective,
 				remarkSectionize,
+				remarkMdxDirectiveComponents,
 				parseDirectiveNode,
 				remarkMermaid,
 				[remarkPlantuml, plantumlConfig],

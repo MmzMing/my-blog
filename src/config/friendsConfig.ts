@@ -1,4 +1,5 @@
 import type { FriendLink, FriendsPageConfig } from "../types/config";
+import { siteConfig } from "./siteConfig";
 
 // 友链页面配置
 export const friendsPageConfig: FriendsPageConfig = {
@@ -24,7 +25,7 @@ export const friendsPageConfig: FriendsPageConfig = {
 		name: "MmzMing的知识库",
 		desc: "哈基米，南北绿豆",
 		url: "https://tblog.mmzhiku.xyz",
-		avatar: "https://i.stardots.io/784774835/StarDots-2026052116374135506.jpg",
+		avatar: new URL(siteConfig.avatar.owner, siteConfig.site_url).href,
 		email: "784774835@qq.com",
 	},
 

@@ -1,0 +1,262 @@
+---
+import Icon from "@components/common/Icon.astro";
+import type { ImageMetadata } from "astro";
+
+interface Props {
+	id: string;
+	trigger?: string;
+	name: string;
+	role: string;
+	description: string;
+	avatar?: ImageMetadata | string;
+}
+
+const { id, trigger, name, role, description, avatar } = Astro.props;
+const triggerText = trigger || name;
+const avatarSrc = typeof avatar === "string" ? avatar : avatar?.src;
+const cardId = `profile-card-inline-${id}`;
+---
+
+<span class="profile-card-inline" tabindex="0" aria-describedby={cardId}>
+	<span class="profile-card-inline__trigger">
+		<Icon
+			name="material-symbols:person"
+			class="profile-card-inline__trigger-icon"
+			aria-hidden="true"
+		/>
+		<span class="profile-card-inline__trigger-label">{triggerText}</span>
+	</span>
+	<span id={cardId} class="profile-card-inline__card" role="tooltip">
+		<span class="profile-card-inline__avatar" aria-hidden="true">
+			{avatarSrc ? (
+				<img
+					class="profile-card-inline__avatar-image"
+					src={avatarSrc}
+					alt=""
+					loading="lazy"
+					decoding="async"
+				/>
+			) : (
+				<span class="profile-card-inline__avatar-fallback">{name}</span>
+			)}
+		</span>
+		<span class="profile-card-inline__content">
+			<span class="profile-card-inline__name">{name}</span>
+			<span class="profile-card-inline__role">{role}</span>
+			<span class="profile-card-inline__description">{description}</span>
+		</span>
+	</span>
+</span>
+
+<script is:inline>
+	(function () {
+		if (window.__profileCardAnchorReady) return;
+		window.__profileCardAnchorReady = true;
+
+		var EDGE_INSET = 12;
+		var ARROW_HALF = 6;
+		var CARD_BORDER = 1.5;
+
+		function clamp(value, min, max) {
+			return Math.min(Math.max(value, min), max);
+		}
+
+		function positionCard(root) {
+			var card = root.querySelector(".profile-card-inline__card");
+			if (!card) return;
+			var rootRect = root.getBoundingClientRect();
+			var cardWidth = card.offsetWidth;
+			var viewportWidth = document.documentElement.clientWidth;
+			var triggerCenter = rootRect.left + rootRect.width / 2;
+			var left = clamp(
+				triggerCenter - cardWidth / 2,
+				EDGE_INSET,
+				viewportWidth - cardWidth - EDGE_INSET
+			);
+			var arrowX = clamp(
+				triggerCenter - left,
+				EDGE_INSET,
+				cardWidth - EDGE_INSET
+			);
+			card.style.setProperty(
+				"--profile-card-left",
+				left - rootRect.left + "px"
+			);
+			card.style.setProperty(
+				"--profile-card-arrow-left",
+				arrowX - ARROW_HALF - CARD_BORDER + "px"
+			);
+		}
+
+		document.addEventListener("pointerover", function (event) {
+			if (!(event.target instanceof Element)) return;
+			var root = event.target.closest(".profile-card-inline");
+			if (root) positionCard(root);
+		});
+
+		document.addEventListener("focusin", function (event) {
+			if (!(event.target instanceof Element)) return;
+			var root = event.target.closest(".profile-card-inline");
+			if (root) positionCard(root);
+		});
+	})();
+</script>
+
+<style is:global>
+.profile-card-inline {
+	position: relative;
+	display: inline-flex;
+	vertical-align: middle;
+	outline: none;
+}
+
+.profile-card-inline__trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.125rem 0.375rem;
+	border: 1px solid var(--card-border);
+	border-radius: var(--radius-medium);
+	background-color: color-mix(in oklch, var(--deep-text) 8%, transparent);
+	color: var(--inline-code-color);
+	font-size: 0.875em;
+	font-weight: 600;
+	line-height: 1.4;
+	white-space: nowrap;
+	cursor: help;
+	transition:
+		color 0.15s ease,
+		border-color 0.15s ease,
+		background-color 0.15s ease;
+}
+
+.profile-card-inline__trigger-icon {
+	width: 1em;
+	height: 1em;
+	flex: none;
+}
+
+.profile-card-inline:hover .profile-card-inline__trigger,
+.profile-card-inline:focus-within .profile-card-inline__trigger {
+	color: var(--article-title-marker);
+	border-color: color-mix(
+		in oklch,
+		var(--article-title-marker) 45%,
+		transparent
+	);
+	background-color: color-mix(
+		in oklch,
+		var(--article-title-marker) 8%,
+		transparent
+	);
+}
+
+.profile-card-inline:focus-visible .profile-card-inline__trigger {
+	outline: 2px solid var(--primary);
+	outline-offset: 0.1875rem;
+}
+
+.profile-card-inline__card {
+	position: absolute;
+	top: calc(100% + 0.625rem);
+	left: var(--profile-card-left, 0);
+	z-index: 20;
+	display: grid;
+	width: min(19rem, calc(100vw - 3rem));
+	grid-template-columns: 3rem minmax(0, 1fr);
+	gap: 0.75rem;
+	padding: 0.75rem;
+	border: 1.5px solid var(--deep-text);
+	border-radius: var(--radius-medium);
+	background: var(--float-panel-bg);
+	color: var(--deep-text);
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	transform: translateY(0.25rem);
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		opacity 0.16s ease,
+		transform 0.16s ease,
+		visibility 0.16s ease;
+	visibility: hidden;
+}
+
+.profile-card-inline__card::before {
+	position: absolute;
+	top: -0.45rem;
+	/* 定位脚本把箭尖写到触发词中心；默认值只作为脚本执行前的兜底 */
+	left: var(--profile-card-arrow-left, 1.5rem);
+	width: 0.75rem;
+	height: 0.75rem;
+	border-top: 1.5px solid var(--deep-text);
+	border-left: 1.5px solid var(--deep-text);
+	background: var(--float-panel-bg);
+	content: "";
+	transform: rotate(45deg);
+}
+
+.profile-card-inline:hover .profile-card-inline__card,
+.profile-card-inline:focus-within .profile-card-inline__card {
+	transform: none;
+	opacity: 1;
+	pointer-events: auto;
+	visibility: visible;
+}
+
+.profile-card-inline__avatar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3rem;
+	height: 3rem;
+	overflow: hidden;
+	border: 1px solid var(--deep-text);
+	border-radius: var(--radius-full);
+}
+
+.profile-card-inline__avatar-image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.profile-card-inline__avatar-fallback {
+	font-size: 0.6875rem;
+	font-weight: 700;
+}
+
+.profile-card-inline__content {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+}
+
+.profile-card-inline__name {
+	color: var(--article-title-marker);
+	font-size: 0.875rem;
+	font-weight: 700;
+}
+
+.profile-card-inline__role {
+	color: var(--content-meta);
+	font-size: 0.75rem;
+}
+
+.profile-card-inline__description {
+	margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+	.profile-card-inline__card {
+		width: min(17rem, calc(100vw - 2.5rem));
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.profile-card-inline__card {
+		transition: none;
+	}
+}
+</style>

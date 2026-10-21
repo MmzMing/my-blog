@@ -1,0 +1,72 @@
+---
+interface Props {
+	tip?: string;
+}
+
+const { tip } = Astro.props;
+---
+
+<span
+	class:list={["mdx-tip", !tip && "mdx-tip--plain"]}
+	tabindex={tip ? 0 : undefined}
+	data-tip={tip}><slot /></span>
+
+<style is:global>
+.mdx-tip {
+	position: relative;
+	border-bottom: 1px dashed var(--content-meta);
+	cursor: help;
+}
+
+.mdx-tip--plain {
+	border-bottom: 0;
+	cursor: inherit;
+}
+
+.mdx-tip::after {
+	position: absolute;
+	bottom: calc(100% + 0.45rem);
+	left: 50%;
+	z-index: 10;
+	width: max-content;
+	max-width: 16rem;
+	padding: 0.4rem 0.6rem;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-medium);
+	background: var(--float-panel-bg);
+	box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+	color: var(--deep-text);
+	content: attr(data-tip);
+	font-size: 0.78rem;
+	font-weight: 400;
+	line-height: 1.5;
+	opacity: 0;
+	pointer-events: none;
+	transform: translate(-50%, 0.2rem);
+	transition:
+		opacity 0.16s ease,
+		transform 0.16s ease;
+	white-space: normal;
+}
+
+.mdx-tip:hover::after,
+.mdx-tip:focus-visible::after {
+	opacity: 1;
+	transform: translate(-50%, 0);
+}
+
+.mdx-tip:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.mdx-tip--plain::after {
+	display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mdx-tip::after {
+		transition: none;
+	}
+}
+</style>

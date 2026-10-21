@@ -128,10 +128,10 @@ Firefly-Mod 是个性化魔改版本，已独立演进。
 
 | 配置文件 | 职责 |
 |----------|------|
-| `siteConfig.ts` | 核心配置：语言、主题色、页面开关、文章列表布局、分页、分析、图片优化、字体 |
+| `siteConfig.ts` | 核心配置：语言、主题色、站长与 AI bot 头像、页面开关、文章列表布局、分页、分析、图片优化、字体 |
 | `sidebarConfig.ts` | 侧边栏布局与组件配置 |
 | `navBarConfig.ts` | 导航栏链接配置（根据页面开关动态生成） |
-| `homeConfig.ts` | 首页与用户资料配置：头像、昵称、签名、社交链接、首页图片、技能图标、作品百叶窗 |
+| `homeConfig.ts` | 首页与用户资料配置：昵称、签名、社交链接、首页图片、技能图标、作品百叶窗 |
 | `commentConfig.ts` | 评论系统配置（Waline/Twikoo/Giscus/Artalk/Disqus） |
 | `musicConfig.ts` | 音乐播放器配置（Meting API / 本地音乐） |
 | `pioConfig.ts` | Live2D / Spine 看板娘配置 |

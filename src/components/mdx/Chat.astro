@@ -1,0 +1,195 @@
+---
+import { z } from "astro/zod";
+import { siteConfig } from "@/config";
+
+const chatMessageSchema = z.array(
+	z.object({
+		role: z.enum(["user", "assistant", "system"]),
+		name: z.string().optional(),
+		text: z.string(),
+	}),
+);
+
+export interface ChatMessage {
+	role: "user" | "assistant" | "system";
+	name?: string;
+	text: string;
+}
+
+interface Props {
+	messages?: ChatMessage[] | string;
+}
+
+const { messages: messagesInput } = Astro.props;
+const messages =
+	typeof messagesInput === "string"
+		? chatMessageSchema.parse(JSON.parse(messagesInput))
+		: (messagesInput ?? []);
+
+const { owner: ownerAvatar, bot: botAvatar } = siteConfig.avatar;
+
+function initialOf(name: string): string {
+	return [...name.trim()][0] || "我";
+}
+---
+
+{
+	messages.length > 0 && (
+		<div class="mdx-chat" role="group" aria-label="对话">
+			{messages.map((message) => {
+				if (message.role === "system") {
+					return (
+						<div class="mdx-chat__row mdx-chat__row--system">
+							<div class="mdx-chat__system">{message.text}</div>
+						</div>
+					);
+				}
+
+				const isUser = message.role === "user";
+				const avatar = isUser ? ownerAvatar : botAvatar;
+
+				return (
+					<div
+						class:list={[
+							"mdx-chat__row",
+							isUser ? "mdx-chat__row--user" : "mdx-chat__row--assistant",
+						]}
+					>
+						<span
+							class:list={[
+								"mdx-chat__avatar",
+								isUser ? "mdx-chat__avatar--user" : "mdx-chat__avatar--assistant",
+								!avatar && "mdx-chat__avatar--fallback",
+							]}
+							title={isUser ? message.name || "我" : "喵墩"}
+							aria-hidden="true"
+						>
+							{avatar ? (
+								<img
+									class="mdx-chat__avatar-image"
+									src={avatar}
+									alt=""
+									loading="lazy"
+									decoding="async"
+								/>
+							) : isUser ? (
+								message.name ? (
+									initialOf(message.name)
+								) : (
+									"我"
+								)
+							) : (
+								"AI"
+							)}
+						</span>
+						<div class="mdx-chat__bubble">{message.text}</div>
+					</div>
+				);
+			})}
+		</div>
+	)
+}
+
+<style is:global>
+.mdx-chat {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	margin: 1.25rem 0 1.75rem;
+}
+
+.mdx-chat__row {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+}
+
+.mdx-chat__row--user {
+	flex-direction: row-reverse;
+}
+
+.mdx-chat__row--system {
+	justify-content: center;
+}
+
+.mdx-chat__avatar {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	overflow: hidden;
+	border-radius: var(--radius-full);
+	color: var(--content-meta);
+	font-size: 0.8rem;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.mdx-chat__avatar--fallback {
+	background: var(--article-surface-bg);
+}
+
+.mdx-chat__avatar--user {
+	color: var(--page-bg);
+}
+
+.mdx-chat__avatar--user.mdx-chat__avatar--fallback {
+	background: var(--article-title-marker);
+}
+
+.mdx-chat__avatar-image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.mdx-chat__bubble {
+	max-width: min(85%, 34rem);
+	padding: 0.45rem 0.8rem;
+	border-radius: var(--radius-large);
+	background: var(--article-surface-bg);
+	color: var(--deep-text);
+	font-size: 0.9rem;
+	line-height: 1.6;
+	word-break: break-word;
+}
+
+.mdx-chat__row--user .mdx-chat__bubble {
+	border: 1px solid var(--line-divider);
+	border-top-right-radius: var(--radius-small);
+	background: var(--page-bg);
+}
+
+.mdx-chat__row--assistant .mdx-chat__bubble {
+	border-top-left-radius: var(--radius-small);
+}
+
+.mdx-chat__system {
+	max-width: 90%;
+	color: var(--content-meta);
+	font-size: 0.78rem;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.mdx-chat__bubble code {
+	padding: 0.125rem 0.25rem;
+	border-radius: var(--radius-small);
+	background: var(--inline-code-bg);
+	color: var(--inline-code-color);
+}
+
+@media (max-width: 768px) {
+	.mdx-chat__avatar {
+		width: 2rem;
+		height: 2rem;
+	}
+
+	.mdx-chat__bubble {
+		max-width: calc(100% - 2.6rem);
+	}
+}
+</style>

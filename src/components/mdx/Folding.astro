@@ -1,0 +1,106 @@
+---
+import Icon from "@components/common/Icon.astro";
+
+interface Props {
+	title?: string;
+	open?: boolean;
+}
+
+const { title = "展开查看", open = false } = Astro.props;
+---
+
+<details class="mdx-folding" open={open}>
+	<summary class="mdx-folding__summary">
+		<span class="mdx-folding__title">{title}</span>
+		<span class="mdx-folding__chevron" aria-hidden="true">
+			<Icon name="material-symbols:keyboard-arrow-down-rounded" />
+		</span>
+	</summary>
+	<div class="mdx-folding__body"><slot /></div>
+</details>
+
+<style is:global>
+.mdx-folding {
+	margin: 1rem 0;
+	overflow: hidden;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-large);
+	background: var(--article-surface-bg);
+}
+
+.mdx-folding__summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.75rem 1rem;
+	color: var(--deep-text);
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	list-style: none;
+}
+
+.mdx-folding__summary::-webkit-details-marker {
+	display: none;
+}
+
+.mdx-folding__summary:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: -2px;
+}
+
+.mdx-folding__chevron {
+	display: flex;
+	flex: 0 0 auto;
+	color: var(--content-meta);
+	transition: transform 0.25s ease;
+}
+
+.mdx-folding__chevron svg {
+	width: 1.15rem;
+	height: 1.15rem;
+}
+
+.mdx-folding[open] .mdx-folding__chevron {
+	transform: rotate(180deg);
+}
+
+.mdx-folding__body {
+	padding: 0 1rem 0.9rem;
+	color: var(--deep-text);
+	font-size: 0.9rem;
+	line-height: 1.7;
+	animation: mdx-folding-in 0.25s ease;
+}
+
+.mdx-folding__body > :first-child {
+	margin-top: 0;
+}
+
+.mdx-folding__body > :last-child {
+	margin-bottom: 0;
+}
+
+@keyframes mdx-folding-in {
+	from {
+		opacity: 0;
+		transform: translateY(-0.25rem);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mdx-folding__chevron {
+		transition: none;
+	}
+
+	.mdx-folding__body {
+		animation: none;
+	}
+}
+</style>

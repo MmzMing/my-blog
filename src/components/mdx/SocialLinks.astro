@@ -1,0 +1,319 @@
+---
+import Icon from "@components/common/Icon.astro";
+import { z } from "astro/zod";
+
+const socialLinkSchema = z.array(
+	z.object({
+		platform: z.string(),
+		handle: z.string(),
+		note: z.string().optional(),
+		href: z.string(),
+		icon: z.string(),
+		brand: z.string().optional(),
+		status: z.enum(["online", "offline", "none"]).optional(),
+	}),
+);
+
+export interface SocialLink {
+	platform: string;
+	handle: string;
+	note?: string;
+	href: string;
+	icon: string;
+	brand?: string;
+	status?: "online" | "offline" | "none";
+}
+
+interface Props {
+	links: SocialLink[] | string;
+	label?: string;
+	max?: number;
+}
+
+const { links: linksInput, label = "社交账号", max = 4 } = Astro.props;
+const socialLinks =
+	typeof linksInput === "string"
+		? socialLinkSchema.parse(JSON.parse(linksInput))
+		: (linksInput ?? []);
+const visibleLinks = socialLinks.slice(0, Math.max(0, max));
+const overflow = Math.max(0, socialLinks.length - visibleLinks.length);
+const overflowTitle = socialLinks
+	.slice(visibleLinks.length)
+	.map((link) => link.platform)
+	.join("、");
+---
+
+{
+	socialLinks.length > 0 && (
+		<span class="social-links" role="group" aria-label={label}>
+			<span class="social-links__group">
+				{visibleLinks.map((link, index) => {
+					const status = link.status ?? "online";
+					return (
+						<span class="social-links__slot" style={`--index: ${index}`}>
+							<a
+								class:list={[
+									"social-links__item",
+									`social-links__item--${link.brand ?? "default"}`,
+									"no-styling",
+								]}
+								href={link.href}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label={`${link.platform}：${link.handle}${link.note ? `，${link.note}` : ""}`}
+							>
+								<span class="social-links__avatar" aria-hidden="true">
+									<Icon name={link.icon} />
+								</span>
+								{status !== "none" && (
+									<span
+										class={`social-links__status social-links__status--${status}`}
+										title={status === "online" ? "在线" : "离线"}
+										aria-hidden="true"
+									/>
+								)}
+								<span class="social-links__tip" aria-hidden="true">
+									<span class="social-links__platform">{link.platform}</span>
+									<span class="social-links__handle">{link.handle}</span>
+									{link.note && (
+										<span class="social-links__note">{link.note}</span>
+									)}
+								</span>
+							</a>
+						</span>
+					);
+				})}
+				{overflow > 0 && (
+					<span
+						class="social-links__slot social-links__slot--overflow"
+						style={`--index: ${visibleLinks.length}`}
+					>
+						<span
+							class="social-links__overflow"
+							title={overflowTitle}
+							aria-label={`还有 ${overflow} 个账号：${overflowTitle}`}
+						>
+							+{overflow}
+						</span>
+					</span>
+				)}
+			</span>
+		</span>
+	)
+}
+
+<style is:global>
+.social-links {
+	display: inline-flex;
+	align-items: center;
+	margin-left: 0.4rem;
+	vertical-align: middle;
+}
+
+.social-links__group {
+	display: inline-flex;
+	align-items: center;
+}
+
+.social-links__slot {
+	display: flex;
+	margin-left: -0.7rem;
+	opacity: 0;
+	animation: social-links-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+	animation-delay: calc(var(--index) * 55ms);
+}
+
+.social-links__slot:first-child {
+	margin-left: 0;
+}
+
+.social-links__slot:hover,
+.social-links__slot:focus-within {
+	position: relative;
+	z-index: 10;
+}
+
+.social-links__item {
+	position: relative;
+	display: block;
+	width: 2.75rem;
+	height: 2.75rem;
+	border-radius: var(--radius-full);
+	color: var(--social-brand, var(--deep-text));
+	transition: transform 0.18s ease;
+}
+
+.social-links__item:hover,
+.social-links__item:focus-visible {
+	transform: translateY(-2px);
+}
+
+.social-links__item:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 3px;
+}
+
+.social-links__avatar {
+	position: relative;
+	display: flex;
+	width: 100%;
+	height: 100%;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	border: 2px solid var(--page-bg);
+	border-radius: var(--radius-full);
+	background: var(--article-surface-bg);
+}
+
+.social-links__avatar svg {
+	width: 1.25rem;
+	height: 1.25rem;
+}
+
+.social-links__status {
+	position: absolute;
+	right: 0.15rem;
+	bottom: 0.15rem;
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: var(--radius-full);
+	box-shadow: 0 0 0 2px var(--page-bg);
+}
+
+.social-links__status--online {
+	background: #22c55e;
+}
+
+.social-links__status--offline {
+	background: var(--content-meta);
+}
+
+.social-links__item--github {
+	--social-brand: #24292f;
+}
+
+:root.dark .social-links__item--github {
+	--social-brand: #f0f6fc;
+}
+
+.social-links__item--bilibili {
+	--social-brand: #00aeec;
+}
+
+.social-links__item--qq {
+	--social-brand: #12b7f5;
+}
+
+.social-links__tip {
+	position: absolute;
+	bottom: calc(100% + 0.7rem);
+	left: 50%;
+	display: flex;
+	width: max-content;
+	max-width: 15rem;
+	flex-direction: column;
+	gap: 0.1rem;
+	padding: 0.45rem 0.65rem;
+	border: 1px solid var(--line-divider);
+	border-radius: var(--radius-medium);
+	background: var(--float-panel-bg);
+	box-shadow: 0 6px 18px rgb(0 0 0 / 0.14);
+	color: var(--deep-text);
+	opacity: 0;
+	pointer-events: none;
+	transform: translate(-50%, 0.25rem);
+	transition:
+		opacity 0.16s ease,
+		transform 0.16s ease,
+		visibility 0s linear 0.16s;
+	visibility: hidden;
+	z-index: 10;
+}
+
+.social-links__tip::after {
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	width: 0.5rem;
+	height: 0.5rem;
+	border-right: 1px solid var(--line-divider);
+	border-bottom: 1px solid var(--line-divider);
+	background: var(--float-panel-bg);
+	content: "";
+	transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.social-links__item:hover .social-links__tip,
+.social-links__item:focus-visible .social-links__tip {
+	opacity: 1;
+	transform: translate(-50%, 0);
+	transition:
+		opacity 0.16s ease,
+		transform 0.16s ease,
+		visibility 0s;
+	visibility: visible;
+}
+
+.social-links__platform {
+	font-size: 0.78rem;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.social-links__handle {
+	color: var(--content-meta);
+	font-size: 0.75rem;
+	line-height: 1.4;
+}
+
+.social-links__note {
+	margin-top: 0.05rem;
+	color: var(--content-meta);
+	font-size: 0.72rem;
+	line-height: 1.4;
+}
+
+.social-links__slot--overflow {
+	margin-left: -0.7rem;
+}
+
+.social-links__overflow {
+	display: flex;
+	width: 2.75rem;
+	height: 2.75rem;
+	align-items: center;
+	justify-content: center;
+	border: 2px solid var(--page-bg);
+	border-radius: var(--radius-full);
+	background: var(--deep-text);
+	color: var(--page-bg);
+	font-size: 0.78rem;
+	font-weight: 700;
+	line-height: 1;
+}
+
+@keyframes social-links-in {
+	from {
+		opacity: 0;
+		transform: translateY(0.35rem) scale(0.92);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.social-links__slot {
+		animation: none;
+		opacity: 1;
+	}
+
+	.social-links__item,
+	.social-links__tip {
+		transition: none;
+	}
+}
+</style>

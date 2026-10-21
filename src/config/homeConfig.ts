@@ -1,15 +1,8 @@
 import type { HomeConfig } from "../types/config";
 
 export const homeConfig: HomeConfig = {
-	// 头像
-	// 图片路径支持三种格式：
-	// 1. public 目录（以 "/" 开头，不优化）："/assets/images/avatar.webp"
-	// 2. src 目录（不以 "/" 开头，自动优化但会增加构建时间，推荐）："assets/images/avatar.webp"
-	// 3. 远程 URL："https://example.com/avatar.jpg"
-	avatar: "assets/images/avatar.webp",
-
 	// 资料卡横幅图（导航 Logo 资料卡第一层）
-	// 路径约定与头像一致；留空则回退为「头像模糊放大」当背景
+	// 留空则回退为「站长头像模糊放大」当背景
 	avatarBanner: "/assets/images/avatar-banner.webp",
 
 	// 名字

@@ -1,0 +1,47 @@
+---
+interface Props {
+	link?: string;
+}
+
+const { link } = Astro.props;
+const Tag = link ? "a" : "span";
+---
+
+<Tag
+	class:list={["mdx-badge", link && "no-styling"]}
+	href={link}
+	target={link ? "_blank" : undefined}
+	rel={link ? "noopener noreferrer" : undefined}><slot /></Tag>
+
+<style is:global>
+.mdx-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.1rem 0.45rem;
+	border-radius: var(--radius-full);
+	background: var(--inline-code-bg);
+	color: var(--deep-text);
+	font-size: 0.78em;
+	font-weight: 600;
+	line-height: 1.5;
+	text-decoration: none;
+	vertical-align: 0.05em;
+}
+
+a.mdx-badge {
+	transition:
+		background-color 0.18s ease,
+		color 0.18s ease;
+}
+
+a.mdx-badge:hover,
+a.mdx-badge:focus-visible {
+	background: var(--btn-card-bg-hover);
+	color: var(--link-color);
+}
+
+a.mdx-badge:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+</style>

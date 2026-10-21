@@ -1,5 +1,7 @@
 {
 	"public:assets/images/备案图标.png": "af5a46ae614ac28e56",
+	"public:assets/images/aut-bot.webp": "808399717387bfabb6",
+	"public:assets/images/aut-master.webp": "aaa4a9aaa5a7c1babd",
 	"public:assets/images/aut.jpg": "8d8692756f7d9c939e",
 	"public:assets/images/aut.webp": "95958ca39f97afaaa0",
 	"public:assets/images/avatar-banner.webp": "aa8e83979aa2b5afb7",
@@ -80,8 +82,6 @@
 	"public:gallery/gpt-img2-2026/7.webp": "c6c4c77c747bcccacb",
 	"public:gallery/gpt-img2-2026/8.webp": "4c4a438e765dbb9373",
 	"public:gallery/gpt-img2-2026/9.webp": "a6a49ae3ddd3e1dcd1",
-	"src:assets/images/avatar-master.webp": "aaa4a9aaa5a7c1babd",
-	"src:assets/images/avatar.webp": "958e9a817c89b9aeb4",
 	"src:assets/images/logo.png": "5f585f4f4a4f5c555b",
 	"src:content/posts/assets/ai-blog-ai-search-vectorize.webp": "777c819d9493aeaab7",
 	"src:content/posts/assets/ai-blog-ai-zero-editing.webp": "7759825f4e7a685a77",

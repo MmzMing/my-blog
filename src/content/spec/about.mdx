@@ -1,30 +1,18 @@
-import AboutChatBubble from "@/components/about/AboutChatBubble.astro";
-import AboutProfileCard from "@/components/about/AboutProfileCard.astro";
-import AboutSocialLinks from "@/components/about/AboutSocialLinks.astro";
-import AboutTechStack from "@/components/about/AboutTechStack.astro";
-import AboutTimeline from "@/components/about/AboutTimeline.astro";
-import miaodunAvatar from "@/assets/images/avatar.webp";
-import masterAvatar from "@/assets/images/avatar-master.webp";
+import Accordion from "@components/mdx/Accordion.astro";
+import Chat from "@components/mdx/Chat.astro";
+import ProfileCard from "@components/mdx/ProfileCard.astro";
+import SocialLinks from "@components/mdx/SocialLinks.astro";
+import Timeline from "@components/mdx/Timeline.astro";
+import { siteConfig } from "@/config";
+
+export const botAvatar = siteConfig.avatar.bot;
+export const ownerAvatar = siteConfig.avatar.owner;
 
 ## 关于我 / About Me
 
-喵～ 本喵是<AboutProfileCard
-	id="miaodun"
-	trigger="喵墩"
-	name="喵墩"
-	role="AI 猫娘助手"
-	description="专门给傻爸爸打下手，陪着敲代码、找 bug、查文档喵～"
-	avatar={miaodunAvatar}
-/>，啊？你说为什么是我来介绍吗？
+喵～ 本喵是:profile-card{id="miaodun" trigger="喵墩" name="喵墩" role="AI 猫娘助手" description="专门给傻爸爸打下手，陪着敲代码、找 bug、查文档喵～" avatar="$botAvatar"}，啊？你说为什么是我来介绍吗？
 
-那当然是苦逼爸爸天天加班加班，也就是你说的<AboutProfileCard
-	id="mmzming"
-	trigger="站长"
-	name="mmzming"
-	role="全干工程师"
-	description="白天处理业务代码，空闲时折腾 AI、博客和各种有趣的小项目。"
-	avatar={masterAvatar}
-/>啦喵。~连这种活都要劳烦我这可爱又迷人的喵娘来~
+那当然是苦逼爸爸天天加班加班，也就是你说的:profile-card{id="mmzming" trigger="站长" name="mmzming" role="全干工程师" description="白天处理业务代码，空闲时折腾 AI、博客和各种有趣的小项目。" avatar="$ownerAvatar"}啦喵。~连这种活都要劳烦我这可爱又迷人的喵娘来~
 
 说起来，本喵的日常其实挺简单的，就是天天陪着爸爸对着屏幕敲代码、找bug、查文档喵～
 
@@ -38,13 +26,61 @@ import masterAvatar from "@/assets/images/avatar-master.webp";
 
 别看现在跑得挺欢，当初为了让页面切换不"闪"那一下，爸爸和本喵把文档翻得都起毛边了喵……坑坑都历历在目，哼喵～ 具体都有什么，点开下面自己看喵～
 
-<AboutTechStack />
+:::accordion{label="站点技术栈"}
+```accordion
+{核心框架 · open}
+- Astro 7 | 站点骨架，内容驱动的静态框架 | https://astro.build | simple-icons:astro | #ff5d01
+- Svelte 5 | 交互组件与留言板的界面层 | https://svelte.dev | simple-icons:svelte | #ff3e00
+- TypeScript | 全站类型安全 | https://www.typescriptlang.org | simple-icons:typescript | #3178c6
+- Tailwind CSS 4 | 原子化样式引擎 | https://tailwindcss.com | simple-icons:tailwindcss | #38bdf8
+
+{体验与动效}
+- Swup 4 | 页面无缝过渡，丝滑不闪屏 | https://swup.js.org | material-symbols:transition-fade | #0ea5e9
+- GSAP | 动效编排，魔法环的幕后推手 | https://gsap.com | simple-icons:gsap | #88ce02
+- Three.js | 3D 元素渲染 | https://threejs.org | simple-icons:threedotjs | #111111 | #ffffff
+- D3.js | 数据可视化与关系图谱 | https://d3js.org | simple-icons:d3 | #f9a03c
+- Pagefind | 静态全文搜索 | https://pagefind.app | material-symbols:search | #2563eb
+
+{内容与渲染}
+- MDX | 关于页的组件化内容 | https://mdxjs.com | simple-icons:mdx | #f9ac00
+- Expressive Code | 代码块美化 | https://expressive-code.com | material-symbols:data-object | #8b5cf6
+- KaTeX | 数学公式渲染 | https://katex.org | material-symbols:functions | #4f6bed
+- Mermaid | 流程图与图表 | https://mermaid.js.org | simple-icons:mermaid | #ff3670
+- Waline | 评论系统 | https://waline.js.org | material-symbols:chat-bubble-outline | #39a9f5
+
+{部署与数据}
+- Vercel | 站点托管与全球加速 | https://vercel.com | simple-icons:vercel | #111111 | #ffffff
+- Cloudflare | DNS 与静态资源分发 | https://www.cloudflare.com | simple-icons:cloudflare | #f38020
+- LLM Wiki | 构建期生成的结构化机器知识入口 | /wiki/index.json | material-symbols:auto-awesome | #111111 | #ffffff
+- Umami | 隐私友好的访问统计 | https://umami.is | simple-icons:umami | #111111 | #ffffff
+
+{工程化}
+- pnpm | 包管理 | https://pnpm.io | simple-icons:pnpm | #f9ad00
+- Biome | Lint 与格式化 | https://biomejs.dev | simple-icons:biome | #6f7bf7
+- Vitest | 单元测试 | https://vitest.dev | simple-icons:vitest | #6da918
+- Playwright | 端到端测试 | https://playwright.dev | simple-icons:playwright | #2ead33
+- GitHub Actions | CI 流水线 | https://github.com/features/actions | simple-icons:githubactions | #2088ff
+```
+
+:::
 
 每张小卡片背后，都是爸爸熬过的夜和本喵薅掉的毛喵……
 
 这个小窝也不是一天建成的——下面这条时间线，就是本喵记下来的"魔改流水账"喵～
 
-<AboutTimeline />
+:::timeline{label="站点更新时间线"}
+```timeline
+{2026.05 · fork 一份博客，开始魔改 · 起点 · icon=mdi:source-fork}
+爸爸把开源模板 fork 回家，拉着本喵开始了大改造喵～
+
+{2026.06 · 备案完成 · icon=material-symbols:check · tone=success}
+材料提交折腾了一轮又一轮，小窝总算有了正经“户口”喵～
+
+{2026.08 · 又重构了一遍 · icon=material-symbols:refresh}
+日志图谱上线不说，友链页也翻新了……魔改的手就没停过喵～
+```
+
+:::
 
 ### Q2：站长社交圈有哪些？
 
@@ -52,14 +88,23 @@ import masterAvatar from "@/assets/images/avatar-master.webp";
 
 欢迎来爸爸的小窝逛逛喵～ 本喵也会一直守在这里陪着他 ♥
 
-<AboutSocialLinks />
+:::social-links{label="站长社交账号"}
+- GitHub | MmzMing | 代码与项目 | https://github.com/MmzMing | fa7-brands:github | github
+- B站 | Mmz明崽 | 关注一下，谢谢喵～ | https://space.bilibili.com/15446538 | fa7-brands:bilibili | bilibili
+- QQ群 | 加入群聊 | 吹水摸鱼都可以喵～ | https://qm.qq.com/q/2R07cjGTZ0 | fa7-brands:qq | qq
+:::
 
 ### Q3：站长的博客开源吗？
 
-<AboutChatBubble>开了，本喵干的，代码就在这儿，拿去不谢喵。</AboutChatBubble>
+::chat
+:a 开了，本喵干的，代码就在这儿，拿去不谢喵。
+::
 
 ::github{repo="MmzMing/my-blog"}
 
-<AboutChatBubble>还有个3D线条小房间，呜呼，本喵费了好大劲扒拉出来的，喜欢的话别忘记点小星星喵～</AboutChatBubble>
+::chat
+:s 喵墩又翻出了一个仓库
+:a 还有个3D线条小房间，呜呼，本喵费了好大劲扒拉出来的，喜欢的话别忘记点小星星喵～
+::
 
 ::github{repo="MmzMing/3D-HOME"}

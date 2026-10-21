@@ -44,8 +44,8 @@ import { homeConfig } from '../config/homeConfig';
 
 ## 📋 配置文件列表
 
-- `siteConfig.ts` - 站点基础配置（标题、描述、主题色等）
-- `homeConfig.ts` - 首页与用户资料配置（头像、姓名、社交链接、首页图片、技能图标、作品百叶窗等）
+- `siteConfig.ts` - 站点基础配置（标题、描述、主题色、站长与 AI bot 头像等）
+- `homeConfig.ts` - 首页与用户资料配置（姓名、社交链接、首页图片、技能图标、作品百叶窗等）
 - `musicConfig.ts` - 音乐播放器配置（导出 `musicPlayerConfig`）
 - `commentConfig.ts` - 评论系统配置（Waline / Twikoo / Giscus / Artalk / Disqus）
 - `announcementConfig.ts` - 公告配置（标题、内容、链接等）
