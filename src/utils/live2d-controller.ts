@@ -834,7 +834,7 @@ function togglePanel(open?: boolean) {
 	const next = open ?? !panel.classList.contains("is-open");
 	if (next) positionPanel();
 	panel.classList.toggle("is-open", next);
-	// 面板打开期间按钮保持青色，跟面板的显示状态对上
+	// 面板打开期间按钮保持主题强调色，跟面板的显示状态对上
 	motionBtn.classList.toggle("active", next);
 	motionBtn.setAttribute("aria-expanded", String(next));
 }

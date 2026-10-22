@@ -183,7 +183,7 @@
 .site-footer__utility-button:hover,
 .site-footer__beian a:hover,
 .site-footer__powered-by a:hover {
-	color: var(--deep-text);
+	color: var(--link-color);
 }
 
 .site-footer__lower {

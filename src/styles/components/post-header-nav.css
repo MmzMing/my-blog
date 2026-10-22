@@ -1,6 +1,6 @@
 /* 文章标题上一层的返回控件 — PostHeaderNav.astro
    只有箭头 + 「返回」靠左一排，与左对齐的标题同一条基线；素面无框，
-   悬停只染青色（--article-title-marker，与标题标记、分类芯片同一色相）。 */
+   悬停只染主题强调色（--article-title-marker，与标题标记、分类芯片同一色相）。 */
 
 .post-nav {
 	display: flex;
@@ -33,7 +33,7 @@
 	white-space: nowrap;
 }
 
-/* 悬停/聚焦：只染青色（图标 fill: currentColor 跟着一起变） */
+/* 悬停/聚焦：只染主题强调色（图标 fill: currentColor 跟着一起变） */
 .post-nav__back:hover,
 .post-nav__back:focus-visible {
 	color: var(--article-title-marker);

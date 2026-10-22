@@ -162,9 +162,9 @@
 }
 
 .home-blinds-headline {
-	/* 墨色沿用站内既有的青色强调色；长条背景必须与标题同色，
+	/* 墨色沿用站内既有的主题强调色；长条背景必须与标题同色，
 	   否则「长条滑开、标题从背面显露」的错觉会破 */
-	--home-blinds-headline-ink: #00a29b;
+	--home-blinds-headline-ink: var(--article-title-marker);
 	/* 辅助线与刻度环另走浅色，不跟着墨色变青，免得整屏一色糊成一片；
 	   绿色只留给竖线端帽这类点睛处 */
 	--home-blinds-headline-rule: #fff;
@@ -435,7 +435,7 @@
 }
 
 /* 两侧竖线：随长条一起横移，长条固定时一并固定。
-   竖线本体走浅色弱化，上下两端各压一道墨色（青绿）短横杠作端帽 */
+   竖线本体走浅色弱化，上下两端各压一道墨色（主题色）短横杠作端帽 */
 .home-blinds-headline__edge {
 	position: absolute;
 	top: calc(50% - var(--home-blinds-headline-edge-height) / 2);

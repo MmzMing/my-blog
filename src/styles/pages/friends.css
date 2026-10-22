@@ -42,12 +42,12 @@
 	border: none;
 }
 .friend-accordion-header:focus-visible {
-	outline: 2px solid #00a29b;
+	outline: 2px solid var(--article-title-marker);
 	outline-offset: 2px;
 	border-radius: 0.5rem;
 }
 
-/* 左侧青色胶囊长条 + 右侧紧贴分类标题 */
+/* 左侧主题色胶囊长条 + 右侧紧贴分类标题 */
 .friend-accordion-title-wrap {
 	position: relative;
 	display: flex;
@@ -63,7 +63,7 @@
 	width: 5px;
 	/* 胶囊形椭圆长条，纯色 */
 	border-radius: 999px;
-	background: #00a29b;
+	background: var(--article-title-marker);
 	/* 悬停时伸长（与文章列表标题长条一致） */
 	transform-origin: center;
 	transition: transform 180ms ease;
@@ -675,7 +675,7 @@
 .friend-apply__notes-icon {
 	width: 1.125rem;
 	height: 1.125rem;
-	color: #00a29b;
+	color: var(--article-title-marker);
 }
 
 .friend-apply__note-list {
@@ -705,7 +705,7 @@
 	height: 5px;
 	flex-shrink: 0;
 	border-radius: 999px;
-	background: #00a29b;
+	background: var(--article-title-marker);
 }
 
 /* 申请按钮：无边框无背景，置于注意事项卡片底部右下角 */
@@ -729,7 +729,7 @@
 		gap 200ms ease;
 }
 .friend-apply__btn:hover {
-	color: #00a29b;
+	color: var(--article-title-marker);
 }
 .friend-apply__btn-icon {
 	width: 1rem;
@@ -766,7 +766,7 @@
 .friend-apply__site-icon {
 	width: 1.125rem;
 	height: 1.125rem;
-	color: #00a29b;
+	color: var(--article-title-marker);
 }
 
 .friend-apply__rows {
@@ -837,7 +837,7 @@
 .friend-apply__copy-all:hover,
 .friend-apply__copy.is-copied,
 .friend-apply__copy-all.is-copied {
-	color: #00a29b;
+	color: var(--article-title-marker);
 }
 .friend-apply__copy-glyph {
 	width: 1rem;

@@ -339,7 +339,7 @@
 
 .license-card__url:hover,
 .license-card__url:focus-visible {
-  color: var(--deep-text);
+  color: var(--link-color);
 }
 
 .license-card__meta {
@@ -373,6 +373,11 @@
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
+}
+
+.license-card__meta dd a:hover,
+.license-card__meta dd a:focus-visible {
+  color: var(--link-color);
 }
 
 .license-card__mark {

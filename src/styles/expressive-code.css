@@ -380,7 +380,7 @@
 	transition: color 150ms ease;
 }
 
-/* 与文章左上角「返回」一致：悬停只染青色，不加底色。 */
+/* 与文章左上角「返回」一致：悬停只染主题强调色，不加底色。 */
 .expressive-code .ec-collapse__toggle:hover,
 .expressive-code .ec-collapse__toggle:focus-visible {
 	background-color: transparent !important;

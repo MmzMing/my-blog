@@ -24,10 +24,17 @@ const albums = await Promise.all(
 	}),
 );
 const galleryTabs = [
-	{ id: "all", label: "全部" },
+	{ id: "all", label: "全部", icon: "material-symbols:apps-rounded" },
 	...Array.from(
 		new Set(galleryConfig.albums.flatMap((album) => album.tags ?? [])),
-	).map((tag) => ({ id: tag, label: tag })),
+	).map((tag) => ({
+		id: tag,
+		label: tag,
+		icon:
+			tag.toLowerCase() === "ai"
+				? "material-symbols:auto-awesome-rounded"
+				: "material-symbols:image-rounded",
+	})),
 ];
 ---
 
@@ -62,7 +69,8 @@ const galleryTabs = [
                 aria-selected={index === 0 ? "true" : "false"}
                 aria-controls="gallery-albums"
               >
-                {tab.label}
+                <Icon name={tab.icon} width="14" height="14" aria-hidden="true" />
+                <span>{tab.label}</span>
               </button>
             ))}
           </div>

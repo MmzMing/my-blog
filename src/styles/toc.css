@@ -70,7 +70,7 @@
 	background: transparent;
 }
 
-/* 当前章节的左侧青色竖条；不再用虚线活动框。 */
+/* 当前章节的左侧主题色竖条；不再用虚线活动框。 */
 .toc-item::before {
 	content: "";
 	position: absolute;
@@ -168,7 +168,7 @@
 }
 
 /* 活动指示器仍由 JS 更新位置/高度，但不再绘制虚线活动框；
-   当前章节的外观改由 .toc-item.visible 的左侧竖条和青色文字承担。 */
+   当前章节的外观改由 .toc-item.visible 的左侧竖条和主题色文字承担。 */
 .toc-active-indicator {
 	display: none !important;
 }

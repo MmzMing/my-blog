@@ -50,18 +50,21 @@
 		color 200ms ease;
 }
 
-/* 选中态只换图标色，背景不点亮。用 --graph-chip-checked 而不是 --primary：
-   暗色主题下 --primary 与 --deep-text 同为 #dadada，只换色根本看不出区别 */
+/* 选中态与顶部导航一致：灰阶背景高亮，图标保持正文色 */
 .kg-dock__btn[aria-pressed="true"] {
-	color: var(--graph-chip-checked);
+	background: var(--navbar-highlight-bg);
+	color: var(--navbar-highlight-text);
 }
 
-/* 悬停沿用 .nav-tools-item:hover（navbar-new.css:433）那层极淡的底 + 图标变色，
-   不做实心反色块。排在选中态之后：两条特指度相同，靠源码顺序让划过选中中的
-   按钮时这层淡底照常盖上去，不然选中态会吃掉悬停反馈 */
+/* 悬停沿用 .nav-tools-item:hover 那层极淡的底；选中项保持背景高亮，不被悬停盖掉 */
 .kg-dock__btn:hover {
 	background: color-mix(in oklch, var(--deep-text) 8%, transparent);
-	color: var(--graph-chip-checked);
+	color: var(--deep-text);
+}
+
+.kg-dock__btn[aria-pressed="true"]:hover {
+	background: var(--navbar-highlight-bg);
+	color: var(--navbar-highlight-text);
 }
 
 .kg-dock__btn:focus-visible {
@@ -313,9 +316,10 @@
 		background: transparent;
 	}
 
-	/* 选中只换图标色，不铺底 —— 与桌面 dock 同一套语言 */
+	/* 选中态与顶部导航一致：灰阶背景高亮 */
 	.kg-dock__btn[aria-pressed="true"] {
-		color: var(--graph-chip-checked);
+		background: var(--navbar-highlight-bg);
+		color: var(--navbar-highlight-text);
 	}
 
 	/* 排在选中态之后：两条特指度相同，靠源码顺序保证按下选中中的按钮也有反馈 */

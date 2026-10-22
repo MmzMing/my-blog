@@ -10,12 +10,8 @@
 	pointer-events: auto;
 	cursor: grab;
 	/* 站点主色 --primary 是中性灰（chroma 0），拿不出彩色，
-	   所以选中态单独用一支青色，明暗两套 */
-	--live2d-accent: oklch(0.6 0.13 195);
-}
-
-:root.dark .live2d-widget {
-	--live2d-accent: oklch(0.78 0.12 195);
+	   所以选中态复用主题强调色 */
+	--live2d-accent: var(--link-color);
 }
 
 .live2d-widget.is-dragging {
@@ -410,7 +406,7 @@
 	color: var(--deep-text);
 }
 
-/* 与工具栏保持一致：选中态走青色，靠细边框标示，不糊一块高亮底色 */
+/* 与工具栏保持一致：选中态走主题强调色，靠细边框标示，不糊一块高亮底色 */
 .live2d-tab.is-active {
 	background: transparent;
 	border-color: color-mix(in oklch, var(--live2d-accent) 45%, transparent);
@@ -447,7 +443,7 @@
 	color: var(--page-bg);
 }
 
-/* 开关类动作：选中（开着）时转青色，关掉回到正常色，同样不加底色 */
+/* 开关类动作：选中（开着）时转主题强调色，关掉回到正常色，同样不加底色 */
 .live2d-motion-chip.is-toggle.active {
 	border-color: var(--live2d-accent);
 	color: var(--live2d-accent);

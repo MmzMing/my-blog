@@ -18,6 +18,17 @@
   width: min(calc(55rem + 1.5rem), 100%);
 }
 
+/* 文章正文使用柔和青瓷；站点其他区域的青色强调沿用原色 */
+#post-container .custom-md {
+  --link-color: #23786f;
+  --article-title-marker: #23786f;
+}
+
+:root.dark #post-container .custom-md {
+  --link-color: #7fcfc4;
+  --article-title-marker: #7fcfc4;
+}
+
 .custom-md {
   overflow-wrap: break-word;
 
@@ -30,7 +41,7 @@
     }
   }
 
-  /* 一至六级标题：不做额外装饰，跟随 prose 默认样式 */
+  /* 一至六级标题跟随 prose 默认样式，仅二、三级标题下方加一条手绘短线 */
 
   :root.dark & {
     --md-italic-wavy: oklch(0.75 0.12 285);
@@ -55,6 +66,26 @@
         @apply opacity-100!;
       }
     }
+  }
+
+  /* 背景色 + SVG mask 画手绘短线，比 border 更接近笔触；
+     使用主题标记色，宽度随字号缩放，间距贴着标题 */
+  h2::after,
+  h3::after {
+    content: "";
+    display: block;
+    width: 2.2em;
+    max-width: 56%;
+    height: 7px;
+    margin-top: 0;
+    background-color: var(--article-title-marker);
+    opacity: 0.8;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 7' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M1 4.5 C 10 2.5 16 5 24 3.6 C 32 2.2 40 5.2 47 3.4'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 7' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M1 4.5 C 10 2.5 16 5 24 3.6 C 32 2.2 40 5.2 47 3.4'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    mask-size: contain;
   }
 
   /* 下划线用 border 画而不是 text-decoration：浏览器不支持自定义虚线节奏，
@@ -117,7 +148,7 @@
       1;
   }
 
-  /* 标题锚点 #：跟随主题青，不带下划线与底色 */
+  /* 标题锚点 #：跟随主题强调色，不带下划线与底色 */
   .anchor {
     @apply text-(--link-color);
     text-decoration-line: none;
@@ -164,9 +195,16 @@
     display: block;
   }
 
+  /* 加粗：正文色 + 细手绘波浪线，线条使用主题标记色 */
   strong,
   b {
-    @apply font-bold text-(--strong-color);
+    @apply font-bold;
+    color: inherit;
+    text-decoration-line: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: var(--article-title-marker);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
   }
 
   /* 斜体：保留倾斜 + 紫色波浪下划线 */

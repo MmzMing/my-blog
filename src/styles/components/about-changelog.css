@@ -39,7 +39,7 @@
 	height: 1.375rem;
 	flex: 0 0 5px;
 	border-radius: 999px;
-	background: #00a29b;
+	background: var(--article-title-marker);
 }
 
 .changelog__recent-limit {
@@ -76,12 +76,12 @@
 }
 
 .changelog-wire--row {
-	stroke: #00a29b;
+	stroke: var(--article-title-marker);
 	opacity: 0.35;
 }
 
 .changelog-wire--hover {
-	stroke: #00a29b;
+	stroke: var(--article-title-marker);
 	stroke-width: 1.75;
 }
 
@@ -93,7 +93,7 @@
 
 /* 钉在线条绘制最前端、随绘制同步推进的箭头 */
 .changelog-wire-arrow {
-	fill: #00a29b;
+	fill: var(--article-title-marker);
 }
 
 /* 悬停关联线中点的关联条件标签（绘制完成后渐入） */
@@ -103,11 +103,11 @@
 	max-width: 12rem;
 	padding: 0.25rem 0.625rem;
 	overflow: hidden;
-	border: 1px solid rgb(0 162 155 / 0.35);
+	border: 1px solid color-mix(in oklch, var(--article-title-marker) 35%, transparent);
 	border-radius: 999px;
 	background: #fafafa;
 	box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
-	color: #00a29b;
+	color: var(--article-title-marker);
 	font-size: 0.6875rem;
 	font-weight: 700;
 	line-height: 1.4;
@@ -288,7 +288,7 @@
 }
 
 .changelog-card.is-linked .changelog-card__inner {
-	box-shadow: inset 0 0 0 1.5px #00a29b;
+	box-shadow: inset 0 0 0 1.5px var(--article-title-marker);
 }
 
 /* 相关更新跳转后的闪烁提示 */
@@ -299,7 +299,7 @@
 @keyframes changelog-flash {
 	0%,
 	55% {
-		box-shadow: inset 0 0 0 2px #00a29b;
+		box-shadow: inset 0 0 0 2px var(--article-title-marker);
 	}
 	100% {
 		box-shadow: none;
@@ -478,8 +478,8 @@ html.changelog-dialog-open {
 }
 
 a.changelog-card__page-chip:hover {
-	background: #00a29b;
-	color: #fff;
+	background: var(--article-title-marker);
+	color: var(--page-bg);
 }
 
 .changelog-dialog__related {
@@ -515,7 +515,7 @@ a.changelog-card__page-chip:hover {
 }
 
 .changelog-dialog__related-num {
-	color: #00a29b;
+	color: var(--article-title-marker);
 	font-size: 0.8125rem;
 	font-weight: 800;
 }

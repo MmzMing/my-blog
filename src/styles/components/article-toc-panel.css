@@ -5,7 +5,7 @@
 
 @media (min-width: 96rem) and (hover: hover) and (pointer: fine) {
 	.article-toc-panel {
-		--article-toc-active: #0e7490;
+		--article-toc-active: var(--link-color);
 		--article-toc-panel-bg: var(--page-bg);
 		--article-toc-panel-text: var(--deep-text);
 		--article-toc-panel-muted: var(--content-meta);
@@ -38,7 +38,6 @@
 	}
 
 	:root.dark .article-toc-panel {
-		--article-toc-active: #67e8f9;
 		--article-toc-line: rgb(255 255 255 / 22%);
 		--article-toc-dot: rgb(255 255 255 / 40%);
 		--toc-plane-shadow: rgb(0 0 0 / 55%);
@@ -881,7 +880,7 @@
 	--article-toc-mindmap-muted: #4d4d4d;
 	--article-toc-mindmap-hover: rgb(0 0 0 / 8%);
 	--article-toc-mindmap-line: rgb(0 0 0 / 28%);
-	--article-toc-mindmap-active: #0e7490;
+	--article-toc-mindmap-active: var(--link-color);
 
 	position: fixed;
 	inset: 0;
@@ -900,7 +899,6 @@
 	--article-toc-mindmap-muted: #9e9e9e;
 	--article-toc-mindmap-hover: rgb(255 255 255 / 12%);
 	--article-toc-mindmap-line: rgb(255 255 255 / 22%);
-	--article-toc-mindmap-active: #67e8f9;
 }
 
 .article-toc-mindmap__overlay {
@@ -1080,7 +1078,7 @@
 	border-color: var(--article-toc-mindmap-active);
 }
 
-/* 悬停链高亮：根到悬停节点的整条链，连线、边框、文字、圆点全部转青色 */
+/* 悬停链高亮：根到悬停节点的整条链，连线、边框、文字、圆点全部转主题强调色 */
 .article-toc-mindmap__node.is-trail {
 	color: var(--article-toc-mindmap-active);
 	border-color: var(--article-toc-mindmap-active);
