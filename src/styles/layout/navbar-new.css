@@ -412,7 +412,7 @@
 	flex-direction: column;
 	gap: 0.125rem;
 	min-width: 12rem;
-	padding: 0.25rem;
+	padding: 0.5rem;
 	border: 1.5px solid var(--deep-text);
 	border-radius: 0.75rem;
 	background: var(--float-panel-bg);
@@ -438,12 +438,12 @@
 }
 
 /* 悬停/聚焦高亮：整只箱体只有这一个药丸，位置与高度由控制器写成自定义属性，
-   左右内缩与行的内容盒对齐（箱体 padding 0.25rem） */
+   左右内缩与行的内容盒对齐（箱体 padding 0.5rem） */
 .nav-tools-highlight {
 	position: absolute;
 	top: 0;
-	right: 0.25rem;
-	left: 0.25rem;
+	right: 0.5rem;
+	left: 0.5rem;
 	height: var(--tools-hl-h, 0);
 	opacity: 0;
 	border-radius: 0.5rem;
@@ -467,7 +467,7 @@
 	gap: 0.625rem;
 	width: 100%;
 	height: 2.25rem;
-	padding: 0 0.5rem;
+	padding: 0 0.75rem;
 	border-radius: 0.5rem;
 	color: var(--deep-text);
 	font-size: 0.875rem;

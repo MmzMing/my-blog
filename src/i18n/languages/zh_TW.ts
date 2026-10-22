@@ -128,7 +128,12 @@ export const zh_TW: Translation = {
 	[Key.rssLink]: "RSS 鏈接",
 	[Key.rssCopyToReader]: "複製鏈接到你的 RSS 閱讀器",
 	[Key.rssCopyLink]: "複製鏈接",
+	[Key.rssCopiedShort]: "已複製",
+	[Key.rssViewRaw]: "檢視原始 XML",
+	[Key.rssHowToSubscribe]: "如何訂閱",
 	[Key.rssLatestPosts]: "最新文章",
+	[Key.rssCrossPlatform]: "跨平台 / 網頁",
+	[Key.rssDesktopMobile]: "桌面 / 行動應用",
 	[Key.rssWhatIsRSS]: "什麼是 RSS？",
 	[Key.rssWhatIsRSSDescription]:
 		"RSS（Really Simple Syndication）是一種用於發布經常更新內容的標準格式。通過 RSS，你可以：",

@@ -1,3 +1,6 @@
+type Gsap = typeof import("gsap")["gsap"];
+type GsapTween = ReturnType<Gsap["fromTo"]>;
+
 export function mountGalleryDetail(): () => void {
 	const root = document.querySelector<HTMLElement>("[data-gallery-detail]");
 	if (!root) return () => {};
@@ -7,7 +10,6 @@ export function mountGalleryDetail(): () => void {
 	const photos = Array.from(
 		root.querySelectorAll<HTMLElement>("[data-gallery-photo]"),
 	);
-	const revealedPhotos = new Set<Element>();
 	let cleanupAnimations: (() => void) | undefined;
 
 	for (const photo of photos) {
@@ -52,60 +54,79 @@ export function mountGalleryDetail(): () => void {
 					},
 					(context) => {
 						if (!context.conditions?.motion) return;
-						const isDesktop = context.conditions.desktop;
-						const observer = new IntersectionObserver((entries) => {
-							if (signal.aborted) return;
-							for (const entry of entries) {
-								if (!entry.isIntersecting) continue;
-								const photo = entry.target;
-								observer.unobserve(photo);
-								const link = photo.querySelector<HTMLElement>(
-									".gallery-photo__link",
-								);
-								const parent = photo.parentElement;
-								if (!link || !parent || revealedPhotos.has(photo)) continue;
-								revealedPhotos.add(photo);
-								const bounds = photo.getBoundingClientRect();
-								const parentBounds = parent.getBoundingClientRect();
-								const offset =
-									bounds.left +
-									bounds.width / 2 -
-									(parentBounds.left + parentBounds.width / 2);
-								const direction =
-									Math.abs(offset) < bounds.width / 4 ? 0 : Math.sign(offset);
-								context.add(() => {
-									gsap.fromTo(
-										link,
-										{
-											x: direction * bounds.width * (isDesktop ? 0.2 : 0.06),
-											y: isDesktop ? 120 : 40,
-											rotation: direction * (isDesktop ? 4 : 1.5),
-											scale: isDesktop ? 0.92 : 0.97,
-											opacity: 0.25,
-											willChange: "transform, opacity",
-										},
-										{
-											x: 0,
-											y: 0,
-											rotation: 0,
-											scale: 1,
-											opacity: 1,
-											duration: isDesktop ? 0.7 : 0.45,
-											ease: "power2.out",
-											clearProps: "transform,opacity,willChange",
-										},
-									);
-								});
-							}
-						});
-						for (const photo of photos) {
-							if (revealedPhotos.has(photo)) continue;
-							if (photo.getBoundingClientRect().top < window.innerHeight) {
-								revealedPhotos.add(photo);
-								continue;
-							}
-							observer.observe(photo);
+						const isDesktop = Boolean(context.conditions.desktop);
+						const tweens = new Map<Element, GsapTween>();
+
+						for (const [index, photo] of photos.entries()) {
+							const link = photo.querySelector<HTMLElement>(
+								".gallery-photo__link",
+							);
+							const parent = photo.parentElement;
+							if (!link || !parent) continue;
+
+							const bounds = photo.getBoundingClientRect();
+							const parentBounds = parent.getBoundingClientRect();
+							const offset =
+								bounds.left +
+								bounds.width / 2 -
+								(parentBounds.left + parentBounds.width / 2);
+							const isCenter = Math.abs(offset) < bounds.width / 4;
+							const direction = isCenter ? 0 : Math.sign(offset);
+							// 中间列没有左右位移，用相邻照片交替的轻微倾斜补足入场方向。
+							const rotation = isCenter
+								? (index % 2 === 0 ? 1 : -1) * (isDesktop ? 2.5 : 1)
+								: direction * (isDesktop ? 4 : 1.5);
+							const tween = gsap.fromTo(
+								link,
+								{
+									x: direction * bounds.width * (isDesktop ? 0.2 : 0.06),
+									y: isDesktop ? 120 : 40,
+									rotation,
+									scale: isDesktop ? 0.92 : 0.97,
+									opacity: 0.25,
+								},
+								{
+									x: 0,
+									y: 0,
+									rotation: 0,
+									scale: 1,
+									opacity: 1,
+									duration: isDesktop ? 0.7 : 0.45,
+									ease: "power2.out",
+									immediateRender: true,
+									paused: true,
+									clearProps: "transform,opacity",
+								},
+							);
+							// 首屏可见的照片直接定格在完成态，只有后续滚动才重播。
+							if (bounds.top < window.innerHeight) tween.progress(1).pause();
+							tweens.set(photo, tween);
 						}
+
+						const initialReports = new Set<Element>(tweens.keys());
+						const observer = new IntersectionObserver(
+							(entries) => {
+								if (signal.aborted) return;
+								for (const entry of entries) {
+									const tween = tweens.get(entry.target);
+									if (!tween) continue;
+									// 初始状态已在建 tween 时定好；避免底部触发区内的首屏照片被误散开。
+									if (initialReports.delete(entry.target)) continue;
+									if (entry.isIntersecting) {
+										if (tween.progress() < 1) tween.play();
+										continue;
+									}
+									// 从顶部离开保持完成态；退回下方触发线时倒放散开。
+									// 触发线在视口 70% 高度处，照片仍大面积可见时就会散开。
+									const belowViewport =
+										entry.boundingClientRect.top >=
+										(entry.rootBounds?.bottom ?? window.innerHeight);
+									if (belowViewport && tween.progress() > 0) tween.reverse();
+								}
+							},
+							{ rootMargin: "0px 0px -30% 0px" },
+						);
+						for (const photo of photos) observer.observe(photo);
 						return () => observer.disconnect();
 					},
 					root,

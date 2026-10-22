@@ -155,24 +155,18 @@ function resolveStairCollision(
 	if (glyph.vy <= 0) return false;
 
 	const currentBottom = glyph.y + glyph.radius;
-	let landingBlock: StairBlock | null = null;
-
-	for (const block of blocks) {
-		const overlapsHorizontally =
-			glyph.x + glyph.radius > block.left &&
-			glyph.x - glyph.radius < block.right;
-		if (!overlapsHorizontally) continue;
-
-		const crossesTop =
-			previousBottom <= block.top + 1 && currentBottom >= block.top;
-		const isPushedUpByGrowingStep =
-			glyph.y < block.top && currentBottom >= block.top;
-		if (!crossesTop && !isPushedUpByGrowingStep) continue;
-
-		if (!landingBlock || block.top < landingBlock.top) landingBlock = block;
-	}
-
+	// 以数字中心所在的台阶为落点：不能用圆圈外沿去够更高的台阶，
+	// 否则数字会悬在较低台阶上方，看起来像撞到空气墙。
+	const landingBlock = blocks.find(
+		(block) => glyph.x >= block.left && glyph.x < block.right,
+	);
 	if (!landingBlock) return false;
+
+	const crossesTop =
+		previousBottom <= landingBlock.top + 1 && currentBottom >= landingBlock.top;
+	const isPushedUpByGrowingStep =
+		glyph.y < landingBlock.top && currentBottom >= landingBlock.top;
+	if (!crossesTop && !isPushedUpByGrowingStep) return false;
 
 	glyph.y = landingBlock.top - glyph.radius;
 	const bouncedVelocity = -glyph.vy * STAIR_RESTITUTION;

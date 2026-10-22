@@ -13,97 +13,117 @@ const recentPosts = posts.slice(0, 6);
 
 <MainGridLayout title={i18n(I18nKey.rss)} description={i18n(I18nKey.rssDescription)} hasOwnH1={true}>
     <div class="onload-animation">
-        <!-- RSS 标题和介绍 -->
-        <div class="card-base rounded-(--radius-large) p-8 mb-6">
-            <div class="text-center">
-                <PageTitle
-                    title={i18n(I18nKey.rss)}
-                    eyebrow="RSS"
-                    description={i18n(I18nKey.rssMotto)}
-                    variant="stacked"
-                    class="inline-block text-left mb-3"
-                />
-            </div>
+        <!-- 页面标题 -->
+        <div class="pt-6 mb-8">
+            <PageTitle
+                title={i18n(I18nKey.rss)}
+                eyebrow="RSS"
+                description={i18n(I18nKey.rssMotto)}
+                variant="stacked"
+            />
         </div>
 
-        <!-- RSS 链接复制区域 -->
-        <div class="card-base rounded-(--radius-large) p-6 mb-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div class="flex items-center">
-                    <div class="w-12 h-12 bg-(--primary) rounded-xl flex items-center justify-center mr-4">
-                        <Icon name="material-symbols:link" class="text-white text-xl" />
+        <div class="space-y-8">
+            <!-- 订阅地址 -->
+            <section>
+                <div class="flex flex-col gap-3 md:flex-row md:items-center">
+                    <div class="flex min-w-0 flex-1 items-center rounded-lg border border-(--line-divider) bg-(--card-bg) px-3 py-2">
+                        <code class="min-w-0 break-all font-mono text-sm text-75" title={i18n(I18nKey.rssLink)}>
+                            {Astro.site}rss.xml
+                        </code>
                     </div>
-                    <div>
-                        <h3 class="font-semibold text-90 mb-1">{i18n(I18nKey.rssLink)}</h3>
-                        <p class="text-sm text-75">{i18n(I18nKey.rssCopyToReader)}</p>
+                    <div class="flex w-full flex-col gap-3 sm:flex-row md:w-auto md:shrink-0">
+                        <button
+                            id="copy-rss-btn"
+                            type="button"
+                            class="inline-flex min-h-9 min-w-28 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-(--deep-text) px-4 text-sm font-medium text-(--page-bg) transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--primary) sm:w-auto"
+                            data-url={`${Astro.site}rss.xml`}
+                            data-copied-text={i18n(I18nKey.rssCopied)}
+                            data-copied-short-text={i18n(I18nKey.rssCopiedShort)}
+                            data-failed-text={i18n(I18nKey.rssCopyFailed)}
+                        >
+                            <Icon name="material-symbols:content-copy-outline-rounded" class="text-base" aria-hidden="true" />
+                            <span data-copy-label>{i18n(I18nKey.rssCopyLink)}</span>
+                        </button>
+                        <a
+                            href={`${Astro.site}rss.xml`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="btn-line min-h-9 w-full cursor-pointer gap-2 rounded-lg text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--primary) sm:w-auto"
+                        >
+                            <Icon name="fa7-solid:arrow-up-right-from-square" class="text-[0.8rem]" aria-hidden="true" />
+                            {i18n(I18nKey.rssViewRaw)}
+                        </a>
                     </div>
                 </div>
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    <code class="bg-(--card-bg) px-3 py-2 rounded-lg text-sm font-mono text-75 border border-(--line-divider) break-all">
-                        {Astro.site}rss.xml
-                    </code>
-                    <button 
-                        id="copy-rss-btn"
-                        class="px-4 py-2 bg-(--primary) text-white rounded-lg hover:opacity-80 transition-all duration-200 font-medium text-sm whitespace-nowrap"
-                        data-url={`${Astro.site}rss.xml`}
-                        data-copied-text={i18n(I18nKey.rssCopied)}
-                        data-failed-text={i18n(I18nKey.rssCopyFailed)}
-                    >
-                        {i18n(I18nKey.rssCopyLink)}
-                    </button>
+                <span id="copy-rss-status" class="sr-only" role="status"></span>
+            </section>
+
+            <!-- 如何订阅 + RSS 说明 -->
+            <section>
+                <h2 class="text-xl font-bold text-90 flex items-center">
+                    <Icon name="material-symbols:help-outline" class="mr-2 text-(--primary)" />
+                    {i18n(I18nKey.rssHowToSubscribe)}
+                </h2>
+                <p class="mt-3 text-75">{i18n(I18nKey.rssHowToUse)}</p>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <div class="rounded-xl border border-(--line-divider) bg-(--article-surface-bg) p-4">
+                        <h3 class="text-base font-semibold text-90">{i18n(I18nKey.rssCrossPlatform)}</h3>
+                        <p class="mt-2 text-sm text-75">Follow, Feedly, Inoreader, FreshRSS, Miniflux</p>
+                    </div>
+                    <div class="rounded-xl border border-(--line-divider) bg-(--article-surface-bg) p-4">
+                        <h3 class="text-base font-semibold text-90">{i18n(I18nKey.rssDesktopMobile)}</h3>
+                        <p class="mt-2 text-sm text-75">NetNewsWire, Reeder, Read You, Fluent Reader</p>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- 最新文章预览 -->
-        <div class="card-base rounded-(--radius-large) p-6 mb-6">
-            <h2 class="text-xl font-bold text-90 mb-4 flex items-center">
-                <Icon name="material-symbols:article" class="mr-2 text-(--primary)" />
-                {i18n(I18nKey.rssLatestPosts)}
-            </h2>
-            <div class="space-y-4">
-                {recentPosts.map((post) => (
-                    <article class="bg-(--card-bg) rounded-xl p-4 border border-(--line-divider) hover:border-(--primary) transition-all duration-300">
-                        <h3 class="text-lg font-semibold text-90 mb-2 hover:text-(--primary) transition-colors">
-                            <a href={`/posts/${post.id}/`} class="hover:underline">
-                                {post.data.title}
-                            </a>
-                        </h3>
-                        {post.data.description && (
-                            <p class="text-75 mb-3 line-clamp-2">
-                                {post.data.description}
-                            </p>
-                        )}
-                        <div class="flex items-center gap-4 text-sm text-60">
-                            <time datetime={post.data.published.toISOString()} class="text-75">
-                                {formatDateToYYYYMMDD(post.data.published)}
-                            </time>
-                        </div>
-                    </article>
-                ))}
-            </div>
-        </div>
+                <div class="mt-8 border-t border-(--line-divider) pt-6">
+                    <h3 class="text-lg font-semibold text-90 flex items-center">
+                        <Icon name="material-symbols:help-outline" class="mr-2 text-(--primary)" />
+                        {i18n(I18nKey.rssWhatIsRSS)}
+                    </h3>
+                    <div class="mt-3 text-75 space-y-3">
+                        <p>
+                            {i18n(I18nKey.rssWhatIsRSSDescription)}
+                        </p>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            <li>{i18n(I18nKey.rssBenefit1)}</li>
+                            <li>{i18n(I18nKey.rssBenefit2)}</li>
+                            <li>{i18n(I18nKey.rssBenefit3)}</li>
+                            <li>{i18n(I18nKey.rssBenefit4)}</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
 
-        <!-- RSS 说明 -->
-        <div class="card-base rounded-(--radius-large) p-6">
-            <h2 class="text-xl font-bold text-90 mb-4 flex items-center">
-                <Icon name="material-symbols:help-outline" class="mr-2 text-(--primary)" />
-                {i18n(I18nKey.rssWhatIsRSS)}
-            </h2>
-            <div class="text-75 space-y-3">
-                <p>
-                    {i18n(I18nKey.rssWhatIsRSSDescription)}
-                </p>
-                <ul class="list-disc list-inside space-y-1 ml-4">
-                    <li>{i18n(I18nKey.rssBenefit1)}</li>
-                    <li>{i18n(I18nKey.rssBenefit2)}</li>
-                    <li>{i18n(I18nKey.rssBenefit3)}</li>
-                    <li>{i18n(I18nKey.rssBenefit4)}</li>
-                </ul>
-                <p class="text-sm">
-                    {i18n(I18nKey.rssHowToUse)}
-                </p>
-            </div>
+            <!-- 最新文章 -->
+            <section>
+                <h2 class="text-xl font-bold text-90 mb-4 flex items-center">
+                    <Icon name="material-symbols:article" class="mr-2 text-(--primary)" />
+                    {i18n(I18nKey.rssLatestPosts)}
+                </h2>
+                <div class="space-y-4">
+                    {recentPosts.map((post) => (
+                        <article class="bg-(--card-bg) rounded-xl p-4 border border-(--line-divider) hover:border-(--primary) transition-all duration-300">
+                            <h3 class="text-lg font-semibold text-90 mb-2 hover:text-(--primary) transition-colors">
+                                <a href={`/posts/${post.id}/`} class="hover:underline">
+                                    {post.data.title}
+                                </a>
+                            </h3>
+                            {post.data.description && (
+                                <p class="text-75 mb-3 line-clamp-2">
+                                    {post.data.description}
+                                </p>
+                            )}
+                            <div class="flex items-center gap-4 text-sm text-60">
+                                <time datetime={post.data.published.toISOString()} class="text-75">
+                                    {formatDateToYYYYMMDD(post.data.published)}
+                                </time>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            </section>
         </div>
     </div>
 
@@ -113,10 +133,29 @@ const recentPosts = posts.slice(0, 6);
         function initRssCopy() {
             const copyBtn = document.getElementById('copy-rss-btn');
             if (!copyBtn) return;
+            const copyStatus = document.getElementById('copy-rss-status');
             
             // 移除旧的事件监听器（通过克隆节点的方式）
-            const newBtn = copyBtn.cloneNode(true);
+            const clonedBtn = copyBtn.cloneNode(true);
+            if (!(clonedBtn instanceof HTMLButtonElement)) return;
+            const newBtn = clonedBtn;
             copyBtn.parentNode?.replaceChild(newBtn, copyBtn);
+            const copyLabel = newBtn.querySelector<HTMLElement>('[data-copy-label]');
+            const originalLabel = copyLabel?.textContent ?? '';
+            let resetTimer: ReturnType<typeof setTimeout> | null = null;
+
+            const resetCopyState = (): void => {
+                if (copyStatus) copyStatus.textContent = '';
+                if (copyLabel) copyLabel.textContent = originalLabel;
+                delete newBtn.dataset.copied;
+                resetTimer = null;
+            };
+
+            const showStatus = (text: string): void => {
+                if (resetTimer !== null) clearTimeout(resetTimer);
+                if (copyStatus) copyStatus.textContent = text;
+                resetTimer = setTimeout(resetCopyState, 2000);
+            };
             
             // 绑定新的事件监听器
             newBtn.addEventListener('click', async function() {
@@ -124,21 +163,17 @@ const recentPosts = posts.slice(0, 6);
                 if (!url) return;
                 try {
                     await navigator.clipboard.writeText(url);
-                    const originalText = this.textContent;
-                    this.textContent = this.getAttribute('data-copied-text') || '';
-                    this.style.backgroundColor = 'var(--success-color, #10b981)';
-                    
-                    setTimeout(() => {
-                        this.textContent = originalText;
-                        this.style.backgroundColor = '';
-                    }, 2000);
+                    this.dataset.copied = 'true';
+                    if (copyLabel) {
+                        copyLabel.textContent =
+                            this.getAttribute('data-copied-short-text') || originalLabel;
+                    }
+                    showStatus(this.getAttribute('data-copied-text') || '');
                 } catch (err) {
                     console.error('复制失败:', err);
-                    const originalText = this.textContent;
-                    this.textContent = this.getAttribute('data-failed-text') || '';
-                    setTimeout(() => {
-                        this.textContent = originalText;
-                    }, 2000);
+                    delete this.dataset.copied;
+                    if (copyLabel) copyLabel.textContent = originalLabel;
+                    showStatus(this.getAttribute('data-failed-text') || '');
                 }
             });
         }

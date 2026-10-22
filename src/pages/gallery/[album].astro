@@ -132,22 +132,3 @@ const backgroundImage = backgroundPhoto
 		</div>
 	</article>
 </MainGridLayout>
-
-<script>
-	import { mountGalleryDetail } from "@/utils/gallery-detail-controller";
-	import { definePageIsland } from "@/utils/swup-lifecycle";
-
-	let cleanup: (() => void) | undefined;
-
-	definePageIsland({
-		name: "gallery-detail",
-		match: () => !!document.querySelector("[data-gallery-detail]"),
-		mount: () => {
-			cleanup = mountGalleryDetail();
-		},
-		unmount: () => {
-			cleanup?.();
-			cleanup = undefined;
-		},
-	});
-</script>

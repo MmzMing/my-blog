@@ -128,7 +128,12 @@ export const en: Translation = {
 	[Key.rssLink]: "RSS Link",
 	[Key.rssCopyToReader]: "Copy link to your RSS reader",
 	[Key.rssCopyLink]: "Copy Link",
+	[Key.rssCopiedShort]: "Copied",
+	[Key.rssViewRaw]: "View raw XML",
+	[Key.rssHowToSubscribe]: "How to subscribe",
 	[Key.rssLatestPosts]: "Latest Posts",
+	[Key.rssCrossPlatform]: "Cross-Platform / Web",
+	[Key.rssDesktopMobile]: "Desktop / Mobile Apps",
 	[Key.rssWhatIsRSS]: "What is RSS?",
 	[Key.rssWhatIsRSSDescription]:
 		"RSS (Really Simple Syndication) is a standard format for publishing frequently updated content. With RSS, you can:",

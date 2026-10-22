@@ -128,7 +128,12 @@ export const ru: Translation = {
 	[Key.rssLink]: "RSS ссылка",
 	[Key.rssCopyToReader]: "Скопировать ссылку в ваш RSS читатель",
 	[Key.rssCopyLink]: "Скопировать ссылку",
+	[Key.rssCopiedShort]: "Скопировано",
+	[Key.rssViewRaw]: "Просмотреть XML",
+	[Key.rssHowToSubscribe]: "Как подписаться",
 	[Key.rssLatestPosts]: "Последние посты",
+	[Key.rssCrossPlatform]: "Кроссплатформенные / веб",
+	[Key.rssDesktopMobile]: "Десктоп / мобильные приложения",
 	[Key.rssWhatIsRSS]: "Что такое RSS?",
 	[Key.rssWhatIsRSSDescription]:
 		"RSS (Really Simple Syndication) — стандартный формат для публикации часто обновляемого контента. С RSS вы можете:",

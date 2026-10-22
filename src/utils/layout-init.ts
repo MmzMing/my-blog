@@ -4,9 +4,10 @@
  * 这里只负责编排，不写具体实现：常驻控制器的安装、Swup 切页钩子的注册、
  * 以及跨导航要重跑的容器内增强。想知道某个行为什么时候跑，看这一个文件就够。
  *
- * 页面级组件**不要**加到这里 —— 它们各自在自己的 `<script>` 里用
+ * 页面级组件默认**不要**加到这里 —— 它们各自在自己的 `<script>` 里用
  * [swup-lifecycle.ts](./swup-lifecycle.ts) 的 `definePageIsland` 登记，
  * 这样组件被删掉时其生命周期也一起消失，不会在这里留下悬空调用。
+ * 例外：页面脚本最终落在 Swup 容器外、导航时不会执行，登记只能放在始终加载的这里。
  *
  * 从 `Layout.astro` 迁出的依据是 CLAUDE.md 5.7：客户端行为写成 `src/utils/` 下的纯 TS 模块，
  * 由组件 `<script>` 导入，不把逻辑内联进组件。
@@ -15,6 +16,7 @@
 import { ArticleTocPanelRuntime } from "@/utils/article-toc-panel-controller";
 import { scheduleContentOverflowEnhancements } from "@/utils/content-overflow";
 import { installExternalLinkTooltipController } from "@/utils/external-link-tooltip-controller";
+import { mountGalleryDetail } from "@/utils/gallery-detail-controller";
 import { installLazyCollapsibleCodeController } from "@/utils/lazy-collapsible-code-controller";
 import { scheduleMermaidLabelFit } from "@/utils/mermaid-label-fit";
 import { initPageLoader } from "@/utils/page-loader-controller.js";
@@ -27,6 +29,8 @@ import { setupSwupTransitions } from "@/utils/swup-transitions";
 
 /** 加密文章解密后正文才插入，需要补跑一次内容增强 */
 const DECRYPT_RESCAN_DELAY = 200;
+
+let galleryDetailCleanup: (() => void) | undefined;
 
 export function initLayout(): void {
 	// 超长代码块的懒折叠：事件委托挂在 document 上，装一次就够
@@ -68,6 +72,19 @@ export function initLayout(): void {
 	definePageIsland({
 		name: "layout:mermaid-label-fit",
 		mount: scheduleMermaidLabelFit,
+	});
+
+	// 详情页脚本位于 Swup 容器之外，导航进入时不会执行，登记必须留在布局层。
+	definePageIsland({
+		name: "gallery-detail",
+		match: () => !!document.querySelector("[data-gallery-detail]"),
+		mount: () => {
+			galleryDetailCleanup = mountGalleryDetail();
+		},
+		unmount: () => {
+			galleryDetailCleanup?.();
+			galleryDetailCleanup = undefined;
+		},
 	});
 
 	definePersistentIsland("layout:decrypt-rescan", () => {
