@@ -79,9 +79,10 @@ Firefly-Mod 是个性化魔改版本，已独立演进。
 - QQ 群聊风格留言板，直接复用 Waline 登录、审核与评论数据，不依赖项目 Worker 或 KV。
 - 新增日历页面，展示文章发布时间。
 - 关于页面，注重交互。
+- 全局音乐播放器：桌面悬浮组件与移动端 dock 共用同一播放引擎，支持 Meting API / 本地曲目、播放列表和歌词，不提供独立音乐页面或 3D 可视化。
 - 删除动漫这些影响构建速度的功能。
 - 分类页使用 D3.js 力导向布局与 Canvas 绘制标签关系图谱：构建时根据文章标签生成节点与共现边，客户端支持缩放、拖拽、悬停和键盘跳转。
-- 封面图构建期优化：列表与文章页统一收口封面解析，本地封面经 Astro 图片服务转码并生成多格式 `srcset`，配合 LQIP 占位渐变（每张图仅 18 字节）消除图片加载闪白。
+- 封面图构建期优化：列表与文章页统一收口封面解析，本地封面经 Astro 图片服务转成统一宽度，配合 LQIP 占位渐变（每张图仅 18 字节）消除图片加载闪白。
 
 ## 常用命令
 
@@ -115,7 +116,7 @@ Firefly-Mod 是个性化魔改版本，已独立演进。
 
 文章 frontmatter 的 `image` 字段按三种形态处理：
 
-- 相对路径（`./assets/cover.webp`）：`src` 下的本地资源，构建期经 Astro 图片服务按 `siteConfig.ts` 的 `imageOptimization` 配置转码，产出多格式 `srcset` 与宽高，且不做放大（候选宽度截断到源图宽度）。
+- 相对路径（`./assets/cover.webp`）：`src` 下的本地资源，构建期经 Astro 图片服务按 `siteConfig.ts` 的 `imageOptimization` 配置转成统一宽度并输出宽高，不做放大（目标宽度不超过源图宽度）。
 - `/` 开头：`public` 下的资源，Astro 不做优化，原样引用。
 - `http(s)` / `data:`：远程图，原样引用，命中 `imageOptimization.noReferrerDomains` 时补 `referrerpolicy="no-referrer"`。
 

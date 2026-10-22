@@ -9,7 +9,7 @@
 import type { CollectionEntry } from "astro:content";
 import type { CoverImageSource } from "@/types/cover-image";
 import { getSortedPosts } from "@/utils/content-utils";
-import { buildCoverImage } from "@/utils/cover-image";
+import { buildCoverImage, COVER_IMAGE_WIDTH } from "@/utils/cover-image";
 import { formatDateToYYYYMMDD } from "@/utils/date-utils";
 import { processCoverImageSync } from "@/utils/image-utils";
 import { getFileDirFromPath, getPostUrlBySlug } from "@/utils/url-utils";
@@ -24,19 +24,12 @@ export interface RelatedPostCard {
 	cover: CoverImageSource | null;
 }
 
-/* 面板卡宽 18rem（288px）；底部窄屏在主栏内（主栏 max-w-5xl，内容至多 ~60rem） */
-export const RELATED_COVER_WIDTHS = [320, 480, 640, 960];
-export const RELATED_COVER_SIZES =
-	"(min-width: 96rem) 18rem, (min-width: 64rem) 60rem, calc(100vw - 3rem)";
-
 interface GetRelatedOptions {
 	currentId: string;
 	tags?: string[];
 	category?: string;
 	limit?: number;
 	posts?: CollectionEntry<"posts">[];
-	widths?: number[];
-	sizes?: string;
 }
 
 export async function getRelatedPostCards(
@@ -48,8 +41,6 @@ export async function getRelatedPostCards(
 		category,
 		limit = 3,
 		posts = await getSortedPosts(),
-		widths = RELATED_COVER_WIDTHS,
-		sizes = RELATED_COVER_SIZES,
 	} = opts;
 
 	const tagged = tags.map((t) => t.trim());
@@ -80,8 +71,7 @@ export async function getRelatedPostCards(
 			const cover = await buildCoverImage({
 				image: processCoverImageSync(p.data.image, p.id),
 				basePath: getFileDirFromPath(p.filePath || ""),
-				widths,
-				sizes,
+				width: COVER_IMAGE_WIDTH,
 			});
 			return {
 				id: p.id,

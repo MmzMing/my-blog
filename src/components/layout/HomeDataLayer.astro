@@ -13,7 +13,7 @@ import {
 	getSortedPosts,
 	getTagList,
 } from "@/utils/content-utils";
-import { buildCoverImage } from "@/utils/cover-image";
+import { buildCoverImage, COVER_IMAGE_WIDTH } from "@/utils/cover-image";
 import { formatDateI18n } from "@/utils/date-utils";
 import {
 	countReadableCharacters,
@@ -38,13 +38,10 @@ const totalWords = posts.reduce(
 
 /**
  * 博客文章牌堆：置顶最多 3 篇 + 最新 5 篇，缩略态按这个顺序自动翻牌。
- * 全部在构建期解析封面（含多格式 srcset 与 LQIP），不在客户端二次遍历。
+ * 全部在构建期解析封面（含封面产物与 LQIP），不在客户端二次遍历。
  */
 const DECK_PINNED_COUNT = 3;
 const DECK_RECENT_COUNT = 5;
-/** 缩略卡约 500px、展开左栏约 530px，两档足够；再多一档只是拖长构建 */
-const DECK_COVER_WIDTHS = [480, 800];
-const DECK_COVER_SIZES = "(max-width: 1280px) 46vw, 560px";
 
 interface DeckItem {
 	index: number;
@@ -75,8 +72,7 @@ const deckItems: DeckItem[] = await Promise.all(
 			? await buildCoverImage({
 					image,
 					basePath: getFileDirFromPath(post.filePath || ""),
-					widths: DECK_COVER_WIDTHS,
-					sizes: DECK_COVER_SIZES,
+					width: COVER_IMAGE_WIDTH,
 				})
 			: null;
 		return {
@@ -153,9 +149,6 @@ const indexGroups = [
    提示框里打出「有多少个分类」，虚线分下去，三张圆盘是篇数最多的三个分类。
    圆盘里放该分类最新一篇文章的封面，所以取图口径要和牌堆一致（构建期解析）。 */
 const SCENE_AGENT_COUNT = 3;
-/** 圆盘直径约 84 个画布单位，两档候选足够 */
-const SCENE_COVER_WIDTHS = [120, 200];
-const SCENE_COVER_SIZES = "96px";
 /** 三条分支：左右两条从提示框底沿弓出去，中间笔直向下，端点落在圆盘顶沿 */
 const SCENE_LINES = [
 	"M300 110C300 162 102 152 102 196",
@@ -193,8 +186,7 @@ const sceneAgents: SceneAgent[] = await Promise.all(
 				? await buildCoverImage({
 						image,
 						basePath: getFileDirFromPath(lead.filePath || ""),
-						widths: SCENE_COVER_WIDTHS,
-						sizes: SCENE_COVER_SIZES,
+						width: COVER_IMAGE_WIDTH,
 					})
 				: null;
 		return { name: category.name, count: category.count, cover };

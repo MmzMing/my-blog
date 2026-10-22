@@ -1,5 +1,4 @@
 ---
-import { render } from "astro:content";
 import PageTitle from "@/components/common/PageTitle.astro";
 import ArticleList from "@/components/pages/article-list/ArticleList.astro";
 import { siteConfig } from "@/config";
@@ -10,8 +9,9 @@ import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import type { ArticleListPost } from "@/types/article-list";
 import type { CoverImageSource } from "@/types/cover-image";
 import { getSortedPosts, splitPinnedPosts } from "@/utils/content-utils";
-import { buildCoverImage } from "@/utils/cover-image";
+import { buildCoverImage, COVER_IMAGE_WIDTH } from "@/utils/cover-image";
 import { getApiUrlList, processCoverImageSync } from "@/utils/image-utils";
+import { renderPostCached } from "@/utils/post-render";
 import { getFileDirFromPath, getPostUrlBySlug, url } from "@/utils/url-utils";
 import "@/styles/pages/article-list.css";
 
@@ -42,12 +42,6 @@ const fallbackImagePath = randomCoverImage.enable
 const fallbackImageUrl = fallbackImagePath ? url(fallbackImagePath) : "";
 const showCoverLoading = randomCoverImage.showLoading ?? true;
 
-// 卡片封面按栅格实际占宽取档；置顶卡片横跨内容区，单独给一组更大的候选
-const CARD_COVER_WIDTHS = [320, 480, 640];
-const CARD_COVER_SIZES =
-	"(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 320px";
-const PINNED_COVER_WIDTHS = [640, 960, 1280];
-const PINNED_COVER_SIZES = "(max-width: 1024px) 96vw, 1024px";
 const dateFormatter = new Intl.DateTimeFormat(
 	siteConfig.lang.replace("_", "-"),
 	{
@@ -68,30 +62,28 @@ function getCategoryHue(category: string): number {
 
 async function resolvePostCover(
 	entry: (typeof allPosts)[number],
-	widths: number[],
-	sizes: string,
 ): Promise<CoverImageSource | null> {
 	const cover = await buildCoverImage({
 		image: processCoverImageSync(entry.data.image, entry.id),
 		basePath: getFileDirFromPath(entry.filePath || ""),
-		widths,
-		sizes,
+		width: COVER_IMAGE_WIDTH,
 	});
 	if (cover) return cover;
 
 	// 没写 image、或本地文件缺失：只有随机图开启时才退到兜底图，否则不渲染封面
 	if (!fallbackImagePath) return null;
-	return buildCoverImage({ image: fallbackImagePath, widths, sizes });
+	return buildCoverImage({
+		image: fallbackImagePath,
+		width: COVER_IMAGE_WIDTH,
+	});
 }
 
 async function createArticleListPost(
 	entry: (typeof allPosts)[number],
-	coverWidths: number[],
-	coverSizes: string,
 ): Promise<ArticleListPost> {
 	const [{ remarkPluginFrontmatter }, cover] = await Promise.all([
-		render(entry),
-		resolvePostCover(entry, coverWidths, coverSizes),
+		renderPostCached(entry),
+		resolvePostCover(entry),
 	]);
 	const rawCategory = entry.data.category?.trim();
 	const category = rawCategory || i18n(I18nKey.uncategorized);
@@ -120,16 +112,8 @@ async function createArticleListPost(
 }
 
 const [pinnedPosts, regularPosts] = await Promise.all([
-	Promise.all(
-		pinnedEntries.map((entry) =>
-			createArticleListPost(entry, PINNED_COVER_WIDTHS, PINNED_COVER_SIZES),
-		),
-	),
-	Promise.all(
-		pageEntries.map((entry) =>
-			createArticleListPost(entry, CARD_COVER_WIDTHS, CARD_COVER_SIZES),
-		),
-	),
+	Promise.all(pinnedEntries.map((entry) => createArticleListPost(entry))),
+	Promise.all(pageEntries.map((entry) => createArticleListPost(entry))),
 ]);
 const baseTitle = i18n(I18nKey.postList);
 const baseDescription = i18n(I18nKey.listDescription);

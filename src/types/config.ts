@@ -87,7 +87,6 @@ export type SiteConfig = {
 		guestbook: boolean; // 留言板页面开关
 		gallery: boolean; // 相册页面开关
 		collections: boolean; // 收藏API页面开关
-		music: boolean; // 音乐可视化页面开关
 		postList: boolean; // 文档页面开关（/list/ 文章列表）
 		archive: boolean; // 归档页面开关
 		about: boolean; // 关于页面开关
@@ -205,7 +204,6 @@ export enum LinkPreset {
 	QQGroup = 15,
 	NavPosts = 16,
 	NavMy = 17,
-	Music = 18,
 	NavLinks = 19,
 }
 
@@ -795,9 +793,6 @@ export type MusicPlayerConfig = {
 	// 播放模式：'list'=列表循环, 'one'=单曲循环, 'random'=随机播放
 	playMode?: "list" | "one" | "random";
 
-	// 是否显示歌词
-	showLyrics?: boolean;
-
 	// 是否在导航栏显示音乐播放器
 	showInNavbar?: boolean;
 
@@ -832,54 +827,6 @@ export type MusicPlayerConfig = {
 			lrc?: string; // 歌词内容，支持 LRC 格式
 		}>;
 	};
-
-	visualizer?: MusicVisualizerConfig;
-};
-
-export type MusicVisualizerThemeConfig = {
-	base1: string;
-	base2: string;
-	coolCore: string;
-	coolEdge: string;
-	warmCore: string;
-	warmEdge: string;
-	rippleColor: string;
-	/** 冷色波纹锚点（安静/低频时）。缺省回退到 rippleColor */
-	rippleCool?: string;
-	/** 暖色波纹锚点（明亮/高频时）。缺省回退到 warmEdge */
-	rippleWarm?: string;
-	fogColor: string;
-	glowIntensity: number;
-};
-
-export type MusicVisualizerHeightConfig = {
-	idle: number;
-	subBass: number;
-	bass: number;
-	lowMid: number;
-	mid: number;
-	highMid: number;
-	energy: number;
-	ripple: number;
-	rippleAccent: number;
-};
-
-export type MusicVisualizerConfig = {
-	background?: {
-		dark: string;
-		light: string;
-	};
-	camera?: {
-		position?: {
-			x: number;
-			y: number;
-			z: number;
-		};
-	};
-	autoRotate?: boolean;
-	autoRotateSpeed?: number;
-	height?: MusicVisualizerHeightConfig;
-	theme?: MusicVisualizerThemeConfig;
 };
 
 // 赞助方式类型

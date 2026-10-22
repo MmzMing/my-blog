@@ -83,8 +83,8 @@ export default defineConfig({
 
 	// 图像优化配置
 	image: {
-		// 全局响应式布局
-		layout: "constrained",
+		// 正文图片只输出单图，不生成响应式多档；组件需要时自行传 widths
+		layout: "none",
 	},
 
 	integrations: [
@@ -210,9 +210,6 @@ export default defineConfig({
 					return false;
 				}
 				if (pathname === "/gallery/" && !siteConfig.pages.gallery) {
-					return false;
-				}
-				if (pathname === "/music/" && !siteConfig.pages.music) {
 					return false;
 				}
 				if (pathname === "/archive/" && !siteConfig.pages.archive) {

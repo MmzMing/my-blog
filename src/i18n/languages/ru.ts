@@ -52,7 +52,6 @@ export const ru: Translation = {
 	[Key.musicNoPlaying]: "Ничего не воспроизводится",
 	[Key.musicLyrics]: "Текст песни",
 	[Key.musicVolume]: "Громкость",
-	[Key.musicPlayMode]: "Переключить режим воспроизведения",
 	[Key.musicPrev]: "Предыдущий трек",
 	[Key.musicNext]: "Следующий трек",
 	[Key.musicPlaylist]: "Плейлист",
@@ -64,8 +63,6 @@ export const ru: Translation = {
 	[Key.musicPlay]: "Воспроизвести",
 	[Key.musicPause]: "Пауза",
 	[Key.musicProgress]: "Прогресс воспроизведения",
-	[Key.musicCover]: "Обложка",
-	[Key.musicNoCover]: "Нет обложки",
 
 	// Объявление
 	[Key.announcement]: "Объявление",
@@ -413,22 +410,10 @@ export const ru: Translation = {
 	[Key.friendEmptyTitle]: "В этой категории нет ссылок",
 	[Key.friendEmptyHint]: "Выберите другой тип блогов",
 
-	// ===== 音乐可视化 =====
+	// ===== 音乐播放器 =====
 	[Key.playModeList]: "По списку",
 	[Key.playModeSingle]: "Повтор трека",
 	[Key.playModeShuffle]: "Случайный порядок",
-	[Key.currentTrack]: "Текущий трек",
-	[Key.musicPlayerLabel]: "Музыкальный плеер",
-	[Key.viewPlaylist]: "Открыть плейлист",
-	[Key.playbackControls]: "Управление воспроизведением",
-	[Key.playlistSwitch]: "Смена плейлиста",
-	[Key.backToPlayer]: "Назад к плееру",
-	[Key.currentPlaylist]: "Текущий плейлист",
-	[Key.playlistLoading]: "Загрузка плейлиста",
-	[Key.musicVisualizer]: "Музыкальная визуализация",
-	[Key.musicVisualizer3D]: "3D-визуализация",
-	[Key.musicVisualizerDescription]:
-		"Откройте иммерсивную музыкальную визуализацию, где воспроизведение превращается в динамичный трёхмерный ландшафт с атмосферными эффектами.",
 
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "Загрузка страницы",

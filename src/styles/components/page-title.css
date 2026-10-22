@@ -1,5 +1,5 @@
 /* 大标题页的顶部留白。这段空间原先是常驻面包屑（已移除）撑出来的，它一走大标题
-   就贴到了导航栏上。规则锚在 .page-title 上 —— 首页 / 404 / 图谱 / 音乐都不渲染
+   就贴到了导航栏上。规则锚在 .page-title 上 —— 首页 / 404 / 图谱都不渲染
    这个组件，天然排除在外，不用逐页开关。
    落在 padding 而非 margin：#content-wrapper 带 onload-animation 的 translateY
    入场，margin 会和相邻块合并 */

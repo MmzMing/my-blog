@@ -14,7 +14,7 @@ import type { CoverImageConfig } from "../types/config";
  * // 文章 Frontmatter 示例：
  * ---
  * title: 文章标题
- * image: ./assets/cover.webp   # 相对文章的本地图，构建期会转码并生成 srcset
+ * image: ./assets/cover.webp   # 相对文章的本地图，构建期会转码为统一尺寸
  * ---
  */
 export const coverImageConfig: CoverImageConfig = {

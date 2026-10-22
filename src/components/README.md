@@ -67,7 +67,6 @@ Firefly 项目中所有可复用组件的集中管理。组件按照功能和职
 - `Calendar.astro` - 日历组件
 - `Categories.astro` - 分类组件
 - `Live2DWidget.astro` - Live2D 看板娘组件
-- `Music.astro` - 音乐播放器小部件
 - `Profile.astro` - 个人信息/社交链接小部件
 - `SidebarTOC.astro` - 侧边栏目录组件
 - `SpineModel.astro` - Spine 看板娘组件

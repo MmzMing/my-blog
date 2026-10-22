@@ -90,9 +90,6 @@ const buildNavBarConfig = (): NavBarConfig => {
 	if (siteConfig.pages.sponsor) {
 		myChildren.push(LinkPreset.Sponsor);
 	}
-	if (siteConfig.pages.music) {
-		myChildren.push(LinkPreset.Music);
-	}
 	if (siteConfig.pages.about) {
 		myChildren.push(LinkPreset.About);
 	}

@@ -7,7 +7,7 @@ import { homeConfig, siteConfig, sponsorConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { getSortedPosts } from "@/utils/content-utils";
-import { buildCoverImage } from "@/utils/cover-image";
+import { buildCoverImage, COVER_IMAGE_WIDTH } from "@/utils/cover-image";
 import {
 	countReadableCharacters,
 	formatCompactNumber,
@@ -42,8 +42,7 @@ const sponsorMethods = sponsorConfig.methods
 	.slice(0, 3);
 const statsBackground = await buildCoverImage({
 	image: homeConfig.avatarBanner || "",
-	widths: [288, 576],
-	sizes: "18rem",
+	width: COVER_IMAGE_WIDTH,
 });
 
 const posts = await getSortedPosts();

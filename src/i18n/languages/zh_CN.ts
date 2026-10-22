@@ -52,7 +52,6 @@ export const zh_CN: Translation = {
 	[Key.musicNoPlaying]: "暂未播放",
 	[Key.musicLyrics]: "歌词",
 	[Key.musicVolume]: "音量",
-	[Key.musicPlayMode]: "切换播放模式",
 	[Key.musicPrev]: "上一首",
 	[Key.musicNext]: "下一首",
 	[Key.musicPlaylist]: "列表",
@@ -64,8 +63,6 @@ export const zh_CN: Translation = {
 	[Key.musicPlay]: "播放",
 	[Key.musicPause]: "暂停",
 	[Key.musicProgress]: "播放进度",
-	[Key.musicCover]: "封面",
-	[Key.musicNoCover]: "暂无封面",
 
 	// 公告栏
 	[Key.announcement]: "公告",
@@ -405,22 +402,10 @@ export const zh_CN: Translation = {
 	[Key.friendEmptyTitle]: "当前分类没有友链",
 	[Key.friendEmptyHint]: "请选择其他博客类型查看",
 
-	// ===== 音乐可视化 =====
+	// ===== 音乐播放器 =====
 	[Key.playModeList]: "列表循环",
 	[Key.playModeSingle]: "单曲循环",
 	[Key.playModeShuffle]: "随机播放",
-	[Key.currentTrack]: "当前曲目",
-	[Key.musicPlayerLabel]: "音乐播放器",
-	[Key.viewPlaylist]: "查看歌单",
-	[Key.playbackControls]: "播放控制",
-	[Key.playlistSwitch]: "歌单切换",
-	[Key.backToPlayer]: "返回播放器",
-	[Key.currentPlaylist]: "当前歌单",
-	[Key.playlistLoading]: "歌单加载中",
-	[Key.musicVisualizer]: "音乐可视化",
-	[Key.musicVisualizer3D]: "3D可视化",
-	[Key.musicVisualizerDescription]:
-		"进入沉浸式音乐可视化页面，跟随播放节奏观察三维地形与动态效果，获得更具氛围感的聆听体验。",
 
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "页面加载中",

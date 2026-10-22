@@ -51,7 +51,6 @@ enum I18nKey {
 	musicNoPlaying = "musicNoPlaying",
 	musicLyrics = "musicLyrics",
 	musicVolume = "musicVolume",
-	musicPlayMode = "musicPlayMode",
 	musicPrev = "musicPrev",
 	musicNext = "musicNext",
 	musicPlaylist = "musicPlaylist",
@@ -63,8 +62,6 @@ enum I18nKey {
 	musicPlay = "musicPlay",
 	musicPause = "musicPause",
 	musicProgress = "musicProgress",
-	musicCover = "musicCover",
-	musicNoCover = "musicNoCover",
 
 	more = "more",
 	collapse = "collapse",
@@ -396,21 +393,10 @@ enum I18nKey {
 	friendEmptyTitle = "friendEmptyTitle",
 	friendEmptyHint = "friendEmptyHint",
 
-	// ===== 音乐可视化 =====
+	// ===== 音乐播放器 =====
 	playModeList = "playModeList",
 	playModeSingle = "playModeSingle",
 	playModeShuffle = "playModeShuffle",
-	currentTrack = "currentTrack",
-	musicPlayerLabel = "musicPlayerLabel",
-	viewPlaylist = "viewPlaylist",
-	playbackControls = "playbackControls",
-	playlistSwitch = "playlistSwitch",
-	backToPlayer = "backToPlayer",
-	currentPlaylist = "currentPlaylist",
-	playlistLoading = "playlistLoading",
-	musicVisualizer = "musicVisualizer",
-	musicVisualizer3D = "musicVisualizer3D",
-	musicVisualizerDescription = "musicVisualizerDescription",
 
 	// ===== 弹窗 / 杂项 =====
 	pageLoading = "pageLoading",

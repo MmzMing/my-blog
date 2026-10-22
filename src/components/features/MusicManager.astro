@@ -34,24 +34,9 @@ const managerConfigStr = JSON.stringify({
 	localPlaylist: localPlaylist,
 	volume: config.volume ?? 0.7,
 	playMode: config.playMode ?? "list",
-	showLyrics: config.showLyrics ?? true,
 	i18n: {
-		noPlaying: i18n(I18nKey.musicNoPlaying),
-		lyrics: i18n(I18nKey.musicLyrics),
-		volume: i18n(I18nKey.musicVolume),
-		playMode: i18n(I18nKey.musicPlayMode),
-		prev: i18n(I18nKey.musicPrev),
-		next: i18n(I18nKey.musicNext),
-		playlist: i18n(I18nKey.musicPlaylist),
-		noLyrics: i18n(I18nKey.musicNoLyrics),
-		loadingLyrics: i18n(I18nKey.musicLoadingLyrics),
-		failedLyrics: i18n(I18nKey.musicFailedLyrics),
 		noSongs: i18n(I18nKey.musicNoSongs),
 		error: i18n(I18nKey.musicError),
-		play: i18n(I18nKey.musicPlay),
-		pause: i18n(I18nKey.musicPause),
-		progress: i18n(I18nKey.musicProgress),
-		noCover: i18n(I18nKey.musicNoCover),
 	},
 });
 ---
@@ -97,7 +82,6 @@ const managerConfigStr = JSON.stringify({
     // ── Audio element (persistent, attached to body) ────────
     var audio = document.getElementById('firefly-music-audio') || document.createElement('audio');
     audio.id = 'firefly-music-audio';
-    audio.crossOrigin = 'anonymous';
     audio.style.display = 'none';
     if (!audio.parentNode) document.body.appendChild(audio);
 
@@ -430,8 +414,7 @@ const managerConfigStr = JSON.stringify({
                 lyricsStatus: state.lyricsStatus,
                 currentLrcIndex: state.currentLrcIndex,
                 initialized: state.initialized,
-                error: state.error,
-                config: config
+                error: state.error
             };
         },
         togglePlay: togglePlay,

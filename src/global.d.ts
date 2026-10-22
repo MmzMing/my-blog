@@ -80,13 +80,6 @@ declare global {
 				currentLrcIndex: number;
 				initialized: boolean;
 				error: string | null;
-				config: {
-					i18n?: {
-						loadingLyrics?: string;
-						noLyrics?: string;
-						failedLyrics?: string;
-					};
-				} & Record<string, unknown>;
 			};
 			togglePlay: () => void;
 			playNext: () => void;

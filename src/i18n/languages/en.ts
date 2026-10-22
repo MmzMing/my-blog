@@ -52,7 +52,6 @@ export const en: Translation = {
 	[Key.musicNoPlaying]: "No playing",
 	[Key.musicLyrics]: "Lyrics",
 	[Key.musicVolume]: "Volume",
-	[Key.musicPlayMode]: "Switch Play Mode",
 	[Key.musicPrev]: "Previous",
 	[Key.musicNext]: "Next",
 	[Key.musicPlaylist]: "Playlist",
@@ -64,8 +63,6 @@ export const en: Translation = {
 	[Key.musicPlay]: "Play",
 	[Key.musicPause]: "Pause",
 	[Key.musicProgress]: "Playback Progress",
-	[Key.musicCover]: "Cover",
-	[Key.musicNoCover]: "No cover available",
 
 	// Announcement
 	[Key.announcement]: "Announcement",
@@ -411,22 +408,10 @@ export const en: Translation = {
 	[Key.friendEmptyTitle]: "No friend links in this category",
 	[Key.friendEmptyHint]: "Try another blog type",
 
-	// ===== 音乐可视化 =====
+	// ===== 音乐播放器 =====
 	[Key.playModeList]: "List loop",
 	[Key.playModeSingle]: "Single loop",
 	[Key.playModeShuffle]: "Shuffle",
-	[Key.currentTrack]: "Current track",
-	[Key.musicPlayerLabel]: "Music player",
-	[Key.viewPlaylist]: "View playlist",
-	[Key.playbackControls]: "Playback controls",
-	[Key.playlistSwitch]: "Playlist switch",
-	[Key.backToPlayer]: "Back to player",
-	[Key.currentPlaylist]: "Current playlist",
-	[Key.playlistLoading]: "Loading playlist",
-	[Key.musicVisualizer]: "Music visualizer",
-	[Key.musicVisualizer3D]: "3D visualizer",
-	[Key.musicVisualizerDescription]:
-		"Enter an immersive music visualization that turns playback into a dynamic 3D landscape, adding motion and atmosphere to every listening session.",
 
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "Page loading",

@@ -2,7 +2,7 @@
  * 构建期封面图解析与优化。
  *
  * 文章 frontmatter 的 image 字段有三种形态，处理方式不同：
- * - 相对路径（`./assets/x.webp`）：src 下的资源，交给 Astro 图片服务 resize + 转码，产出 srcset；
+ * - 相对路径（`./assets/x.webp`）：src 下的资源，交给 Astro 图片服务 resize + 转码，产出单一尺寸；
  * - `/` 开头：public 下的资源，Astro 不做优化，只能原样引用；
  * - http(s) / data:：远程图，同样无法在构建期处理，只补 referrerpolicy。
  *
@@ -23,6 +23,10 @@ import {
 	getImageQuality,
 	shouldAddNoReferrer,
 } from "./image-utils";
+
+/** 所有文章封面统一输出宽度 */
+export const COVER_IMAGE_WIDTH = 828;
+
 import { getLqipStyle } from "./lqip-utils";
 import { url } from "./url-utils";
 
@@ -36,10 +40,8 @@ interface BuildCoverImageOptions {
 	image: string;
 	/** 相对路径的解析基准，取 getFileDirFromPath(entry.filePath) */
 	basePath?: string;
-	/** 构建期产出的候选宽度，会被源图宽度截断 */
-	widths: number[];
-	/** 与候选宽度配套的 sizes 描述 */
-	sizes: string;
+	/** 统一输出宽度，会被源图宽度截断 */
+	width: number;
 }
 
 function isRemoteImage(image: string): boolean {
@@ -77,7 +79,7 @@ async function loadLocalImage(
 export async function buildCoverImage(
 	options: BuildCoverImageOptions,
 ): Promise<CoverImageSource | null> {
-	const { image, basePath = "", widths, sizes } = options;
+	const { image, basePath = "", width } = options;
 	if (!image) return null;
 
 	if (isRemoteImage(image)) {
@@ -104,22 +106,17 @@ export async function buildCoverImage(
 	const metadata = await loadLocalImage(image, basePath);
 	if (!metadata) return null;
 
-	// 不做放大：候选宽度全部截断到源图宽度以内并去重
-	const targetWidths = [
-		...new Set(widths.map((width) => Math.min(width, metadata.width))),
-	].sort((left, right) => left - right);
-	const maxWidth = targetWidths[targetWidths.length - 1];
+	// 不做放大：目标宽度不超过源图宽度
+	const targetWidth = Math.min(width, metadata.width);
 	const quality = getImageQuality();
 	const fallbackFormat = getFallbackFormat();
 
-	// layout: "none" 让 Astro 不自行推导 widths/sizes、也不注入响应式内联样式，
+	// layout: "none" 让 Astro 不自行推导响应式尺寸，也不注入内联样式，
 	// 尺寸完全由本仓库既有 CSS 控制
 	const optimize = (format: ImageFormat) =>
 		getImage({
 			src: metadata,
-			widths: targetWidths,
-			width: maxWidth,
-			sizes,
+			width: targetWidth,
 			format,
 			quality,
 			layout: "none",
@@ -132,17 +129,15 @@ export async function buildCoverImage(
 	const sources = await Promise.all(
 		extraFormats.map(async (format) => ({
 			type: `image/${format}`,
-			srcset: (await optimize(format)).srcSet.attribute,
+			src: (await optimize(format)).src,
 		})),
 	);
 
 	return {
 		src: fallback.src,
-		srcset: fallback.srcSet.attribute || undefined,
-		sizes,
 		sources,
-		width: maxWidth,
-		height: Math.round((maxWidth * metadata.height) / metadata.width),
+		width: targetWidth,
+		height: Math.round((targetWidth * metadata.height) / metadata.width),
 		lqipStyle: getLqipStyle(image, basePath),
 	};
 }

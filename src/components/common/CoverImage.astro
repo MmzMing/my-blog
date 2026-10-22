@@ -4,7 +4,7 @@
  * 列表卡片、置顶卡片、文章详情页各自的包裹层、加载动画与像素揭示遮罩
  * 都由调用方保留，尺寸和圆角仍由既有 CSS 控制。
  *
- * 图片数据由 buildCoverImage() 在构建期算好（含多格式 srcset 与 LQIP）。
+ * 图片数据由 buildCoverImage() 在构建期算好（含多格式候选与 LQIP）。
  * data-cover-image 是客户端封面生命周期定位 <img> 的统一标记。
  */
 import type { CoverImageSource } from "@/types/cover-image";
@@ -36,8 +36,6 @@ const className = Astro.props.class;
 
 const imageAttributes = {
 	src: cover.src,
-	srcset: cover.srcset,
-	sizes: cover.srcset ? cover.sizes : undefined,
 	width: cover.width,
 	height: cover.height,
 	alt,
@@ -55,7 +53,7 @@ const imageAttributes = {
 {cover.sources.length > 0 ? (
 	<picture>
 		{cover.sources.map((source) => (
-			<source type={source.type} srcset={source.srcset} sizes={cover.sizes} />
+			<source type={source.type} srcset={source.src} />
 		))}
 		<img {...imageAttributes} />
 	</picture>

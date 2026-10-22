@@ -2,7 +2,7 @@
 title: Firefly 博客魔改总结：Astro 内容系统、Svelte 交互与部署
 image: ./assets/others-blog-firefly-mod.webp
 published: 2026-08-21
-description: 记录 Firefly 博客主题的二次开发，涵盖 Astro 内容系统、Svelte 交互、首页动效、音乐可视化、标签图谱、留言板和 Cloudflare 集成。
+description: 记录 Firefly 博客主题的二次开发，涵盖 Astro 内容系统、Svelte 交互、首页动效、音乐播放器、标签图谱、留言板和 Cloudflare 集成。
 tags: [博客, 二开, firefly]
 category: 学习文档
 pinned: true
@@ -10,7 +10,7 @@ draft: false
 ---
 
 > [!NOTE] 提示
-> 本文记录基于 Firefly 主题进行二次开发的实现取舍，覆盖首页动效、音乐可视化、标签图谱、留言板、Cloudflare 集成和部署流程。项目目标是保留 Astro 内容系统，同时将交互功能拆分为可独立维护的模块。
+> 本文记录基于 Firefly 主题进行二次开发的实现取舍，覆盖首页动效、音乐播放器、标签图谱、留言板、Cloudflare 集成和部署流程。项目目标是保留 Astro 内容系统，同时将交互功能拆分为可独立维护的模块。
 
 ## 选型背景
 
@@ -41,20 +41,9 @@ draft: false
 | `@swup/astro` | `1.8.0` | 提供页面缓存、预加载和页面切换；切换后重新初始化动态组件 |
 | Tailwind CSS | `4.2.4` | 提供通用布局、排版和响应式样式 |
 
-### 2、音乐
+### 2、音乐播放器
 
-3D棋盘可视化音乐。
-
-该功能参考并复刻了开源音乐地图项目的交互思路。
-
-实现参考了 [sonic-topography](https://github.com/yin-yizhen/sonic-topography)，并根据本站布局和数据结构进行了改造。复用代码或素材前应确认原项目许可证和署名要求。
-
-| 技术栈 | 版本 | 作用 |
-| --- | --- | --- |
-| HTMLAudioElement | 浏览器原生 API | 控制播放、暂停、进度和音量 |
-| Three.js | `0.184.0` | 构建音乐可视化的 3D 场景、相机与实例化网格 |
-| WebGL | 浏览器原生 API | 渲染音乐可视化的 3D 画面 |
-| Web Audio API | 浏览器原生 API | 使用 AudioContext 与分析节点读取频谱数据并驱动可视化 |
+保留全局音乐播放器：桌面悬浮组件与移动端 dock 共用同一播放引擎，支持 Meting API、本地曲目、播放列表与歌词，不包含独立的 3D 音乐页面。
 
 ### 3、分类标签
 

@@ -1,6 +1,5 @@
 /* 知识图谱页（/categories/）的全屏外壳。
-   手法照抄 src/styles/pages/music-visualizer.css:1-95 —— 不新建 layout，
-   用 position:fixed 破框 + html:has() 抑制容器外的持久组件。
+   不新建 layout，用 position:fixed 破框 + html:has() 抑制容器外的持久组件。
    这样 #swup-container 的 DOM 结构不动，swup 的容器配置与 definePageIsland
    的代数机制完全不受影响。 */
 

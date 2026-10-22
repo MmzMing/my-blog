@@ -52,7 +52,6 @@ export const ja: Translation = {
 	[Key.musicNoPlaying]: "再生中なし",
 	[Key.musicLyrics]: "歌詞",
 	[Key.musicVolume]: "音量",
-	[Key.musicPlayMode]: "再生モードを切り替え",
 	[Key.musicPrev]: "前の曲",
 	[Key.musicNext]: "次の曲",
 	[Key.musicPlaylist]: "プレイリスト",
@@ -64,8 +63,6 @@ export const ja: Translation = {
 	[Key.musicPlay]: "再生",
 	[Key.musicPause]: "一時停止",
 	[Key.musicProgress]: "再生の進捗",
-	[Key.musicCover]: "カバー",
-	[Key.musicNoCover]: "カバーなし",
 
 	// お知らせ
 	[Key.announcement]: "お知らせ",
@@ -412,22 +409,10 @@ export const ja: Translation = {
 	[Key.friendEmptyTitle]: "このカテゴリにはリンクがありません",
 	[Key.friendEmptyHint]: "他のブログタイプを選んでください",
 
-	// ===== 音乐可视化 =====
+	// ===== 音乐播放器 =====
 	[Key.playModeList]: "リストループ",
 	[Key.playModeSingle]: "一曲ループ",
 	[Key.playModeShuffle]: "シャッフル",
-	[Key.currentTrack]: "現在の曲",
-	[Key.musicPlayerLabel]: "音楽プレイヤー",
-	[Key.viewPlaylist]: "プレイリストを見る",
-	[Key.playbackControls]: "再生コントロール",
-	[Key.playlistSwitch]: "プレイリスト切替",
-	[Key.backToPlayer]: "プレイヤーに戻る",
-	[Key.currentPlaylist]: "現在のプレイリスト",
-	[Key.playlistLoading]: "プレイリスト読み込み中",
-	[Key.musicVisualizer]: "音楽ビジュアライザー",
-	[Key.musicVisualizer3D]: "3Dビジュアライザー",
-	[Key.musicVisualizerDescription]:
-		"再生中の音楽を立体的な地形と動きで表現する没入型ビジュアライザーです。音に合わせた視覚効果とともに音楽を楽しめます。",
 
 	// ===== 弹窗 / 杂项 =====
 	[Key.pageLoading]: "ページ読み込み中",
