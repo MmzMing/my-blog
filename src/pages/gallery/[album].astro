@@ -1,15 +1,19 @@
 ---
 import Icon from "@components/common/Icon.astro";
-import PhotoCard from "@/components/pages/gallery/PhotoCard.astro";
+import PaperDeckleDefs from "@components/common/PaperDeckleDefs.astro";
+import PhotoCard from "@components/pages/gallery/PhotoCard.astro";
 import { galleryConfig, siteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
-import { getAlbumCover, scanAlbumPhotos } from "@/utils/gallery-utils";
+import { buildAlbumBackground, scanAlbumPhotos } from "@/utils/gallery-utils";
 import { url } from "@/utils/url-utils";
+import "@/styles/components/post-hero.css";
+import "@/styles/components/post-header-nav.css";
+import "@/styles/components/post-accordion.css";
 import "@/styles/pages/gallery.css";
+import "@/styles/pages/gallery-detail.css";
 
-// 检查页面是否启用
 if (!siteConfig.pages.gallery) {
 	return Astro.redirect("/404/");
 }
@@ -27,127 +31,123 @@ export function getStaticPaths() {
 }
 
 const { album: albumId } = Astro.params;
-const albumMeta = galleryConfig.albums.find((a) => a.id === albumId);
+const albumMeta = galleryConfig.albums.find((album) => album.id === albumId);
 
 if (!albumMeta) {
 	return Astro.redirect("/404/");
 }
 
 const photos = await scanAlbumPhotos(albumMeta.id);
-const cover = getAlbumCover(albumMeta, photos);
-const columnWidth = galleryConfig.columnWidth || 240;
+const backgroundPhoto = photos[0];
+const backgroundImage = backgroundPhoto
+	? await buildAlbumBackground(albumMeta.id, backgroundPhoto)
+	: undefined;
 ---
 
-<MainGridLayout title={albumMeta.name} description={albumMeta.description || `${i18n(I18nKey.albumPrefix)}${albumMeta.name}`} hasOwnH1={true}>
-	<h1 class="sr-only">{albumMeta.name}</h1>
-  <!-- 相册封面横幅 -->
-  <div class="w-full rounded-(--radius-large) overflow-hidden relative">
-    {cover ? (
-      <div class="relative w-full aspect-[3/1] min-h-[200px] max-h-[360px]">
-        <img
-          src={cover}
-          alt={albumMeta.name}
-          class="w-full h-full object-cover"
-        />
-        <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-        <!-- 返回按钮 -->
-        <a
-          href={url("/gallery/")}
-          class="absolute top-4 left-4 inline-flex items-center gap-1.5 text-sm text-white/90 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-lg transition-colors"
-        >
-          <Icon name="material-symbols:arrow-back" class="text-base" />
-          {i18n(I18nKey.galleryBackToAlbums)}
-        </a>
-        <!-- 封面上的信息 -->
-        <div class="absolute bottom-0 left-0 right-0 p-6">
-          <div class="text-2xl sm:text-3xl font-bold text-white mb-2 drop-shadow-lg">
-            {albumMeta.name}
-          </div>
-          {albumMeta.description && (
-            <p class="text-sm text-white/75 leading-relaxed mb-2 max-w-2xl line-clamp-2">
-              {albumMeta.description}
-            </p>
-          )}
-          <div class="flex items-center gap-4 text-sm text-white/80 flex-wrap">
-            {albumMeta.date && (
-              <span class="inline-flex items-center gap-1">
-                <Icon name="material-symbols:calendar-today" class="text-sm" />
-                {albumMeta.date}
-              </span>
-            )}
-            {albumMeta.location && (
-              <span class="inline-flex items-center gap-1">
-                <Icon name="material-symbols:location-on" class="text-sm" />
-                {albumMeta.location}
-              </span>
-            )}
-            <span class="inline-flex items-center gap-1">
-              <Icon name="material-symbols:photo-library" class="text-sm" />
-              {photos.length} {i18n(I18nKey.galleryPhotos)}
-            </span>
-          </div>
-          {albumMeta.tags && albumMeta.tags.length > 0 && (
-            <div class="flex flex-wrap gap-1.5 mt-2.5">
-              {albumMeta.tags.map((tag) => (
-                <span class="text-xs px-2 py-0.5 rounded bg-white/20 text-white/90 backdrop-blur-sm">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    ) : (
-      <div class="card-base px-6 py-4">
-        <a
-          href={url("/gallery/")}
-          class="inline-flex items-center gap-1 text-sm text-(--primary) hover:underline mb-3"
-        >
-          <Icon name="material-symbols:arrow-back" class="text-base" />
-          {i18n(I18nKey.galleryBackToAlbums)}
-        </a>
-        <div class="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-          {albumMeta.name}
-        </div>
-        <div class="flex items-center gap-4 text-sm text-neutral-500 dark:text-neutral-400 mt-2 flex-wrap">
-          {albumMeta.date && (
-            <span class="inline-flex items-center gap-1">
-              <Icon name="material-symbols:calendar-today" class="text-sm" />
-              {albumMeta.date}
-            </span>
-          )}
-          {albumMeta.location && (
-            <span class="inline-flex items-center gap-1">
-              <Icon name="material-symbols:location-on" class="text-sm" />
-              {albumMeta.location}
-            </span>
-          )}
-          <span>{photos.length} {i18n(I18nKey.galleryPhotos)}</span>
-        </div>
-      </div>
-    )}
-  </div>
+<MainGridLayout
+	title={albumMeta.name}
+	description={albumMeta.description || `${i18n(I18nKey.albumPrefix)}${albumMeta.name}`}
+	hasOwnH1={true}
+>
+	<article class="gallery-detail" data-gallery-detail data-gallery-page>
+		{backgroundPhoto && (
+			<div class="gallery-detail__backdrop" aria-hidden="true">
+				<img
+					src={backgroundImage}
+					alt=""
+					width={backgroundPhoto.width}
+					height={backgroundPhoto.height}
+					loading="eager"
+					fetchpriority="high"
+					decoding="async"
+				/>
+			</div>
+		)}
 
-  <!-- 瀑布流照片网格 -->
-  <div class="w-full rounded-(--radius-large) overflow-hidden relative mt-4">
-    <div class="card-base z-10 px-6 py-6 relative w-full">
-      {photos.length > 0 ? (
-        <div
-          class="gallery-masonry"
-          style={`column-count: 2; column-gap: 0.75rem; --col-width: ${columnWidth}px;`}
-        >
-          {photos.map((photo) => (
-            <PhotoCard photo={photo} albumId={albumMeta.id} />
-          ))}
-        </div>
-      ) : (
-        <div class="flex flex-col items-center justify-center py-16 text-neutral-400 dark:text-neutral-500">
-          <Icon name="material-symbols:photo-library" class="text-6xl mb-4 opacity-50" />
-          <p class="text-lg">{i18n(I18nKey.galleryNoAlbums)}</p>
-        </div>
-      )}
-    </div>
-  </div>
+		<header class="post-hero gallery-detail__hero">
+			<div class="post-hero__content">
+				<nav class="post-nav gallery-detail__breadcrumb" aria-label={i18n(I18nKey.breadcrumb)}>
+					<a href={url("/gallery/")} class="post-nav__back">
+						<Icon name="material-symbols:arrow-back" class="post-nav__icon" aria-hidden="true" />
+						<span>{i18n(I18nKey.galleryBackToAlbums)}</span>
+					</a>
+					<span class="gallery-detail__breadcrumb-separator" aria-hidden="true">/</span>
+					<span class="gallery-detail__breadcrumb-current" aria-current="page">{albumMeta.name}</span>
+				</nav>
+				<h1 class="post-hero__title">{albumMeta.name}</h1>
+			</div>
 
-  <!-- 样式已迁移至 src/styles/pages/gallery.css -->
+			<div class="post-accordion gallery-detail__info">
+				<PaperDeckleDefs />
+				<div class="gallery-detail__info-content">
+					<div class="post-accordion__stats">
+						{albumMeta.date && (
+							<span class="post-accordion__stat">
+								<Icon name="material-symbols:calendar-today" aria-hidden="true" />
+								<time datetime={albumMeta.date}>{albumMeta.date}</time>
+							</span>
+						)}
+						{albumMeta.location && (
+							<span class="post-accordion__stat">
+								<Icon name="material-symbols:location-on" aria-hidden="true" />
+								<span>{albumMeta.location}</span>
+							</span>
+						)}
+						<span class="post-accordion__stat">
+							<Icon name="material-symbols:photo-library" aria-hidden="true" />
+							<span>{photos.length} {i18n(I18nKey.galleryPhotos)}</span>
+						</span>
+					</div>
+					{albumMeta.tags && albumMeta.tags.length > 0 && (
+						<div class="post-accordion__terms">
+							{albumMeta.tags.map((tag) => (
+								<span class="post-accordion__term-link">{tag}</span>
+							))}
+						</div>
+					)}
+					{albumMeta.description && (
+						<p class="post-accordion__desc">{albumMeta.description}</p>
+					)}
+				</div>
+			</div>
+		</header>
+
+		<div class="gallery-detail__stage">
+			{photos.length > 0 ? (
+				<div class="gallery-detail__photos">
+					{photos.map((photo, index) => (
+						<PhotoCard
+							photo={photo}
+							albumId={albumMeta.id}
+							alt={`${albumMeta.name} · ${index + 1} / ${photos.length}`}
+						/>
+					))}
+				</div>
+			) : (
+				<div class="gallery-detail__empty">
+					<Icon name="material-symbols:photo-library" class="text-6xl" aria-hidden="true" />
+					<p>{i18n(I18nKey.galleryNoAlbums)}</p>
+				</div>
+			)}
+		</div>
+	</article>
 </MainGridLayout>
+
+<script>
+	import { mountGalleryDetail } from "@/utils/gallery-detail-controller";
+	import { definePageIsland } from "@/utils/swup-lifecycle";
+
+	let cleanup: (() => void) | undefined;
+
+	definePageIsland({
+		name: "gallery-detail",
+		match: () => !!document.querySelector("[data-gallery-detail]"),
+		mount: () => {
+			cleanup = mountGalleryDetail();
+		},
+		unmount: () => {
+			cleanup?.();
+			cleanup = undefined;
+		},
+	});
+</script>

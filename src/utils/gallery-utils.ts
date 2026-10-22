@@ -72,3 +72,28 @@ export function getAlbumCover(
 	const coverFile = photos.find((photo) => /\/cover\./i.test(photo.src));
 	return coverFile?.src || photos[0]?.src || "";
 }
+
+export async function buildAlbumBackground(
+	albumId: string,
+	photo: GalleryPhoto,
+): Promise<string> {
+	const filePath = path.join(
+		process.cwd(),
+		"public",
+		"gallery",
+		albumId,
+		path.basename(photo.src),
+	);
+	try {
+		const background = await sharp(filePath)
+			.resize({ width: 480, withoutEnlargement: true })
+			.blur(8)
+			.webp({ quality: 55 })
+			.toBuffer();
+		return `data:image/webp;base64,${background.toString("base64")}`;
+	} catch (error) {
+		throw new Error(`Unable to generate album background: ${filePath}`, {
+			cause: error,
+		});
+	}
+}

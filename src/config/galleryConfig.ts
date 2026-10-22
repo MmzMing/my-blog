@@ -14,13 +14,22 @@ export const galleryConfig: GalleryConfig = {
 		// tags: 相册标签，用于分类和过滤
 		// 每添加一个数组项就相当于添加了一个相册，记得在 public/gallery/ 目录下创建对应的子目录并放入图片
 		{
-			id: "gpt-img2-2026",
-			name: "GPT生图",
+			id: "大肥鱼人设",
+			name: "大肥鱼三视图",
 			description:
-				"浏览本相册收录的 Image 2 生成图片，按作品、主题与时间探索创作内容和视觉灵感记录。",
-			location: "gpt",
-			date: "2026-05-24",
-			tags: ["AI", "GPT生图"],
+				"收录大肥鱼人设三视图，由 GPT Image2.5 生成，用于角色形象设计参考。",
+			location: "gpt2.5",
+			date: "2026-10-24",
+			tags: ["大肥鱼", "GPT生图", "三视图"],
+		},
+		{
+			id: "大肥鱼k2",
+			name: "大肥鱼k2",
+			description:
+				"本相册收录大肥鱼（deepsekk 鲸鱼娘）相关图片，二次元幻想设定，呈现深海氛围、角色造型与情绪表达。图片由 Krea2 生成，用于记录创作过程与视觉参考。",
+			location: "gpt2.5",
+			date: "2026-10-24",
+			tags: ["大肥鱼", "krea2"],
 		},
 	],
 

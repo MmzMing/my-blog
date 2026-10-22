@@ -221,6 +221,7 @@ export const zh_CN: Translation = {
 	[Key.galleryDescription]:
 		"浏览本站收录的相册，按主题探索图片和作品，记录值得保存的生活片段与创作内容。",
 	[Key.galleryPhotos]: "张照片",
+	[Key.galleryImageFailed]: "图片加载失败",
 	[Key.galleryNoAlbums]: "暂无相册",
 	[Key.galleryBackToAlbums]: "返回相册列表",
 

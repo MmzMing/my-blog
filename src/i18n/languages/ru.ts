@@ -226,6 +226,7 @@ export const ru: Translation = {
 	[Key.galleryDescription]:
 		"Просматривайте альбомы сайта, находите изображения и работы по темам, сохраняйте интересные моменты и творческие заметки.",
 	[Key.galleryPhotos]: "фото",
+	[Key.galleryImageFailed]: "Не удалось загрузить изображение",
 	[Key.galleryNoAlbums]: "Пока нет альбомов",
 	[Key.galleryBackToAlbums]: "Вернуться к альбомам",
 

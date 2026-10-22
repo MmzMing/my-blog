@@ -224,6 +224,7 @@ export const en: Translation = {
 	[Key.galleryDescription]:
 		"Browse the site's albums, explore images and works by theme, and revisit saved moments, visual ideas, and creative projects.",
 	[Key.galleryPhotos]: "photos",
+	[Key.galleryImageFailed]: "Image failed to load",
 	[Key.galleryNoAlbums]: "No albums yet",
 	[Key.galleryBackToAlbums]: "Back to albums",
 

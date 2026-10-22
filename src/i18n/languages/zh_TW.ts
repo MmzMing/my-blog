@@ -223,6 +223,7 @@ export const zh_TW: Translation = {
 	[Key.galleryDescription]:
 		"瀏覽本站收錄的相簿，按主題探索圖片和作品，記錄值得保存的生活片段與創作內容。",
 	[Key.galleryPhotos]: "張照片",
+	[Key.galleryImageFailed]: "圖片載入失敗",
 	[Key.galleryNoAlbums]: "暫無相簿",
 	[Key.galleryBackToAlbums]: "返回相簿列表",
 

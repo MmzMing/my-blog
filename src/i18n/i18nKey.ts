@@ -202,6 +202,7 @@ enum I18nKey {
 	gallery = "gallery",
 	galleryDescription = "galleryDescription",
 	galleryPhotos = "galleryPhotos",
+	galleryImageFailed = "galleryImageFailed",
 	galleryNoAlbums = "galleryNoAlbums",
 	galleryBackToAlbums = "galleryBackToAlbums",
 

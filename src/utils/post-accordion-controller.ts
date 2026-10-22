@@ -9,10 +9,11 @@
 const ITEM_SELECTOR = "[data-post-accordion-item]";
 const HEADER_SELECTOR = ".post-accordion__header";
 
-export function mountPostAccordion(): () => void {
-	const items = Array.from(
-		document.querySelectorAll<HTMLElement>(ITEM_SELECTOR),
-	);
+export function mountPostAccordion(
+	root: ParentNode = document,
+	itemSelector: string = ITEM_SELECTOR,
+): () => void {
+	const items = Array.from(root.querySelectorAll<HTMLElement>(itemSelector));
 	if (items.length === 0) return () => {};
 
 	const abortController = new AbortController();

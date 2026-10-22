@@ -1,4 +1,13 @@
 /* 相册详情与相册卡片 */
+#swup-container:has([data-gallery-page]) {
+	min-height: 100dvh;
+}
+
+#main-grid-wrapper:has([data-gallery-detail]) .site-footer {
+	position: relative;
+	z-index: 1;
+}
+
 .gallery-tabs-wrapper {
 	display: flex;
 	margin-bottom: 1.5rem;
@@ -105,6 +114,10 @@
 	box-shadow: 0 2px 10px var(--album-shadow);
 	transition: 0.3s;
 	text-decoration: none;
+}
+
+.album-card.hidden {
+	display: none;
 }
 
 .album-card::before,

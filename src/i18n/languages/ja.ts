@@ -226,6 +226,7 @@ export const ja: Translation = {
 	[Key.galleryDescription]:
 		"サイトに収録したアルバムを閲覧し、テーマごとに写真や作品を探せます。残しておきたい瞬間や創作の記録をお楽しみください。",
 	[Key.galleryPhotos]: "枚の写真",
+	[Key.galleryImageFailed]: "画像を読み込めませんでした",
 	[Key.galleryNoAlbums]: "アルバムがありません",
 	[Key.galleryBackToAlbums]: "アルバム一覧に戻る",
 
