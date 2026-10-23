@@ -682,6 +682,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "wuxian’s blog",
+		imgurl: "https://www.alxian.cn/_next/image?url=%2Fimages%2Fkeep-going.png&w=256&q=75",
+		desc: "个人博客",
+		siteurl: "https://alxian.cn",
+		image: "/assets/images/friends/alxian.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
