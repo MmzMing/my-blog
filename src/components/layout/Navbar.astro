@@ -812,12 +812,14 @@ function initNavbarScrollLayout() {
 definePersistentIsland("navbar:scroll-layout", initNavbarScrollLayout);
 
 // generation === 0 就是首次加载：此时激活项已经是服务端渲染好的，不要做位移过渡；
-// 导航后才需要动画
+// 导航后才需要动画。导航栏 DOM 跨导航常驻，unmount 只需解绑监听与观察者，
+// 换代重挂由 mount 开头的 cleanupHoverSlider 再兜一层
 definePageIsland({
 	name: "navbar:hover-slider",
 	mount: ({ generation }) => {
 		initHoverSlider(generation > 0);
 	},
+	unmount: cleanupHoverSlider,
 });
 
 // ===== 右段工具面板（桌面端）：悬停/聚焦展开 公告 / 主题 / 搜索 =====
