@@ -684,7 +684,8 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 		title: "wuxian’s blog",
-		imgurl: "https://www.alxian.cn/_next/image?url=%2Fimages%2Fkeep-going.png&w=256&q=75",
+		imgurl:
+			"https://www.alxian.cn/_next/image?url=%2Fimages%2Fkeep-going.png&w=256&q=75",
 		desc: "个人博客",
 		siteurl: "https://alxian.cn",
 		image: "/assets/images/friends/alxian.webp",
