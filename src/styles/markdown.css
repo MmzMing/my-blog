@@ -481,3 +481,32 @@
   margin: 1.5rem auto !important;
   border-radius: var(--radius-large, 0.75rem);
 }
+
+/* GFM 脚注引用：主题色、方括号、无正文链接虚线 */
+.custom-md a[data-footnote-ref]:not(.no-styling):not(.anchor) {
+  color: var(--link-color);
+  border-bottom: 0;
+  border-image: none;
+  text-decoration-line: none;
+}
+
+.custom-md a[data-footnote-ref]:not(.no-styling):not(.anchor)::before {
+  content: "[";
+}
+
+.custom-md a[data-footnote-ref]:not(.no-styling):not(.anchor)::after {
+  content: "]";
+}
+
+/* 脚注返回箭头：普通链接配色，下划线保持实线 */
+.custom-md a[data-footnote-backref]:not(.no-styling):not(.anchor) {
+  border-bottom: 1px solid var(--content-meta);
+  border-image: none;
+}
+
+.custom-md a[data-footnote-backref]:not(.no-styling):not(.anchor):hover,
+.custom-md a[data-footnote-backref]:not(.no-styling):not(.anchor):active {
+  color: var(--link-color);
+  border-bottom-color: var(--link-color);
+  border-image: none;
+}

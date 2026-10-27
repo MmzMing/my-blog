@@ -5,7 +5,6 @@ published: 2026-06-14
 description: 记录使用 AI 搭建和维护 Astro 博客的实践流程，涵盖视觉定位、HTML 原型、项目规范、功能开发、测试验证和持续迭代。
 tags: [AI, 前端, 博客]
 category: 学习文档
-pinned: true
 draft: false
 ---
 

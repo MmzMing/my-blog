@@ -1,0 +1,580 @@
+---
+import { z } from "astro/zod";
+
+export interface StepItem {
+	id: string;
+	title: string;
+	hint?: string;
+}
+
+const stepSchema = z.array(
+	z.object({
+		id: z.string(),
+		title: z.string(),
+		hint: z.string().optional(),
+	}),
+);
+
+interface Props {
+	storageKey: string;
+	title?: string;
+	steps: StepItem[] | string;
+	note?: string;
+}
+
+const { storageKey, title = "部署进度", steps: stepsInput, note } = Astro.props;
+const steps =
+	typeof stepsInput === "string"
+		? stepSchema.parse(JSON.parse(stepsInput))
+		: stepsInput;
+const headingId = `step-checklist-${storageKey.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+---
+
+<section
+	class="mdx-step-checklist"
+	data-step-checklist
+	data-storage-key={storageKey}
+	aria-labelledby={headingId}
+>
+	<header class="mdx-step-checklist__head">
+		<div class="mdx-step-checklist__title" id={headingId}>{title}</div>
+		<div
+			class="mdx-step-checklist__bar"
+			role="progressbar"
+			aria-label={title}
+			aria-valuemin="0"
+			aria-valuemax={steps.length}
+			aria-valuenow="0"
+		>
+			<span class="mdx-step-checklist__fill" data-step-bar>
+				<span class="mdx-step-checklist__shine" data-step-shine></span>
+			</span>
+		</div>
+		<span class="mdx-step-checklist__count" data-step-count aria-live="polite">
+			0 / {steps.length}
+		</span>
+	</header>
+	<ul class="mdx-step-checklist__list">
+		{steps.map((step, index) => (
+			<li
+				class="mdx-step-checklist__item"
+				data-step-item
+				style={`animation-delay: ${120 + Math.min(index, 12) * 60}ms`}
+			>
+				<button
+					class="mdx-step-checklist__step"
+					type="button"
+					role="checkbox"
+					aria-checked="false"
+					data-step-toggle
+					data-step-id={step.id}
+				>
+					<span class="mdx-step-checklist__check" aria-hidden="true">
+						<svg viewBox="0 0 24 24">
+							<path d="M6.5 12.5l3.5 3.5 7.5-8" pathLength="1" />
+						</svg>
+					</span>
+					<span class="mdx-step-checklist__content">
+						<span class="mdx-step-checklist__step-title">{step.title}</span>
+						{step.hint && (
+							<span class="mdx-step-checklist__hint">{step.hint}</span>
+						)}
+					</span>
+				</button>
+			</li>
+		))}
+	</ul>
+	<footer class="mdx-step-checklist__footer">
+		<span class="mdx-step-checklist__status" data-step-status>未开始</span>
+		<button class="mdx-step-checklist__reset" type="button" data-step-reset>
+			重置进度
+		</button>
+		{note && <span class="mdx-step-checklist__note">{note}</span>}
+	</footer>
+</section>
+
+<script is:inline>
+	(function () {
+		var SELECTOR = "[data-step-checklist]";
+		var PREFIX = "mdx-step-checklist:";
+		var memory =
+			window.__mdxStepChecklistMemory ||
+			(window.__mdxStepChecklistMemory = {});
+
+		function read(key) {
+			if (memory[key]) return memory[key];
+
+			var state = {};
+			try {
+				var raw = window.localStorage.getItem(PREFIX + key);
+				if (raw) {
+					var parsed = JSON.parse(raw);
+					if (
+						parsed &&
+						typeof parsed === "object" &&
+						!Array.isArray(parsed)
+					) {
+						state = parsed;
+					}
+				}
+			} catch (error) {
+				state = {};
+			}
+
+			memory[key] = state;
+			return state;
+		}
+
+		function write(key, state) {
+			memory[key] = state;
+			try {
+				window.localStorage.setItem(PREFIX + key, JSON.stringify(state));
+			} catch (error) {
+				// 隐私模式或配额不足时保留内存状态，当前页面仍可勾选。
+			}
+		}
+
+		function render(root) {
+			if (!root) return;
+
+			var key = root.dataset.storageKey;
+			if (!key) return;
+
+			var state = read(key);
+			var steps = root.querySelectorAll("[data-step-toggle]");
+			var done = 0;
+
+			steps.forEach(function (button) {
+				var checked = state[button.dataset.stepId] === true;
+				button.setAttribute("aria-checked", String(checked));
+				var item = button.closest("[data-step-item]");
+				if (item) item.classList.toggle("is-done", checked);
+				if (checked) done += 1;
+			});
+
+			var total = steps.length;
+			var ratio = total ? done / total : 0;
+			var bar = root.querySelector("[data-step-bar]");
+			var track = root.querySelector("[role='progressbar']");
+			var count = root.querySelector("[data-step-count]");
+			var status = root.querySelector("[data-step-status]");
+			var previous = Number(root.dataset.doneCount || 0);
+
+			if (bar) bar.style.transform = "scaleX(" + ratio + ")";
+			if (track) {
+				track.setAttribute("aria-valuenow", String(done));
+				track.setAttribute("aria-valuemax", String(total));
+				track.setAttribute(
+					"aria-valuetext",
+					done + " / " + total + " 已完成",
+				);
+			}
+			if (count) {
+				var label = done + " / " + total;
+				if (count.textContent !== label) {
+					count.textContent = label;
+					count.classList.remove("is-rolling");
+					void count.offsetWidth;
+					count.classList.add("is-rolling");
+				}
+			}
+			if (done > previous) {
+				var shine = root.querySelector("[data-step-shine]");
+				if (shine) {
+					shine.classList.remove("is-shining");
+					void shine.offsetWidth;
+					shine.classList.add("is-shining");
+				}
+			}
+			root.dataset.doneCount = String(done);
+			if (status) {
+				status.textContent =
+					done === 0 ? "未开始" : done === total ? "全部完成" : "进行中";
+				status.dataset.state =
+					done === 0 ? "idle" : done === total ? "done" : "active";
+			}
+		}
+
+		function setup(root) {
+			if (!root || root.dataset.stepReady === "true") return;
+			root.dataset.stepReady = "true";
+			render(root);
+		}
+
+		function setupAll() {
+			document.querySelectorAll(SELECTOR).forEach(setup);
+		}
+
+		if (!window.__mdxStepChecklistReady) {
+			window.__mdxStepChecklistReady = true;
+
+			document.addEventListener("click", function (event) {
+				var target = event.target;
+				if (!(target instanceof Element)) return;
+
+				var toggle = target.closest("[data-step-toggle]");
+				if (toggle) {
+					var root = toggle.closest(SELECTOR);
+					if (!root) return;
+
+					var id = toggle.dataset.stepId;
+					var key = root.dataset.storageKey;
+					if (!id || !key) return;
+
+					var state = read(key);
+					state[id] = !(state[id] === true);
+					write(key, state);
+					render(root);
+					return;
+				}
+
+				var reset = target.closest("[data-step-reset]");
+				if (!reset) return;
+
+				var resetRoot = reset.closest(SELECTOR);
+				if (!resetRoot) return;
+
+				var resetKey = resetRoot.dataset.storageKey;
+				if (!resetKey) return;
+
+				write(resetKey, {});
+				render(resetRoot);
+			});
+		}
+
+		setupAll();
+		if (document.readyState === "loading") {
+			document.addEventListener("DOMContentLoaded", setupAll, { once: true });
+		}
+	})();
+</script>
+
+<style is:global>
+.mdx-step-checklist {
+	--step-ink: var(--deep-text);
+	--step-muted: var(--content-meta);
+	--step-line: var(--line-divider);
+	--step-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	box-sizing: border-box;
+	width: 100%;
+	margin: 1.5rem 0 2rem;
+	padding: 0;
+	border-top: 1px solid var(--step-line);
+	border-bottom: 1px solid var(--step-line);
+	color: var(--step-ink);
+}
+
+.mdx-step-checklist *,
+.mdx-step-checklist *::before,
+.mdx-step-checklist *::after {
+	box-sizing: border-box;
+}
+
+.mdx-step-checklist__head {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 1rem 0 0.85rem;
+}
+
+.mdx-step-checklist__title {
+	flex: 0 0 auto;
+	margin: 0;
+	color: var(--step-ink);
+	font-size: 1rem;
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+
+.mdx-step-checklist__count {
+	flex: none;
+	color: var(--step-muted);
+	font-size: 0.85rem;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.mdx-step-checklist__count.is-rolling {
+	animation: mdx-step-check-roll 450ms var(--step-ease);
+}
+
+.mdx-step-checklist__bar {
+	position: relative;
+	flex: 1 1 8rem;
+	min-width: 4rem;
+	height: 0.5rem;
+	margin: 0;
+	overflow: hidden;
+	border-radius: var(--radius-full);
+	background: var(--step-line);
+}
+
+.mdx-step-checklist__fill {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	border-radius: inherit;
+	background: var(--step-ink);
+	transform: scaleX(0);
+	transform-origin: 0 50%;
+	transition: transform 700ms var(--step-ease);
+}
+
+.mdx-step-checklist__shine {
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+			90deg,
+			transparent 30%,
+			rgba(255, 255, 255, 0.28) 50%,
+			transparent 70%
+		)
+		0 0 / 220% 100% no-repeat;
+	opacity: 0;
+}
+
+.mdx-step-checklist__shine.is-shining {
+	animation: mdx-step-check-shine 900ms ease-out both;
+}
+
+.mdx-step-checklist__list {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mdx-step-checklist__item {
+	margin: 0;
+	padding: 0;
+	border-top: 1px solid var(--step-line);
+	animation: mdx-step-check-row-in 600ms var(--step-ease) both;
+}
+
+.mdx-step-checklist__step {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.7rem;
+	width: 100%;
+	margin: 0;
+	padding: 0.72rem 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	transition: background-color 160ms ease;
+}
+
+.mdx-step-checklist__step:hover,
+.mdx-step-checklist__step:focus-visible {
+	background: var(--btn-plain-bg-hover);
+}
+
+.mdx-step-checklist__step:hover .mdx-step-checklist__hint,
+.mdx-step-checklist__step:focus-visible .mdx-step-checklist__hint {
+	color: var(--step-ink);
+}
+
+.mdx-step-checklist__step:focus-visible {
+	outline: 2px solid var(--step-muted);
+	outline-offset: 0;
+}
+
+.mdx-step-checklist__check {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 1.25rem;
+	height: 1.25rem;
+	margin-top: 0.1rem;
+	border: 1.5px solid var(--step-muted);
+	border-radius: 50%;
+	transition:
+		background-color 220ms var(--step-ease),
+		border-color 220ms var(--step-ease);
+}
+
+.mdx-step-checklist__check svg {
+	width: 0.875rem;
+	height: 0.875rem;
+	fill: none;
+	stroke: var(--page-bg);
+	stroke-width: 2.4;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	transition: stroke-dashoffset 300ms ease;
+}
+
+.mdx-step-checklist__step[aria-checked="true"] .mdx-step-checklist__check {
+	border-color: var(--step-ink);
+	background: var(--step-ink);
+	animation: mdx-step-check-pop 500ms var(--step-ease);
+}
+
+.mdx-step-checklist__step[aria-checked="true"] .mdx-step-checklist__check svg {
+	stroke-dashoffset: 0;
+	transition-delay: 120ms;
+}
+
+.mdx-step-checklist__content {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	min-width: 0;
+}
+
+.mdx-step-checklist__step-title {
+	display: inline-block;
+	align-self: flex-start;
+	width: fit-content;
+	max-width: 100%;
+	color: var(--step-ink);
+	font-size: 0.92rem;
+	line-height: 1.5;
+	background: linear-gradient(currentColor, currentColor) 0 58% / 0% 1.5px
+		no-repeat;
+	transition:
+		color 300ms ease,
+		background-size 420ms var(--step-ease);
+}
+
+.mdx-step-checklist__hint {
+	color: var(--step-muted);
+	font-size: 0.78rem;
+	line-height: 1.55;
+	white-space: pre-line;
+	transition:
+		color 160ms ease,
+		opacity 300ms ease;
+}
+
+.mdx-step-checklist__item.is-done .mdx-step-checklist__step-title {
+	color: var(--step-muted);
+	background-size: 100% 1.5px;
+}
+
+.mdx-step-checklist__item.is-done .mdx-step-checklist__hint {
+	opacity: 0.7;
+}
+
+.mdx-step-checklist__footer {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	margin-top: 0;
+	padding: 0.65rem 0 0.8rem;
+	border-top: 1px solid var(--step-line);
+}
+
+.mdx-step-checklist__status {
+	color: var(--step-muted);
+	font-size: 0.75rem;
+}
+
+.mdx-step-checklist__status[data-state="active"],
+.mdx-step-checklist__status[data-state="done"] {
+	color: var(--step-ink);
+}
+
+.mdx-step-checklist__reset {
+	margin-left: auto;
+	padding: 0.2rem 0.6rem;
+	border: 1px solid var(--step-line);
+	border-radius: var(--radius-full);
+	background: transparent;
+	color: var(--step-muted);
+	font: inherit;
+	font-size: 0.72rem;
+	line-height: 1.4;
+	cursor: pointer;
+	transition:
+		border-color 150ms ease,
+		color 150ms ease;
+}
+
+.mdx-step-checklist__reset:hover {
+	border-color: var(--step-ink);
+	color: var(--step-ink);
+}
+
+.mdx-step-checklist__reset:focus-visible {
+	outline: 2px solid var(--step-muted);
+	outline-offset: 2px;
+}
+
+.mdx-step-checklist__note {
+	flex-basis: 100%;
+	color: var(--step-muted);
+	font-size: 0.72rem;
+	line-height: 1.5;
+}
+
+@keyframes mdx-step-check-row-in {
+	from {
+		opacity: 0;
+		filter: blur(3px);
+		transform: translateY(8px);
+	}
+}
+
+@keyframes mdx-step-check-roll {
+	from {
+		opacity: 0;
+		transform: translateY(60%);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes mdx-step-check-pop {
+	0% {
+		transform: scale(0.9);
+	}
+	60% {
+		transform: scale(1.06);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes mdx-step-check-shine {
+	from {
+		background-position: 120% 0;
+		opacity: 1;
+	}
+	to {
+		background-position: -20% 0;
+		opacity: 0;
+	}
+}
+
+@media (max-width: 640px) {
+	.mdx-step-checklist__head {
+		padding-top: 0.85rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mdx-step-checklist,
+	.mdx-step-checklist *,
+	.mdx-step-checklist *::before,
+	.mdx-step-checklist *::after {
+		animation: none !important;
+		transition-duration: 1ms !important;
+		transition-delay: 0ms !important;
+	}
+}
+</style>

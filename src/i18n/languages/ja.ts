@@ -37,6 +37,7 @@ export const ja: Translation = {
 	[Key.postList]: "ドキュメント",
 	[Key.tableOfContents]: "目次",
 	[Key.readingProgress]: "読書の進捗",
+	[Key.footnotes]: "参考資料",
 	[Key.tocEmpty]: "このページには目次がありません",
 	[Key.tocAccordionAuto]: "自動折りたたみ",
 	[Key.tocExpandAll]: "すべて展開",

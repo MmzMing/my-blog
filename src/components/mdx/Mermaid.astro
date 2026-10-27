@@ -1,0 +1,46 @@
+---
+import { mermaidConfig } from "@/config";
+import { buildMermaidSvgs } from "../../plugins/rehype-mermaid.mjs";
+import {
+	DIAGRAM_CONTAINER,
+	DIAGRAM_WRAPPER,
+	MERMAID_CONTAINER,
+	MERMAID_SVG_DARK,
+	MERMAID_SVG_LIGHT,
+	MERMAID_WRAPPER,
+} from "../../plugins/utils/diagramConstants.js";
+
+interface Props {
+	chart: string;
+	label?: string;
+}
+
+const { chart, label = "流程图" } = Astro.props;
+let diagramIndex = 0;
+for (const char of chart) {
+	diagramIndex = (diagramIndex * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
+}
+
+const { lightSvg, darkSvg } = buildMermaidSvgs(
+	chart,
+	{
+		lightTheme: mermaidConfig.lightTheme,
+		darkTheme: mermaidConfig.darkTheme,
+	},
+	diagramIndex,
+);
+---
+
+<div
+	class={`${DIAGRAM_CONTAINER} ${MERMAID_CONTAINER}`}
+	role="img"
+	aria-label={label}
+>
+	<div
+		class={`${DIAGRAM_WRAPPER} ${MERMAID_WRAPPER}`}
+		data-generated-diagram="mermaid"
+	>
+		<div class={MERMAID_SVG_LIGHT} set:html={lightSvg}></div>
+		<div class={MERMAID_SVG_DARK} set:html={darkSvg}></div>
+	</div>
+</div>

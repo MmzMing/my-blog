@@ -37,6 +37,7 @@ export const en: Translation = {
 	[Key.postList]: "Docs",
 	[Key.tableOfContents]: "Table of Contents",
 	[Key.readingProgress]: "Reading progress",
+	[Key.footnotes]: "Footnotes",
 	[Key.tocEmpty]: "No table of contents on this page",
 	[Key.tocAccordionAuto]: "Auto-collapse accordion",
 	[Key.tocExpandAll]: "Expand all",

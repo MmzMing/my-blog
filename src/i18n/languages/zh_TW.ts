@@ -37,6 +37,7 @@ export const zh_TW: Translation = {
 	[Key.postList]: "文件",
 	[Key.tableOfContents]: "目錄",
 	[Key.readingProgress]: "閱讀進度",
+	[Key.footnotes]: "參考資料",
 	[Key.tocEmpty]: "目前頁面沒有目錄",
 	[Key.tocAccordionAuto]: "自動收合手風琴",
 	[Key.tocExpandAll]: "全部展開",

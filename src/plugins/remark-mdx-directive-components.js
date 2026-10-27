@@ -12,6 +12,8 @@ import { visit } from "unist-util-visit";
  *   （social-links 容器会自动并入前一段末尾，渲染为行内头像组）
  *   ::chat + :u 用户 / :a 助手 / :s 系统 / :u{name="昵称"} 用户 + ::
  *   :::chat + 上述角色行 / :::（容器写法）
+ *   :::checklist{storageKey="..." title="..." note="..."} + - id | 标题 | 说明 / :::
+ *   :::mermaid{label="..."} + ```mermaid 流程图``` / :::
  *   :::folding{title="..."}、:::blur、:::card-list + Markdown 内容 / :::
  *   ::link-card{...}（连续多个会合并为响应式网格）、::link-banner{...}
  *   :::alert、:::quote、:::title、:::tabs + :::tab、:::emoji-tail
@@ -46,6 +48,14 @@ const COMPONENTS = {
 	chat: {
 		name: "Chat",
 		types: ["leafDirective", "containerDirective"],
+	},
+	checklist: {
+		name: "StepChecklist",
+		types: ["containerDirective"],
+	},
+	mermaid: {
+		name: "Mermaid",
+		types: ["containerDirective"],
 	},
 	code: {
 		name: "CodeLang",
@@ -120,6 +130,7 @@ const COMPONENTS = {
 const EXPRESSION_PROPS = {
 	accordion: ["items"],
 	chat: ["messages"],
+	pic: ["src", "items"],
 	"profile-card": ["avatar"],
 	"social-links": ["links"],
 	timeline: ["items"],
@@ -357,6 +368,35 @@ function extractChatLeafBody(node, file, parent, index) {
 	}
 
 	return bodyLines.join("\n");
+}
+
+function parseChecklistBody(body) {
+	const steps = [];
+
+	for (const rawLine of body.split(/\r?\n/)) {
+		if (!rawLine.trim()) continue;
+
+		if (/^\s{2,}\S/.test(rawLine) && steps.length > 0) {
+			const detail = rawLine.trim();
+			const last = steps[steps.length - 1];
+			last.hint = last.hint ? `${last.hint}\n${detail}` : detail;
+			continue;
+		}
+
+		const line = rawLine.trim();
+		const match = line.match(/^(?:[-*+]\s+)?(.+)$/);
+		if (!match) continue;
+
+		const [id, title, ...rest] = match[1]
+			.split("|")
+			.map((field) => field.trim());
+		if (!id || !title) continue;
+
+		const hint = rest.join(" | ").trim();
+		steps.push({ id, title, ...(hint ? { hint } : {}) });
+	}
+
+	return steps;
 }
 
 function parseSocialLinksBody(body) {
@@ -605,6 +645,41 @@ export function remarkMdxDirectiveComponents() {
 							type: "mdxJsxAttribute",
 							name: "messages",
 							value: JSON.stringify(messages),
+						});
+					}
+					children = [];
+					handled = true;
+				}
+			} else if (isContainer && componentName === "checklist") {
+				const code = children.find((child) => child.type === "code");
+				const body =
+					code && typeof code.value === "string"
+						? code.value
+						: getDirectiveBody(node, file, children);
+				const steps = parseChecklistBody(body);
+
+				if (steps.length > 0) {
+					if (!attributes.some((attribute) => attribute.name === "steps")) {
+						attributes.push({
+							type: "mdxJsxAttribute",
+							name: "steps",
+							value: JSON.stringify(steps),
+						});
+					}
+					children = [];
+					handled = true;
+				}
+			} else if (isContainer && componentName === "mermaid") {
+				const code = children.find((child) => child.type === "code");
+				const chart =
+					code && typeof code.value === "string" ? code.value.trim() : "";
+
+				if (chart) {
+					if (!attributes.some((attribute) => attribute.name === "chart")) {
+						attributes.push({
+							type: "mdxJsxAttribute",
+							name: "chart",
+							value: chart,
 						});
 					}
 					children = [];

@@ -17,6 +17,7 @@ enum I18nKey {
 	postList = "postList",
 	tableOfContents = "tableOfContents",
 	readingProgress = "readingProgress",
+	footnotes = "footnotes",
 	tocEmpty = "tocEmpty",
 	tocAccordionAuto = "tocAccordionAuto",
 	tocExpandAll = "tocExpandAll",

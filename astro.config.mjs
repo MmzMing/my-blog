@@ -320,6 +320,10 @@ export default defineConfig({
 					},
 				],
 			],
+			remarkRehype: {
+				footnoteLabel: i18n(I18nKey.footnotes),
+				footnoteLabelTagName: "h2",
+			},
 		}),
 	},
 	vite: {

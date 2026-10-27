@@ -37,6 +37,7 @@ export const ru: Translation = {
 	[Key.postList]: "Документы",
 	[Key.tableOfContents]: "Содержание",
 	[Key.readingProgress]: "Прогресс чтения",
+	[Key.footnotes]: "Примечания",
 	[Key.tocEmpty]: "На этой странице нет оглавления",
 	[Key.tocAccordionAuto]: "Автосворачивание",
 	[Key.tocExpandAll]: "Развернуть все",

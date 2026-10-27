@@ -37,6 +37,7 @@ export const zh_CN: Translation = {
 	[Key.postList]: "文档",
 	[Key.tableOfContents]: "目录",
 	[Key.readingProgress]: "阅读进度",
+	[Key.footnotes]: "参考资料",
 	[Key.tocEmpty]: "当前页面没有目录",
 	[Key.tocAccordionAuto]: "自动收缩手风琴",
 	[Key.tocExpandAll]: "全部展开",

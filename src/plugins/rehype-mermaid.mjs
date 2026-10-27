@@ -144,7 +144,7 @@ function siteConfigWithFont() {
 	};
 }
 
-function buildMermaidSvgs(mermaidCode, themeConfig, diagramIndex) {
+export function buildMermaidSvgs(mermaidCode, themeConfig, diagramIndex) {
 	const lightSvg = renderSvg(mermaidCode, {
 		host_theme: {
 			preset: themeConfig.lightTheme,
