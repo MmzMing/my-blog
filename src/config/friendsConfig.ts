@@ -256,9 +256,9 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 		title: "阿的宝藏之地",
-		imgurl: "https://bu.dusays.com/2026/06/20/6a361fc5c68ff.jpg",
-		desc: "记录项目、数学思考与杂谈。",
-		siteurl: "https://nothing-new.icu/",
+		imgurl: "https://nothing-new.cn/avatar",
+		desc: "为学日益，为道日损",
+		siteurl: "https://nothing-new.cn",
 		image: "/assets/images/friends/nothing-new.webp",
 		tags: ["Blog"],
 		weight: 5,
