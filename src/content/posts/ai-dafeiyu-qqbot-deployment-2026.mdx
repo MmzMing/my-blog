@@ -708,6 +708,8 @@ B 站这一栏就是它每轮说话用的设定；不要把这份人设写进全
 | B站 AI Bot | B站 | B站评论、私信、直播弹幕回复；好感度、语义记忆、主动看视频、动态发布 |
 | biliVideo 视频总结 | B站 | B站视频解析与 AI 总结；订阅推送、扫码登录、合并转发、长视频分图 |
 | 愿此见闻温柔你的日常 | 互动 | 按时间、状态、记忆和热搜主动分享文字、语音或配图到私聊、群或 QQ 空间 |
+| 我会牢牢记住你[^memory-companion] | 记忆 | 陪伴体系的记忆中枢：主链记忆注入、历史整理、知识图谱与自然衰减 |
+| 我会永远陪着你[^private-companion] | 记忆 | 拟人化陪伴整合：连续状态、日程、日记与低频主动消息，配合记忆插件使用 |
 | astrbot_plugin_fortnue | 娱乐 | 二次元今日运势图片 |
 | 爱点赞 | 互动 | 每日定时自动点赞、赞我 |
 | 画境拾珍 | 娱乐 | Lolicon 标签或随机插画；Pixiv refresh_token 回退；内容安全规则 |
@@ -731,9 +733,16 @@ B 站这一栏就是它每轮说话用的设定；不要把这份人设写进全
 
 ### 插件补充说明
 
-下面单独说明表情包生成插件和 B 站 AI Bot，其余插件按上表按需启用。
+下面单独说明两个记忆陪伴插件、表情包生成插件和 B 站 AI Bot，其余插件按上表按需启用。
 
 ::::tabs{label="AstrBot 插件说明"}
+:::tab{label="记忆陪伴"}
+两个插件同一作者，配合使用：**我会牢牢记住你**（2.3.1，AstrBot ≥ 4.22.0）负责分层记忆、语义检索、知识图谱和自然衰减；**我会永远陪着你**（7.0.0，AstrBot ≥ 4.27.2）负责连续拟人状态、生活日程、日记和低频主动消息，并把记忆插件作为拓展。
+
+**我会牢牢记住你**的配置项接近 1000 个，不建议逐项手调：把插件配置和人格提示词一起发给 AI，让它按大肥鱼的习惯自行选择和填写即可。
+
+最新版 AstrBot 在插件市场下载这个插件时可能报错；把完整报错信息发给 AI，让它按报错给出处理步骤即可。
+:::
 :::tab{label="表情包生成"}
 表情包生成插件 2.4.0 基于 [meme-generator-rs](https://github.com/MemeCrafters/meme-generator-rs)，把拾柒（olinl17）二改的“戳一戳生成表情包”和本地 GIF 调整工具缝在一起，仓库在 [MmzMing/astrbot_plugin_meme_generator](https://github.com/MmzMing/astrbot_plugin_meme_generator)。
 
@@ -883,6 +892,8 @@ QQ 登录卷另用 1Panel 备份。回滚时停服，恢复对应版本和数据
 [^qqbot-agent]: [QQ Bot Agent 接入](https://bot.qq.com/wiki/agent-qqbot/)
 [^livingmemory]: [livingmemory](https://github.com/lxfight-s-Astrbot-Plugins/astrbot_plugin_livingmemory)
 [^proactive-chat]: [proactive_chat](https://github.com/Pancakes-Labs/astrbot_plugin_proactive_chat)
+[^memory-companion]: [astrbot_plugin_memory_companion（我会牢牢记住你）](https://github.com/menglimi/astrbot_plugin_memory_companion)
+[^private-companion]: [astrbot_plugin_private_companion（我会永远陪着你）](https://github.com/menglimi/astrbot_plugin_private_companion)
 [^persona-ref]: [人格提示词参考](https://github.com/shirachino/astrbot-persona-prompts)
 [^deepseek]: [DeepSeek 开放平台](https://platform.deepseek.com/)
 [^modelscope]: [魔搭社区](https://modelscope.cn/)
