@@ -694,12 +694,21 @@ export const friendsConfig: FriendLink[] = [
 		enabled: true,
 	},
 	{
-		title: "Starlitn'blog",
+		title: "Starlitn",
 		imgurl:
 			"https://r2.starlitn.top/images/2026/08/37e62a98367c_head_portrait.jpg",
 		desc: "躺在星夜的草地上，做一个安静的梦。",
 		siteurl: "https://blog.starlitn.top/",
 		image: "/assets/images/friends/starlitn.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
+	{
+		title: "SamsBlog",
+		imgurl: "https://blog.moesam.com/media/brand/logo.jpg",
+		desc: "只是一只大黄狗",
+		siteurl: "https://blog.moesam.com/",
 		tags: ["Blog"],
 		weight: 5,
 		enabled: true,
