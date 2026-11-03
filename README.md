@@ -164,7 +164,6 @@ Firefly-Mod 是个性化魔改版本，已独立演进。
 这里几个文件是你要到对应站点开站点收录的，目的是让AI或者搜索工具搜索到你的站点信息
 
 `public\baidu_verify_codeva-PmiKD9Nizp.html`:百度站长工具，普通搜索用的
-`public\ByteDanceVerify.html`：头条站长工具，豆包搜索用的
 `public\fd2c679cb5104763ac4c4655a147083b.txt`：Bing的index
 
 ## 部署清单
