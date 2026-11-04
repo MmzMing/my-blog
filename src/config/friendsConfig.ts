@@ -724,6 +724,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "chocola@fans — 巧克力",
+		imgurl: "https://www.cqjszx.cn/favicon.ico",
+		desc: "巧克力个人站点",
+		siteurl: "https://www.cqjszx.cn/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
