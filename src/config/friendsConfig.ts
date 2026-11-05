@@ -729,6 +729,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://www.cqjszx.cn/favicon.ico",
 		desc: "巧克力个人站点",
 		siteurl: "https://www.cqjszx.cn/",
+		image: "/assets/images/friends/chocola.webp",
 		tags: ["Blog"],
 		weight: 5,
 		enabled: true,
