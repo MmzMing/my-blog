@@ -734,6 +734,15 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "Churk's Blog!",
+		imgurl: "https://churk.top/shared/icon.png",
+		desc: "一个平平无奇的小孩儿",
+		siteurl: "https://churk.top/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
