@@ -88,6 +88,136 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 			],
 		},
 		{
+			category: "前端组件库",
+			description: "设计参考与开源 UI、动效组件库",
+			items: [
+				{
+					name: "ReUI",
+					url: "https://reui.io/",
+					description:
+						"构建在 shadcn/ui 之上的 React + Tailwind 组件库，提供 Data Grid、Kanban、Gantt 等高级原语。",
+					icon: favicon("reui.io"),
+					enabled: true,
+				},
+				{
+					name: "React Bits",
+					url: "https://www.reactbits.dev/",
+					description: "动画组件库，实用且易于集成到项目中。",
+					icon: favicon("reactbits.dev"),
+					enabled: true,
+				},
+				{
+					name: "Canvas UI",
+					url: "https://canvasui.dev/",
+					description: "3D交互库，提供可直接参考和使用的 UI 组件。",
+					icon: favicon("canvasui.dev"),
+					enabled: true,
+				},
+				{
+					name: "ReactDrops",
+					url: "https://reactdrops.dev/",
+					description:
+						"开源 React 动效组件库，提供动画与特效组件，可复制源码直接使用。",
+					icon: favicon("reactdrops.dev"),
+					enabled: true,
+				},
+				{
+					name: "Watermelon UI",
+					url: "https://ui.watermelon.sh/",
+					description:
+						"开源 React 组件平台，提供动画组件、可复制区块与仪表盘模板。",
+					icon: favicon("watermelon.sh"),
+					enabled: true,
+				},
+				{
+					name: "beUI",
+					url: "https://beui.dev/",
+					description:
+						"开源动画组件库，支持 React 与 React Native，源码可直接复制使用。",
+					icon: favicon("beui.dev"),
+					enabled: true,
+				},
+				{
+					name: "affectUI",
+					url: "https://www.affectui.com/components",
+					description:
+						"面向 AI 产品与 SaaS 场景的 React 组件库，提供 Agent 界面、聊天等组件。",
+					icon: favicon("affectui.com"),
+					enabled: true,
+				},
+				{
+					name: "Arc",
+					url: "https://uiarc.dev/",
+					description:
+						"基于 shadcn 生态的 React 动效组件库，提供组件与区块，支持 shadcn CLI 与 MCP 安装。",
+					icon: favicon("uiarc.dev"),
+					enabled: true,
+				},
+				{
+					name: "EasyUI",
+					url: "https://easyui.site/",
+					description:
+						"开源 React 动效组件库，基于 Tailwind CSS 与 Framer Motion，源码可直接复制使用。",
+					icon: favicon("easyui.site"),
+					enabled: true,
+				},
+				{
+					name: "Viora UI",
+					url: "https://www.vioraui.dedyn.io/",
+					description:
+						"React + Tailwind + Framer Motion 组件库，提供上百个可复制粘贴的组件。",
+					icon: favicon("vioraui.dedyn.io"),
+					enabled: true,
+				},
+				{
+					name: "Aceternity UI",
+					url: "https://ui.aceternity.com/",
+					description: "动画组件库，提供视觉效果出色的开源组件。",
+					icon: favicon("aceternity.com"),
+					enabled: true,
+				},
+				{
+					name: "PickUI",
+					url: "https://pickui.jarin.me/",
+					description:
+						"UI 组件库精选导航，收录 React、Vue、Svelte 等多框架优质组件库。",
+					icon: favicon("pickui.jarin.me"),
+					enabled: true,
+				},
+				{
+					name: "Uiverse",
+					url: "https://uiverse.io/",
+					description:
+						"社区驱动的开源 UI 元素库，提供按钮、输入框、卡片等精美组件。",
+					icon: favicon("uiverse.io"),
+					enabled: true,
+				},
+				{
+					name: "Iconify",
+					url: "https://iconify.design/",
+					description: "图标库，汇集超过 20 万个图标，支持按需加载。",
+					icon: favicon("iconify.design"),
+					enabled: true,
+				},
+				{
+					name: "CodePen",
+					url: "https://codepen.io/",
+					description:
+						"优秀参考代码库，可实时编写和分享 HTML/CSS/JS 代码片段。",
+					icon: favicon("codepen.io"),
+					enabled: true,
+				},
+				{
+					name: "Native Shell",
+					url: "https://nsh.dev/",
+					description:
+						"Longbridge 开发的跨平台 UI 框架，TSX + Rust 引擎将一套代码编译到桌面、移动与 Web 原生控件。",
+					icon: favicon("nsh.dev"),
+					enabled: true,
+				},
+			],
+		},
+		{
 			category: "AI聊天网站",
 			description: "对话式 AI 助手，覆盖写作、编程与日常问答",
 			items: [
@@ -165,14 +295,6 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 					enabled: true,
 				},
 				{
-					name: "提示词优化 | PromptPilot",
-					url: "https://promptpilot.volcengine.com/",
-					description:
-						"火山引擎推出的 Prompt 优化工具，帮助提升大模型输出质量。",
-					icon: favicon("volcengine.com"),
-					enabled: true,
-				},
-				{
 					name: "资源站 | ACGN AI 资源站",
 					url: "https://res.acgnai.top/",
 					description:
@@ -186,21 +308,6 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 					description:
 						"免费的GPT AI 生成图像画廊，展示高质量的人工智能艺术作品。",
 					icon: favicon("oblivionis.net"),
-					enabled: true,
-				},
-				{
-					name: "设计工具 | Figma",
-					url: "https://www.figma.com/",
-					description: "在线 UI/UX 设计协作工具，支持团队协作与 AI 辅助设计。",
-					icon: favicon("figma.com"),
-					enabled: true,
-				},
-				{
-					name: "设计工具 | Google AI Studio",
-					url: "https://aistudio.google.com/",
-					description:
-						"Google 官方 AI 开发平台，支持 Chat/Build/Stream 三模式，可快速原型化 Gemini 应用。",
-					icon: favicon("aistudio.google.com"),
 					enabled: true,
 				},
 				{
@@ -260,178 +367,6 @@ export const collectionsApiConfig: CollectionsApiConfig = {
 					url: "https://github.com/LLOneBot/LuckyLilliaBot",
 					description: "基于 NTQQ 的轻量 QQ 机器人框架，支持 OneBot 协议。",
 					icon: favicon("github.com"),
-					enabled: true,
-				},
-			],
-		},
-		{
-			category: "前端组件库",
-			description: "设计参考与开源 UI、动效组件库",
-			items: [
-				{
-					name: "One Page Love",
-					url: "https://onepagelove.com/",
-					description: "单页设计参考，汇集 Landing Page 模板与创意参考。",
-					icon: favicon("onepagelove.com"),
-					enabled: true,
-				},
-				{
-					name: "Mobbin",
-					url: "https://mobbin.com/",
-					description: "移动端设计参考，收录大量 App 界面截图与交互模式。",
-					icon: favicon("mobbin.com"),
-					enabled: true,
-				},
-				{
-					name: "Awwwards",
-					url: "https://www.awwwards.com/",
-					description: "全球优秀网页设计作品评选平台，汇集创意灵感与设计趋势。",
-					icon: favicon("awwwards.com"),
-					enabled: true,
-				},
-				{
-					name: "shadcn/ui",
-					url: "https://ui.shadcn.com/",
-					description: "现代 UI 组件库",
-					icon: favicon("shadcn.com"),
-					enabled: true,
-				},
-				{
-					name: "HeroUI",
-					url: "https://heroui.com/",
-					description: "现代 UI 组件库",
-					icon: favicon("heroui.com"),
-					enabled: true,
-				},
-				{
-					name: "Uiverse",
-					url: "https://uiverse.io/",
-					description:
-						"社区驱动的开源 UI 元素库，提供按钮、输入框、卡片等精美组件。",
-					icon: favicon("uiverse.io"),
-					enabled: true,
-				},
-				{
-					name: "CodePen",
-					url: "https://codepen.io/",
-					description:
-						"优秀参考代码库，可实时编写和分享 HTML/CSS/JS 代码片段。",
-					icon: favicon("codepen.io"),
-					enabled: true,
-				},
-				{
-					name: "React Bits",
-					url: "https://www.reactbits.dev/",
-					description: "动画组件库，实用且易于集成到项目中。",
-					icon: favicon("reactbits.dev"),
-					enabled: true,
-				},
-				{
-					name: "Magic UI",
-					url: "https://magicui.design/",
-					description: "动画组件库，提供可直接复制使用的 UI 动效组件。",
-					icon: favicon("magicui.design"),
-					enabled: true,
-				},
-				{
-					name: "Aceternity UI",
-					url: "https://ui.aceternity.com/",
-					description: "动画组件库，提供视觉效果出色的开源组件。",
-					icon: favicon("aceternity.com"),
-					enabled: true,
-				},
-				{
-					name: "Canvas UI",
-					url: "https://canvasui.dev/",
-					description: "3D交互库，提供可直接参考和使用的 UI 组件。",
-					icon: favicon("canvasui.dev"),
-					enabled: true,
-				},
-				{
-					name: "Animation Svelte",
-					url: "https://animation-svelte.vercel.app/",
-					description: "Svelte 动画组件库，提供可直接复制使用的动效组件。",
-					icon: favicon("animation-svelte.vercel.app"),
-					enabled: true,
-				},
-				{
-					name: "Hover.dev",
-					url: "https://www.hover.dev/",
-					description: "动画组件库，提供丰富的悬停交互与 UI 动效参考。",
-					icon: favicon("hover.dev"),
-					enabled: true,
-				},
-				{
-					name: "Inspira UI",
-					url: "https://inspira-ui.com/",
-					description: "Vue / Nuxt 动画组件库，提供现代化 UI 组件与动效。",
-					icon: favicon("inspira-ui.com"),
-					enabled: true,
-				},
-				{
-					name: "Cult UI",
-					url: "https://www.cult-ui.com/",
-					description: "React 动画组件库，提供可直接复制使用的 UI 组件。",
-					icon: favicon("cult-ui.com"),
-					enabled: true,
-				},
-				{
-					name: "Iconify",
-					url: "https://iconify.design/",
-					description: "图标库，汇集超过 20 万个图标，支持按需加载。",
-					icon: favicon("iconify.design"),
-					enabled: true,
-				},
-				{
-					name: "Sketchfab",
-					url: "https://sketchfab.com/",
-					description: "3D模型库，支持在线预览和免费下载。",
-					icon: favicon("sketchfab.com"),
-					enabled: true,
-				},
-			],
-		},
-		{
-			category: "学习知识库",
-			description: "编程学习、算法练习与求职备考平台",
-			items: [
-				{
-					name: "Java 全栈知识体系",
-					url: "https://pdai.tech/",
-					description:
-						"涵盖 Java 核心、并发、JVM、框架、数据库与架构的全栈知识体系。",
-					icon: favicon("pdai.tech"),
-					enabled: true,
-				},
-				{
-					name: "JavaGuide",
-					url: "https://javaguide.cn/",
-					description:
-						"Java 学习与面试指南，覆盖 Java 基础、集合、并发、JVM 与 Spring 等核心知识。",
-					icon: favicon("javaguide.cn"),
-					enabled: true,
-				},
-				{
-					name: "异常教程",
-					url: "https://www.exception.site/",
-					description: "提供 JetBrains 系列 IDE 的安装教程与激活资源分享。",
-					icon: favicon("exception.site"),
-					enabled: true,
-				},
-				{
-					name: "力扣 LeetCode",
-					url: "https://leetcode.cn/",
-					description:
-						"技术成长与算法练习平台，提供海量题库、面试题与编程竞赛。",
-					icon: favicon("leetcode.cn"),
-					enabled: true,
-				},
-				{
-					name: "牛客网",
-					url: "https://www.nowcoder.com/",
-					description:
-						"IT 求职备考与技术学习平台，提供笔试、面试题库与在线编程练习。",
-					icon: favicon("nowcoder.com"),
 					enabled: true,
 				},
 			],
