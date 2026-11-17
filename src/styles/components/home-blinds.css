@@ -661,39 +661,109 @@
 	transform-origin: 100% 50%;
 }
 
-/* ---------- 第二层拼图：与立牌同时自后方纸牌式立起，之后按整周期持续左移 ----------
-   transform 由控制器写入（rotationX + transformPerspective），这里只给铰链位置。
-   --home-blinds-cycle-period 是一个循环周期的长度（组件按同名常量注入内联样式覆盖这里的兜底值），
-   每周期含 4 块凹凸交错的拼图；单张静态 SVG 蒙版只随轨道做 transform，
-   不逐块建 DOM，也不在动画帧里重算路径；平移一整周期即与起点完全重合。
-   线色取 --deep-text 的淡色，深浅两套主题自动反转，不再压一层页面底色遮罩 */
+/* ---------- 背景跑马灯胶带：三条不同角度斜着横贯影像层 ----------
+   胶带沿自身轴向铺 190vw，旋转后两端都甩出视口；文字轨道由控制器用 WAAPI
+   做无缝平移，这里只管排布、边缘实线与斜纹；入退场的描线裁切也由控制器写 clip-path。
+   线色取 --deep-text 的淡色，深浅两套主题自动反转，不压页面底色遮罩 */
 
-.home-blinds-scenes__cycle {
+.home-blinds-scenes__marquee {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
-	--home-blinds-cycle-period: 224px;
-	--home-blinds-cycle-line: color-mix(in srgb, var(--deep-text) 12%, transparent);
 	overflow: hidden;
 	opacity: 0;
 	visibility: hidden;
-	transform-origin: 50% 100%;
-	will-change: transform, opacity;
+	pointer-events: none;
+	--home-blinds-marquee-line: color-mix(
+		in srgb,
+		var(--deep-text) 22%,
+		transparent
+	);
+	--home-blinds-marquee-ink: color-mix(in srgb, var(--deep-text) 30%, transparent);
 }
 
-.home-blinds-scenes__cycle-track {
+.home-blinds-marquee {
+	position: absolute;
+	top: var(--marquee-top, 50%);
+	left: var(--marquee-center-x, 50%);
+	width: 190vw;
+	height: var(--marquee-thickness, 80px);
+	color: var(--home-blinds-marquee-ink);
+	transform: translate(-50%, -50%) rotate(var(--marquee-angle, 0deg));
+}
+
+.home-blinds-marquee__frame {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	border-top: 2px solid var(--home-blinds-marquee-line);
+	border-bottom: 2px solid var(--home-blinds-marquee-line);
+}
+
+/* 边缘斜纹：加粗的斜线密排成窄带叠在实线内侧，像胶带边缘的牙口。
+   纹样本身放在内层，由控制器按胶带半速平移，左右都留出一个重复周期 */
+.home-blinds-marquee__edge {
+	position: absolute;
+	left: 0;
+	right: 0;
+	height: calc(var(--marquee-thickness, 80px) * 0.18);
+	overflow: hidden;
+	opacity: 0.85;
+	/* 斜纹的水平重复周期：18px 沿 115° 方向 → 水平方向 18 / sin(115°) ≈ 19.9px。
+	   控制器读同一个变量做无缝平移，改渐变角度时要同步改这里 */
+	--marquee-hatch-shift: 19.9px;
+}
+
+.home-blinds-marquee__edge-pattern {
 	position: absolute;
 	top: 0;
-	/* 右边多铺一整周期：轨道左移到极限时右缘仍有图案接上，不会露出空带 */
-	right: calc(-1 * var(--home-blinds-cycle-period));
 	bottom: 0;
 	left: 0;
-	z-index: 0;
-	background: var(--home-blinds-cycle-line);
-	mask-image: url("@/assets/images/home-blinds-puzzle.svg");
-	mask-size: var(--home-blinds-cycle-period) var(--home-blinds-cycle-period);
-	mask-repeat: repeat;
+	display: block;
+	width: calc(100% + var(--marquee-hatch-shift));
+	background-image: repeating-linear-gradient(
+		115deg,
+		var(--home-blinds-marquee-line) 0 5px,
+		transparent 5px 18px
+	);
 	will-change: transform;
+}
+
+.home-blinds-marquee__edge--top {
+	top: 0;
+}
+
+.home-blinds-marquee__edge--bottom {
+	bottom: 0;
+	transform: scaleY(-1);
+}
+
+/* 文字在胶带内横向循环；轨道位移由 WAAPI 写 transform，这里只管排版 */
+.home-blinds-marquee__viewport {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+}
+
+.home-blinds-marquee__track {
+	display: flex;
+	width: max-content;
+	will-change: transform;
+}
+
+.home-blinds-marquee__seq {
+	display: flex;
+	flex: none;
+}
+
+.home-blinds-marquee__text {
+	flex: none;
+	padding-right: calc(var(--marquee-thickness, 80px) * 1.4);
+	font-size: calc(var(--marquee-thickness, 80px) * 0.44);
+	font-weight: 800;
+	line-height: var(--marquee-thickness, 80px);
+	letter-spacing: 0.12em;
+	white-space: nowrap;
 }
 
 /* ---------- 第二层留言墙：明信片身后一排气泡各自飘过，飘完一条换下一条 ----------
@@ -710,14 +780,29 @@
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
+	--home-blinds-bubble-ink: var(--deep-text);
+	/* 亮色下不用亮色光晕：暗字套白晕在浅底上是一圈脏雾。
+	   改用灰阶阶梯——近实的一圈描边收边，向下逐级变淡的投影托底 */
+	--home-blinds-bubble-shadow:
+		0 0 1px rgb(0 0 0 / 45%), 0 1px 2px rgb(0 0 0 / 32%),
+		0 2px 6px rgb(0 0 0 / 18%);
 }
 
-/* 外层只管位移：横向漂移的 transform 归它，落位高度与时长由控制器写在变量上 */
+/* 暗色下弹幕取白字黑描边，保证从拼图底纹和照片上浮起来 */
+:root.dark .home-blinds-scenes__bubbles {
+	--home-blinds-bubble-ink: #ffffff;
+	--home-blinds-bubble-shadow:
+		0 0 2px rgb(0 0 0 / 55%), 0 1px 3px rgb(0 0 0 / 55%);
+}
+
+/* 外层只管位移：横向漂移的 transform 归它，落位高度、时长与远近透明度由控制器写在变量上 */
 .home-blinds-bubble {
 	position: absolute;
 	top: var(--home-blinds-bubble-top, 50%);
 	left: 0;
 	max-width: 20rem;
+	/* 字数越多字越小越透，模拟弹幕的远近纵深；内层入场补间不碰这里 */
+	opacity: var(--home-blinds-bubble-opacity, 1);
 	will-change: transform;
 	animation: home-blinds-bubble-drift var(--home-blinds-bubble-duration, 32s) linear
 		infinite;
@@ -728,51 +813,16 @@
 	visibility: hidden;
 }
 
-/* 内层是卡面本体，入场的 Q 弹只打在这一层。
+/* 内层是气泡本体，入场的 Q 弹只打在这一层。
    两层各持一个 transform，弹跳的 scale 不会把漂移的 translate 覆盖掉
-   （同首页移动层那条约定：外层管位移、内层管入场） */
+   （同首页移动层那条约定：外层管位移、内层管入场）。
+   弹幕式排版：无底无边框，靠灰阶阴影把字从拼图底纹上托起来 */
 .home-blinds-bubble__body {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 0.45em;
-	padding: 0.42rem 0.95rem 0.6rem;
-	border: 1px solid color-mix(in srgb, var(--deep-text) 16%, transparent);
-	border-radius: 1rem;
-	background: color-mix(in srgb, var(--page-bg) 68%, transparent);
-	color: color-mix(in srgb, var(--deep-text) 62%, transparent);
+	color: var(--home-blinds-bubble-ink);
 	font-size: calc(0.86rem * var(--home-blinds-bubble-scale, 1));
+	font-weight: 600;
 	line-height: 1.45;
-}
-
-/* 文字在上、图片在下。尺寸按 em 给，跟着气泡自己的随机字号一起缩放；
-   没配图的那条整块不显示，气泡宽度就退回由文字决定 */
-.home-blinds-bubble__image {
-	display: none;
-	flex: none;
-	width: 9em;
-	height: 6.2em;
-	border-radius: 0.7rem;
-	object-fit: cover;
-	opacity: 0;
-	background: color-mix(in srgb, var(--deep-text) 12%, transparent);
-	transition: opacity 0.45s ease;
-}
-
-/* 加载中：底色上跑一道斜向微光；解码完成后由 is-loaded 淡入把它盖住 */
-.home-blinds-bubble__image.is-loading {
-	background-image: linear-gradient(
-		100deg,
-		transparent 20%,
-		color-mix(in srgb, var(--deep-text) 16%, transparent) 45%,
-		transparent 70%
-	);
-	background-size: 220% 100%;
-	animation: home-blinds-bubble-shimmer 1.25s linear infinite;
-}
-
-.home-blinds-bubble__image.is-loaded {
-	opacity: 1;
+	text-shadow: var(--home-blinds-bubble-shadow);
 }
 
 /* 最多两行，超出在第二行末尾截断加省略号。
@@ -788,22 +838,8 @@
 	white-space: normal;
 }
 
-.home-blinds-bubble.has-image .home-blinds-bubble__image {
-	display: block;
-}
-
-.home-blinds-scenes__bubbles.is-paused .home-blinds-bubble,
-.home-blinds-scenes__bubbles.is-paused .home-blinds-bubble__image {
+.home-blinds-scenes__bubbles.is-paused .home-blinds-bubble {
 	animation-play-state: paused;
-}
-
-@keyframes home-blinds-bubble-shimmer {
-	from {
-		background-position: 180% 0;
-	}
-	to {
-		background-position: -80% 0;
-	}
 }
 
 @keyframes home-blinds-bubble-drift {
@@ -821,6 +857,19 @@
 .home-blinds-scenes__track {
 	z-index: 2;
 	pointer-events: none;
+	/* 视口两侧微渐隐：只在最边缘 6% 内淡出（smootherstep 采样），
+	   卡片几乎全程保持实色，不会提前大片发虚 */
+	mask-image: linear-gradient(
+		90deg,
+		rgba(0, 0, 0, 0) 0%,
+		rgba(0, 0, 0, 0.34) 1.5%,
+		rgba(0, 0, 0, 0.75) 3.2%,
+		#000 6%,
+		#000 94%,
+		rgba(0, 0, 0, 0.75) 96.8%,
+		rgba(0, 0, 0, 0.34) 98.5%,
+		rgba(0, 0, 0, 0) 100%
+	);
 }
 
 /* ============================================
@@ -902,12 +951,14 @@
 	);
 }
 
-/* 左右挂点各带一根线和一只木夹，用同一个横坐标避免摆动时接头错位。 */
+/* 左右挂点各带一根线和一只木夹，用同一个横坐标避免摆动时接头错位。
+   吊线与木夹属于纸面的一部分：随纸面渐入，不先于背景出现 */
 .home-blinds-scene__hanger {
 	--home-blinds-clip-tilt: -8deg;
 	position: absolute;
 	top: 0;
 	left: 20%;
+	opacity: var(--scene-paper-alpha, 1);
 	width: 0;
 	height: 0;
 }
@@ -950,16 +1001,27 @@
 	/* 底边不另外留白：整条底部纸面交给底栏，文字在其中垂直居中，
 	   于是「照片→文字」与「文字→卡边」两段间距天然等宽 */
 	padding-bottom: 0;
-	border: var(--home-blinds-scene-edge) solid var(--deep-text);
+	/* 纸边不画实线：边框就是描边本身；保留透明边框只为锁定几何尺寸 */
+	border: var(--home-blinds-scene-edge) solid transparent;
+}
+
+/* 纸面底色与投影独立成层（压在照片、底栏之下）：
+   首幕接收缩门时，图片先在原位就位，纸面背景再渐入 */
+.home-blinds-scene__paper {
+	position: absolute;
+	inset: calc(-1 * var(--home-blinds-scene-edge));
+	z-index: 0;
 	background: var(--home-blinds-postcard-paper);
 	box-shadow:
 		0 1.1rem 2.4rem rgb(0 0 0 / 0.22),
 		0 0.25rem 0.7rem rgb(0 0 0 / 0.14);
+	opacity: var(--scene-paper-alpha, 1);
 }
 
 /* 照片不单独描边，边框由明信片纸面承担 */
 .home-blinds-scene__frame {
 	position: relative;
+	z-index: 1;
 	flex: none;
 	width: 100%;
 	height: var(--home-blinds-scene-photo-height);
@@ -979,10 +1041,67 @@
 	-webkit-user-drag: none;
 }
 
+/* 明信片描边：这条线就是明信片的边框本身（纸面不再画实线）。
+   墨色固定取纸面墨色，不随主题翻转；四个边条各从上一条的终点接力，
+   用 scale 依次画出"一支笔顺时针绕一圈"的入场，画满后一直保留。
+   向外扩出一个边框宽度，让线条压在卡片外沿而不是纸面内部（同顶部 home 照片框） */
+.home-blinds-scene__outline {
+	position: absolute;
+	inset: calc(-1 * var(--home-blinds-scene-edge));
+	z-index: 2;
+	display: block;
+	pointer-events: none;
+}
+
+.home-blinds-scene__outline-edge {
+	position: absolute;
+	display: block;
+	background: var(--home-blinds-postcard-ink);
+}
+
+/* 上沿：从左往右画 */
+.home-blinds-scene__outline-edge[data-outline-edge="top"] {
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: var(--home-blinds-scene-edge);
+	transform: scaleX(var(--outline-top, 0));
+	transform-origin: 0 50%;
+}
+
+/* 右沿：从上往下画 */
+.home-blinds-scene__outline-edge[data-outline-edge="right"] {
+	top: 0;
+	right: 0;
+	width: var(--home-blinds-scene-edge);
+	height: 100%;
+	transform: scaleY(var(--outline-right, 0));
+	transform-origin: 50% 0;
+}
+
+/* 下沿：从右往左画 */
+.home-blinds-scene__outline-edge[data-outline-edge="bottom"] {
+	bottom: 0;
+	right: 0;
+	width: 100%;
+	height: var(--home-blinds-scene-edge);
+	transform: scaleX(var(--outline-bottom, 0));
+	transform-origin: 100% 50%;
+}
+
+/* 左沿：从下往上画，回到起点闭合 */
+.home-blinds-scene__outline-edge[data-outline-edge="left"] {
+	bottom: 0;
+	left: 0;
+	width: var(--home-blinds-scene-edge);
+	height: 100%;
+	transform: scaleY(var(--outline-left, 0));
+	transform-origin: 50% 100%;
+}
+
 /* 两片木臂分别处在纸面前后；侧面的咬口凹槽与银灰弹簧保留参考木夹的结构。
    夹口伸过纸边，轻压照片上沿；用静态错位阴影表现接触，不使用模糊滤镜。 */
-.home-blinds-scene__clip,
-.home-blinds-scene__sticker {
+.home-blinds-scene__clip {
 	color: oklch(from var(--home-blinds-postcard-ink) l 0 h);
 }
 
@@ -1063,53 +1182,6 @@
 
 .home-blinds-scene__clip-coil-base {
 	fill: currentColor;
-}
-
-/* 左上角模切贴纸：纸边、折角与手写序号均为 SVG 路径。
-   阴影只是一张错位纸形，不用滤镜；描线交给该幕的一次性入场时间轴。 */
-.home-blinds-scene__sticker {
-	position: absolute;
-	top: calc(-0.7 * var(--home-blinds-scene-pad));
-	left: calc(-0.7 * var(--home-blinds-scene-pad));
-	z-index: 3;
-	display: block;
-	width: clamp(3rem, 4.2vw, 4.4rem);
-	height: auto;
-	overflow: visible;
-	transform: rotate(-8deg);
-	stroke-linecap: round;
-	stroke-linejoin: round;
-}
-
-.home-blinds-scene__sticker-shadow {
-	fill: currentColor;
-	opacity: 0.2;
-}
-
-.home-blinds-scene__sticker-paper,
-.home-blinds-scene__sticker-fold {
-	fill: var(--home-blinds-postcard-highlight);
-}
-
-.home-blinds-scene__sticker-face {
-	fill: var(--home-blinds-postcard-wood);
-}
-
-/* 与首页导览相同：不加 non-scaling-stroke，保持归一化虚线与路径同一坐标系。 */
-.home-blinds-scene__sticker-outline,
-.home-blinds-scene__sticker-crease {
-	stroke: currentColor;
-	stroke-width: 1.6;
-}
-
-.home-blinds-scene__sticker-number {
-	stroke: var(--home-blinds-postcard-highlight);
-	stroke-width: 6;
-}
-
-.home-blinds-scene__sticker-glint {
-	stroke: var(--home-blinds-postcard-highlight);
-	stroke-width: 1.8;
 }
 
 /* ============================================

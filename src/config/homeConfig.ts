@@ -114,32 +114,47 @@ export const homeConfig: HomeConfig = {
 		},
 		scenes: {
 			scrollDistance: 3400,
-			// 拼图背景往左挪完一个循环周期（4 块）所需的秒数，越小越快
-			cycleDuration: 2.4,
+			// 背景跑马灯胶带：三条斜线按端点位置摆开——
+			// 左侧线从底部 1/4 处连到顶部 1/2 处；右侧线从右下角连到顶部左侧 1/4 处；
+			// 下方线从右下角连到右侧下方的 1/4 高度处。
+			// 文案用完整诗句（古诗与流行句混排）；angle 为倾角（度，正值顺时针）、
+			// top/centerX 为中心点落位（%）、thickness 为厚度（px）、speed 为基础速度（px/s）。
+			// 胶带会一直匀速滚动（斜纹按半速跟随），横滑时加速、反向横滑时反向滚动
+			marquee: {
+				tapes: [
+					{
+						text: "江城如画里，山晚望晴空，两水夹明镜，双桥落彩虹。人烟寒橘柚，秋色老梧桐。谁念北楼上，临风怀谢公。",
+						angle: -66,
+						top: 50,
+						centerX: 37.5,
+						thickness: 92,
+						speed: 120,
+					},
+					{
+						text: "雾景澄秋，一晚风吹尽朝来雨。夕阳烟树，万里山光暮",
+						angle: 37,
+						top: 50,
+						centerX: 62.5,
+						thickness: 74,
+						speed: 88,
+					},
+					{
+						text: "年年岁岁花相似，岁岁年年人不同",
+						angle: -8,
+						top: 87.5,
+						centerX: 50,
+						thickness: 88,
+						speed: 104,
+					},
+				],
+			},
 			// 留言墙气泡：同屏去重，每轮不放回；weight 越大越优先出场，缺省按 1 算。
-			// text 与 image 至少给一个；给了 image 就在文字下方带一张图。
-			// 文案是 2025—2026 网络热梗与站内老梗混排，梗过时了直接换掉就行
+			// 气泡只出文字不出图；文案是 2025—2026 网络热梗与站内老梗混排，梗过时了直接换掉就行
 			bubbleMessages: [
-				{
-					text: "Token来",
-					weight: 5,
-					image: "/assets/images/home-blinds/act2-background/101.webp",
-				},
-				{
-					text: "昨日一去不复回 欧耶耶",
-					weight: 4,
-					image: "/assets/images/home-blinds/act2-background/3.gif",
-				},
-				{
-					text: "年更型站长",
-					weight: 4,
-					image: "/assets/images/home-blinds/act2-background/2.gif",
-				},
-				{
-					text: "我来看看怎么个事",
-					weight: 4,
-					image: "/assets/images/home-blinds/act2-background/1.gif",
-				},
+				{ text: "Token来", weight: 5 },
+				{ text: "昨日一去不复回 欧耶耶", weight: 4 },
+				{ text: "年更型站长", weight: 4 },
+				{ text: "我来看看怎么个事", weight: 4 },
 				{ text: "主打一个随缘更新", weight: 3 },
 				{ text: "低山臭水遇知音", weight: 3 },
 				{ text: "站长，博客开源吗", weight: 3 },

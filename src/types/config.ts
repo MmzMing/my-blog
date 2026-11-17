@@ -261,14 +261,33 @@ export type HomeBlindsHeadlineConfig = {
 
 /**
  * 留言墙的一条气泡：每轮不放回，weight 越大越优先出场，缺省为 1。
- * text 与 image 至少给一个，只给 image 就是纯图片气泡。
+ * 气泡只出文字，不带图。
  */
 export type HomeBlindsBubbleMessage = {
-	/** 气泡文字，留空则只出图片 */
-	text?: string;
-	/** 图片，显示在文字下方；只认 public 下的路径（运行时直接塞进 img.src） */
-	image?: string;
+	/** 气泡文字 */
+	text: string;
 	weight?: number;
+};
+
+/** 一条跑马灯胶带：斜着横贯影像层，文字沿着胶带循环滚动 */
+export type HomeBlindsMarqueeTape = {
+	/** 胶带上循环滚动的文字（会重复铺满整条胶带） */
+	text: string;
+	/** 倾斜角度（度，正值顺时针） */
+	angle: number;
+	/** 纵向落位（占影像层高度的百分比，指胶带中心线） */
+	top: number;
+	/** 横向落位（占影像层宽度的百分比，指胶带中心点） */
+	centerX: number;
+	/** 胶带厚度（px），文字大小随之等比缩放 */
+	thickness: number;
+	/** 基础滚动速度（px/s），恒定匀速，横滑时叠加加速 */
+	speed: number;
+};
+
+/** 背景跑马灯配置：胶带条数可自由增减 */
+export type HomeBlindsMarqueeConfig = {
+	tapes: HomeBlindsMarqueeTape[];
 };
 
 export type HomeBlindsConfig = {
@@ -283,8 +302,8 @@ export type HomeBlindsConfig = {
 	scenes: {
 		/** 横向影像层固定滚动距离，越小则横移越快 */
 		scrollDistance: number;
-		/** 拼图背景横向走完一个循环周期（4 块）所需时长（秒），越小越快 */
-		cycleDuration: number;
+		/** 背景跑马灯胶带：三条斜带各自匀速跑，文字写在每条里 */
+		marquee: HomeBlindsMarqueeConfig;
 		/** 影像层身后留言墙的气泡文案，可自由增减条数 */
 		bubbleMessages: HomeBlindsBubbleMessage[];
 		/** 从评论区捞一条真实留言混进气泡池（目前只有 Waline 支持） */

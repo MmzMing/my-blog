@@ -4,6 +4,7 @@ import {
 	startBubbleWall,
 } from "@/utils/home-blinds-bubble-controller";
 import { startBlindsImageRail } from "@/utils/home-blinds-image-rail-controller";
+import { startBlindsMarquee } from "@/utils/home-blinds-marquee-controller";
 import { requestScrollTriggerRefresh } from "@/utils/scroll-trigger-refresh";
 
 type Gsap = typeof import("gsap")["gsap"];
@@ -23,7 +24,6 @@ type HomeBlindsRuntimeConfig = {
 	scenes: {
 		scrollDistance: number;
 		sceneCount: number;
-		cycleDuration: number;
 		bubbleMessages: BubbleMessage[];
 		commentBubble: {
 			enabled: boolean;
@@ -85,6 +85,11 @@ const BUBBLE_POP_EASE = "elastic.out(1, 0.42)";
  * 每幕只播一次，播完不再复位，来回滚动也不会重播或隐藏。
  */
 const SCENE_ENTER_DISTANCE = 0.42;
+/**
+ * pin 前这么一段滚动量专门播明信片墙的入场（跑马灯描线 + 明信片滑入描边），
+ * 走完才开始横向移动；入场与横移都按滚动进度推进，反向滚动原路退回。
+ */
+const SCENES_INTRO_SHARE = 0.16;
 
 let activeRoot: HTMLElement | null = null;
 let activeCleanup: (() => void) | null = null;
@@ -93,11 +98,9 @@ let bootGeneration = 0;
 /** 一幕之内需要分层显示的所有元素 */
 type SceneRefs = {
 	card: HTMLElement;
+	/** 明信片描边容器：四个边条由 CSS 变量控制画出进度 */
+	cardOutline: HTMLElement;
 	swing: HTMLElement;
-	sticker: SVGSVGElement;
-	stickerFill: SVGGElement;
-	stickerOutline: SVGPathElement;
-	stickerInk: SVGPathElement[];
 	bandTitle: HTMLElement;
 	/** 日期可省略，标题与分隔线始终保留 */
 	bandDate: HTMLElement | null;
@@ -109,6 +112,11 @@ type SceneRefs = {
 
 function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
+}
+
+/** 平滑收边：两端缓、中段快，入场行程不直来直去 */
+function smoothstep(value: number) {
+	return value * value * (3 - 2 * value);
 }
 
 function selectRequired<T extends Element>(
@@ -137,22 +145,10 @@ function canInitialize(root: HTMLElement) {
 }
 
 function collectScene(card: HTMLElement): SceneRefs {
-	const sticker = selectRequired<SVGSVGElement>(card, "[data-scene-sticker]");
 	return {
 		card,
+		cardOutline: selectRequired<HTMLElement>(card, "[data-scene-card-outline]"),
 		swing: selectRequired<HTMLElement>(card, "[data-scene-swing]"),
-		sticker,
-		stickerFill: selectRequired<SVGGElement>(
-			sticker,
-			"[data-scene-sticker-fill]",
-		),
-		stickerOutline: selectRequired<SVGPathElement>(
-			sticker,
-			"[data-scene-sticker-outline]",
-		),
-		stickerInk: Array.from(
-			sticker.querySelectorAll<SVGPathElement>("[data-scene-sticker-ink]"),
-		),
 		bandTitle: selectRequired<HTMLElement>(card, "[data-scene-title]"),
 		bandDate: card.querySelector<HTMLElement>("[data-scene-date]"),
 		bandDivider: selectRequired<HTMLElement>(card, "[data-scene-band-divider]"),
@@ -165,19 +161,13 @@ function collectScene(card: HTMLElement): SceneRefs {
 /** 该幕所有文字与 UI 的初始（隐藏）状态，也是离场后的复位状态 */
 function hideSceneChrome(gsap: Gsap, scene: SceneRefs) {
 	gsap.set(scene.bandTitle, { autoAlpha: 0, y: -10 });
-	gsap.set(scene.sticker, { autoAlpha: 0 });
-	gsap.set(scene.stickerFill, { opacity: 0 });
-	gsap.set([scene.stickerOutline, ...scene.stickerInk], {
-		strokeDasharray: 1,
-		strokeDashoffset: 1,
-	});
 	if (scene.bandDate) gsap.set(scene.bandDate, { autoAlpha: 0, y: 8 });
 	gsap.set(scene.bandDivider, { autoAlpha: 0, scaleY: 0 });
 	gsap.set(scene.bandNote, { autoAlpha: 0, y: 8 });
 }
 
 /**
- * 分层显示：底栏标题 → 左上角贴纸描线 → 完整日期 → 竖杠 → 右栏说明。
+ * 分层显示：底栏标题 → 完整日期 → 竖杠 → 右栏说明。
  * 只在图框收缩到位（阶段已进入 scenes）且该幕居中时调用，
  * 因此文字永远不会与背景收缩动画抢镜。
  */
@@ -202,35 +192,16 @@ function playSceneIntro(gsap: Gsap, scene: SceneRefs) {
 		onComplete: () => gsap.set(boosted, { willChange: "auto" }),
 	});
 
-	timeline
-		.to(
-			scene.bandTitle,
-			{
-				autoAlpha: 1,
-				y: 0,
-				duration: 0.66,
-				ease: "power3.out",
-			},
-			0.2,
-		)
-		.set(scene.sticker, { autoAlpha: 1 }, 0.42)
-		// pathLength 归一化后直接推进虚线偏移，不逐帧测量路径，也不常驻循环。
-		.to(
-			scene.stickerOutline,
-			{ strokeDashoffset: 0, duration: 0.62, ease: "power1.inOut" },
-			0.42,
-		)
-		.to(scene.stickerFill, { opacity: 1, duration: 0.25 }, 0.76)
-		.to(
-			scene.stickerInk,
-			{
-				strokeDashoffset: 0,
-				duration: 0.42,
-				stagger: 0.08,
-				ease: "power1.inOut",
-			},
-			0.86,
-		);
+	timeline.to(
+		scene.bandTitle,
+		{
+			autoAlpha: 1,
+			y: 0,
+			duration: 0.66,
+			ease: "power3.out",
+		},
+		0.2,
+	);
 
 	if (scene.bandDate) {
 		timeline.to(
@@ -293,6 +264,7 @@ function setupScenes(context: SetupContext) {
 		section.querySelectorAll<HTMLElement>("[data-home-blinds-scene]"),
 	).map(collectScene);
 	const cards = scenes.map((scene) => scene.card);
+	const cardOutlines = scenes.map((scene) => scene.cardOutline);
 	const swings = scenes.map((scene) => scene.swing);
 	const stands = selectRequired<HTMLElement>(section, "[data-scenes-stands]");
 	const standsTrack = selectRequired<HTMLElement>(
@@ -303,14 +275,11 @@ function setupScenes(context: SetupContext) {
 		stands.querySelectorAll<HTMLImageElement>("[data-scenes-stand-image]"),
 	);
 	const setImageRailPaused = startBlindsImageRail(stands, standsTrack, signal);
-	const cycleStage = selectRequired<HTMLElement>(
+	const marqueeLayer = selectRequired<HTMLElement>(
 		section,
-		"[data-scenes-cycle]",
+		"[data-scenes-marquee]",
 	);
-	const cycleTrack = selectRequired<HTMLElement>(
-		cycleStage,
-		"[data-scenes-cycle-track]",
-	);
+	const marquee = startBlindsMarquee({ layer: marqueeLayer, gsap, signal });
 	const bubbleLayer = selectRequired<HTMLElement>(
 		section,
 		"[data-scenes-bubbles]",
@@ -321,7 +290,6 @@ function setupScenes(context: SetupContext) {
 		root,
 		body: selectRequired<HTMLElement>(root, "[data-scene-bubble-body]"),
 		text: selectRequired<HTMLElement>(root, "[data-scene-bubble-text]"),
-		image: selectRequired<HTMLImageElement>(root, "[data-scene-bubble-image]"),
 	}));
 	// 弹跳只打在内层卡面上：外层那个 transform 归 CSS 的横向漂移，两层各持一个才不打架
 	const bubbleBodies = bubbleSlots.map((slot) => slot.body);
@@ -372,14 +340,15 @@ function setupScenes(context: SetupContext) {
 	let shrinkTrigger: ScrollTriggerInstance | null = null;
 	let pinTrigger: ScrollTriggerInstance | null = null;
 	let actVisible = false;
-	let cycleTransition: GsapTween | null = null;
 	let bubbleTransition: GsapTween | null = null;
 	let bubblePop: GsapTween | null = null;
 	let standTransition: GsapTween | null = null;
+	/** 上一次 pin 进度，用来把相邻两次 onUpdate 的差值换算成横滑像素速度 */
+	let lastPinProgress = 0;
 	/**
 	 * 三组判据各管各的，混用会做出「退场段动画被掐掉」这类怪事：
 	 * - `isStageInView`：固定舞台（全屏背景与收缩门）该不该露出，滚过影像层就隐藏。
-	 * - `isLayerLive`：影像层本身还在屏幕上，**含横移结束后的退场段** —— 背景方格、留言墙、
+	 * - `isLayerLive`：影像层本身还在屏幕上，**含横移结束后的退场段** —— 跑马灯、留言墙、
 	 *   图片列表、字幕入场与横移姿态都要继续跟着 section 一起离场，不能在 done 阶段停下。
 	 * - `loopsShouldRun`：在 `isLayerLive` 之上再让开后台标签页，只用于暂停无限循环。
 	 * 文档可见性不得参与显隐判断，否则页面被判定不可见时整块舞台会消失。
@@ -391,22 +360,6 @@ function setupScenes(context: SetupContext) {
 		!signal.aborted && rootInView && phase === "scenes";
 	const loopsShouldRun = () =>
 		isLayerLive() && document.visibilityState === "visible";
-	// 背景方格：图案的重复周期是粗线那一格（= 4 小格），轨道必须左移满一整周期才与起点重合。
-	// 只移小格的话，细线接上了、粗线整体跳一格，看着就是「飘着飘着突然闪回去」。
-	// 周期多长由组件注入 --home-blinds-cycle-period，样式与这里读的是同一个值，改一处不会错位。
-	const cyclePeriod = Number.parseFloat(
-		getComputedStyle(cycleTrack).getPropertyValue("--home-blinds-cycle-period"),
-	);
-	const cycleLoop = gsap.timeline({ repeat: -1, paused: true });
-	cycleLoop.fromTo(
-		cycleTrack,
-		{ x: 0 },
-		{
-			x: -cyclePeriod,
-			duration: Math.max(1, config.scenes.cycleDuration),
-			ease: "none",
-		},
-	);
 
 	// 图框尺寸完全由 CSS 变量决定；offset* 取的是不受 transform 影响的布局尺寸，
 	// 所以可以直接当作全屏背景收缩的终点，无需和 CSS 重复一遍计算公式。
@@ -501,12 +454,67 @@ function setupScenes(context: SetupContext) {
 			});
 	};
 
+	// 明信片入场：描边 SVG 就是明信片的边框本体（纸面不再画实线）。
+	// 进度完全由滚动距离驱动（renderIntro），不是自动播放的时间线；
+	// 错峰 + 跨度恰好收在 intro=1，最后一幕画满时整条线正好闭合
+	const CARD_INTRO_SHARE = 0.8;
+	const CARD_INTRO_STAGGER = 0.05;
+	const SWING_INTRO_OFFSET = 7;
+	/** 卡片本体浮现占用的 intro 比例：淡入 + 滑入，不再瞬间出现 */
+	const CARD_APPEAR_SHARE = 0.22;
+
+	/** 一幕的入场完成度：错峰窗口内 0→1，越靠前的幕越早画完 */
+	const sceneIntroProgress = (intro: number, index: number) =>
+		clamp((intro - index * CARD_INTRO_STAGGER) / CARD_INTRO_SHARE, 0, 1);
+
 	/**
-	 * 背景方格与留言墙同时入场。方格保留纸牌立起的姿态：
-	 * 以底边为铰链从向后平躺（rotationX 正 88，顶边朝远离视线的方向倒）转到竖直，
-	 * 配合 transformPerspective 造出「屏幕从后方地面立起来」的透视；
-	 * 正号不可写成负号，负号会变成朝观众一侧倒、成了从前面立起来。
-	 * 图片内层与方格同样从底边立起，外层横向位移仍由图片控制器独立更新。
+	 * 影像层入场（滚动进度驱动）：跑马灯沿各自轴向描线展开。
+	 * 首幕是收缩门的接收者：图片原地不动，只有纸面背景渐入 + 描边绕一圈；
+	 * 其余幕纸面早已就位，卡面本体错峰滑入淡入。往回滚时整段动画按来路退回。
+	 */
+	const renderIntro = (intro: number) => {
+		marquee.renderIntro(intro);
+		const paperFade = smoothstep(clamp(intro / CARD_APPEAR_SHARE, 0, 1));
+		cardOutlines.forEach((outline, index) => {
+			const eased = smoothstep(sceneIntroProgress(intro, index));
+			// 一支笔顺时针绕一圈：上→右→下→左，各占四分之一进度
+			outline.style.setProperty(
+				"--outline-top",
+				String(clamp(eased / 0.25, 0, 1)),
+			);
+			outline.style.setProperty(
+				"--outline-right",
+				String(clamp((eased - 0.25) / 0.25, 0, 1)),
+			);
+			outline.style.setProperty(
+				"--outline-bottom",
+				String(clamp((eased - 0.5) / 0.25, 0, 1)),
+			);
+			outline.style.setProperty(
+				"--outline-left",
+				String(clamp((eased - 0.75) / 0.25, 0, 1)),
+			);
+		});
+		swings.forEach((swing, index) => {
+			// 首幕纸面从无到有；其余幕一入场就是成品纸面。
+			// 变量写在 swing 上：纸面、吊线与木夹都是它的后代，一起随纸面渐入
+			swing.style.setProperty(
+				"--scene-paper-alpha",
+				index === 0 ? paperFade.toFixed(3) : "1",
+			);
+			// 首幕与收缩门严丝合缝，滑动会看着像图片向左跳，直接钉死原位
+			if (index === 0) {
+				gsap.set(swing, { xPercent: 0 });
+				return;
+			}
+			const eased = smoothstep(sceneIntroProgress(intro, index));
+			const offset = index % 2 === 0 ? -SWING_INTRO_OFFSET : SWING_INTRO_OFFSET;
+			gsap.set(swing, { xPercent: offset * (1 - eased) });
+		});
+	};
+
+	/**
+	 * 留言墙与立牌的显隐：跑马灯和明信片描边由滚动进度驱动，不在这里管。
 	 * 留言墙不跟着淡入：整层糊在一起会盖掉每颗自己的节奏，容器直接就位，
 	 * 卡面一颗颗从小弹到原位，elastic 的过冲就是那下「Q弹」。
 	 */
@@ -514,15 +522,6 @@ function setupScenes(context: SetupContext) {
 		if (actVisible) return;
 		actVisible = true;
 		requestCommentBubble();
-
-		cycleTransition?.kill();
-		cycleTransition = gsap.to(cycleStage, {
-			autoAlpha: 1,
-			rotationX: 0,
-			duration: 0.78,
-			ease: "power4.out",
-			overwrite: "auto",
-		});
 
 		bubbleTransition?.kill();
 		gsap.set(bubbleLayer, { autoAlpha: 1 });
@@ -544,23 +543,16 @@ function setupScenes(context: SetupContext) {
 	};
 
 	/**
-	 * 退场只做渐出，不再倒回平躺：整段淡出期间都保持竖直姿态，
-	 * 淡完（此时已不可见）才把 rotationX 悄悄复位到 88，下次进场照样从后方立起。
-	 * 淡出被 showAct 打断时 onComplete 不执行，元素保持竖直直接淡回来，不会突然摊平。
+	 * 退场：跑马灯反着收线（文字先淡出、线条依次滑回）；
+	 * 留言墙与立牌保持竖直姿态淡出，淡完（此时已不可见）才把 rotationX 悄悄复位，
+	 * 下次进场照样从后方立起。淡出被 showAct 打断时 onComplete 不执行，
+	 * 元素保持竖直直接淡回来，不会突然摊平。
 	 */
 	const hideAct = () => {
 		if (!actVisible) return;
 		actVisible = false;
 
-		cycleTransition?.kill();
-		cycleTransition = gsap.to(cycleStage, {
-			autoAlpha: 0,
-			duration: 0.5,
-			ease: "power2.in",
-			overwrite: "auto",
-			onComplete: () => gsap.set(cycleStage, { rotationX: 88 }),
-		});
-		cycleLoop.pause();
+		marquee.playExit();
 
 		bubbleTransition?.kill();
 		bubblePop?.kill();
@@ -589,9 +581,9 @@ function setupScenes(context: SetupContext) {
 	const syncAnimationPlayback = () => {
 		const layerLive = isLayerLive();
 		const loopsRun = loopsShouldRun();
-		// 背景方格的进离场补间不在这里暂停：onComplete 负责把姿态复位到 rotationX 88。
-		// 背景循环、留言墙和图片轨道额外让开后台标签页；退场段仍随 section 离场。
-		cycleLoop.paused(!loopsRun || !actVisible);
+		// 跑马灯的入退场由滚动进度/收线时间线自己推进，这里只停它的无限循环。
+		// 跑马灯循环、留言墙和图片轨道额外让开后台标签页；退场段仍随 section 离场。
+		marquee.setPaused(!loopsRun);
 		bubbleWall.setPaused(!loopsRun || !actVisible);
 		setImageRailPaused(!loopsRun || !actVisible);
 		for (const scene of scenes) {
@@ -612,33 +604,49 @@ function setupScenes(context: SetupContext) {
 		syncAnimationPlayback();
 	};
 
-	const renderScenes = (sceneProgress: number, isVisible: boolean) => {
+	const renderScenes = (
+		sceneProgress: number,
+		isVisible: boolean,
+		intro: number,
+	) => {
 		const step = cachedSceneStep;
 		const layerLive = isLayerLive();
+		// 卡片本体随入场进度滑入淡入，不是一到位置就整张亮出来
+		const appear = smoothstep(clamp(intro / CARD_APPEAR_SHARE, 0, 1));
 		let moving = false;
 
 		for (let index = 0; index < sceneCount; index += 1) {
 			const scene = scenes[index];
 			const distance = Math.abs(index - sceneProgress);
 			const x = (index - sceneProgress) * step;
-			const scale = 1 - Math.min(distance, 1) * 0.06;
-			const depthOpacity =
-				distance > 1.55 ? 0 : Math.max(0.14, 1 - distance * 0.6);
+			// 近大远小：只靠缩放拉开层次，侧边卡片不再整体调透明；
+			// 进出屏的柔化交给视口两侧的渐隐遮罩
+			const scale = 1 - Math.min(distance, 1) * 0.14;
+			// 出屏足够远的幕直接收起，纯为省绘制，屏幕内不参与透明度渐变
+			const inRange = distance <= 1.6;
 			const previousX = previousSceneX[index];
 
+			// 首幕图片在收缩门落点原地就位（alpha 1），其余幕随入场错峰滑入淡入
+			const alpha = index === 0 ? 1 : appear;
 			gsap.set(scene.card, {
 				xPercent: -50,
 				yPercent: -50,
 				x,
 				y: 0,
 				scale,
-				autoAlpha: isVisible ? depthOpacity : 0,
+				autoAlpha: isVisible && inRange ? alpha : 0,
 				zIndex: Math.round(20 - distance * 3),
 			});
 
 			// 图片就位（isVisible）且该幕居中后，文字与 UI 才开始分层显示；
-			// playSceneIntro 内部有 active 短路，所以每幕只播一次，之后一直留在画面上
-			if (isVisible && layerLive && distance < SCENE_ENTER_DISTANCE) {
+			// playSceneIntro 内部有 active 短路，所以每幕只播一次，之后一直留在画面上。
+			// 首幕要等纸面渐入得差不多再亮底栏文字，避免字浮在空底上
+			if (
+				isVisible &&
+				layerLive &&
+				distance < SCENE_ENTER_DISTANCE &&
+				intro > 0.3
+			) {
 				playSceneIntro(gsap, scene);
 			}
 
@@ -657,9 +665,13 @@ function setupScenes(context: SetupContext) {
 			resetWindTimer = window.setTimeout(resetWind, 110);
 		}
 
-		// 背景跑马灯与底部图片列表同进同出，图片横向位置独立于明信片滚动。
-		if (isVisible) showAct();
-		else hideAct();
+		// 跑马灯与明信片描边都按滚动进度渲染；留言墙与底部图片列表仍按可见性整体进出。
+		if (isVisible) {
+			renderIntro(intro);
+			showAct();
+		} else {
+			hideAct();
+		}
 	};
 
 	function applyPhase() {
@@ -691,15 +703,23 @@ function setupScenes(context: SetupContext) {
 		const progress = pinTrigger?.progress ?? 0;
 		horizontalEnabled = isScrubActive() && progress < 0.999;
 		viewport.classList.toggle("is-horizontal", horizontalEnabled);
+		// pin 的前一小段专用于入场（跑马灯描线 + 明信片滑入描边），之后才开始横移；
+		// 两段都按滚动距离推进，反向滚动原路退回。
 		// done 保留最后一幕随 section 离场，但不再启动或继续任何循环。
-		renderScenes(
+		const rawProgress =
+			phase === "scenes" ? progress : phase === "done" ? 1 : 0;
+		const intro = clamp(rawProgress / SCENES_INTRO_SHARE, 0, 1);
+		const sceneProgress =
 			phase === "scenes"
-				? progress * lastSceneIndex
+				? clamp(
+						(rawProgress - SCENES_INTRO_SHARE) / (1 - SCENES_INTRO_SHARE),
+						0,
+						1,
+					) * lastSceneIndex
 				: phase === "done"
 					? lastSceneIndex
-					: 0,
-			phase === "scenes" || phase === "done",
-		);
+					: 0;
+		renderScenes(sceneProgress, phase === "scenes" || phase === "done", intro);
 		syncAnimationPlayback();
 	}
 
@@ -714,11 +734,6 @@ function setupScenes(context: SetupContext) {
 	gsap.set(cards, { autoAlpha: 0 });
 	gsap.set(stands, { autoAlpha: 0 });
 	gsap.set(standImages, {
-		rotationX: 88,
-		transformPerspective: 1400,
-		autoAlpha: 0,
-	});
-	gsap.set(cycleStage, {
 		rotationX: 88,
 		transformPerspective: 1400,
 		autoAlpha: 0,
@@ -800,9 +815,20 @@ function setupScenes(context: SetupContext) {
 		pinSpacing: true,
 		anticipatePin: 1,
 		invalidateOnRefresh: true,
-		onToggle: syncStage,
+		onToggle: (self) => {
+			// 触发器换挡时重置进度基准，避免拿跨档差值当横滑速度甩出去
+			lastPinProgress = self.progress;
+			syncStage();
+		},
 		onUpdate: (self) => {
-			if (self.isActive) syncStage();
+			if (!self.isActive) return;
+			syncStage();
+			// 相邻两次 onUpdate 的进度差 × 触发区间长度 = 本次滚动跨过的像素量；
+			// 传给跑马灯叠加加速，反向滚动时它会直接掉头跑
+			const deltaPx =
+				(self.progress - lastPinProgress) * (self.end - self.start);
+			lastPinProgress = self.progress;
+			marquee.nudge(deltaPx);
 		},
 	});
 
@@ -820,10 +846,12 @@ function setupScenes(context: SetupContext) {
 	rootInView = rootTrigger.isActive;
 
 	// refresh 事件在所有触发器重新测量之后触发，是缩放后唯一可靠的补偿时机。
-	// 必须先按新视口量一遍图框尺寸，再按新尺寸同步各幕位置，顺序不能颠倒。
+	// 必须先按新视口量一遍图框尺寸，再同步各幕位置与跑马灯轨道宽度，顺序不能颠倒。
 	const handleRefresh = () => {
 		rootInView = rootTrigger.isActive;
 		measureScene();
+		marquee.refresh();
+		lastPinProgress = pinTrigger?.progress ?? 0;
 		syncStage();
 	};
 	ScrollTrigger.addEventListener("refresh", handleRefresh);
@@ -868,12 +896,11 @@ function setupScenes(context: SetupContext) {
 		window.clearTimeout(resetWindTimer);
 		window.clearTimeout(resizeTimer);
 		ScrollTrigger.removeEventListener("refresh", handleRefresh);
-		cycleTransition?.kill();
 		bubbleTransition?.kill();
 		bubblePop?.kill();
 		standTransition?.kill();
 		setImageRailPaused(true);
-		cycleLoop.kill();
+		marquee.destroy();
 		for (const setRotation of rotationSetters) setRotation.tween.kill();
 		for (const scene of scenes) {
 			scene.intro?.kill();
@@ -892,11 +919,10 @@ function setupScenes(context: SetupContext) {
 		viewport.classList.remove("is-horizontal");
 		gsap.killTweensOf([
 			...cards,
+			...cardOutlines,
 			...swings,
 			stands,
 			...standImages,
-			cycleStage,
-			cycleTrack,
 			bubbleLayer,
 			...bubbleBodies,
 			stage,

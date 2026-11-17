@@ -19,15 +19,16 @@ const sceneItems: HomeBlindsSceneItem[] = [
 	...config.scenes.items.slice(0, 4),
 ];
 const standImages = config.scenes.standImages;
-/**
- * 拼图背景：SVG 蒙版每周期包含 4 块，凹凸方向交错；
- * 控制器读同一个长度平移整层，循环边界与图案严格重合。
- */
-const CYCLE_PERIOD_PX = 224;
+/** 背景跑马灯胶带：文字、角度、落位、厚度与速度全部来自配置 */
+const marqueeTapes = config.scenes.marquee.tapes.filter(
+	(tape) => tape.text.trim().length > 0,
+);
+/** 每条胶带初始铺几份文字，控制器挂载后按胶带宽度补足 */
+const MARQUEE_SEED_REPEAT = 4;
 /** 气泡槽位上限：控制器按权重排出不重复队列，飘完一条回收再填下一条 */
 const BUBBLE_COUNT = 12;
 const bubbleMessages = config.scenes.bubbleMessages.filter(
-	(message) => (message.text ?? "").trim().length > 0 || Boolean(message.image),
+	(message) => (message.text ?? "").trim().length > 0,
 );
 /**
  * 评论区那条能不能取，在构建期就判完：只有 Waline 开着才有意义。
@@ -53,7 +54,6 @@ const runtimeConfig = {
 	scenes: {
 		scrollDistance: config.scenes.scrollDistance,
 		sceneCount: sceneItems.length,
-		cycleDuration: config.scenes.cycleDuration,
 		bubbleMessages,
 		commentBubble,
 	},
@@ -178,21 +178,58 @@ const runtimeConfig = {
 
 	<section class="home-blinds-scenes" data-home-blinds-scenes aria-label="横向影像叙事">
 		<div class="home-blinds-scenes__viewport" data-scenes-viewport>
-			<!-- 拼图接缝：单张 SVG 蒙版随整层移动，不为每块拼图建立节点 -->
+			<!-- 背景跑马灯胶带：三条不同角度斜着横贯影像层，文字沿胶带匀速循环滚动。
+			     胶带边缘由实线与斜纹组成，入场时沿各自轴向描线展开，退场反着收走 -->
 			<div
-				class="home-blinds-scenes__cycle"
-				style={`--home-blinds-cycle-period: ${CYCLE_PERIOD_PX}px`}
+				class="home-blinds-scenes__marquee"
 				aria-hidden="true"
-				data-scenes-cycle
+				data-scenes-marquee
 			>
-				<div
-					class="home-blinds-scenes__cycle-track"
-					data-scenes-cycle-track
-				></div>
+				{
+					marqueeTapes.map((tape) => (
+						<div
+							class="home-blinds-marquee"
+							data-marquee-tape
+							style={`--marquee-angle: ${tape.angle}deg; --marquee-top: ${tape.top}%; --marquee-center-x: ${tape.centerX}%; --marquee-thickness: ${tape.thickness}px; --marquee-speed: ${Math.max(1, tape.speed)}px`}
+						>
+							<div class="home-blinds-marquee__frame" data-marquee-frame>
+								<span
+									class="home-blinds-marquee__edge home-blinds-marquee__edge--top"
+									aria-hidden="true"
+								>
+									<i
+										class="home-blinds-marquee__edge-pattern"
+										data-marquee-hatch
+									></i>
+								</span>
+								<span
+									class="home-blinds-marquee__edge home-blinds-marquee__edge--bottom"
+									aria-hidden="true"
+								>
+									<i
+										class="home-blinds-marquee__edge-pattern"
+										data-marquee-hatch
+									></i>
+								</span>
+								<div class="home-blinds-marquee__viewport">
+									<div class="home-blinds-marquee__track" data-marquee-track>
+										{Array.from({ length: 2 }).map(() => (
+											<div class="home-blinds-marquee__seq" data-marquee-seq>
+												{Array.from({ length: MARQUEE_SEED_REPEAT }).map(() => (
+													<span class="home-blinds-marquee__text">{tape.text}</span>
+												))}
+											</div>
+										))}
+									</div>
+								</div>
+							</div>
+						</div>
+					))
+				}
 			</div>
 
-			<!-- 留言墙：明信片身后一排气泡各自横向飘过，飘出屏幕外那一侧时回收换一条再飘。
-			     文案与头像由控制器去重后按权重排序，这里只给等量的空壳 -->
+			<!-- 留言墙：明信片身后一排弹幕气泡各自横向飘过，飘出屏幕外那一侧时回收换一条再飘。
+			     文案由控制器去重后按权重排序，这里只给等量的空壳 -->
 			<div
 				class="home-blinds-scenes__bubbles"
 				aria-hidden="true"
@@ -202,17 +239,7 @@ const runtimeConfig = {
 					Array.from({ length: BUBBLE_COUNT }).map(() => (
 						<span class="home-blinds-bubble" data-scene-bubble>
 							<span class="home-blinds-bubble__body" data-scene-bubble-body>
-								<span
-									class="home-blinds-bubble__text"
-									data-scene-bubble-text
-								/>
-								<img
-									class="home-blinds-bubble__image"
-									data-scene-bubble-image
-									alt=""
-									loading="lazy"
-									decoding="async"
-								/>
+								<span class="home-blinds-bubble__text" data-scene-bubble-text />
 							</span>
 						</span>
 					))
