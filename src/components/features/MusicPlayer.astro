@@ -5,9 +5,11 @@ import { i18n } from "@/i18n/translation";
 
 /**
  * 桌面端可拖拽音乐组件（Swup 容器外持久存在）。
- * 三态：disc 收起唱片 → pill 播放中胶囊（唱片 + 歌词） → bar 展开 dock；
+ * 三态：disc 收起唱片 → pill 胶囊（关闭歌词时播放静置，显示曲名） → bar 展开 dock；
  * dock 上方只有一张展开卡：信息层（曲名 / 艺术家 / 进度）常驻，点歌单按钮时
  * 同一张卡向上长出歌单 / 歌词面板，信息层随之上移，不再是两张分离的卡片。
+ * 播放中当前歌词在唱片右侧无背景悬浮：逐字不规则排布、发光，换行时整层上飘淡出。
+ * 播放静置形态固定为纯唱片（关闭歌词也只留转动的唱片），点击唱片才展开控制条。
  * 引擎为 MusicManager 单例，逻辑见 src/utils/music-player-controller.ts，
  * 样式见 src/styles/components/music-player.css。移动端（≤768px）隐藏，由 MobileDock 承担。
  */
@@ -16,6 +18,7 @@ import { i18n } from "@/i18n/translation";
 <div
 	class="music-player music-player-widget"
 	data-state="disc"
+	data-anchor="left"
 	data-panel="closed"
 	data-playing="false"
 	role="region"
@@ -143,6 +146,10 @@ import { i18n } from "@/i18n/translation";
 		<span class="music-player__probe-bar"></span>
 		<span class="music-player__probe-rise"></span>
 	</span>
+
+	<!-- 浮动歌词层：贴在唱片右侧、无背景，字符按行内随机规则流式排布；
+	     换行时旧层上飘淡出，新层入场，两层短暂叠在一起 -->
+	<div class="music-player__lyric-cloud" aria-hidden="true" data-paused="false"></div>
 </div>
 
 <template id="music-player-item-template">

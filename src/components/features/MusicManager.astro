@@ -56,25 +56,53 @@ const managerConfigStr = JSON.stringify({
         return min + ':' + (sec < 10 ? '0' : '') + sec;
     }
 
+    // 增强型 LRC 的逐词时间标签 <mm:ss.xx> 与整行 [mm:ss.xx] 分开解析。
+    // 逐词标签只在单行时间戳时启用：同一行有多个时间戳的副本无法安全平移到词时间，
+    // 这类行退回整行时间，由展示层按行时长匀速逐字揭示。
     function parseLRC(lrc) {
         if (!lrc) return [];
         var lines = lrc.split('\n');
         var result = [];
         var timeReg = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
+        var wordReg = /<(\d{2}):(\d{2})\.(\d{2,3})>/g;
+
+        function toSeconds(match) {
+            return parseInt(match[1]) * 60 + parseInt(match[2])
+                + parseInt(match[3]) / (match[3].length === 3 ? 1000 : 100);
+        }
+
         lines.forEach(function (line) {
             var matches = Array.from(line.matchAll(timeReg));
-            if (matches.length > 0) {
-                var text = line.replace(timeReg, '').trim();
-                if (text) {
-                    matches.forEach(function (match) {
-                        var m = parseInt(match[1]);
-                        var s = parseInt(match[2]);
-                        var ms = parseInt(match[3]);
-                        var time = m * 60 + s + ms / (match[3].length === 3 ? 1000 : 100);
-                        result.push({ time: time, text: text });
+            if (matches.length === 0) return;
+
+            var body = line.replace(timeReg, '');
+            var text = body.replace(wordReg, '').trim();
+            if (!text) return;
+
+            var words = null;
+            if (matches.length === 1) {
+                var wordMatches = Array.from(body.matchAll(wordReg));
+                if (wordMatches.length > 0) {
+                    words = [];
+                    var lead = body.slice(0, wordMatches[0].index).trim();
+                    if (lead) words.push({ time: toSeconds(matches[0]), text: lead });
+                    wordMatches.forEach(function (wordMatch, i) {
+                        var segStart = wordMatch.index + wordMatch[0].length;
+                        var segEnd = i + 1 < wordMatches.length
+                            ? wordMatches[i + 1].index
+                            : body.length;
+                        var seg = body.slice(segStart, segEnd).trim();
+                        if (seg) words.push({ time: toSeconds(wordMatch), text: seg });
                     });
+                    if (words.length === 0) words = null;
                 }
             }
+
+            matches.forEach(function (match) {
+                var item = { time: toSeconds(match), text: text };
+                if (words) item.words = words;
+                result.push(item);
+            });
         });
         return result.sort(function (a, b) { return a.time - b.time; });
     }

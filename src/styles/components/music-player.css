@@ -64,6 +64,11 @@
 .music-player:not([data-state="disc"]) {
 	width: var(--mp-width);
 }
+/* 唱片在屏幕右半边：根元素右边缘锚定，展开卡与字云向左生长 */
+.music-player[data-anchor="right"] {
+	left: auto;
+	right: var(--mp-right, var(--mp-edge));
+}
 /* 拖拽中：位置实时跟随指针，关掉过渡避免手感发黏；顺手禁掉选字 */
 .music-player.is-dragging {
 	transition: none;
@@ -429,6 +434,98 @@
 }
 .music-player__pill-label.is-marquee {
 	animation: music-player-marquee var(--mp-marquee-duration, 7s) ease-in-out infinite alternate;
+}
+
+/* ============================================
+   浮动歌词层
+   贴在唱片右侧、无背景；行内严格按阅读顺序从左到右，
+   上下错位、字距、旋转与字号由控制器写入 --lc-*。
+   过长时拆成上下两行；换行时旧层上飘淡出、新层入场。
+   ============================================ */
+.music-player__lyric-cloud {
+	position: absolute;
+	left: calc(var(--mp-disc) + 1rem);
+	/* 字云垂直中心对准唱片圆心：root 底边 + 唱片半径 - 云高一半 */
+	bottom: calc(var(--mp-disc) / 2 - 3.5rem);
+	z-index: 1;
+	width: min(24rem, calc(100vw - 12rem));
+	height: 7rem;
+	pointer-events: none;
+	opacity: 1;
+	visibility: visible;
+	transition: opacity 300ms ease;
+}
+/* 点击展开菜单时立即让位；收回唱片态再淡入 */
+.music-player[data-state="bar"] .music-player__lyric-cloud,
+.music-player[data-state="pill"] .music-player__lyric-cloud {
+	opacity: 0;
+	visibility: hidden;
+	transition: none;
+}
+.music-player:not([data-state="disc"]) .music-player__lyric-cloud {
+	left: calc(var(--mp-disc-left) + var(--mp-disc) + 0.75rem);
+	bottom: calc(var(--mp-disc-gap) + var(--mp-disc) / 2 - 3.5rem);
+}
+.music-player[data-state="bar"] .music-player__lyric-cloud {
+	bottom: calc(var(--mp-bar-h) - 3.5rem);
+}
+.music-player__lyric-layer {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 0.45em;
+	opacity: 1;
+	transform: translate3d(0, 0, 0);
+	transition:
+		opacity 760ms ease,
+		transform 900ms var(--mp-motion),
+		filter 760ms ease;
+}
+.music-player__lyric-layer.is-leaving {
+	opacity: 0;
+	transform: translate3d(0, -2.5rem, 0) scale(1.03);
+	filter: blur(0.5rem);
+}
+.music-player__lyric-row {
+	display: flex;
+	align-items: center;
+	white-space: nowrap;
+}
+/* 字在行内按阅读顺序流动；--lc-jy 只改上下错位，不改变左右顺序 */
+.music-player__lyric-char {
+	display: inline-block;
+	line-height: 1.15;
+	font-size: calc(1em * var(--lc-size, 1));
+	margin-right: var(--lc-gap, 0.06em);
+	color: var(--deep-text);
+	white-space: pre;
+	opacity: 0;
+	transform: translateY(calc(var(--lc-jy, 0em) + 0.4em))
+		rotate(var(--lc-rot, 0deg)) scale(calc(var(--lc-scale, 1) * 0.85));
+	filter: blur(0.18em);
+	transition:
+		opacity 420ms ease,
+		transform 620ms var(--mp-spring),
+		filter 480ms ease,
+		text-shadow 620ms ease;
+	will-change: transform, opacity, filter;
+}
+.music-player__lyric-char.is-on {
+	opacity: 1;
+	transform: translateY(var(--lc-jy, 0em)) rotate(var(--lc-rot, 0deg))
+		scale(var(--lc-scale, 1));
+	filter: blur(0);
+	text-shadow:
+		0 0 0.16em color-mix(in oklch, var(--deep-text) 45%, transparent),
+		0 0 0.7em color-mix(in oklch, var(--deep-text) 28%, transparent),
+		0 0 1.4em color-mix(in oklch, var(--deep-text) 16%, transparent);
+}
+/* 从行中间进入时已唱字符直接落位，不排队补动画 */
+.music-player__lyric-char.is-instant {
+	transition: none;
+	animation: none !important;
 }
 .music-player__toolbar {
 	position: absolute;
@@ -826,6 +923,56 @@
 }
 .music-player.is-loading .music-player__loading svg {
 	animation: spin-slow 1.2s linear infinite;
+}
+
+/* ============================================
+   右侧锚定（镜像）
+   唱片在屏幕右半边时：唱片贴右、信息与工具栏让出右侧空间，
+   控制条与字云都向左展开，不再把唱片挤到左边
+   ============================================ */
+.music-player[data-anchor="right"] .music-player__disc {
+	left: auto;
+	right: 0;
+}
+.music-player[data-anchor="right"][data-state="pill"] .music-player__disc,
+.music-player[data-anchor="right"][data-state="bar"] .music-player__disc {
+	right: var(--mp-disc-left);
+}
+.music-player[data-anchor="right"] .music-player__info-surface {
+	padding-left: var(--mp-inset);
+	padding-right: calc(var(--mp-slot-pad) - var(--mp-inset));
+}
+.music-player[data-anchor="right"] .music-player__slot {
+	padding-left: 0.625rem;
+	padding-right: var(--mp-slot-pad);
+}
+.music-player[data-anchor="right"] .music-player__pill-text {
+	left: 1.25rem;
+	right: var(--mp-slot-pad);
+}
+.music-player[data-anchor="right"] .music-player__toolbar {
+	left: 0.625rem;
+	right: calc(var(--mp-slot-pad) - 0.5rem);
+	justify-content: flex-end;
+}
+.music-player[data-anchor="right"] .music-player__lyric-cloud {
+	left: auto;
+	right: calc(var(--mp-disc) + 1rem);
+}
+.music-player[data-anchor="right"]:not([data-state="disc"]) .music-player__lyric-cloud {
+	right: calc(var(--mp-disc-left) + var(--mp-disc) + 0.75rem);
+}
+/* 右侧镜像时音量浮层向左弹出，避免滑条右端被唱片挡住 */
+.music-player[data-anchor="right"] .music-player__volume-pop {
+	left: auto;
+	right: 0.5rem;
+	transform: translate3d(0, 0.25rem, 0) scale(0.94);
+	transform-origin: 100% 100%;
+}
+.music-player[data-anchor="right"] .music-player__volume:hover .music-player__volume-pop,
+.music-player[data-anchor="right"] .music-player__volume:focus-within .music-player__volume-pop,
+.music-player[data-anchor="right"] .music-player__volume:has(.music-player__volume-pop[data-dragging]) .music-player__volume-pop {
+	transform: translate3d(0, 0, 0);
 }
 
 /* 移动端由 MobileDock 承担 */

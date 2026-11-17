@@ -5,12 +5,18 @@ import { i18n } from "@/i18n/translation";
  * 桌面可拖拽音乐组件的视图控制器。
  * 播放引擎仍是 MusicManager 暴露的 window.__fireflyMusic 单例（fm:* 事件广播），
  * 本模块只负责三态形态机（disc / pill / bar）、展开卡（歌单 / 歌词面板 + 信息层）、
- * 拖拽定位与列表渲染。
+ * 播放器上方的浮动逐字歌词、拖拽定位与列表渲染。
+ *
+ * 浮动歌词：不再塞进胶囊或加背景，而是在唱片右侧铺一层无底的字云。
+ * 每行把字随机塞进互不重叠的槽位（单行波浪 / 上下双层），位置打乱但字号错落；
+ * 揭示仍按阅读顺序逐个点亮，但用固定步长提前点亮完整行，不等下一行的时间戳。
+ * 揭示时钟读 audio.currentTime（而非 timeupdate 的 250ms 粒度）：播放中走 rAF，
+ * 暂停时停表；拖动进度回退超过容差就整行重建，已唱字符直接落位不补动画。
  *
  * 形态转移约定：
  * - 未播放：disc ⇄ bar（点击唱片切换；点击组件外收回 disc）；
- * - 播放中：默认 pill（唱片 + 胶囊歌词），悬停弹性变 bar，点击唱片展开 bar；
- *   bar 在鼠标离开组件一段延迟后自动收回 pill；暂停时 pill 收回 bar；
+ * - 播放中：静置形态固定为纯唱片（歌词开启时字云浮在唱片右侧）；
+ *   点击唱片才展开 bar；再次点击唱片或点击组件外收回唱片，不随悬停自动开合；
  * - 歌单按钮开合的是 dock 上方那一张展开卡：卡片只向上长出面板，水平缩进不变，
  *   信息层随之上移留在卡片底部（面板在上、信息层在下，唱片始终骑在左下角接缝）。
  *
@@ -22,9 +28,28 @@ import { i18n } from "@/i18n/translation";
 type WidgetShape = "disc" | "pill" | "bar";
 type PanelTab = "playlist" | "lyrics";
 
+interface LyricWord {
+	time: number;
+	text: string;
+}
+
 interface LyricLine {
 	time: number;
 	text: string;
+	words?: LyricWord[];
+}
+
+interface LyricChar {
+	el: HTMLSpanElement;
+	time: number;
+}
+
+interface LyricLayerState {
+	lineIndex: number;
+	chars: LyricChar[];
+	revealed: number;
+	lastTime: number;
+	el: HTMLDivElement;
 }
 
 interface TrackInfo {
@@ -54,11 +79,25 @@ interface DragSession {
 	active: boolean;
 }
 
-const BAR_COLLAPSE_DELAY = 160;
 const LYRICS_SCROLL_RESUME_DELAY = 3000;
 const PLAYLIST_BATCH_SIZE = 30;
 const PILL_LYRICS_STORAGE_KEY = "music-pill-lyrics";
 const POSITION_STORAGE_KEY = "music-player-pos";
+/** 逐字揭示的最长铺开时长（秒）：行间隔过大时不让字符一个个拖太久 */
+const LYRIC_MAX_SPAN = 6;
+/** 逐字揭示的最短铺开时长（秒） */
+const LYRIC_MIN_SPAN = 0.7;
+/**
+ * 逐字步长（秒/字）。LRC 只有行首时间，若把整行铺到下一行的时间戳，
+ * 长间奏前的歌词会拖到唱完才显示完；固定步长保证整行提前点亮。
+ */
+const LYRIC_CHAR_STEP = 0.22;
+/** 全角字符（CJK / 假名 / 谚文 / 全角标点）按 1em 估宽，拉丁与数字按 0.56em */
+const WIDE_CHAR_RE = /[\u2e80-\u9fff\u3040-\u30ff\uac00-\ud7af\uff00-\uffef]/;
+/** 一次补亮的字符超过该数量视为进度跳转，直接重建整行而不是排队补动画 */
+const LYRIC_JUMP_LIMIT = 3;
+/** 离场层的上飘淡出时长（ms），与 CSS 过渡对齐 */
+const LYRIC_LEAVE_MS = 900;
 /** 与 CSS --mp-edge 对齐的视口安全边距 */
 const EDGE_MARGIN = 20;
 /** 超过该位移才判定为拖拽，避免与点击切形态冲突 */
@@ -90,6 +129,21 @@ function rubberBand(distance: number, limit: number): number {
 
 function prefersReducedMotion(): boolean {
 	return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * mulberry32：逐字歌词的行内抖动用固定种子生成，
+ * 同一行每次重建都得到同一套排布，切歌回来不会「重新洗牌」。
+ */
+function createSeededRandom(seed: number): () => number {
+	let state = seed >>> 0;
+	return () => {
+		state = (state + 0x6d2b79f5) >>> 0;
+		let t = state;
+		t = Math.imul(t ^ (t >>> 15), t | 1);
+		t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
 }
 
 export function setupMusicPlayerWidget(): void {
@@ -150,6 +204,7 @@ export function setupMusicPlayerWidget(): void {
 		playlistView: $(".music-player__playlist-view"),
 		lyricsView: $(".music-player__lyrics-view"),
 		lyricsList: $(".music-player__lyrics-list"),
+		lyricCloud: $(".music-player__lyric-cloud"),
 		itemTemplate: document.getElementById(
 			"music-player-item-template",
 		) as HTMLTemplateElement | null,
@@ -185,36 +240,33 @@ export function setupMusicPlayerWidget(): void {
 
 	// ── 本地状态 ─────────────────────────────────────────────
 	let shape: WidgetShape = "disc";
-	let hovering = false;
 	let panelOpen = false;
 	let isPlaying = false;
 	let isSeeking = false;
 	let isUserScrollingLyrics = false;
-	let collapseTimer: number | null = null;
 	let lyricsScrollTimer: number | null = null;
 	let entranceTimer: number | null = null;
 	let currentLrcIndex = -1;
 	let currentTrack: TrackInfo | null = null;
 	let playlistData: TrackInfo[] = [];
 	let playlistRenderedCount = 0;
-	let pillLyricsEnabled =
-		localStorage.getItem(PILL_LYRICS_STORAGE_KEY) !== "false";
+	let lyricsEnabled = localStorage.getItem(PILL_LYRICS_STORAGE_KEY) !== "false";
+	let lyricLayer: LyricLayerState | null = null;
+	let lyricRaf: number | null = null;
+	let lyricLeaveTimer: number | null = null;
 
 	// ── 定位与拖拽 ───────────────────────────────────────────
-	// 锚点是组件的左下角：left 向右为正、bottom 向上为正
+	// posX 是唱片左缘的屏幕坐标；posY 是组件底边。唱片在右半边时，
+	// 根元素改为右边缘锚定，展开卡与字云向左生长，唱片不被挤走。
 	let posX = EDGE_MARGIN;
 	let posY = EDGE_MARGIN;
 	let drag: DragSession | null = null;
 	let suppressClick = false;
 
-	/**
-	 * 当前形态展开到位后的尺寸。用探针与未被裁剪的信息层 / 面板实测，
-	 * 而不是读正在过渡中的根元素宽高；bar 态略高估（未扣掉 dock 压住卡片的
-	 * 负边距），夹取时保守一点比贴边上溢更安全。
-	 */
-	function footprint(): { width: number; height: number } {
+	/** 展开到位后的高度估算；宽度不再参与夹取，锚点只关心唱片本身 */
+	function footprintHeight(): number {
 		const disc = ui.disc?.offsetWidth ?? EDGE_MARGIN;
-		if (shape === "disc") return { width: disc, height: disc };
+		if (shape === "disc") return disc;
 		// 歌词态与展开态的 dock 同高，差别只在信息层与面板是否占位
 		const infoH = shape === "bar" ? (ui.infoSurface?.offsetHeight ?? 0) : 0;
 		const stageH = (ui.probeBar?.offsetHeight ?? 0) + infoH;
@@ -224,22 +276,30 @@ export function setupMusicPlayerWidget(): void {
 				? (ui.probeRise?.offsetHeight ?? 0)
 				: Math.max(0, disc / 2 - infoH);
 		const panelH = panelOpen ? (ui.panelBody?.offsetHeight ?? 0) : 0;
-		return {
-			width: ui.probe?.offsetWidth ?? stageH,
-			height: stageH + panelH + overhang,
-		};
+		return stageH + panelH + overhang;
 	}
 
 	function applyPosition(): void {
-		const { width, height } = footprint();
-		const maxX = Math.max(EDGE_MARGIN, window.innerWidth - width - EDGE_MARGIN);
+		const disc = ui.disc?.offsetWidth ?? EDGE_MARGIN;
+		const maxX = Math.max(EDGE_MARGIN, window.innerWidth - disc - EDGE_MARGIN);
 		const maxY = Math.max(
 			EDGE_MARGIN,
-			window.innerHeight - height - EDGE_MARGIN,
+			window.innerHeight - footprintHeight() - EDGE_MARGIN,
 		);
 		posX = Math.min(Math.max(posX, EDGE_MARGIN), maxX);
 		posY = Math.min(Math.max(posY, EDGE_MARGIN), maxY);
-		root.style.setProperty("--mp-x", `${Math.round(posX)}px`);
+
+		const flipped = posX + disc / 2 > window.innerWidth / 2;
+		root.dataset.anchor = flipped ? "right" : "left";
+		if (flipped) {
+			root.style.setProperty(
+				"--mp-right",
+				`${Math.round(window.innerWidth - posX - disc)}px`,
+			);
+		} else {
+			root.style.removeProperty("--mp-right");
+			root.style.setProperty("--mp-x", `${Math.round(posX)}px`);
+		}
 		root.style.setProperty("--mp-y", `${Math.round(posY)}px`);
 	}
 
@@ -356,41 +416,9 @@ export function setupMusicPlayerWidget(): void {
 		applyPosition();
 	}
 
-	function clearCollapseTimer(): void {
-		if (collapseTimer !== null) {
-			window.clearTimeout(collapseTimer);
-			collapseTimer = null;
-		}
-	}
-
-	/** 播放中鼠标不在组件上时的静置形态：显示歌词时为胶囊，否则为唱片 */
+	/** 播放中的静置形态固定为纯唱片：关闭歌词时也只留转动的唱片，不再回退到曲名胶囊 */
 	function playingRestingShape(): WidgetShape {
-		return pillLyricsEnabled ? "pill" : "disc";
-	}
-
-	function scheduleBarCollapse(): void {
-		clearCollapseTimer();
-		collapseTimer = window.setTimeout(() => {
-			collapseTimer = null;
-			if (hovering || !isPlaying || shape !== "bar" || panelOpen) return;
-			setShape(playingRestingShape());
-		}, BAR_COLLAPSE_DELAY);
-	}
-
-	function onPointerEnter(): void {
-		hovering = true;
-		clearCollapseTimer();
-		if (
-			isPlaying &&
-			(shape === "pill" || (shape === "disc" && !pillLyricsEnabled))
-		) {
-			setShape("bar");
-		}
-	}
-
-	function onPointerLeave(): void {
-		hovering = false;
-		if (isPlaying && shape === "bar" && !panelOpen) scheduleBarCollapse();
+		return "disc";
 	}
 
 	function onDiscClick(): void {
@@ -468,14 +496,16 @@ export function setupMusicPlayerWidget(): void {
 		isPlaying = playing;
 		root.dataset.playing = playing ? "true" : "false";
 		updatePlayIcons(playing);
-		if (!playing) {
-			clearCollapseTimer();
-			if (shape === "pill") setShape("bar");
-		} else if (shape !== "bar") {
+		// 控制条只由点击开合，播放状态切换只负责把唱片态放到位
+		if (playing && shape !== "bar") {
 			const resting = playingRestingShape();
-			if (shape !== resting) setShape(hovering ? "bar" : resting);
+			if (shape !== resting) setShape(resting);
 		}
 		updatePillText();
+		// 暂停时字云保留并冻结，恢复播放继续揭示
+		ui.lyricCloud?.setAttribute("data-paused", playing ? "false" : "true");
+		if (!playing) stopLyricLoop();
+		else if (lyricLayer) startLyricLoop();
 	}
 
 	function updateModeUI(playMode: number): void {
@@ -538,41 +568,27 @@ export function setupMusicPlayerWidget(): void {
 		updatePillText();
 	}
 
-	function updatePillLyricsButton(): void {
-		ui.btnLyrics?.classList.toggle("is-active", pillLyricsEnabled);
-		ui.btnLyrics?.setAttribute("aria-pressed", String(pillLyricsEnabled));
-		ui.iconLrcOn?.classList.toggle("hidden", !pillLyricsEnabled);
-		ui.iconLrcOff?.classList.toggle("hidden", pillLyricsEnabled);
+	function updateLyricsButton(): void {
+		ui.btnLyrics?.classList.toggle("is-active", lyricsEnabled);
+		ui.btnLyrics?.setAttribute("aria-pressed", String(lyricsEnabled));
+		ui.iconLrcOn?.classList.toggle("hidden", !lyricsEnabled);
+		ui.iconLrcOff?.classList.toggle("hidden", lyricsEnabled);
 	}
 
+	/** 胶囊只显示曲名与艺术家，歌词交给上方的字云 */
 	function updatePillText(): void {
-		if (!ui.pillLabel) return;
-		let text = "";
-		if (currentTrack) {
-			const lyrics = mgr.getState().lyrics as LyricLine[];
-			const line =
-				pillLyricsEnabled &&
-				isPlaying &&
-				currentLrcIndex >= 0 &&
-				currentLrcIndex < lyrics.length
-					? lyrics[currentLrcIndex]
-					: undefined;
-			// 关闭歌词时只显示曲名，与歌词行明确区分
-			text = line
-				? line.text
-				: pillLyricsEnabled
-					? `${currentTrack.name} - ${currentTrack.artist}`
-					: currentTrack.name;
-		} else {
-			text = i18n(I18nKey.musicNoPlaying);
-		}
-		if (ui.pillLabel.textContent !== text) {
-			ui.pillLabel.textContent = text;
+		const label = ui.pillLabel;
+		if (!label) return;
+		const text = currentTrack
+			? `${currentTrack.name} - ${currentTrack.artist}`
+			: i18n(I18nKey.musicNoPlaying);
+		if (label.textContent !== text) {
+			label.textContent = text;
 			scheduleMarquee();
 		}
 	}
 
-	/** 胶囊歌词超宽时跑马灯：偏移量与时长按溢出宽度算，写 CSS 变量交给 keyframes */
+	/** 胶囊文本超宽时跑马灯：偏移量与时长按溢出宽度算，写 CSS 变量交给 keyframes */
 	function scheduleMarquee(): void {
 		const label = ui.pillLabel;
 		const wrap = ui.pillText;
@@ -699,14 +715,17 @@ export function setupMusicPlayerWidget(): void {
 		};
 		if (status === "loading") {
 			placeholder(i18n(I18nKey.musicLoadingLyrics));
+			clearLyricCloud();
 			return;
 		}
 		if (status === "failed") {
 			placeholder(i18n(I18nKey.musicFailedLyrics));
+			clearLyricCloud();
 			return;
 		}
 		if (lyrics.length === 0) {
 			placeholder(i18n(I18nKey.musicNoLyrics));
+			clearLyricCloud();
 			return;
 		}
 		lyrics.forEach((line, index) => {
@@ -730,6 +749,8 @@ export function setupMusicPlayerWidget(): void {
 	function updateLrcHighlight(index: number, force = false): void {
 		if (index === currentLrcIndex && !force) return;
 		currentLrcIndex = index;
+		// 字云只在换行时重建：面板强制高亮（滚动恢复 / resync）不该重放动画
+		renderLyricCloud(index);
 		const list = ui.lyricsList;
 		if (!list) return;
 		list
@@ -758,6 +779,265 @@ export function setupMusicPlayerWidget(): void {
 		}, LYRICS_SCROLL_RESUME_DELAY);
 	}
 
+	// ── 播放器上方的浮动逐字歌词 ─────────────────────────────
+	function startLyricLoop(): void {
+		if (lyricRaf !== null) return;
+		lyricRaf = window.requestAnimationFrame(lyricTick);
+	}
+
+	function stopLyricLoop(): void {
+		if (lyricRaf === null) return;
+		window.cancelAnimationFrame(lyricRaf);
+		lyricRaf = null;
+	}
+
+	function lyricTick(): void {
+		lyricRaf = null;
+		if (!lyricLayer || !isPlaying) return;
+		applyLyricReveal(mgr.getState().currentTime);
+		// applyLyricReveal 可能因进度回退重建整行并顺带启动新循环，别叠出第二条时钟
+		if (lyricRaf === null && lyricLayer && isPlaying) {
+			lyricRaf = window.requestAnimationFrame(lyricTick);
+		}
+	}
+
+	/** 已唱字符补到当前时刻；一次跳太多（拖动进度）就整行重建，避免连环补动画 */
+	function applyLyricReveal(time: number): void {
+		const state = lyricLayer;
+		if (!state) return;
+		if (time < state.lastTime - 0.3) {
+			renderLyricCloud(currentLrcIndex, true);
+			return;
+		}
+		state.lastTime = time;
+		let target = state.revealed;
+		while (target < state.chars.length && state.chars[target].time <= time) {
+			target += 1;
+		}
+		if (target - state.revealed > LYRIC_JUMP_LIMIT) {
+			renderLyricCloud(currentLrcIndex, true);
+			return;
+		}
+		for (let i = state.revealed; i < target; i += 1) {
+			state.chars[i].el.classList.add("is-on");
+		}
+		state.revealed = target;
+	}
+
+	/**
+	 * 行揭示窗口：按字数算出快速铺开时长，再夹进到下一行（或歌曲结束）的可用时间。
+	 * 可用时间更长时按快速时长提前播完；更短时以可用时间为准，绝不超过下一行。
+	 */
+	function lyricRevealSpan(
+		index: number,
+		lyrics: LyricLine[],
+	): { start: number; span: number } {
+		const line = lyrics[index];
+		const start = line.time;
+		const next =
+			index + 1 < lyrics.length ? lyrics[index + 1].time : Number.NaN;
+		const count = Array.from(line.text.replace(/\s+/g, "")).length;
+		const fastSpan = Math.min(
+			LYRIC_MAX_SPAN,
+			Math.max(LYRIC_MIN_SPAN, count * LYRIC_CHAR_STEP),
+		);
+		const duration = mgr.getState().duration;
+		const available = Number.isFinite(next)
+			? next - start
+			: duration > start
+				? duration - start
+				: fastSpan;
+		return { start, span: Math.max(0.2, Math.min(available, fastSpan)) };
+	}
+
+	/** 有逐词标签按词分组（保留词时间），否则按空白断词后匀速逐字 */
+	function lyricWordGroups(
+		line: LyricLine,
+	): { text: string; time: number | null }[] {
+		if (line.words && line.words.length > 0) {
+			return line.words.map((word) => ({ text: word.text, time: word.time }));
+		}
+		return line.text
+			.split(/\s+/)
+			.filter((word) => word.length > 0)
+			.map((text) => ({ text, time: null }));
+	}
+
+	function leaveLyricLayer(layer: HTMLElement): void {
+		layer.classList.add("is-leaving");
+		if (lyricLeaveTimer !== null) window.clearTimeout(lyricLeaveTimer);
+		lyricLeaveTimer = window.setTimeout(() => {
+			lyricLeaveTimer = null;
+			ui.lyricCloud
+				?.querySelectorAll(".music-player__lyric-layer.is-leaving")
+				.forEach((el) => {
+					el.remove();
+				});
+		}, LYRIC_LEAVE_MS);
+	}
+
+	function clearLyricCloud(): void {
+		lyricLayer = null;
+		stopLyricLoop();
+		ui.lyricCloud
+			?.querySelectorAll<HTMLElement>(
+				".music-player__lyric-layer:not(.is-leaving)",
+			)
+			.forEach((layer) => {
+				leaveLyricLayer(layer);
+			});
+	}
+
+	function renderLyricCloud(index: number, force = false): void {
+		const lyrics = mgr.getState().lyrics as LyricLine[];
+		const line =
+			lyricsEnabled && index >= 0 && index < lyrics.length
+				? lyrics[index]
+				: null;
+		if (!line?.text.trim()) {
+			clearLyricCloud();
+			return;
+		}
+		if (!force && lyricLayer?.lineIndex === index) return;
+		const previous = lyricLayer;
+		lyricLayer = null;
+		stopLyricLoop();
+		if (previous) {
+			// 同一行重建（拖动进度）直接替换，不铺离场层
+			if (previous.lineIndex === index) previous.el.remove();
+			else leaveLyricLayer(previous.el);
+		}
+		buildLyricLayer(line, index);
+	}
+
+	function buildLyricLayer(line: LyricLine, index: number): void {
+		const cloud = ui.lyricCloud;
+		if (!cloud) return;
+		const lyrics = mgr.getState().lyrics as LyricLine[];
+		const { start, span } = lyricRevealSpan(index, lyrics);
+		const groups = lyricWordGroups(line);
+		let totalChars = 0;
+		for (const group of groups) totalChars += Array.from(group.text).length;
+		if (totalChars === 0) {
+			clearLyricCloud();
+			return;
+		}
+
+		// 横向太长时拆成上下两行，行内仍按阅读顺序从左到右
+		const cloudWidth = cloud.clientWidth || 384;
+		let widthUnits = 0;
+		for (const group of groups) {
+			for (const ch of Array.from(group.text)) {
+				widthUnits += WIDE_CHAR_RE.test(ch) ? 1 : 0.56;
+			}
+		}
+		const rowCount = widthUnits * 28 > cloudWidth ? 2 : 1;
+		const rowChars = Math.ceil(totalChars / rowCount);
+
+		// 布局从这一行固定的种子派生，拖动进度重建不会换花样
+		const random = createSeededRandom((index + 1) * 7919 + totalChars * 31);
+
+		const charTimes: number[] = [];
+		if (line.words && line.words.length > 0) {
+			groups.forEach((group, groupIndex) => {
+				const chars = Array.from(group.text);
+				const groupStart = group.time ?? start;
+				const next = groups[groupIndex + 1]?.time;
+				const groupEnd = typeof next === "number" ? next : start + span;
+				const duration = Math.max(0.12, groupEnd - groupStart);
+				chars.forEach((_, charIndex) => {
+					charTimes.push(groupStart + (charIndex / chars.length) * duration);
+				});
+			});
+		} else {
+			// 阅读顺序逐字点亮，不随机打乱
+			for (let i = 0; i < totalChars; i += 1) {
+				charTimes.push(start + (i / totalChars) * span);
+			}
+		}
+
+		const baseFont = Math.min(
+			30,
+			Math.max(14, (cloudWidth / Math.max(1, rowChars)) * 0.92),
+		);
+		const layerEl = document.createElement("div");
+		layerEl.className = "music-player__lyric-layer";
+		layerEl.style.fontSize = `${baseFont.toFixed(1)}px`;
+		layerEl.style.visibility = "hidden";
+
+		const rows: HTMLDivElement[] = [];
+		for (let row = 0; row < rowCount; row += 1) {
+			const rowEl = document.createElement("div");
+			rowEl.className = "music-player__lyric-row";
+			rows.push(rowEl);
+			layerEl.appendChild(rowEl);
+		}
+
+		const charEntries: LyricChar[] = [];
+		let charIndex = 0;
+		for (const group of groups) {
+			for (const ch of Array.from(group.text)) {
+				const row = charIndex >= rowChars ? 1 : 0;
+				const charEl = document.createElement("span");
+				charEl.className = "music-player__lyric-char";
+				charEl.textContent = ch;
+				// 水平顺序不变，只做上下错位 + 轻微旋转/字号差异
+				const jitterY =
+					Math.sin(charIndex * 0.9) * 0.14 + (random() - 0.5) * 0.08;
+				charEl.style.setProperty("--lc-jy", `${jitterY.toFixed(3)}em`);
+				charEl.style.setProperty(
+					"--lc-gap",
+					`${(0.04 + random() * 0.16).toFixed(3)}em`,
+				);
+				charEl.style.setProperty(
+					"--lc-rot",
+					`${((random() - 0.5) * 8).toFixed(2)}deg`,
+				);
+				charEl.style.setProperty(
+					"--lc-scale",
+					(0.94 + random() * 0.12).toFixed(3),
+				);
+				// 最大字号保持 1.15em 不变，把下限继续调小，拉开大小阶梯
+				charEl.style.setProperty(
+					"--lc-size",
+					(0.65 + random() * 0.5).toFixed(3),
+				);
+				rows[row].appendChild(charEl);
+				charEntries.push({ el: charEl, time: charTimes[charIndex] ?? start });
+				charIndex += 1;
+			}
+		}
+
+		cloud.appendChild(layerEl);
+		const widest = rows.reduce((max, row) => Math.max(max, row.scrollWidth), 0);
+		if (widest > cloudWidth) {
+			const base = Number.parseFloat(layerEl.style.fontSize) || 14;
+			layerEl.style.fontSize = `${Math.max(11, (base * cloudWidth) / widest).toFixed(1)}px`;
+		}
+		layerEl.style.visibility = "";
+
+		// 按时间排序后补亮（逐词数据不保证严格递增，排序兜底）
+		charEntries.sort((a, b) => a.time - b.time);
+		const now = mgr.getState().currentTime;
+		let revealed = 0;
+		while (revealed < charEntries.length && charEntries[revealed].time <= now) {
+			revealed += 1;
+		}
+		for (let i = 0; i < revealed; i += 1) {
+			// 从中间进入（拖动进度 / 切歌）时已唱字符直接落位，不排队补动画
+			charEntries[i].el.classList.add("is-on", "is-instant");
+		}
+
+		lyricLayer = {
+			lineIndex: index,
+			chars: charEntries,
+			revealed,
+			lastTime: now,
+			el: layerEl,
+		};
+		if (isPlaying) startLyricLoop();
+	}
+
 	// ── 全量同步（late-mount / Swup 导航后 resync） ───────────
 	function syncAll(): void {
 		const s = mgr.getState();
@@ -767,6 +1047,7 @@ export function setupMusicPlayerWidget(): void {
 			if (ui.title)
 				ui.title.textContent = s.error || i18n(I18nKey.musicNoSongs);
 			updatePillText();
+			clearLyricCloud();
 			return;
 		}
 		renderPlaylist(s.playlist as TrackInfo[], s.currentIndex);
@@ -782,7 +1063,6 @@ export function setupMusicPlayerWidget(): void {
 			s.lyrics as LyricLine[],
 			s.lyrics.length > 0 ? "loaded" : "none",
 		);
-		updatePillText();
 	}
 
 	// ── fm:* 事件订阅 ────────────────────────────────────────
@@ -811,6 +1091,7 @@ export function setupMusicPlayerWidget(): void {
 
 	on<{ index: number; track: TrackInfo }>("fm:track", (d) => {
 		currentLrcIndex = -1;
+		clearLyricCloud();
 		updateTrackUI(d.track);
 		updatePlaylistActiveUI(d.index);
 	});
@@ -835,18 +1116,17 @@ export function setupMusicPlayerWidget(): void {
 	on<{ lyrics: LyricLine[]; status: string }>("fm:lyrics", (d) => {
 		currentLrcIndex = -1;
 		renderLyricsUI(d.lyrics, d.status);
-		updatePillText();
 	});
 
 	on<{ index: number }>("fm:lrc-index", (d) => {
 		updateLrcHighlight(d.index);
-		updatePillText();
 	});
 
 	on<{ message: string }>("fm:error", (d) => {
 		setLoading(false);
 		if (ui.title) ui.title.textContent = d.message || i18n(I18nKey.musicError);
 		updatePillText();
+		clearLyricCloud();
 	});
 
 	// ── 拖拽（进度 / 音量） ──────────────────────────────────
@@ -1009,28 +1289,28 @@ export function setupMusicPlayerWidget(): void {
 	ui.btnLyrics?.addEventListener(
 		"click",
 		() => {
-			pillLyricsEnabled = !pillLyricsEnabled;
-			localStorage.setItem(
-				PILL_LYRICS_STORAGE_KEY,
-				pillLyricsEnabled ? "true" : "false",
-			);
-			updatePillLyricsButton();
-			updatePillText();
-			if (isPlaying && shape !== "bar") {
-				setShape(hovering ? "bar" : playingRestingShape());
+			lyricsEnabled = !lyricsEnabled;
+			try {
+				localStorage.setItem(PILL_LYRICS_STORAGE_KEY, String(lyricsEnabled));
+			} catch {
+				// 隐私模式写不进去，开关只活在本次会话
+			}
+			updateLyricsButton();
+			if (lyricsEnabled) {
+				renderLyricCloud(mgr.getState().currentLrcIndex, true);
+			} else {
+				clearLyricCloud();
 			}
 		},
 		{ signal },
 	);
 
-	root.addEventListener("pointerenter", onPointerEnter, { signal });
-	root.addEventListener("pointerleave", onPointerLeave, { signal });
 	ui.playlistList?.addEventListener("scroll", onPlaylistScroll, {
 		passive: true,
 		signal,
 	});
 
-	// 点击组件外：收歌单面板并把 dock 缩放收回（播放中回胶囊，未播放回唱片）
+	// 点击组件外：收歌单面板并收回控制条（回到唱片）
 	document.addEventListener(
 		"click",
 		(event) => {
@@ -1042,9 +1322,8 @@ export function setupMusicPlayerWidget(): void {
 			const target = event.target;
 			if (target instanceof Node && root.contains(target)) return;
 			if (panelOpen) setPanelOpen(false);
-			clearCollapseTimer();
 			if (shape !== "bar") return;
-			setShape(isPlaying ? playingRestingShape() : "disc");
+			setShape("disc");
 		},
 		{ signal },
 	);
@@ -1064,7 +1343,7 @@ export function setupMusicPlayerWidget(): void {
 	root.dataset.state = shape;
 	root.dataset.panel = "closed";
 	root.dataset.playing = "false";
-	updatePillLyricsButton();
+	updateLyricsButton();
 	// 首次定位不参与过渡：is-dragging 关掉根元素过渡，强制回流后再放开
 	root.classList.add("is-dragging");
 	loadPosition();
