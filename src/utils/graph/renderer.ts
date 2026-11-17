@@ -169,12 +169,15 @@ export function createRenderer(
 					const anchor = scene.selected ?? scene.hovered;
 					return anchor === a || anchor === b;
 				})();
-			// 连线生长。脑图走「从左到右三波描绘」那条播放头；力导向逐条按自己
-			// 算 —— 两端都揭示完、这条边也变成可见了，再等一段，然后从这一端
-			// 拉到那一端。不等整张图播完才统一通电，谁先齐谁先连。
+			// 连线生长。脑图走「从左到右三波描绘」那条播放头；绽放期两端都是
+			// 飞行中的节点，整线可见即「枝条随叶子一起伸展」；其余情况力导向
+			// 逐条按自己算 —— 两端都揭示完、这条边也变成可见了，再等一段，
+			// 然后从这一端拉到那一端。不等整张图播完才统一通电，谁先齐谁先连。
 			let grow: number;
 			if (scene.mode === "mindmap") {
 				grow = mindmapLinkGrow(scene.lineProgress, link.kind);
+			} else if (scene.blooming) {
+				grow = 1;
 			} else if (reducedMotion) {
 				grow = 1;
 			} else {

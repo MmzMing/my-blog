@@ -881,6 +881,11 @@
 	--article-toc-mindmap-hover: rgb(0 0 0 / 8%);
 	--article-toc-mindmap-line: rgb(0 0 0 / 28%);
 	--article-toc-mindmap-active: var(--link-color);
+	--article-toc-mindmap-scroll-thumb: rgba(0, 0, 0, 0.4);
+	--article-toc-mindmap-scroll-thumb-hover: rgba(0, 0, 0, 0.52);
+	--article-toc-mindmap-scroll-thumb-active: rgba(0, 0, 0, 0.64);
+	/* 一级分支色块上的深色文字：色板都是中间调，深字在明暗主题下都够读 */
+	--article-toc-mindmap-chip-ink: #1f1f1f;
 
 	position: fixed;
 	inset: 0;
@@ -899,6 +904,9 @@
 	--article-toc-mindmap-muted: #9e9e9e;
 	--article-toc-mindmap-hover: rgb(255 255 255 / 12%);
 	--article-toc-mindmap-line: rgb(255 255 255 / 22%);
+	--article-toc-mindmap-scroll-thumb: rgba(255, 255, 255, 0.4);
+	--article-toc-mindmap-scroll-thumb-hover: rgba(255, 255, 255, 0.52);
+	--article-toc-mindmap-scroll-thumb-active: rgba(255, 255, 255, 0.64);
 }
 
 .article-toc-mindmap__overlay {
@@ -919,15 +927,21 @@
 	border: 1px solid var(--article-toc-mindmap-line);
 	border-radius: var(--radius-large);
 	overflow: hidden;
+	/* 入场与统一弹窗同一套：从触发按钮放大滑入。起点变量由
+	   dialog-presence-controller 写，键盘/程序化打开用兜底值 */
+	--dialog-origin-x: 0px;
+	--dialog-origin-y: 0.75rem;
+	--dialog-origin-scale: 0.96;
+	animation: dialog-morph-in 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* 头部与画布之间不画分割线（与统一弹窗一致），靠留白分层 */
 .article-toc-mindmap__header {
 	display: flex;
 	flex: none;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
-	border-bottom: 1px solid var(--article-toc-mindmap-line);
+	padding: var(--space-2) var(--space-3) var(--space-3) var(--space-4);
 }
 
 .article-toc-mindmap__heading {
@@ -995,10 +1009,56 @@
 	cursor: grab;
 	touch-action: none;
 	user-select: none;
+	/* 主滚动条在 html/body 上声明的 scrollbar-color 会继承进弹窗，Chromium
+	   会因此忽略下面的 ::-webkit-scrollbar 造型，且暗色下继承到的是浅色主题
+	   的黑色滑块，在 #161616 面板上几乎不可见；显式重置回 auto 交还 webkit 样式 */
+	scrollbar-color: auto;
 }
 
 .article-toc-mindmap__canvas.is-panning {
 	cursor: grabbing;
+}
+
+/* 弹窗内的滚动条：与主滚动条同一套 webkit 造型（14px 粗条、无箭头），
+   配色用「浅色阶」——取面板文字色的高透明度，深浅主题都清晰可辨 */
+@supports not selector(::-webkit-scrollbar) {
+	.article-toc-mindmap__canvas {
+		scrollbar-width: auto;
+		scrollbar-color: var(--article-toc-mindmap-scroll-thumb) transparent;
+	}
+}
+
+.article-toc-mindmap__canvas::-webkit-scrollbar {
+	width: 14px;
+	height: 14px;
+}
+
+/* 去掉轨道两端的上下箭头按钮 */
+.article-toc-mindmap__canvas::-webkit-scrollbar-button {
+	display: none;
+	width: 0;
+	height: 0;
+}
+
+.article-toc-mindmap__canvas::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.article-toc-mindmap__canvas::-webkit-scrollbar-thumb {
+background: var(--article-toc-mindmap-scroll-thumb);
+	border: 2px solid transparent;
+	border-radius: 999px;
+	background-clip: padding-box;
+}
+
+.article-toc-mindmap__canvas::-webkit-scrollbar-thumb:hover {
+background: var(--article-toc-mindmap-scroll-thumb-hover);
+	background-clip: padding-box;
+}
+
+.article-toc-mindmap__canvas::-webkit-scrollbar-thumb:active {
+background: var(--article-toc-mindmap-scroll-thumb-active);
+	background-clip: padding-box;
 }
 
 .article-toc-mindmap__lines {
@@ -1012,7 +1072,20 @@
 .article-toc-mindmap__line {
 	fill: none;
 	stroke: var(--article-toc-mindmap-line);
-	stroke-width: 1.5;
+	stroke-width: 1.4;
+	stroke-linecap: round;
+	opacity: 0.75;
+}
+
+/* 一级分支的枝条更粗更实，做出参考图的主干层次 */
+.article-toc-mindmap__line--primary {
+	stroke-width: 2;
+	opacity: 1;
+}
+
+.article-toc-mindmap__line.is-active {
+	stroke: var(--article-toc-mindmap-active);
+	opacity: 1;
 }
 
 /* 挂载点：不参与布局（display: contents），仅承载 JS 注入的 --mindmap-zoom
@@ -1021,13 +1094,13 @@
 	display: contents;
 }
 
-/* 嵌套递归布局：父节点与其子树子列垂直居中对齐；间距全用 em，
-   缩放通过树容器 font-size（--mindmap-zoom）整体生效，滚动区随之正确 */
+/* 经典双侧布局：左列 | 根 | 右列。父节点与其子树子列垂直居中对齐，
+   间距全用 em，缩放通过树容器 font-size（--mindmap-zoom）整体生效 */
 .article-toc-mindmap__tree {
 	position: relative;
 	z-index: 1;
 	display: flex;
-	gap: 3em;
+	gap: 3.25em;
 	align-items: center;
 	min-width: max-content;
 	min-height: 100%;
@@ -1035,76 +1108,95 @@
 	font-size: calc(0.82rem * var(--mindmap-zoom, 1));
 }
 
+/* 左右两侧的一级分支竖列：向根节点一侧对齐，组间留大间距 */
+.article-toc-mindmap__tree > .article-toc-mindmap__side {
+	gap: 3.2em;
+}
+
+.article-toc-mindmap__side--left {
+	align-items: flex-end;
+}
+
+.article-toc-mindmap__side--right {
+	align-items: flex-start;
+}
+
 .article-toc-mindmap__branch {
 	display: flex;
-	gap: 3em;
+	gap: 2.4em;
 	align-items: center;
+}
+
+/* 左侧分支整体镜像：子列在左、节点在右，枝条朝根的方向生长 */
+.article-toc-mindmap__branch--left {
+	flex-direction: row-reverse;
 }
 
 .article-toc-mindmap__children {
 	display: flex;
 	flex-direction: column;
-	gap: 1.5em;
+	gap: 1.2em;
 }
 
-/* 根节点的子级组之间留大间距、组内小间距，分组呼吸感与参考图一致 */
-.article-toc-mindmap__tree > .article-toc-mindmap__children {
-	gap: 4.5em;
-}
-
+/* 节点统一是无边框的色块/浅块，圆角小方角（参考图的卡片语言） */
 .article-toc-mindmap__node {
 	display: inline-flex;
 	flex: none;
-	gap: 0.5em;
 	align-items: center;
 	max-width: 19em;
-	padding: 0.35em 0.9em;
-	border: 1px solid var(--article-toc-mindmap-line);
-	border-radius: 999px;
-	background: var(--article-toc-mindmap-bg);
-	color: var(--article-toc-mindmap-muted);
+	padding: 0.35em 0.85em;
+	border: 0;
+	border-radius: 0.5em;
+	background: transparent;
+	color: var(--article-toc-mindmap-text);
 	font-size: 1em;
-	line-height: 1.5;
+	line-height: 1.55;
 	text-align: left;
 	cursor: pointer;
 	transition:
-		color 160ms ease,
-		border-color 160ms ease;
+		background-color 160ms ease,
+		box-shadow 160ms ease,
+		color 160ms ease;
 }
 
+/* 二级及以下：浅色块 + 次级文字 */
+.article-toc-mindmap__node--deep {
+	background: color-mix(
+		in srgb,
+		var(--article-toc-mindmap-text) 7%,
+		transparent
+	);
+	color: var(--article-toc-mindmap-muted);
+}
+
+/* 根主题：反相实心块，比一级分支更重 */
+.article-toc-mindmap__node--root {
+	padding: 0.5em 1em;
+	background: var(--article-toc-mindmap-text);
+	color: var(--article-toc-mindmap-bg);
+	font-size: 1.12em;
+	font-weight: 700;
+	border-radius: 0.55em;
+}
+
+/* 一级分支：图谱色板实心色块，轮转分配颜色 */
+.article-toc-mindmap__node--l1 {
+	padding: 0.4em 0.95em;
+	background: var(--mindmap-branch, var(--article-toc-mindmap-hover));
+	color: var(--article-toc-mindmap-chip-ink);
+	font-weight: 700;
+	border-radius: 0.55em;
+}
+
+/* 悬停与悬停链高亮：无边框后改用描边光圈表达 */
 .article-toc-mindmap__node:hover,
 .article-toc-mindmap__node:focus-visible {
-	color: var(--article-toc-mindmap-active);
-	border-color: var(--article-toc-mindmap-active);
+	box-shadow: 0 0 0 2px
+		color-mix(in srgb, var(--article-toc-mindmap-active) 60%, transparent);
 }
 
-/* 悬停链高亮：根到悬停节点的整条链，连线、边框、文字、圆点全部转主题强调色 */
 .article-toc-mindmap__node.is-trail {
-	color: var(--article-toc-mindmap-active);
-	border-color: var(--article-toc-mindmap-active);
-}
-
-.article-toc-mindmap__node.is-trail .article-toc-mindmap__node-dot {
-	border-color: var(--article-toc-mindmap-active);
-}
-
-.article-toc-mindmap__line.is-active {
-	stroke: var(--article-toc-mindmap-active);
-}
-
-.article-toc-mindmap__node--root {
-	color: var(--article-toc-mindmap-text);
-	font-weight: 700;
-}
-
-.article-toc-mindmap__node-dot {
-	flex: none;
-	box-sizing: border-box;
-	width: 0.6em;
-	height: 0.6em;
-	border: 1.5px solid var(--article-toc-mindmap-line);
-	border-radius: 999px;
-	background: var(--article-toc-mindmap-bg);
+	box-shadow: 0 0 0 2px var(--article-toc-mindmap-active);
 }
 
 .article-toc-mindmap__node-text {
@@ -1115,6 +1207,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+	.article-toc-mindmap__panel {
+		animation: none;
+	}
+
 	.article-toc-mindmap__tool-btn,
 	.article-toc-mindmap__node {
 		transition-duration: 1ms;

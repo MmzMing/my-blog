@@ -325,11 +325,19 @@
 .music-player__progress {
 	position: relative;
 	flex: 1;
-	height: 0.25rem;
+	height: 0.375rem;
 	border-radius: 9999px;
 	background: color-mix(in oklch, var(--deep-text) 14%, transparent);
 	cursor: pointer;
 	touch-action: none;
+}
+/* 命中区放大：轨道视觉仍是细胶囊，上下各扩 0.375rem。
+   点在条附近的空白也落在进度元素上（伪元素的事件目标就是宿主），
+   外层「拖动播放器」的排除表因此能拦住它，不会误变拖动卡片 */
+.music-player__progress::before {
+	content: "";
+	position: absolute;
+	inset: -0.375rem 0;
 }
 .music-player__progress-bar {
 	position: absolute;
@@ -349,13 +357,14 @@
 	margin: -0.375rem 0 0 -0.375rem;
 	border-radius: 9999px;
 	background: var(--primary);
-	box-shadow: 0 0 0 2px var(--float-panel-bg);
-	opacity: 0;
-	transition: opacity 180ms ease;
+	box-shadow: 0 0 0 2px var(--music-surface);
+	/* 手柄常显（同音量条），只保留悬停/拖拽时的轻微放大 */
+	opacity: 1;
+	transition: transform 180ms var(--mp-spring);
 }
 .music-player__progress:hover .music-player__progress-thumb,
 .music-player__progress.is-dragging .music-player__progress-thumb {
-	opacity: 1;
+	transform: scale(1.15);
 }
 
 /* ============================================

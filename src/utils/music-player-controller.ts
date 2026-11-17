@@ -67,9 +67,10 @@ const DRAG_THRESHOLD = 4;
 const TRACK_STAGGER_MAX = 12;
 const TRACK_STAGGER_MS = 26;
 const TRACK_ENTRANCE_MS = 340 + TRACK_STAGGER_MAX * TRACK_STAGGER_MS;
-/** 这些区域承担各自的交互，不作为拖拽起点 */
+/** 这些区域承担各自的交互，不作为拖拽起点。
+    进度行整行排除：轨道判定区放大了上下留白，点偏一点都不该变成拖播放器 */
 const DRAG_EXCLUDE =
-	".music-player__btn, .music-player__progress, .music-player__volume, .music-player__tab, .music-player__playlist-list, .music-player__lyrics-list";
+	".music-player__btn, .music-player__progress-row, .music-player__progress, .music-player__volume, .music-player__tab, .music-player__playlist-list, .music-player__lyrics-list";
 /**
  * 音量条橡皮筋的越界上限（px）。约束来自滑块：轨道端点到胶囊内缘只有 31px，
  * 半颗滑块 6.6px，20 越界后滑块右缘距胶囊还留 4px。参考实现的 26 不受这个约束。

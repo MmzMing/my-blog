@@ -52,18 +52,72 @@ const RADIAL_STRENGTH: Record<string, number> = {
 const active = (node: SceneNode): boolean => node.filtered && node.revealed;
 
 /**
- * 分类扇区力：把节点往所属分类的方位角推。
- * 与 forceRadial 组合出「有机感的日晕图」—— 半径由层级决定、角度由分类决定，
- * 但具体位置仍交给物理，不是刻板的同心圆。
+ * 花朵式角度目标：每个节点在所属分类的扇面里占一片「花瓣」。
+ * 分类守中线；标签按权重顺序在扇面内均分角度；文章沿主标签的花瓣角
+ * 继续向外。配合 forceRadial 的层级半径，每个分类会开成一朵放射状的花，
+ * 而不是一团混沌的点云。
+ */
+function computePetalTargets(scene: Scene): Map<string, number> {
+	const targets = new Map<string, number>();
+
+	for (const category of scene.byTier.category) {
+		const sector = scene.sectorAngle.get(category.data.id);
+		if (sector !== undefined) targets.set(category.data.id, sector);
+	}
+
+	const sectorWidth = (Math.PI * 2) / Math.max(1, scene.categoryIds.length);
+	const tagsByCategory = new Map<string, SceneNode[]>();
+	for (const tag of scene.byTier.tag) {
+		const list = tagsByCategory.get(tag.data.categoryId) ?? [];
+		list.push(tag);
+		tagsByCategory.set(tag.data.categoryId, list);
+	}
+	for (const [categoryId, tags] of tagsByCategory) {
+		const sector = scene.sectorAngle.get(categoryId);
+		if (sector === undefined) continue;
+		// 花瓣扇面随标签数加宽，但不超过分类扇区的 78%，相邻分类不互相挤占
+		const arc = Math.min(sectorWidth * 0.78, Math.max(0.4, tags.length * 0.16));
+		tags.forEach((tag, index) => {
+			const offset =
+				tags.length === 1 ? 0 : (index / (tags.length - 1) - 0.5) * arc;
+			targets.set(tag.data.id, sector + offset);
+		});
+	}
+
+	for (const post of scene.byTier.post) {
+		let angle: number | undefined;
+		let bestValue = -1;
+		for (const parentId of post.parents) {
+			const parent = scene.nodeMap.get(parentId);
+			if (parent?.tier !== "tag") continue;
+			const target = targets.get(parentId);
+			if (target === undefined || parent.data.value <= bestValue) continue;
+			bestValue = parent.data.value;
+			angle = target;
+		}
+		targets.set(
+			post.data.id,
+			angle ?? scene.sectorAngle.get(post.data.categoryId) ?? 0,
+		);
+	}
+
+	return targets;
+}
+
+/**
+ * 扇区牵引力：把节点沿圆周扫向各自的花瓣角。
+ * 与 forceRadial 组合出「有机感的花朵」—— 半径由层级决定、角度由花瓣
+ * 槽位决定，但具体位置仍交给物理，不是刻板的同心圆。
  */
 function forceSector(scene: Scene, strength: number) {
 	let nodes: SceneNode[] = [];
+	const targets = computePetalTargets(scene);
 	const force = (alpha: number): void => {
 		const cx = scene.width / 2;
 		const cy = scene.height / 2;
 		for (const node of nodes) {
 			if (!active(node)) continue;
-			const target = scene.sectorAngle.get(node.data.categoryId);
+			const target = targets.get(node.data.id);
 			if (target === undefined) continue;
 			const dx = (node.x ?? 0) - cx;
 			const dy = (node.y ?? 0) - cy;

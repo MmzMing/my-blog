@@ -32,8 +32,6 @@ import { definePageIsland } from "@/utils/swup-lifecycle";
 /** 活动行居中滚动的节流间隔（沿用旧浏览列表的节奏） */
 const READING_OFFSET = 80;
 const ACTIVE_SCROLL_THROTTLE = 120;
-/** 连接线拐角处的圆弧半径（px），思维导图的分支线仍在用 */
-const LINE_CORNER_RADIUS = 5;
 /** 竖轨在层级变化处的斜向台阶长度 = 两点纵向距离 × 该系数 */
 const TRACK_BEND_RATIO = 0.3;
 /** 指示器沿轨追赶阅读位置的弹簧；朝向另配一套更硬的，转向要利落 */
@@ -359,6 +357,11 @@ export class ArticleTocPanelController {
 	private mindmapRootPill: HTMLElement | null = null;
 	/** 导图连接线 path，下标对齐 tree.nodes，供悬停链高亮 */
 	private mindmapPaths: (SVGPathElement | null)[] = [];
+	/** 节点所在侧与层级：连线朝向（左/右）和线宽都按它来 */
+	private mindmapNodeSides: ("left" | "right")[] = [];
+	private mindmapNodeDepths: number[] = [];
+	/** 一级分支的配色轮转槽位 */
+	private mindmapColorSlot = 0;
 	/** 导图缩放倍率，通过树容器的 font-size（em 体系）生效 */
 	private mindmapZoom = 1;
 	/** 画布拖拽平移的进行中状态；null 表示未在拖拽 */
@@ -1508,12 +1511,35 @@ export class ArticleTocPanelController {
 		this.mindmapPanDragged = false;
 		this.renderMindmap();
 		dialog.showModal();
-		requestAnimationFrame(() => this.drawMindmapLines());
+		/* 入场是带 scale 的 morph 动画，动画期间量出来的矩形都被缩小，
+		   直接画线会错位；等面板动画全部结束后再按真实布局画 */
+		const panel = dialog.querySelector<HTMLElement>(
+			".article-toc-mindmap__panel",
+		);
+		requestAnimationFrame(() => {
+			const running = (panel?.getAnimations() ?? []).filter(
+				(animation) => animation.playState === "running",
+			);
+			if (running.length === 0) {
+				this.drawMindmapLines();
+				this.centerMindmapOnRoot();
+				return;
+			}
+			void Promise.allSettled(
+				running.map((animation) => animation.finished),
+			).then(() => {
+				if (this.mindmapDialog?.open) {
+					this.drawMindmapLines();
+					this.centerMindmapOnRoot();
+				}
+			});
+		});
 	}
 
 	/**
-	 * 嵌套递归布局（markmap 同款观感）：父节点所在行与其子树子列垂直居中对齐，
-	 * 组内小间距、组间大间距——间距全部用 em 表达，缩放只改树容器 font-size。
+	 * 经典双侧导图（参考 XMind / MindNode 的排版）：根节点居中，
+	 * 一级分支按子树规模贪心分到左右两侧，每侧内部嵌套
+	 * 「节点 + 子级竖列」的水平组合，左侧整体镜像。
 	 */
 	private renderMindmap(): void {
 		const tree = this.tree;
@@ -1522,6 +1548,9 @@ export class ArticleTocPanelController {
 		this.mindmapNodePills = [];
 		this.mindmapRootPill = null;
 		this.mindmapPaths = [];
+		this.mindmapNodeSides = [];
+		this.mindmapNodeDepths = [];
+		this.mindmapColorSlot = 0;
 
 		const treeEl = document.createElement("div");
 		treeEl.className = "article-toc-mindmap__tree";
@@ -1532,12 +1561,51 @@ export class ArticleTocPanelController {
 
 		const roots = tree.nodes.filter((node) => node.parent < 0);
 		if (roots.length > 0) {
-			const children = document.createElement("div");
-			children.className = "article-toc-mindmap__children";
-			roots.forEach((node) => {
-				this.buildMindmapBranch(node, children);
-			});
-			treeEl.appendChild(children);
+			const sizes = new Map<number, number>();
+			const sizeOf = (index: number): number => {
+				const cached = sizes.get(index);
+				if (cached !== undefined) return cached;
+				const node = tree.nodes[index];
+				const size =
+					1 + node.children.reduce((sum, child) => sum + sizeOf(child), 0);
+				sizes.set(index, size);
+				return size;
+			};
+
+			// 按子树规模分侧：每支去当前更轻的一边，左右视觉重量平衡
+			const left: number[] = [];
+			const right: number[] = [];
+			let leftWeight = 0;
+			let rightWeight = 0;
+			for (const node of roots) {
+				const weight = sizeOf(node.index);
+				if (rightWeight <= leftWeight) {
+					right.push(node.index);
+					rightWeight += weight;
+				} else {
+					left.push(node.index);
+					leftWeight += weight;
+				}
+			}
+
+			const leftColumn = document.createElement("div");
+			leftColumn.className =
+				"article-toc-mindmap__children article-toc-mindmap__side article-toc-mindmap__side--left";
+			for (const index of left) {
+				const node = tree.nodes[index];
+				if (node) this.buildMindmapBranch(node, leftColumn, "left", 1);
+			}
+
+			const rightColumn = document.createElement("div");
+			rightColumn.className =
+				"article-toc-mindmap__children article-toc-mindmap__side article-toc-mindmap__side--right";
+			for (const index of right) {
+				const node = tree.nodes[index];
+				if (node) this.buildMindmapBranch(node, rightColumn, "right", 1);
+			}
+
+			treeEl.insertBefore(leftColumn, rootPill);
+			treeEl.appendChild(rightColumn);
 		}
 
 		if (this.mindmapLinesSvg) {
@@ -1547,42 +1615,63 @@ export class ArticleTocPanelController {
 		}
 	}
 
-	/** 一棵子树 = 「节点胶囊 + 子级竖列」的水平组合 */
-	private buildMindmapBranch(node: TocNode, parent: HTMLElement): void {
+	/** 一棵子树 = 「节点胶囊 + 子级竖列」的水平组合；左侧整体镜像 */
+	private buildMindmapBranch(
+		node: TocNode,
+		parent: HTMLElement,
+		side: "left" | "right",
+		depth: number,
+	): void {
 		const branch = document.createElement("div");
 		branch.className = "article-toc-mindmap__branch";
-		branch.appendChild(this.buildMindmapPill(node.index, node.text, false));
+		if (side === "left") {
+			branch.classList.add("article-toc-mindmap__branch--left");
+		}
+		branch.appendChild(
+			this.buildMindmapPill(node.index, node.text, false, depth),
+		);
 
 		if (node.children.length > 0) {
 			const children = document.createElement("div");
 			children.className = "article-toc-mindmap__children";
 			node.children.forEach((childIndex) => {
 				const child = this.tree?.nodes[childIndex];
-				if (child) this.buildMindmapBranch(child, children);
+				if (child) this.buildMindmapBranch(child, children, side, depth + 1);
 			});
 			branch.appendChild(children);
 		}
 		parent.appendChild(branch);
+		this.mindmapNodeSides[node.index] = side;
+		this.mindmapNodeDepths[node.index] = depth;
 	}
 
 	private buildMindmapPill(
 		index: number,
 		text: string,
 		isRoot: boolean,
+		depth = 0,
 	): HTMLButtonElement {
 		const pill = document.createElement("button");
 		pill.type = "button";
-		pill.className = isRoot
-			? "article-toc-mindmap__node article-toc-mindmap__node--root"
-			: "article-toc-mindmap__node";
+		pill.className = "article-toc-mindmap__node";
+		if (isRoot) {
+			pill.classList.add("article-toc-mindmap__node--root");
+		} else if (depth === 1) {
+			// 一级分支轮转图谱色板，用色块区分主题（参考图的分类色块语言）
+			pill.classList.add("article-toc-mindmap__node--l1");
+			pill.style.setProperty(
+				"--mindmap-branch",
+				`var(--tag-graph-node-${(this.mindmapColorSlot++ % 8) + 1})`,
+			);
+		} else {
+			pill.classList.add("article-toc-mindmap__node--deep");
+		}
 		if (index >= 0) pill.dataset.tocMindmapIndex = String(index);
 		pill.title = text;
-		const dot = document.createElement("span");
-		if (!isRoot) dot.className = "article-toc-mindmap__node-dot";
 		const textEl = document.createElement("span");
 		textEl.className = "article-toc-mindmap__node-text";
 		textEl.textContent = text;
-		pill.append(dot, textEl);
+		pill.appendChild(textEl);
 		if (index >= 0) this.mindmapNodePills[index] = pill;
 		return pill;
 	}
@@ -1593,6 +1682,25 @@ export class ArticleTocPanelController {
 			"--mindmap-zoom",
 			String(this.mindmapZoom),
 		);
+	}
+
+	/** 双侧布局下根节点在树正中：打开时把画布滚到根上，两边分支都能看到 */
+	private centerMindmapOnRoot(): void {
+		const canvas = this.mindmapCanvas;
+		const root = this.mindmapRootPill;
+		if (!canvas || !root) return;
+		const canvasRect = canvas.getBoundingClientRect();
+		const rootRect = root.getBoundingClientRect();
+		const offsetX =
+			rootRect.left +
+			rootRect.width / 2 -
+			(canvasRect.left + canvasRect.width / 2);
+		const offsetY =
+			rootRect.top +
+			rootRect.height / 2 -
+			(canvasRect.top + canvasRect.height / 2);
+		canvas.scrollLeft = Math.max(0, canvas.scrollLeft + offsetX);
+		canvas.scrollTop = Math.max(0, canvas.scrollTop + offsetY);
 	}
 
 	private setMindmapZoom(zoom: number): void {
@@ -1677,35 +1785,20 @@ export class ArticleTocPanelController {
 
 			const path = document.createElementNS(SVG_NAMESPACE, "path");
 			path.classList.add("article-toc-mindmap__line");
-			/* markmap 同款共享主干：水平出父节点 → 中点处垂直转弯 → 水平入子节点，
-			   各兄弟路径的公共段重叠，视觉上是一根主干分出多条分支 */
-			const branchX = (start.right + end.left) / 2;
-			const corner = Math.min(
-				LINE_CORNER_RADIUS,
-				Math.abs(end.y - start.y) / 2,
-				Math.max(0, end.left - branchX),
+			/* 单段三次曲线（经典脑图工具的枝条语言）：水平出父节点、水平入子节点。
+			   左侧分支整体镜像，控制点方向取负 */
+			const side = this.mindmapNodeSides[node.index] ?? "right";
+			const direction = side === "left" ? -1 : 1;
+			const startX = side === "left" ? start.left : start.right;
+			const endX = side === "left" ? end.right : end.left;
+			const bend = Math.max(20, Math.abs(endX - startX) * 0.45);
+			path.setAttribute(
+				"d",
+				`M ${startX} ${start.y} C ${startX + direction * bend} ${start.y}, ${endX - direction * bend} ${end.y}, ${endX} ${end.y}`,
 			);
-			const turn =
-				corner < 0.5
-					? [`M ${start.right} ${start.y}`, `H ${end.left}`]
-					: end.y > start.y
-						? [
-								`M ${start.right} ${start.y}`,
-								`H ${branchX - corner}`,
-								`Q ${branchX} ${start.y} ${branchX} ${start.y + corner}`,
-								`V ${end.y - corner}`,
-								`Q ${branchX} ${end.y} ${branchX + corner} ${end.y}`,
-								`H ${end.left}`,
-							]
-						: [
-								`M ${start.right} ${start.y}`,
-								`H ${branchX - corner}`,
-								`Q ${branchX} ${start.y} ${branchX} ${start.y - corner}`,
-								`V ${end.y + corner}`,
-								`Q ${branchX} ${end.y} ${branchX + corner} ${end.y}`,
-								`H ${end.left}`,
-							];
-			path.setAttribute("d", turn.join(" "));
+			if ((this.mindmapNodeDepths[node.index] ?? 1) === 1) {
+				path.classList.add("article-toc-mindmap__line--primary");
+			}
 			svg.appendChild(path);
 			this.mindmapPaths[node.index] = path;
 		});

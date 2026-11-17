@@ -24,7 +24,7 @@
 	display: none;
 }
 
-/* ===== 顶部固定层：层级徽标 + 关闭按钮 + 节点名称 ===== */
+/* ===== 顶部固定层：一行标题（层级：名称）+ 关闭按钮 ===== */
 
 .graph-detail__top {
 	padding: 0.5rem 0.875rem 0.625rem;
@@ -35,15 +35,20 @@
 	display: flex;
 	gap: 0.5rem;
 	align-items: center;
-	justify-content: space-between;
 }
 
+/* 层级不再单独占一行：作为标题前缀内联，字号与名称同档 */
 .graph-detail__tier {
+	flex: none;
 	color: var(--content-meta);
-	font-size: 0.6875rem;
+	font-size: 0.9375rem;
 	font-weight: 700;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+	line-height: 1.4;
+}
+
+.graph-detail__tier::after {
+	content: "：";
+	white-space: pre;
 }
 
 .graph-detail__close {
@@ -73,8 +78,9 @@
 
 /* 名称即链接：双击节点跳转的语义在面板里收敛成一次点击 */
 .graph-detail__title {
-	display: block;
-	margin-top: 0.125rem;
+	display: flex;
+	flex: 1;
+	min-width: 0;
 	color: var(--deep-text);
 	text-decoration: none;
 }
@@ -140,7 +146,8 @@
    都只靠选择器分支，onSelect 生成的 <ul><li><a> 结构不动 */
 
 /* 标签：一组并列的短词，竖着列 33 项既拖长又看不出彼此平级。
-   改成自适应卡片 —— 一行放得下几个放几个，面板变宽（含移动端铺满）自动增列 */
+   改成自适应色阶芯片 —— 不用描边，以文字色的低透明度底块分档：
+   静息一档、悬停加深一档；前缀 # 与标签页的书写一致 */
 [data-kg-detail-group="tag"] .graph-detail__list {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
@@ -155,26 +162,35 @@
 [data-kg-detail-group="tag"] .graph-detail__list a {
 	display: block;
 	padding: 0.3125rem 0.5rem;
-	border: 1px solid var(--line-divider);
+	border: 0;
 	border-radius: var(--radius-small, 0.375rem);
+	background: color-mix(in oklch, var(--deep-text) 6%, transparent);
 	color: var(--deep-text);
 	font-size: 0.75rem;
 	line-height: 1.35;
 	/* 长标签整词换行而不是撑破网格轨道 */
 	overflow-wrap: anywhere;
 	text-decoration: none;
-	transition:
-		border-color 160ms ease-out,
-		background-color 160ms ease-out;
+	transition: background-color 160ms ease-out;
 }
 
-/* 点亮态与 dock 筛选弹窗里的勾选芯片同一套语言 */
+[data-kg-detail-group="tag"] .graph-detail__list a::before {
+	content: "#";
+	margin-right: 0.0625rem;
+	color: var(--content-meta);
+	transition: color 160ms ease-out;
+}
+
 [data-kg-detail-group="tag"] .graph-detail__list a:hover,
 [data-kg-detail-group="tag"] .graph-detail__list a:focus-visible {
-	border-color: var(--graph-chip-checked);
-	background: color-mix(in srgb, var(--graph-chip-checked) 9%, transparent);
+	background: color-mix(in oklch, var(--deep-text) 13%, transparent);
 	color: var(--deep-text);
 	text-decoration: none;
+}
+
+[data-kg-detail-group="tag"] .graph-detail__list a:hover::before,
+[data-kg-detail-group="tag"] .graph-detail__list a:focus-visible::before {
+	color: var(--deep-text);
 }
 
 /* 文章与小标题：要按顺序读，保持竖排，但给标题左侧补一颗圆点当列表符。
@@ -204,7 +220,7 @@
 [data-kg-detail-group="post"] .graph-detail__list a:focus-visible::before,
 [data-kg-detail-group="heading"] .graph-detail__list a:hover::before,
 [data-kg-detail-group="heading"] .graph-detail__list a:focus-visible::before {
-	background: var(--graph-chip-checked);
+	background: var(--deep-text);
 }
 
 /* 移动端：定位交给底部抽屉容器（knowledge-graph.css）统一堆叠，

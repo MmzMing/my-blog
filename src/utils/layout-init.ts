@@ -15,6 +15,7 @@
 
 import { ArticleTocPanelRuntime } from "@/utils/article-toc-panel-controller";
 import { scheduleContentOverflowEnhancements } from "@/utils/content-overflow";
+import { installDialogPresenceController } from "@/utils/dialog-presence-controller";
 import { installExternalLinkTooltipController } from "@/utils/external-link-tooltip-controller";
 import { mountGalleryDetail } from "@/utils/gallery-detail-controller";
 import { installLazyCollapsibleCodeController } from "@/utils/lazy-collapsible-code-controller";
@@ -61,6 +62,13 @@ export function initLayout(): void {
 	definePersistentIsland("layout:page-loader", () => {
 		initPageLoader();
 	});
+
+	// 共用 .privacy-* 外壳的弹窗从触发按钮放大滑入（公告 / 隐私政策 / 用户协议 / 留言板），
+	// document 捕获监听 + showModal 包装都是全站一次性安装
+	definePersistentIsland(
+		"layout:dialog-presence",
+		installDialogPresenceController,
+	);
 
 	// 正文里的 KaTeX 公式与宽表格包裹：容器内的东西，随导航重跑
 	definePageIsland({

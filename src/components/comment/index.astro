@@ -37,7 +37,7 @@ let commentService: string = commentConfig?.type || "none";
 
 {
   commentService !== "none" && (
-    <div id="post-comments" class="card-base p-8 mb-6 relative overflow-hidden">
+    <div id="post-comments" class="card-base p-8 mb-6 relative">
       <!-- 评论区标题：左主题色胶囊竖条+标题（同工具导航手风琴标题的竖条），右侧政策入口（复用页脚的隐私政策弹窗）；
            pl/pr-4 = 内容区 pl-2 + Waline 面板自带 8px 外边距，保证左右边缘对齐编辑框 -->
       <div class="relative z-10 flex items-center justify-between gap-3 mb-6 pl-4 pr-4">

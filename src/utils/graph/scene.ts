@@ -57,6 +57,8 @@ export type Scene = {
 	selected: SceneNode | null;
 	/** 当前视图模式：力导向 / 脑图 */
 	mode: GraphLayoutMode;
+	/** 力导向入场绽放进行中（播放器写、渲染器读）：连线整线可见、随端点伸展 */
+	blooming: boolean;
 	/** 脑图模式下的连线描绘播放头 0..1（graph 模式忽略） */
 	lineProgress: number;
 	/** 力导向下还有连线没画完的最早时刻（performance.now() 口径）。
@@ -158,6 +160,7 @@ export function buildScene(data: KGData): Scene {
 		hovered: null,
 		selected: null,
 		mode: "graph",
+		blooming: false,
 		lineProgress: 1,
 		linesPendingUntil: 0,
 	};

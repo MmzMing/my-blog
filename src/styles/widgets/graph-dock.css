@@ -3,14 +3,14 @@
    .knowledge-graph__surface —— 那层带 overflow:hidden 会裁掉弹窗。弹窗的
    left/top 与箭头轴由 src/utils/graph-dock-popover-controller.ts 量出来写内联。
 
-   移动端整条压扁成横排 pill，坐在 .mobile-dock 上方，尺寸与配色对齐
-   mobile-dock.css 的扁平原语；弹窗改成往上浮、箭头落在底边。
+   移动端整条转成水平圆角矩形，按内容宽度居中坐在 .mobile-dock 上方，
+   不再拉满屏宽；弹窗改成往上浮、箭头落在底边。
 
    表单控件（勾选行 / 搜索 / 滑杆 / 统计）沿用原 graph-filter-panel 的类名，
    外观按这次的单列复选框重做；.graph-accordion 那一套也留在这里 ——
    详情面板（KnowledgeGraph.astro）还在复用它，删不得。 */
 
-/* ===== dock 竖条：一颗胶囊外壳包着 6 个无边框图标按钮 ===== */
+/* ===== dock 竖条：一颗圆角矩形容器包着 6 个圆角方形图标按钮 ===== */
 
 .kg-dock {
 	position: absolute;
@@ -24,7 +24,7 @@
 	gap: var(--kg-dock-gap, 0.125rem);
 	padding: var(--kg-dock-pad, 0.375rem);
 	border: 0;
-	border-radius: 999px;
+	border-radius: 1.375rem;
 	/* 壳面直接取导航栏那块：亮 #E7E7E7 / 暗 #161616（variables.styl:69,209）。
 	   不另外描边 —— 靠与画布的明暗对比成形就够了 */
 	background: var(--navbar-bg);
@@ -32,7 +32,7 @@
 	transform: translateY(-50%);
 }
 
-/* 按钮不带边框，形状全靠壳那一层 */
+/* 按钮不带边框，形状全靠壳那一层；圆角方形与移动端 mobile-dock 栅格一致 */
 .kg-dock__btn {
 	position: relative;
 	width: var(--kg-dock-btn-size, 2.875rem);
@@ -41,7 +41,7 @@
 	display: grid;
 	place-items: center;
 	border: 0;
-	border-radius: 50%;
+	border-radius: 1rem;
 	background: transparent;
 	color: var(--deep-text);
 	cursor: pointer;
@@ -266,21 +266,20 @@
 	}
 }
 
-/* ===== 移动端：横排 pill 条，压在 .mobile-dock 上方 ===== */
+/* ===== 移动端：圆角矩形横条，水平居中、内容自适应，不拉满屏宽 ===== */
 
 @media (max-width: 768px) {
 	.kg-dock {
 		top: auto;
-		left: auto;
-		right: max(var(--kg-mobile-edge), env(safe-area-inset-right, 0px));
-		/* 宽度沿用 .mobile-dock 的同一条算式（mobile-dock.css:30-34）：都从 100vw
-		   里扣左右留白与安全区。改用 left/right 撑会落在扣掉滚动条的包含块上，
-		   两条 dock 的左边缘就会错开 */
-		width: calc(
+		left: 50%;
+		right: auto;
+		/* 宽度由内容撑开：6 颗按钮 + 间距 + 内衬，保持紧凑并水平居中，
+		   不再用 100vw 铺满，免得按钮之间的空隙被拉开 */
+		width: auto;
+		max-width: calc(
 			100vw - max(var(--kg-mobile-edge), env(safe-area-inset-right, 0px)) -
 				max(var(--kg-mobile-edge), env(safe-area-inset-left, 0px))
 		);
-		max-width: calc(100vw - (var(--kg-mobile-edge) * 2));
 		bottom: var(--kg-dock-mobile-bottom);
 		flex-direction: row;
 		align-items: stretch;
@@ -288,22 +287,22 @@
 		height: var(--kg-graph-bar-h);
 		padding: 0.2rem 0.35rem;
 		border: 0;
-		border-radius: 1.825rem;
+		border-radius: 1.375rem;
 		background: var(--mobile-dock-surface);
 		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 14%);
-		transform: none;
+		transform: translateX(-50%);
 	}
 
 	:root.dark .kg-dock {
 		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 34%);
 	}
 
-	/* 扁平化：去掉描边，6 颗等分不滚动。圆角与点亮配色对齐
-	   .mobile-dock__toolbar button（mobile-dock.css:927-953） */
+	/* 扁平化：去掉描边。按钮按视口宽度收敛尺寸（窄屏不溢出），
+	   圆角方形与点亮配色对齐 .mobile-dock__toolbar button（mobile-dock.css:935-958） */
 	.kg-dock__btn {
-		width: auto;
+		flex: none;
+		width: clamp(2.25rem, 11.5vw, 2.75rem);
 		height: auto;
-		flex: 1 1 0;
 		min-width: 0;
 		border: 0;
 		border-radius: 1rem;
@@ -471,6 +470,17 @@
 	background: transparent;
 	color: var(--deep-text);
 	font-size: 0.8125rem;
+	transition:
+		border-color 160ms ease-out,
+		background-color 160ms ease-out;
+}
+
+/* 聚焦只留一圈线：1px 边框与 1px 外扩阴影拼成同一条 2px 描边，
+   不再叠 outline —— 否则内外两条轮廓会形成双重线条 */
+.graph-panel__search input:focus {
+	outline: none;
+	border-color: var(--deep-text);
+	box-shadow: 0 0 0 1px var(--deep-text);
 }
 
 .graph-panel__search input::placeholder {
@@ -486,10 +496,64 @@
 	cursor: pointer;
 }
 
+/* 最少文章数滑条：对齐播放器音量条的语言 —— 细胶囊轨道、已选段填主色、
+   大圆点滑块带一圈与弹窗同色的描边环。命中区放大到 1.25rem，轨道视觉仍细。
+   原生 range 没有可样式化的「已填充段」，进度用输入自身的背景渐变画，
+   --kg-range-progress 由控制器随 input 事件写入 */
 .graph-panel__range input[type="range"] {
+	--kg-range-progress: 0%;
 	flex: 1;
 	min-width: 0;
-	accent-color: var(--primary);
+	height: 1.25rem;
+	margin: 0;
+	appearance: none;
+	border-radius: 999px;
+	background: linear-gradient(
+			to right,
+			var(--primary) 0 var(--kg-range-progress),
+			color-mix(in oklch, var(--deep-text) 14%, transparent)
+				var(--kg-range-progress) 100%
+		)
+		center / 100% 0.375rem no-repeat;
+	cursor: pointer;
+	touch-action: pan-y;
+}
+
+.graph-panel__range input[type="range"]::-webkit-slider-runnable-track {
+	height: 1.25rem;
+	background: transparent;
+}
+
+.graph-panel__range input[type="range"]::-webkit-slider-thumb {
+	appearance: none;
+	width: 1rem;
+	height: 1rem;
+	/* 轨道占满输入高度，2px = (1.25rem - 1rem) / 2，把圆点压回垂直中线 */
+	margin-top: 0.125rem;
+	border: 0;
+	border-radius: 999px;
+	background: var(--primary);
+	box-shadow: 0 0 0 2px var(--float-panel-bg);
+}
+
+.graph-panel__range input[type="range"]::-moz-range-track {
+	height: 1.25rem;
+	background: transparent;
+}
+
+.graph-panel__range input[type="range"]::-moz-range-thumb {
+	width: 1rem;
+	height: 1rem;
+	border: 0;
+	border-radius: 999px;
+	background: var(--primary);
+	box-shadow: 0 0 0 2px var(--float-panel-bg);
+}
+
+.graph-panel__range input[type="range"]:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+	border-radius: 999px;
 }
 
 .graph-panel__range output {
@@ -530,11 +594,12 @@
 
 .graph-panel__check:has(input:focus-visible) {
 	box-shadow: inset 0 0 0 2px
-		color-mix(in srgb, var(--graph-chip-checked) 55%, transparent);
+		color-mix(in srgb, var(--deep-text) 35%, transparent);
 }
 
-/* 可见复选框：整颗圆角，跟 dock 按钮的圆形语言一致。
-   勾上时填本页强调色，白色对勾用两条边框转 45° 画出来 */
+/* 可见复选框：对齐文章里计划清单（StepChecklist）的黑白勾选语言 ——
+   未选是细描边圆环，勾上填 deep-text、对勾用弹窗底色画，
+   带一次回弹缩放，对勾稍晚浮现，不再用青色强调色 */
 .graph-panel__box {
 	position: relative;
 	width: 0.9375rem;
@@ -543,8 +608,8 @@
 	border: 1.5px solid var(--line-divider);
 	border-radius: 50%;
 	transition:
-		border-color 160ms ease-out,
-		background-color 160ms ease-out;
+		border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+		background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .graph-panel__box::after {
@@ -557,17 +622,35 @@
 	border: solid var(--float-panel-bg);
 	border-width: 0 1.5px 1.5px 0;
 	opacity: 0;
-	transform: translate(-50%, -50%) rotate(45deg);
-	transition: opacity 120ms ease-out;
+	transform: translate(-50%, -50%) rotate(45deg) scale(0.4);
+	transition:
+		opacity 120ms ease-out,
+		transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .graph-panel__check:has(input:checked) .graph-panel__box {
-	border-color: var(--graph-chip-checked);
-	background: var(--graph-chip-checked);
+	border-color: var(--deep-text);
+	background: var(--deep-text);
+	animation: graph-panel-check-pop 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .graph-panel__check:has(input:checked) .graph-panel__box::after {
 	opacity: 1;
+	transform: translate(-50%, -50%) rotate(45deg) scale(1);
+	transition-delay: 90ms;
+}
+
+/* 勾上瞬间的回弹：0.88 → 1.08 → 1（同 StepChecklist 的 check-pop） */
+@keyframes graph-panel-check-pop {
+	0% {
+		transform: scale(0.88);
+	}
+	55% {
+		transform: scale(1.08);
+	}
+	100% {
+		transform: scale(1);
+	}
 }
 
 .graph-panel__check-label {
@@ -617,5 +700,9 @@
 	.graph-panel__box,
 	.graph-panel__box::after {
 		transition: none;
+	}
+
+	.graph-panel__check:has(input:checked) .graph-panel__box {
+		animation: none;
 	}
 }

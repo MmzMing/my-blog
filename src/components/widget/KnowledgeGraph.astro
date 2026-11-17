@@ -82,7 +82,10 @@ const detailGroups = [
   <aside class="graph-detail" data-kg-detail hidden aria-label={i18n(I18nKey.kgDetailTitle)}>
     <div class="graph-detail__top">
       <header class="graph-detail__head">
-        <p class="graph-detail__tier" data-kg-detail-tier></p>
+        {/* 层级与名称并成一行（分类：部署文档），字号统一到名称这一档 */}
+        <a class="graph-detail__title" data-kg-detail-link>
+          <span class="graph-detail__tier" data-kg-detail-tier></span><strong data-kg-detail-name></strong>
+        </a>
         <button
           type="button"
           class="graph-detail__close"
@@ -92,9 +95,6 @@ const detailGroups = [
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </header>
-      <a class="graph-detail__title" data-kg-detail-link>
-        <strong data-kg-detail-name></strong>
-      </a>
     </div>
     <div class="graph-detail__body">
       {detailGroups.map((group) => (
@@ -205,6 +205,15 @@ const detailGroups = [
     const statsTpl = stats?.dataset.template ?? "";
     const strings = JSON.parse(root.dataset.kgStrings || "{}");
 
+    /** 滑条已填充比例写进 CSS 变量：原生 range 没有可样式化的进度段 */
+    const syncRangeFill = (el: HTMLInputElement) => {
+      const min = Number(el.min) || 0;
+      const max = Number(el.max) || 0;
+      const value = Number(el.value);
+      const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+      el.style.setProperty("--kg-range-progress", `${percent}%`);
+    };
+
     const onInput = (event: Event) => {
       const el = event.target as HTMLElement & { value?: string; checked?: boolean };
       const d = el.dataset;
@@ -220,6 +229,7 @@ const detailGroups = [
       } else if (d.kgFilter === "query") {
         ctrl.patchFilters({ query: el.value ?? "" });
       } else if (d.kgFilter === "minPosts") {
+        if (el instanceof HTMLInputElement) syncRangeFill(el);
         ctrl.patchFilters({ minPosts: Number(el.value) });
         const out = root.querySelector<HTMLElement>('[data-kg-out="minPosts"]');
         if (out) out.textContent = el.value ?? "";
@@ -333,6 +343,10 @@ const detailGroups = [
       layoutBtn.dataset.tooltip = label;
       layoutBtn.setAttribute("aria-label", label);
     };
+
+    // 初始值（min=value=1 → 0%）也走一遍，保证填充段与滑块位置同源
+    const minPostsSlider = root.querySelector<HTMLInputElement>('[data-kg-filter="minPosts"]');
+    if (minPostsSlider) syncRangeFill(minPostsSlider);
 
     root.addEventListener("input", onInput);
     root.addEventListener("change", onInput);

@@ -319,6 +319,8 @@ export function mountKnowledgeGraph(
 	};
 
 	const toggleLayout = (): void => {
+		// 两种布局的补间都基于当前坐标快照，绽放途中切换先落地
+		playback.finish();
 		if (scene.mode === "graph") {
 			scene.mode = "mindmap";
 			// 脑图布局是确定性的：停掉物理，避免把节点拉回力导向位置
@@ -367,6 +369,8 @@ export function mountKnowledgeGraph(
 	select(canvas).on("dblclick.zoom", null);
 
 	const fitView = (): void => {
+		// 绽放途中视图按半空坐标拟合会跑偏，先让节点落地再框选
+		playback.finish();
 		const visible = scene.nodes.filter(
 			(node) => node.filtered && node.reveal > 0.2 && node.x != null,
 		);
@@ -473,6 +477,8 @@ export function mountKnowledgeGraph(
 
 	const onPointerDown = (event: PointerEvent): void => {
 		if (event.button !== 0) return;
+		// 入场飞行中被按停：先落到终点，命中检测与拖拽都基于最终布局
+		playback.finish();
 		const node = findNode({ x: event.clientX, y: event.clientY });
 		if (!node) {
 			// 记录空白起点：松手时位移小于阈值视为「点击空白 = 取消选中」
@@ -700,9 +706,9 @@ export function mountKnowledgeGraph(
 	if (reducedMotion) {
 		requestDraw();
 	} else {
-		// 入场自动从头播一遍揭示动画
+		// 入场绽放：节点从父节点沿弧线旋转展开（约 1.3s，1.5s 内收笔）。
+		// 物理保持停摆 —— 飞行落点就是预收敛布局，此时再点火会跟补间抢坐标
 		playback.restart();
-		simulation.reheat(0.12);
 		startLoop();
 	}
 	// 首帧必须等播放头定下来之后再画：抢在 restart 之前画，会闪一帧完整图
@@ -731,6 +737,8 @@ export function mountKnowledgeGraph(
 			canvas.removeEventListener("keydown", onKeyDown);
 		},
 		patchFilters(patch) {
+			// 绽放途中改筛选：先落地，新可见集直接参与物理重排
+			playback.finish();
 			filters = { ...filters, ...patch };
 			renderer.setFilters(filters);
 			applyFilters(scene, filters);
