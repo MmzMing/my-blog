@@ -56,6 +56,54 @@ const managerConfigStr = JSON.stringify({
         return min + ':' + (sec < 10 ? '0' : '') + sec;
     }
 
+    // 网易云/Meting 的歌词把译文并进行尾括号：`原文 (译文)`。
+    // 只在括号位于行尾、内容非空、且与正文文字体系不同时视为译文，
+    // 并排除 (Live) / (feat. xxx) / 和声等本来就属于歌词的括号标记。
+    var TRANSLATION_MARKER_RE = /\b(instrumental|interlude|acoustic|version|remix|live|feat|prod|inst|ver|edit|cover|demo|bonus|intro|outro|solo|short|long|tv\s*size)\b|和声|伴奏|纯音乐|间奏|合唱|念白/i;
+    var PAREN_TAIL_RE = /\s*([（(])([^（）()]+)([)）])\s*$/;
+
+    function scriptFamily(str) {
+        if (/[\u3040-\u30ff\u31f0-\u31ff]/.test(str)) return 'ja';
+        if (/[\uac00-\ud7af]/.test(str)) return 'ko';
+        if (/[\u3400-\u9fff]/.test(str)) return 'zh';
+        if (/[a-z]/i.test(str)) return 'latin';
+        return 'other';
+    }
+
+    // 日文歌里的英文和声（(Oh-oh)）不能当译文；反过来中英互译要能拆开
+    function isLikelyTranslation(main, inner) {
+        var outer = scriptFamily(main);
+        var innerFamily = scriptFamily(inner);
+        if (innerFamily === 'other' || innerFamily === outer) return false;
+        if (outer === 'ja') return innerFamily === 'zh';
+        if (outer === 'ko') return innerFamily === 'zh' || innerFamily === 'ja';
+        return true;
+    }
+
+    // 返回 { text, translation, raw }；raw 是带括号的原始片段，供逐词数据同步裁剪
+    function splitLyricTranslation(text) {
+        var match = text.match(PAREN_TAIL_RE);
+        if (!match) return { text: text, translation: null, raw: '' };
+        var inner = match[2].trim();
+        var main = text.slice(0, match.index).trim();
+        if (!main || !inner || TRANSLATION_MARKER_RE.test(inner)
+            || !isLikelyTranslation(main, inner)) {
+            return { text: text, translation: null, raw: '' };
+        }
+        return { text: main, translation: inner, raw: match[0].trim() };
+    }
+
+    // 逐词标签的译文落在最后一个词段；裁掉它才能让词时间和可见字符一致。
+    // 括号跨词段、无法安全裁剪时退回整行匀速揭示，不保留错位的词时间。
+    function stripTranslationFromWords(words, raw) {
+        if (!words || words.length === 0 || !raw) return words;
+        var last = words[words.length - 1];
+        if (last.text.slice(-raw.length) !== raw) return null;
+        last.text = last.text.slice(0, last.text.length - raw.length).trim();
+        if (!last.text) words.pop();
+        return words.length > 0 ? words : null;
+    }
+
     // 增强型 LRC 的逐词时间标签 <mm:ss.xx> 与整行 [mm:ss.xx] 分开解析。
     // 逐词标签只在单行时间戳时启用：同一行有多个时间戳的副本无法安全平移到词时间，
     // 这类行退回整行时间，由展示层按行时长匀速逐字揭示。
@@ -76,8 +124,11 @@ const managerConfigStr = JSON.stringify({
             if (matches.length === 0) return;
 
             var body = line.replace(timeReg, '');
-            var text = body.replace(wordReg, '').trim();
-            if (!text) return;
+            var plain = body.replace(wordReg, '').trim();
+            if (!plain) return;
+
+            var split = splitLyricTranslation(plain);
+            var text = split.text;
 
             var words = null;
             if (matches.length === 1) {
@@ -94,12 +145,16 @@ const managerConfigStr = JSON.stringify({
                         var seg = body.slice(segStart, segEnd).trim();
                         if (seg) words.push({ time: toSeconds(wordMatch), text: seg });
                     });
-                    if (words.length === 0) words = null;
+                    if (split.translation) {
+                        words = stripTranslationFromWords(words, split.raw);
+                    }
+                    if (!words || words.length === 0) words = null;
                 }
             }
 
             matches.forEach(function (match) {
                 var item = { time: toSeconds(match), text: text };
+                if (split.translation) item.translation = split.translation;
                 if (words) item.words = words;
                 result.push(item);
             });

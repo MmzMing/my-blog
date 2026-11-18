@@ -8,10 +8,12 @@ import { i18n } from "@/i18n/translation";
  * 播放器上方的浮动逐字歌词、拖拽定位与列表渲染。
  *
  * 浮动歌词：不再塞进胶囊或加背景，而是在唱片右侧铺一层无底的字云。
- * 每行把字随机塞进互不重叠的槽位（单行波浪 / 上下双层），位置打乱但字号错落；
- * 揭示仍按阅读顺序逐个点亮，但用固定步长提前点亮完整行，不等下一行的时间戳。
+ * 整行按阅读顺序排字，上下错位、字号错落；超过字云宽度不换行，
+ * 左侧渐隐、整行左移给右侧新字让位，揭示仍按阅读顺序逐个点亮。
  * 揭示时钟读 audio.currentTime（而非 timeupdate 的 250ms 粒度）：播放中走 rAF，
  * 暂停时停表；拖动进度回退超过容差就整行重建，已唱字符直接落位不补动画。
+ * 解析层拆出的译文（translation）作为第三层叠在正文下方，字号更小，
+ * 但与正文共用同一套逐字揭示与随机排布；三态按钮可切正文+译文 / 仅译文 / 仅正文。
  *
  * 形态转移约定：
  * - 未播放：disc ⇄ bar（点击唱片切换；点击组件外收回 disc）；
@@ -27,6 +29,8 @@ import { i18n } from "@/i18n/translation";
 
 type WidgetShape = "disc" | "pill" | "bar";
 type PanelTab = "playlist" | "lyrics";
+/** 歌词文字模式：正文+译文 / 仅译文 / 仅正文 */
+type LyricDisplayMode = "both" | "translation" | "original";
 
 interface LyricWord {
 	time: number;
@@ -36,12 +40,16 @@ interface LyricWord {
 interface LyricLine {
 	time: number;
 	text: string;
+	/** 解析层从行尾括号拆出的译文，不参与逐字揭示与字号估算 */
+	translation?: string;
 	words?: LyricWord[];
 }
 
 interface LyricChar {
 	el: HTMLSpanElement;
 	time: number;
+	/** 正文行元素；译文条目没有，滚动定位时据此跳过 */
+	rowEl?: HTMLDivElement;
 }
 
 interface LyricLayerState {
@@ -50,6 +58,7 @@ interface LyricLayerState {
 	revealed: number;
 	lastTime: number;
 	el: HTMLDivElement;
+	rowEl: HTMLDivElement;
 }
 
 interface TrackInfo {
@@ -82,6 +91,8 @@ interface DragSession {
 const LYRICS_SCROLL_RESUME_DELAY = 3000;
 const PLAYLIST_BATCH_SIZE = 30;
 const PILL_LYRICS_STORAGE_KEY = "music-pill-lyrics";
+const LYRIC_MODE_STORAGE_KEY = "music-pill-lyric-mode";
+const LYRIC_MODES: LyricDisplayMode[] = ["both", "translation", "original"];
 const POSITION_STORAGE_KEY = "music-player-pos";
 /** 逐字揭示的最长铺开时长（秒）：行间隔过大时不让字符一个个拖太久 */
 const LYRIC_MAX_SPAN = 6;
@@ -92,8 +103,6 @@ const LYRIC_MIN_SPAN = 0.7;
  * 长间奏前的歌词会拖到唱完才显示完；固定步长保证整行提前点亮。
  */
 const LYRIC_CHAR_STEP = 0.22;
-/** 全角字符（CJK / 假名 / 谚文 / 全角标点）按 1em 估宽，拉丁与数字按 0.56em */
-const WIDE_CHAR_RE = /[\u2e80-\u9fff\u3040-\u30ff\uac00-\ud7af\uff00-\uffef]/;
 /** 一次补亮的字符超过该数量视为进度跳转，直接重建整行而不是排队补动画 */
 const LYRIC_JUMP_LIMIT = 3;
 /** 离场层的上飘淡出时长（ms），与 CSS 过渡对齐 */
@@ -185,6 +194,10 @@ export function setupMusicPlayerWidget(): void {
 		btnLyrics: $(".music-player__btn--lyrics"),
 		iconLrcOn: $(".music-player__icon-lrc-on"),
 		iconLrcOff: $(".music-player__icon-lrc-off"),
+		btnTranslation: $(".music-player__btn--translation"),
+		iconTransBoth: $(".music-player__icon-trans-both"),
+		iconTransOnly: $(".music-player__icon-trans-only"),
+		iconOriginalOnly: $(".music-player__icon-original-only"),
 		btnPlaylist: $(".music-player__btn--playlist"),
 		btnPrev: $(".music-player__btn--prev"),
 		btnPlay: $(".music-player__btn--play"),
@@ -226,6 +239,7 @@ export function setupMusicPlayerWidget(): void {
 		ui.pillLabel,
 		ui.btnMode,
 		ui.btnLyrics,
+		ui.btnTranslation,
 		ui.btnPlaylist,
 		ui.btnPrev,
 		ui.btnPlay,
@@ -251,9 +265,16 @@ export function setupMusicPlayerWidget(): void {
 	let playlistData: TrackInfo[] = [];
 	let playlistRenderedCount = 0;
 	let lyricsEnabled = localStorage.getItem(PILL_LYRICS_STORAGE_KEY) !== "false";
+	let lyricMode = readLyricMode();
+	let lyricsStatus = "loading";
 	let lyricLayer: LyricLayerState | null = null;
 	let lyricRaf: number | null = null;
 	let lyricLeaveTimer: number | null = null;
+
+	function readLyricMode(): LyricDisplayMode {
+		const stored = localStorage.getItem(LYRIC_MODE_STORAGE_KEY);
+		return stored === "translation" || stored === "original" ? stored : "both";
+	}
 
 	// ── 定位与拖拽 ───────────────────────────────────────────
 	// posX 是唱片左缘的屏幕坐标；posY 是组件底边。唱片在右半边时，
@@ -575,6 +596,21 @@ export function setupMusicPlayerWidget(): void {
 		ui.iconLrcOff?.classList.toggle("hidden", lyricsEnabled);
 	}
 
+	/** 三态按钮：图标与提示同步当前模式 */
+	function updateLyricModeUI(): void {
+		const label =
+			lyricMode === "both"
+				? i18n(I18nKey.musicLyricsBoth)
+				: lyricMode === "translation"
+					? i18n(I18nKey.musicLyricsTranslationOnly)
+					: i18n(I18nKey.musicLyricsOriginalOnly);
+		ui.btnTranslation?.setAttribute("aria-label", label);
+		ui.btnTranslation?.setAttribute("data-tooltip", label);
+		ui.iconTransBoth?.classList.toggle("hidden", lyricMode !== "both");
+		ui.iconTransOnly?.classList.toggle("hidden", lyricMode !== "translation");
+		ui.iconOriginalOnly?.classList.toggle("hidden", lyricMode !== "original");
+	}
+
 	/** 胶囊只显示曲名与艺术家，歌词交给上方的字云 */
 	function updatePillText(): void {
 		const label = ui.pillLabel;
@@ -714,24 +750,39 @@ export function setupMusicPlayerWidget(): void {
 			list.appendChild(el);
 		};
 		if (status === "loading") {
-			placeholder(i18n(I18nKey.musicLoadingLyrics));
-			clearLyricCloud();
+			const text = i18n(I18nKey.musicLoadingLyrics);
+			placeholder(text);
+			showLyricTip(text);
 			return;
 		}
 		if (status === "failed") {
-			placeholder(i18n(I18nKey.musicFailedLyrics));
-			clearLyricCloud();
+			const text = i18n(I18nKey.musicFailedLyrics);
+			placeholder(text);
+			showLyricTip(text);
 			return;
 		}
 		if (lyrics.length === 0) {
-			placeholder(i18n(I18nKey.musicNoLyrics));
-			clearLyricCloud();
+			const text = i18n(I18nKey.musicNoLyrics);
+			placeholder(text);
+			showLyricTip(text);
 			return;
 		}
 		lyrics.forEach((line, index) => {
 			const lineEl = document.createElement("div");
 			lineEl.className = "music-player__lrc-line";
-			lineEl.textContent = line.text;
+			const textEl = document.createElement("span");
+			textEl.className = "music-player__lrc-text";
+			textEl.textContent =
+				lyricMode === "translation" && line.translation
+					? line.translation
+					: line.text;
+			lineEl.appendChild(textEl);
+			if (lyricMode === "both" && line.translation) {
+				const transEl = document.createElement("span");
+				transEl.className = "music-player__lrc-line-trans";
+				transEl.textContent = line.translation;
+				lineEl.appendChild(transEl);
+			}
 			lineEl.dataset.index = index.toString();
 			lineEl.setAttribute("role", "option");
 			lineEl.addEventListener(
@@ -822,6 +873,7 @@ export function setupMusicPlayerWidget(): void {
 			state.chars[i].el.classList.add("is-on");
 		}
 		state.revealed = target;
+		updateLyricScroll(state);
 	}
 
 	/**
@@ -831,12 +883,13 @@ export function setupMusicPlayerWidget(): void {
 	function lyricRevealSpan(
 		index: number,
 		lyrics: LyricLine[],
+		text: string,
 	): { start: number; span: number } {
 		const line = lyrics[index];
 		const start = line.time;
 		const next =
 			index + 1 < lyrics.length ? lyrics[index + 1].time : Number.NaN;
-		const count = Array.from(line.text.replace(/\s+/g, "")).length;
+		const count = Array.from(text.replace(/\s+/g, "")).length;
 		const fastSpan = Math.min(
 			LYRIC_MAX_SPAN,
 			Math.max(LYRIC_MIN_SPAN, count * LYRIC_CHAR_STEP),
@@ -881,11 +934,27 @@ export function setupMusicPlayerWidget(): void {
 		stopLyricLoop();
 		ui.lyricCloud
 			?.querySelectorAll<HTMLElement>(
-				".music-player__lyric-layer:not(.is-leaving)",
+				".music-player__lyric-layer:not(.is-leaving), .music-player__lyric-tip",
 			)
-			.forEach((layer) => {
-				leaveLyricLayer(layer);
+			.forEach((el) => {
+				if (el.classList.contains("music-player__lyric-tip")) {
+					el.remove();
+					return;
+				}
+				leaveLyricLayer(el);
 			});
+	}
+
+	/** 没有可显示歌词时，在字云位置给一条状态提示 */
+	function showLyricTip(text: string): void {
+		clearLyricCloud();
+		if (!lyricsEnabled) return;
+		const cloud = ui.lyricCloud;
+		if (!cloud) return;
+		const tip = document.createElement("div");
+		tip.className = "music-player__lyric-tip";
+		tip.textContent = text;
+		cloud.appendChild(tip);
 	}
 
 	function renderLyricCloud(index: number, force = false): void {
@@ -894,10 +963,19 @@ export function setupMusicPlayerWidget(): void {
 			lyricsEnabled && index >= 0 && index < lyrics.length
 				? lyrics[index]
 				: null;
-		if (!line?.text.trim()) {
+		const displayText =
+			line && lyricMode === "translation" && line.translation
+				? line.translation
+				: line?.text;
+		if (!line || !displayText?.trim()) {
 			clearLyricCloud();
 			return;
 		}
+		ui.lyricCloud
+			?.querySelectorAll(".music-player__lyric-tip")
+			.forEach((el) => {
+				el.remove();
+			});
 		if (!force && lyricLayer?.lineIndex === index) return;
 		const previous = lyricLayer;
 		lyricLayer = null;
@@ -914,8 +992,19 @@ export function setupMusicPlayerWidget(): void {
 		const cloud = ui.lyricCloud;
 		if (!cloud) return;
 		const lyrics = mgr.getState().lyrics as LyricLine[];
-		const { start, span } = lyricRevealSpan(index, lyrics);
-		const groups = lyricWordGroups(line);
+		// 仅译文模式把译文当正文排布；其余模式正文仍是主文字
+		const translationAsMain = lyricMode === "translation" && !!line.translation;
+		const mainText = translationAsMain
+			? (line.translation as string)
+			: line.text;
+		const { start, span } = lyricRevealSpan(index, lyrics, mainText);
+		const groups = translationAsMain
+			? mainText
+					.split(/\s+/)
+					.filter((word) => word.length > 0)
+					.map((text) => ({ text, time: null }))
+			: lyricWordGroups(line);
+		const hasWordTimes = !translationAsMain && !!line.words?.length;
 		let totalChars = 0;
 		for (const group of groups) totalChars += Array.from(group.text).length;
 		if (totalChars === 0) {
@@ -923,22 +1012,14 @@ export function setupMusicPlayerWidget(): void {
 			return;
 		}
 
-		// 横向太长时拆成上下两行，行内仍按阅读顺序从左到右
+		// 单行铺开：超宽不换行，靠左侧渐隐 + 整行左移把新字带进来
 		const cloudWidth = cloud.clientWidth || 384;
-		let widthUnits = 0;
-		for (const group of groups) {
-			for (const ch of Array.from(group.text)) {
-				widthUnits += WIDE_CHAR_RE.test(ch) ? 1 : 0.56;
-			}
-		}
-		const rowCount = widthUnits * 28 > cloudWidth ? 2 : 1;
-		const rowChars = Math.ceil(totalChars / rowCount);
 
 		// 布局从这一行固定的种子派生，拖动进度重建不会换花样
 		const random = createSeededRandom((index + 1) * 7919 + totalChars * 31);
 
 		const charTimes: number[] = [];
-		if (line.words && line.words.length > 0) {
+		if (hasWordTimes) {
 			groups.forEach((group, groupIndex) => {
 				const chars = Array.from(group.text);
 				const groupStart = group.time ?? start;
@@ -957,63 +1038,83 @@ export function setupMusicPlayerWidget(): void {
 		}
 
 		const baseFont = Math.min(
-			30,
-			Math.max(14, (cloudWidth / Math.max(1, rowChars)) * 0.92),
+			26,
+			Math.max(13, (cloudWidth / Math.max(1, totalChars)) * 0.82),
 		);
 		const layerEl = document.createElement("div");
 		layerEl.className = "music-player__lyric-layer";
 		layerEl.style.fontSize = `${baseFont.toFixed(1)}px`;
 		layerEl.style.visibility = "hidden";
 
-		const rows: HTMLDivElement[] = [];
-		for (let row = 0; row < rowCount; row += 1) {
-			const rowEl = document.createElement("div");
-			rowEl.className = "music-player__lyric-row";
-			rows.push(rowEl);
-			layerEl.appendChild(rowEl);
+		const rowEl = document.createElement("div");
+		rowEl.className = "music-player__lyric-row";
+		layerEl.appendChild(rowEl);
+
+		// 译文是第三层：和正文同一套逐字揭示，字号由 CSS 固定小一档
+		const transText = lyricMode === "both" ? line.translation : undefined;
+		const transRow = transText ? document.createElement("div") : null;
+		if (transRow) {
+			transRow.className =
+				"music-player__lyric-row music-player__lyric-row--trans";
+			layerEl.appendChild(transRow);
 		}
+
+		// 水平顺序不变，只做上下错位 + 轻微旋转/字号差异
+		const decorateChar = (el: HTMLSpanElement, order: number): void => {
+			const jitterY = Math.sin(order * 0.9) * 0.14 + (random() - 0.5) * 0.08;
+			el.style.setProperty("--lc-jy", `${jitterY.toFixed(3)}em`);
+			el.style.setProperty(
+				"--lc-gap",
+				`${(0.04 + random() * 0.16).toFixed(3)}em`,
+			);
+			el.style.setProperty(
+				"--lc-rot",
+				`${((random() - 0.5) * 8).toFixed(2)}deg`,
+			);
+			el.style.setProperty("--lc-scale", (0.94 + random() * 0.12).toFixed(3));
+		};
 
 		const charEntries: LyricChar[] = [];
 		let charIndex = 0;
 		for (const group of groups) {
 			for (const ch of Array.from(group.text)) {
-				const row = charIndex >= rowChars ? 1 : 0;
 				const charEl = document.createElement("span");
 				charEl.className = "music-player__lyric-char";
 				charEl.textContent = ch;
-				// 水平顺序不变，只做上下错位 + 轻微旋转/字号差异
-				const jitterY =
-					Math.sin(charIndex * 0.9) * 0.14 + (random() - 0.5) * 0.08;
-				charEl.style.setProperty("--lc-jy", `${jitterY.toFixed(3)}em`);
-				charEl.style.setProperty(
-					"--lc-gap",
-					`${(0.04 + random() * 0.16).toFixed(3)}em`,
-				);
-				charEl.style.setProperty(
-					"--lc-rot",
-					`${((random() - 0.5) * 8).toFixed(2)}deg`,
-				);
-				charEl.style.setProperty(
-					"--lc-scale",
-					(0.94 + random() * 0.12).toFixed(3),
-				);
-				// 最大字号保持 1.15em 不变，把下限继续调小，拉开大小阶梯
+				decorateChar(charEl, charIndex);
+				// 字号阶梯收敛到 0.82–1.06em，整体比旧版小一档
 				charEl.style.setProperty(
 					"--lc-size",
-					(0.65 + random() * 0.5).toFixed(3),
+					(0.82 + random() * 0.24).toFixed(3),
 				);
-				rows[row].appendChild(charEl);
-				charEntries.push({ el: charEl, time: charTimes[charIndex] ?? start });
+				rowEl.appendChild(charEl);
+				charEntries.push({
+					el: charEl,
+					time: charTimes[charIndex] ?? start,
+					rowEl,
+				});
 				charIndex += 1;
 			}
 		}
 
-		cloud.appendChild(layerEl);
-		const widest = rows.reduce((max, row) => Math.max(max, row.scrollWidth), 0);
-		if (widest > cloudWidth) {
-			const base = Number.parseFloat(layerEl.style.fontSize) || 14;
-			layerEl.style.fontSize = `${Math.max(11, (base * cloudWidth) / widest).toFixed(1)}px`;
+		if (transRow && transText) {
+			const transChars = Array.from(transText);
+			transChars.forEach((ch, transIndex) => {
+				const charEl = document.createElement("span");
+				charEl.className =
+					"music-player__lyric-char music-player__lyric-char--trans";
+				charEl.textContent = ch;
+				decorateChar(charEl, transIndex);
+				transRow.appendChild(charEl);
+				// 译文没有自己的时间，均匀铺在正文同一揭示窗口里
+				charEntries.push({
+					el: charEl,
+					time: start + (transIndex / transChars.length) * span,
+				});
+			});
 		}
+
+		cloud.appendChild(layerEl);
 		layerEl.style.visibility = "";
 
 		// 按时间排序后补亮（逐词数据不保证严格递增，排序兜底）
@@ -1034,8 +1135,38 @@ export function setupMusicPlayerWidget(): void {
 			revealed,
 			lastTime: now,
 			el: layerEl,
+			rowEl,
 		};
+		updateLyricScroll(lyricLayer);
 		if (isPlaying) startLyricLoop();
+	}
+
+	/** 单行超宽时整行左移，右侧继续加入新字；左侧字符按位置逐个淡出 */
+	function updateLyricScroll(state: LyricLayerState): void {
+		const cloud = ui.lyricCloud;
+		if (!cloud) return;
+		let right = 0;
+		for (let i = state.revealed - 1; i >= 0; i -= 1) {
+			const entry = state.chars[i];
+			// 译文条目没有 rowEl，滚动位置只由正文最后一个已亮字符决定
+			if (!entry.rowEl) continue;
+			right = entry.el.offsetLeft + entry.el.offsetWidth;
+			break;
+		}
+		const width = cloud.clientWidth || 384;
+		const offset = Math.max(0, right - width);
+		state.rowEl.style.transform =
+			offset > 0 ? `translate3d(${-offset.toFixed(1)}px, 0, 0)` : "";
+		// 不裁切整行：完全移出的字符直接透明，左缘 1.2em 内渐变，
+		// 避免字形和辉光被裁出一条硬边。
+		const fade =
+			(Number.parseFloat(getComputedStyle(state.rowEl).fontSize) || 16) * 1.2;
+		for (const entry of state.chars) {
+			if (!entry.rowEl || !entry.el.classList.contains("is-on")) continue;
+			const rightEdge = entry.el.offsetLeft + entry.el.offsetWidth - offset;
+			const opacity = Math.max(0, Math.min(1, rightEdge / fade));
+			entry.el.style.opacity = opacity < 1 ? opacity.toFixed(3) : "";
+		}
 	}
 
 	// ── 全量同步（late-mount / Swup 导航后 resync） ───────────
@@ -1059,10 +1190,8 @@ export function setupMusicPlayerWidget(): void {
 			updateProgressUI(s.progress, s.currentTimeStr, s.durationStr);
 		}
 		currentLrcIndex = s.currentLrcIndex;
-		renderLyricsUI(
-			s.lyrics as LyricLine[],
-			s.lyrics.length > 0 ? "loaded" : "none",
-		);
+		lyricsStatus = s.lyrics.length > 0 ? "loaded" : "none";
+		renderLyricsUI(s.lyrics as LyricLine[], lyricsStatus);
 	}
 
 	// ── fm:* 事件订阅 ────────────────────────────────────────
@@ -1115,6 +1244,7 @@ export function setupMusicPlayerWidget(): void {
 
 	on<{ lyrics: LyricLine[]; status: string }>("fm:lyrics", (d) => {
 		currentLrcIndex = -1;
+		lyricsStatus = d.status;
 		renderLyricsUI(d.lyrics, d.status);
 	});
 
@@ -1305,6 +1435,24 @@ export function setupMusicPlayerWidget(): void {
 		{ signal },
 	);
 
+	// 三态循环：正文+译文 → 仅译文 → 仅正文
+	ui.btnTranslation?.addEventListener(
+		"click",
+		() => {
+			const current = LYRIC_MODES.indexOf(lyricMode);
+			lyricMode = LYRIC_MODES[(current + 1) % LYRIC_MODES.length];
+			try {
+				localStorage.setItem(LYRIC_MODE_STORAGE_KEY, lyricMode);
+			} catch {
+				// 隐私模式写不进去，模式只活在本次会话
+			}
+			updateLyricModeUI();
+			renderLyricsUI(mgr.getState().lyrics as LyricLine[], lyricsStatus);
+			renderLyricCloud(mgr.getState().currentLrcIndex, true);
+		},
+		{ signal },
+	);
+
 	ui.playlistList?.addEventListener("scroll", onPlaylistScroll, {
 		passive: true,
 		signal,
@@ -1344,6 +1492,7 @@ export function setupMusicPlayerWidget(): void {
 	root.dataset.panel = "closed";
 	root.dataset.playing = "false";
 	updateLyricsButton();
+	updateLyricModeUI();
 	// 首次定位不参与过渡：is-dragging 关掉根元素过渡，强制回流后再放开
 	root.classList.add("is-dragging");
 	loadPosition();

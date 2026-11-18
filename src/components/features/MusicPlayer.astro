@@ -9,6 +9,7 @@ import { i18n } from "@/i18n/translation";
  * dock 上方只有一张展开卡：信息层（曲名 / 艺术家 / 进度）常驻，点歌单按钮时
  * 同一张卡向上长出歌单 / 歌词面板，信息层随之上移，不再是两张分离的卡片。
  * 播放中当前歌词在唱片右侧无背景悬浮：逐字不规则排布、发光，换行时整层上飘淡出。
+ * 译文作为第三层小字跟随逐字揭示；工具栏按钮循环切换 歌词+译文 / 仅译文 / 仅原文。
  * 播放静置形态固定为纯唱片（关闭歌词也只留转动的唱片），点击唱片才展开控制条。
  * 引擎为 MusicManager 单例，逻辑见 src/utils/music-player-controller.ts，
  * 样式见 src/styles/components/music-player.css。移动端（≤768px）隐藏，由 MobileDock 承担。
@@ -92,6 +93,11 @@ import { i18n } from "@/i18n/translation";
 					<button class="music-player__btn music-player__btn--lyrics" data-tooltip={i18n(I18nKey.musicLyrics)} aria-label={i18n(I18nKey.musicLyrics)} aria-pressed="true" type="button">
 						<Icon name="material-symbols:subtitles-outline-rounded" class="music-player__icon-lrc-on text-xl" aria-hidden="true" />
 						<Icon name="material-symbols:subtitles-off-outline-rounded" class="music-player__icon-lrc-off text-xl hidden" aria-hidden="true" />
+					</button>
+					<button class="music-player__btn music-player__btn--translation" data-tooltip={i18n(I18nKey.musicLyricsBoth)} aria-label={i18n(I18nKey.musicLyricsBoth)} type="button">
+						<Icon name="material-symbols:layers" class="music-player__icon-trans-both text-xl" aria-hidden="true" />
+						<Icon name="material-symbols:translate" class="music-player__icon-trans-only text-xl hidden" aria-hidden="true" />
+						<Icon name="material-symbols:subject" class="music-player__icon-original-only text-xl hidden" aria-hidden="true" />
 					</button>
 					<button class="music-player__btn music-player__btn--prev" data-tooltip={i18n(I18nKey.musicPrev)} aria-label={i18n(I18nKey.musicPrev)} type="button">
 						<Icon name="material-symbols:skip-previous-rounded" class="text-2xl" aria-hidden="true" />

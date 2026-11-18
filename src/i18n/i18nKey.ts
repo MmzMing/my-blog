@@ -51,6 +51,9 @@ enum I18nKey {
 	// Music Widget
 	musicNoPlaying = "musicNoPlaying",
 	musicLyrics = "musicLyrics",
+	musicLyricsBoth = "musicLyricsBoth",
+	musicLyricsTranslationOnly = "musicLyricsTranslationOnly",
+	musicLyricsOriginalOnly = "musicLyricsOriginalOnly",
 	musicVolume = "musicVolume",
 	musicPrev = "musicPrev",
 	musicNext = "musicNext",

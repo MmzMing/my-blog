@@ -43,7 +43,8 @@
 	--mp-disc-rise: calc(var(--mp-disc-gap) + var(--mp-disc) - var(--mp-bar-h));
 	/* 文本起排位 = 唱片右缘再让开一点，两态与唱片的净间隙恒定 */
 	--mp-slot-pad: calc(var(--mp-disc) + var(--mp-disc-left) + 0.5rem);
-	--mp-width: 25rem;
+	/* 26rem 是为工具栏 8 个按钮留出的最小宽度，再窄音量键会被裁掉 */
+	--mp-width: 26rem;
 	--mp-edge: 1.25rem;
 	--mp-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 	--mp-motion: cubic-bezier(0.22, 1, 0.36, 1);
@@ -266,6 +267,17 @@
 	font-weight: 700;
 	font-size: 0.9375rem;
 }
+/* 译文副行：跟随原词显示，但不继承 active 加粗放大 */
+.music-player__lrc-text,
+.music-player__lrc-line-trans {
+	display: block;
+}
+.music-player__lrc-line-trans {
+	margin-top: 0.125rem;
+	font-size: 0.75rem;
+	font-weight: 400;
+	color: var(--content-meta);
+}
 
 /* ============================================
    舞台与工具栏层
@@ -440,7 +452,8 @@
    浮动歌词层
    贴在唱片右侧、无背景；行内严格按阅读顺序从左到右，
    上下错位、字距、旋转与字号由控制器写入 --lc-*。
-   过长时拆成上下两行；换行时旧层上飘淡出、新层入场。
+   超宽不换行：左侧渐隐、整行左移，右侧继续加入新字。
+   译文模式开启时译文作为第三层，沿用同一套揭示动效、字号更小。
    ============================================ */
 .music-player__lyric-cloud {
 	position: absolute;
@@ -488,10 +501,28 @@
 	transform: translate3d(0, -2.5rem, 0) scale(1.03);
 	filter: blur(0.5rem);
 }
+/* 无歌词 / 加载中的状态提示，占字云位置 */
+.music-player__lyric-tip {
+	position: absolute;
+	left: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	font-size: 0.8125rem;
+	color: var(--content-meta);
+	white-space: nowrap;
+}
 .music-player__lyric-row {
+	position: relative;
 	display: flex;
 	align-items: center;
 	white-space: nowrap;
+	/* 超宽时整行左移；左侧字符由控制器逐个淡出，不做裁切 */
+	transition: transform 260ms var(--mp-motion);
+}
+/* 译文第三层：与正文同一套随机排布和逐字揭示，只固定更小字号 */
+.music-player__lyric-row--trans {
+	flex-wrap: wrap;
+	white-space: normal;
 }
 /* 字在行内按阅读顺序流动；--lc-jy 只改上下错位，不改变左右顺序 */
 .music-player__lyric-char {
@@ -526,6 +557,11 @@
 .music-player__lyric-char.is-instant {
 	transition: none;
 	animation: none !important;
+}
+/* 译文沿用揭示动效，但字号固定小一档 */
+.music-player__lyric-char--trans {
+	font-size: clamp(0.6875rem, 0.52em, 0.8125rem);
+	line-height: 1.35;
 }
 .music-player__toolbar {
 	position: absolute;
