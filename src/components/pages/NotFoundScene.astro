@@ -1,0 +1,39 @@
+---
+// 404 阶梯场景：画布、字形层与挂载脚本必须留在 #swup-container 内。
+// 页面级 <script> 会被 Astro 提升到 body 末尾，Swup 只替换容器内容，
+// 导航到 404 时那段脚本不会重新进入 DOM，动画也就不会挂载。
+---
+
+<div class="page-404__visual" aria-hidden="true" data-pagefind-ignore>
+	<canvas class="page-404__stairs" data-not-found-stairs></canvas>
+
+	<div class="page-404__glyph-layer" data-not-found-glyph-layer></div>
+	<span class="page-404__static-code">404</span>
+</div>
+
+<script>
+	import { mountNotFoundScene } from "@/utils/not-found-scene";
+	import { definePageIsland } from "@/utils/swup-lifecycle";
+
+	let cleanupNotFoundScene: (() => void) | null = null;
+
+	function teardownNotFoundScene() {
+		cleanupNotFoundScene?.();
+		cleanupNotFoundScene = null;
+	}
+
+	function bootNotFoundScene() {
+		teardownNotFoundScene();
+
+		const root = document.querySelector<HTMLElement>("[data-not-found-scene]");
+		if (!root) return;
+
+		cleanupNotFoundScene = mountNotFoundScene(root);
+	}
+
+	definePageIsland({
+		name: "not-found-scene",
+		mount: bootNotFoundScene,
+		unmount: teardownNotFoundScene,
+	});
+</script>
