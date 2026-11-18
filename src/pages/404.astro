@@ -22,14 +22,13 @@ import "@/styles/pages/404.css";
 			<h1 class="page-404__title">{i18n(I18nKey.notFoundTitle)}</h1>
 			<p class="page-404__desc">{i18n(I18nKey.notFoundDescription)}</p>
 
-			<div class="page-404__actions">
-				<a href={url("/")} class="page-404__btn page-404__btn--primary">
-					<Icon name="material-symbols:home" class="page-404__btn-icon" />
+			<div class="page-404__links">
+				<a href={url("/")} class="page-404__home">
+					<Icon
+						name="material-symbols:chevron-left-rounded"
+						class="page-404__home-icon"
+					/>
 					{i18n(I18nKey.backToHome)}
-				</a>
-				<a href={url("/archive/")} class="page-404__btn page-404__btn--secondary">
-					<Icon name="material-symbols:history" class="page-404__btn-icon" />
-					{i18n(I18nKey.archive)}
 				</a>
 			</div>
 		</div>
