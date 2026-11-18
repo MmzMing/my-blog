@@ -1,0 +1,8 @@
+{
+	"rewrites": [
+		{
+			"source": "/*/",
+			"destination": "/:splat/index.html"
+		}
+	]
+}
