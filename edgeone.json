@@ -1,8 +1,8 @@
 {
 	"rewrites": [
 		{
-			"source": "/*/",
-			"destination": "/:splat/index.html"
+			"source": "/(.*)/",
+			"destination": "/$1/index.html"
 		}
 	]
 }
