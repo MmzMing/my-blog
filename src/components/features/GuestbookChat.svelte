@@ -8,13 +8,16 @@ import {
 } from "@waline/api";
 import {
 	AlertCircle,
+	ArrowDown,
+	ArrowLeft,
 	Bell,
-	ChevronDown,
 	ChevronUp,
+	EyeOff,
+	Fingerprint,
 	LoaderCircle,
+	Menu,
 	RefreshCw,
 	RotateCcw,
-	Users,
 	WifiOff,
 	X,
 } from "lucide-svelte";
@@ -36,7 +39,6 @@ import {
 	buildGuestbookReplyFields,
 	flattenGuestbookComments,
 	getGuestbookErrorMessage,
-	getGuestbookInitials,
 	getGuestbookTextLength,
 	hasGuestbookImage,
 	hasGuestbookReplyMarker,
@@ -44,6 +46,8 @@ import {
 	mergeGuestbookMessages,
 	normalizeGuestbookComment,
 } from "@/utils/guestbook-chat";
+import { navigateToPage } from "@/utils/navigation-utils";
+import { url } from "@/utils/url-utils";
 import GuestbookChatComposer from "./GuestbookChatComposer.svelte";
 import GuestbookChatMessage from "./GuestbookChatMessage.svelte";
 
@@ -56,7 +60,12 @@ const VISIBLE_WINDOW = 20;
 const MIN_MESSAGE_LENGTH = 2;
 const MAX_MESSAGE_LENGTH = 300;
 const PROFILE_STORAGE_KEY = "guestbook-chat-profile";
-const AUTH_STORAGE_KEY = "guestbook-chat-auth";
+// 文章评论区 Waline 客户端的昵称/邮箱/网址存储键，留言板与其双向同步
+const WALINE_PROFILE_STORAGE_KEY = "WALINE_USER_META";
+// 与文章评论区 Waline 客户端共用登录态，避免两处登录互不可见
+const AUTH_STORAGE_KEY = "WALINE_USER";
+// 旧版留言板独立键，只读一次用于迁移
+const LEGACY_AUTH_STORAGE_KEY = "guestbook-chat-auth";
 const DRAFT_STORAGE_KEY = "guestbook-chat-draft";
 const serverURL = commentConfig.waline?.serverURL ?? "";
 const lang = commentConfig.waline?.lang ?? "zh-CN";
@@ -82,11 +91,9 @@ let announcementDialog = $state<HTMLDialogElement | null>(null);
 let deleteDialog = $state<HTMLDialogElement | null>(null);
 let selectedAnnouncement = $state<GuestbookAnnouncementItem | null>(null);
 let noticeDialog = $state<HTMLDialogElement | null>(null);
-let memberPanel = $state<HTMLElement | null>(null);
-let memberToggle = $state<HTMLButtonElement | null>(null);
-let sidebarOpen = $state(false);
 let showScrollToBottom = $state(false);
 let visibleCount = $state(VISIBLE_WINDOW);
+let showFingerprint = $state(true);
 let editingMessageId = $state<string | null>(null);
 let editDraft = $state("");
 let mutatingMessageId = $state<string | null>(null);
@@ -105,45 +112,9 @@ const visibleMessages = $derived(
 		: messages,
 );
 const hiddenMessageCount = $derived(messages.length - visibleMessages.length);
-const chatMembers = $derived.by(() => {
-	const members = new Map<
-		string,
-		Pick<GuestbookMessage, "nick" | "avatar" | "link" | "label" | "isAdmin">
-	>();
-	for (const message of messages) {
-		const key = `${message.nick.trim().toLocaleLowerCase()}|${message.avatar}`;
-		const current = members.get(key);
-		members.set(key, {
-			nick: message.nick || current?.nick || i18n(I18nKey.gbAnonymousVisitor),
-			avatar: message.avatar || current?.avatar || "",
-			link: message.link || current?.link,
-			label: message.label || current?.label,
-			isAdmin: message.isAdmin || current?.isAdmin || false,
-		});
-	}
-	return [...members.values()].sort(
-		(left, right) => Number(right.isAdmin) - Number(left.isAdmin),
-	);
-});
-const stationMembers = $derived(chatMembers.filter((member) => member.isAdmin));
-const guestMembers = $derived(chatMembers.filter((member) => !member.isAdmin));
-
-function handleChatKeydown(event: KeyboardEvent) {
-	if (event.key !== "Escape") return;
-	sidebarOpen = false;
-}
-
-function handlePopoverPointerdown(event: PointerEvent) {
-	const target = event.target;
-	if (!(target instanceof Node)) return;
-	if (
-		sidebarOpen &&
-		!memberPanel?.contains(target) &&
-		!memberToggle?.contains(target)
-	) {
-		sidebarOpen = false;
-	}
-}
+const fingerprintLabel = $derived(
+	i18n(showFingerprint ? I18nKey.gbHideFingerprint : I18nKey.gbShowFingerprint),
+);
 
 function canManageMessage(message: GuestbookMessage): boolean {
 	if (!authUser?.token || !message.objectId || message.localState) return false;
@@ -268,29 +239,58 @@ function readAuthentication(): GuestbookAuthUser | null {
 		sessionStorage,
 		AUTH_STORAGE_KEY,
 	);
-	if (isAuthUser(sessionUser)) return sessionUser;
 	const persistentUser = readStoredValue<unknown>(
 		localStorage,
 		AUTH_STORAGE_KEY,
 	);
-	if (!isAuthUser(persistentUser)) return null;
-	if (persistentUser.type === "administrator") {
-		removeStoredValue(localStorage, AUTH_STORAGE_KEY);
-		writeStoredValue(sessionStorage, AUTH_STORAGE_KEY, persistentUser);
+
+	// 管理员在留言板登录按既有策略只写 sessionStorage，优先识别
+	if (isAuthUser(sessionUser) && sessionUser.type === "administrator") {
+		return sessionUser;
 	}
-	return persistentUser;
+	// 游客态由文章区写入 localStorage，留言板也统一写这里
+	if (isAuthUser(persistentUser)) return persistentUser;
+	if (isAuthUser(sessionUser)) return sessionUser;
+
+	return readLegacyAuthentication();
+}
+
+function readLegacyAuthentication(): GuestbookAuthUser | null {
+	const legacySession = readStoredValue<unknown>(
+		sessionStorage,
+		LEGACY_AUTH_STORAGE_KEY,
+	);
+	const legacyPersistent = readStoredValue<unknown>(
+		localStorage,
+		LEGACY_AUTH_STORAGE_KEY,
+	);
+	const legacyUser = isAuthUser(legacySession)
+		? legacySession
+		: isAuthUser(legacyPersistent)
+			? legacyPersistent
+			: null;
+	if (!legacyUser) return null;
+
+	// 旧键只在首次读取时迁移，之后统一走 WALINE_USER
+	persistAuthentication(legacyUser);
+	return legacyUser;
 }
 
 function persistAuthentication(user: GuestbookAuthUser) {
 	removeStoredValue(localStorage, AUTH_STORAGE_KEY);
 	removeStoredValue(sessionStorage, AUTH_STORAGE_KEY);
-	const storage =
-		user.type === "administrator"
-			? sessionStorage
-			: user.remember
-				? localStorage
-				: sessionStorage;
-	writeStoredValue(storage, AUTH_STORAGE_KEY, user);
+	removeStoredValue(localStorage, LEGACY_AUTH_STORAGE_KEY);
+	removeStoredValue(sessionStorage, LEGACY_AUTH_STORAGE_KEY);
+
+	if (user.type === "administrator") {
+		writeStoredValue(sessionStorage, AUTH_STORAGE_KEY, user);
+		return;
+	}
+
+	// 文章区 Waline 客户端只从 localStorage 读取 WALINE_USER；
+	// 游客态写这里才能互通。官方客户端登录时本身也会写 localStorage，
+	// 因此这里不区分“记住登录”，避免两处行为不一致。
+	writeStoredValue(localStorage, AUTH_STORAGE_KEY, user);
 }
 
 function clearAuthentication() {
@@ -302,6 +302,8 @@ function clearAuthentication() {
 	if (deleteDialog?.open) deleteDialog.close();
 	removeStoredValue(localStorage, AUTH_STORAGE_KEY);
 	removeStoredValue(sessionStorage, AUTH_STORAGE_KEY);
+	removeStoredValue(localStorage, LEGACY_AUTH_STORAGE_KEY);
+	removeStoredValue(sessionStorage, LEGACY_AUTH_STORAGE_KEY);
 }
 
 interface WalineTokenResponse {
@@ -619,6 +621,15 @@ function handleWindowScroll() {
 	const nearBottom = isNearBottom();
 	showScrollToBottom = !nearBottom;
 	if (nearBottom) newMessageCount = 0;
+}
+
+function handleMobileBack() {
+	navigateToPage(url("/"));
+}
+
+function handleMobileMenu() {
+	// 本页移动端隐藏了底部 dock，汉堡按钮复用导航栏抽屉的既有入口
+	document.getElementById("nav-menu-switch")?.click();
 }
 
 function formatMessageTime(value: number): string {
@@ -997,6 +1008,8 @@ function handleLogout() {
 function handleProfileChange(nextProfile: GuestbookProfile) {
 	profile = nextProfile;
 	writeStoredValue(localStorage, PROFILE_STORAGE_KEY, nextProfile);
+	// 同步给文章评论区的 Waline 评论框，避免两边资料各写各的
+	writeStoredValue(localStorage, WALINE_PROFILE_STORAGE_KEY, nextProfile);
 	composerError = "";
 }
 
@@ -1006,6 +1019,20 @@ function handleDraftChange(nextDraft: string) {
 	composerError = "";
 }
 
+function handleAuthStorageChange(event: StorageEvent) {
+	if (event.key !== AUTH_STORAGE_KEY) return;
+	const nextUser = readAuthentication();
+	if (
+		nextUser?.token === authUser?.token &&
+		nextUser?.objectId === authUser?.objectId
+	) {
+		return;
+	}
+	authUser = nextUser;
+	composerError = "";
+	queueLatestSync();
+}
+
 let initialLoadQueued = false;
 
 onMount(() => {
@@ -1013,9 +1040,23 @@ onMount(() => {
 		localStorage,
 		PROFILE_STORAGE_KEY,
 	);
-	if (isProfile(storedProfile)) profile = storedProfile;
-	if (loginMode === "disable") clearAuthentication();
-	else authUser = readAuthentication();
+	const walineProfile = readStoredValue<unknown>(
+		localStorage,
+		WALINE_PROFILE_STORAGE_KEY,
+	);
+	// 文章评论区填写过资料时以它为准，让留言板直接显示同一昵称/邮箱/网址
+	const initialProfile =
+		isProfile(walineProfile) && walineProfile.nick.trim()
+			? walineProfile
+			: isProfile(storedProfile)
+				? storedProfile
+				: null;
+	if (initialProfile) {
+		profile = initialProfile;
+		writeStoredValue(localStorage, PROFILE_STORAGE_KEY, initialProfile);
+		writeStoredValue(localStorage, WALINE_PROFILE_STORAGE_KEY, initialProfile);
+	}
+	authUser = loginMode === "disable" ? null : readAuthentication();
 	draft = readStoredString(localStorage, DRAFT_STORAGE_KEY);
 	isOffline = !navigator.onLine;
 	const returnedToken = new URL(window.location.href).searchParams.get("token");
@@ -1023,6 +1064,7 @@ onMount(() => {
 	document.addEventListener("visibilitychange", handleVisibilityChange);
 	window.addEventListener("online", handleOnline);
 	window.addEventListener("offline", handleOffline);
+	window.addEventListener("storage", handleAuthStorageChange);
 
 	return () => {
 		dataController?.abort();
@@ -1033,18 +1075,35 @@ onMount(() => {
 		document.removeEventListener("visibilitychange", handleVisibilityChange);
 		window.removeEventListener("online", handleOnline);
 		window.removeEventListener("offline", handleOffline);
+		window.removeEventListener("storage", handleAuthStorageChange);
 	};
 });
 </script>
 
-<svelte:window
-	onkeydown={handleChatKeydown}
-	onpointerdown={handlePopoverPointerdown}
-	onscroll={handleWindowScroll}
-	onresize={handleWindowScroll}
-/>
+<svelte:window onscroll={handleWindowScroll} onresize={handleWindowScroll} />
 
 <section class="guestbook-chat" aria-label={i18n(I18nKey.gbTitle)}>
+	<header class="guestbook-chat__mobile-bar">
+		<button
+			class="guestbook-chat__mobile-action"
+			type="button"
+			onclick={handleMobileBack}
+			aria-label={i18n(I18nKey.backToHome)}
+			title={i18n(I18nKey.backToHome)}
+		>
+			<ArrowLeft size={20} aria-hidden="true" />
+		</button>
+		<button
+			class="guestbook-chat__mobile-action"
+			type="button"
+			onclick={handleMobileMenu}
+			aria-label={i18n(I18nKey.menu)}
+			title={i18n(I18nKey.menu)}
+		>
+			<Menu size={20} aria-hidden="true" />
+		</button>
+	</header>
+
 	<div class="guestbook-chat__workspace">
 		<div class="guestbook-chat__conversation">
 			{#if initialLoading}
@@ -1109,6 +1168,7 @@ onMount(() => {
 
 						<GuestbookChatMessage
 							{message}
+							{showFingerprint}
 							referencedMessage={message.replyToId
 								? messages.find((candidate) => candidate.id === message.replyToId)
 								: undefined}
@@ -1150,7 +1210,7 @@ onMount(() => {
 								)
 							: i18n(I18nKey.gbBackToBottom)}
 					>
-						<ChevronDown size={20} aria-hidden="true" />
+						<ArrowDown size={20} aria-hidden="true" />
 					</button>
 				{/if}
 
@@ -1163,83 +1223,6 @@ onMount(() => {
 						{/if}
 					</div>
 				{/if}
-
-				{#if sidebarOpen}
-					<button
-						class="guestbook-chat__sidebar-overlay"
-						type="button"
-						onclick={() => (sidebarOpen = false)}
-						aria-label={i18n(I18nKey.gbCloseMembers)}
-					></button>
-				{/if}
-
-				<aside
-					id="guestbook-chat-sidebar"
-					bind:this={memberPanel}
-					class:is-open={sidebarOpen}
-					class="guestbook-chat__sidebar"
-					aria-label={i18n(I18nKey.gbMembers)}
-				>
-					<div class="guestbook-chat__sidebar-heading">
-						<strong>{i18n(I18nKey.gbMembers)}</strong>
-						<button
-							type="button"
-							onclick={() => (sidebarOpen = false)}
-							aria-label={i18n(I18nKey.gbCloseMembers)}
-						>
-							<X size={18} aria-hidden="true" />
-						</button>
-					</div>
-
-					<section class="guestbook-chat__members" aria-label={i18n(I18nKey.gbMembersListAria)}>
-						<div class="guestbook-chat__member-list custom-scrollbar">
-							{#each [
-								{ title: i18n(I18nKey.gbAdmin), members: stationMembers },
-								{ title: i18n(I18nKey.gbMembers), members: guestMembers },
-							] as group (group.title)}
-								<div class="guestbook-chat__member-group">
-									<div class="guestbook-chat__member-group-title">
-										<strong>{group.title}</strong>
-										<span aria-label={i18n(I18nKey.gbMemberCountAria).replace("{count}", String(group.members.length))}>— {group.members.length}</span>
-									</div>
-
-									<div class="guestbook-chat__member-group-list">
-										{#each group.members as member (`${member.nick}-${member.avatar}`)}
-											{#if member.link}
-												<a
-													class="guestbook-chat__member"
-													href={member.link}
-													target="_blank"
-													rel="nofollow noopener noreferrer"
-												>
-													<span class="guestbook-chat__member-avatar">
-														<span>{getGuestbookInitials(member.nick)}</span>
-														{#if member.avatar}<img src={member.avatar} alt="" loading="lazy" />{/if}
-													</span>
-													<span class="guestbook-chat__member-identity">
-														{#if member.label}<small>{member.label}</small>{/if}
-														<span class="guestbook-chat__member-name">{member.nick}</span>
-													</span>
-												</a>
-											{:else}
-												<div class="guestbook-chat__member">
-													<span class="guestbook-chat__member-avatar">
-														<span>{getGuestbookInitials(member.nick)}</span>
-														{#if member.avatar}<img src={member.avatar} alt="" loading="lazy" />{/if}
-													</span>
-													<span class="guestbook-chat__member-identity">
-														{#if member.label}<small>{member.label}</small>{/if}
-														<span class="guestbook-chat__member-name">{member.nick}</span>
-													</span>
-												</div>
-											{/if}
-										{/each}
-									</div>
-								</div>
-							{/each}
-						</div>
-					</section>
-				</aside>
 
 				<GuestbookChatComposer
 					{profile}
@@ -1265,26 +1248,26 @@ onMount(() => {
 						type="button"
 						onclick={() => void openNotice()}
 						aria-label={i18n(I18nKey.announcement)}
-						title={i18n(I18nKey.announcement)}
+						data-tooltip={i18n(I18nKey.announcement)}
 					>
-						<Bell size={18} aria-hidden="true" />
+						<Bell size={20} aria-hidden="true" />
 						{#if announcements.length > 0}
 							<span class="guestbook-chat__dock-chip-dot" aria-hidden="true"></span>
 						{/if}
 					</button>
 					<button
-						bind:this={memberToggle}
-						class:is-active={sidebarOpen}
 						class="guestbook-chat__dock-chip"
 						type="button"
-						onclick={() => (sidebarOpen = !sidebarOpen)}
-						aria-expanded={sidebarOpen}
-						aria-controls="guestbook-chat-sidebar"
-						aria-label={i18n(I18nKey.gbMembers)}
-						title={i18n(I18nKey.gbMembers)}
+						onclick={() => (showFingerprint = !showFingerprint)}
+						aria-label={fingerprintLabel}
+						aria-pressed={showFingerprint}
+						data-tooltip={fingerprintLabel}
 					>
-						<Users size={18} aria-hidden="true" />
-						<span>{chatMembers.length}</span>
+						{#if showFingerprint}
+							<Fingerprint size={20} aria-hidden="true" />
+						{:else}
+							<EyeOff size={20} aria-hidden="true" />
+						{/if}
 					</button>
 					<button
 						class="guestbook-chat__dock-chip"
@@ -1292,12 +1275,12 @@ onMount(() => {
 						onclick={() => void syncLatest()}
 						disabled={syncing || initialLoading}
 						aria-label={i18n(I18nKey.gbRefreshNowAria)}
-						title={i18n(I18nKey.gbRefreshNowTitle)}
+						data-tooltip={i18n(I18nKey.gbRefreshNowTitle)}
 					>
 						{#if syncing}
-							<LoaderCircle class="is-spinning" size={18} aria-hidden="true" />
+							<LoaderCircle class="is-spinning" size={20} aria-hidden="true" />
 						{:else}
-							<RefreshCw size={18} aria-hidden="true" />
+							<RefreshCw size={20} aria-hidden="true" />
 						{/if}
 					</button>
 				</GuestbookChatComposer>

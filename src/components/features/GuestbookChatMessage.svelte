@@ -23,6 +23,7 @@ import {
 
 interface Props {
 	message: GuestbookChatMessage;
+	showFingerprint: boolean;
 	referencedMessage?: GuestbookChatMessage;
 	timeLabel: string;
 	canManage: boolean;
@@ -44,6 +45,7 @@ interface Props {
 
 let {
 	message,
+	showFingerprint,
 	referencedMessage,
 	timeLabel,
 	canManage,
@@ -64,6 +66,15 @@ let {
 }: Props = $props();
 
 let copied = $state(false);
+let actionsOpen = $state(false);
+
+function handleMessageClick(event: MouseEvent) {
+	const target = event.target;
+	if (!(target instanceof Element)) return;
+	// 点链接或按钮时保留原行为，只有点消息内容才切换操作按钮
+	if (target.closest("a, button")) return;
+	actionsOpen = !actionsOpen;
+}
 
 const quotePreview = $derived(
 	referencedMessage
@@ -88,7 +99,9 @@ async function copyMessage() {
 	class:is-admin={message.isAdmin}
 	class:is-failed={message.localState === "failed"}
 	class:is-sending={message.localState === "sending"}
+	class:is-actions-open={actionsOpen}
 	class="guestbook-message"
+	onclick={handleMessageClick}
 >
 	{#if message.replyToId}
 		<button
@@ -220,9 +233,9 @@ async function copyMessage() {
 							"{nick}",
 							message.nick,
 						)}
-						title={i18n(I18nKey.gbQuoteReply)}
+						data-tooltip={i18n(I18nKey.gbQuoteReply)}
 					>
-						<Reply size={15} aria-hidden="true" />
+						<Reply size={20} aria-hidden="true" />
 					</button>
 					<button
 						type="button"
@@ -230,14 +243,14 @@ async function copyMessage() {
 						aria-label={copied
 							? i18n(I18nKey.gbCopied)
 							: i18n(I18nKey.gbCopyMessage)}
-						title={copied
+						data-tooltip={copied
 							? i18n(I18nKey.gbCopied)
 							: i18n(I18nKey.gbCopyMessage)}
 					>
 						{#if copied}
-							<Check size={15} aria-hidden="true" />
+							<Check size={20} aria-hidden="true" />
 						{:else}
-							<Copy size={15} aria-hidden="true" />
+							<Copy size={20} aria-hidden="true" />
 						{/if}
 					</button>
 					{#if canManage}
@@ -245,39 +258,43 @@ async function copyMessage() {
 							type="button"
 							onclick={() => onEdit(message)}
 							aria-label={i18n(I18nKey.gbEditMessage)}
-							title={i18n(I18nKey.gbEditMessage)}
+							data-tooltip={i18n(I18nKey.gbEditMessage)}
 							disabled={isMutating}
 						>
-							<Pencil size={15} aria-hidden="true" />
+							<Pencil size={20} aria-hidden="true" />
 						</button>
 						<button
 							type="button"
 							onclick={() => onDelete(message)}
 							aria-label={i18n(I18nKey.gbDeleteMessage)}
-							title={i18n(I18nKey.gbDeleteMessage)}
+							data-tooltip={i18n(I18nKey.gbDeleteMessage)}
 							disabled={isMutating}
 						>
-							<Trash2 size={15} aria-hidden="true" />
+							<Trash2 size={20} aria-hidden="true" />
 						</button>
 					{/if}
 				</div>
 			{/if}
 		</div>
 
-		<div class="guestbook-message__meta">
-			{#if message.browser}
-				<span><Monitor size={14} aria-hidden="true" />{message.browser}</span>
-			{/if}
-			{#if message.os}
-				<span><Laptop size={14} aria-hidden="true" />{message.os}</span>
-			{/if}
-			{#if message.addr}
-				<span><MapPin size={14} aria-hidden="true" />{message.addr}</span>
-			{/if}
-			{#if message.localState === "sending"}
-				<span><LoaderCircle class="is-spinning" size={14} aria-hidden="true" />{i18n(I18nKey.sending)}</span>
-			{/if}
-		</div>
+		{#if showFingerprint || message.localState === "sending"}
+			<div class="guestbook-message__meta">
+				{#if showFingerprint}
+					{#if message.browser}
+						<span><Monitor size={14} aria-hidden="true" />{message.browser}</span>
+					{/if}
+					{#if message.os}
+						<span><Laptop size={14} aria-hidden="true" />{message.os}</span>
+					{/if}
+					{#if message.addr}
+						<span><MapPin size={14} aria-hidden="true" />{message.addr}</span>
+					{/if}
+				{/if}
+				{#if message.localState === "sending"}
+					<span><LoaderCircle class="is-spinning" size={14} aria-hidden="true" />{i18n(I18nKey.sending)}</span>
+				{/if}
+			</div>
+		{/if}
 
 		{#if message.localState === "failed"}
 			<div class="guestbook-message__failure" role="alert">

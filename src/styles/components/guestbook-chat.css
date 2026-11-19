@@ -39,6 +39,10 @@ html:has(.guestbook-page) {
 	color: var(--deep-text);
 }
 
+.guestbook-chat__mobile-bar {
+	display: none;
+}
+
 .guestbook-chat button {
 	font: inherit;
 	cursor: pointer;
@@ -145,7 +149,7 @@ html:has(.guestbook-page) {
 	position: absolute;
 	left: max(var(--space-2), var(--guestbook-column-pad));
 	right: auto;
-	bottom: calc(100% - 1.5rem);
+	bottom: calc(100% + var(--space-2));
 	z-index: 2;
 	display: none;
 	flex-direction: column;
@@ -398,7 +402,7 @@ html:has(.guestbook-page) {
 .guestbook-chat__new-messages {
 	position: absolute;
 	left: 50%;
-	top: calc((var(--control-size) + var(--space-2)) * -1);
+	top: calc((var(--control-size) + 3.25rem) * -1);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -407,21 +411,49 @@ html:has(.guestbook-page) {
 	height: var(--control-size);
 	min-height: var(--control-size);
 	padding: 0;
-	border: 1px solid var(--guestbook-line);
+	border: 0;
 	border-radius: var(--radius-full);
-	background: var(--guestbook-panel);
-	color: var(--primary);
+	background: var(--float-panel-bg);
+	color: var(--deep-text);
+	box-shadow: 0 0.4rem 1.2rem rgb(0 0 0 / 0.16);
 	transform: translateX(-50%);
+	transition: background-color 160ms ease;
+}
+
+.guestbook-chat__new-messages:hover {
+	background: var(--btn-plain-bg-hover);
+}
+
+:root.dark .guestbook-chat__new-messages {
+	box-shadow: 0 0.4rem 1.2rem rgb(0 0 0 / 0.45);
 }
 
 .guestbook-chat__composer-area {
 	position: sticky;
 	bottom: 0;
+	z-index: 3;
 	padding:
 		0
 		max(clamp(var(--space-3), 4vw, var(--space-6)), var(--guestbook-column-pad))
 		calc(var(--space-4) + env(safe-area-inset-bottom));
-	z-index: 3;
+}
+
+/* 只遮挡对话框下方：底部留白和卡片底部圆角以内，卡片上方保留内容可见 */
+.guestbook-chat__composer-area::after {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	height: calc(var(--space-4) + 1.5rem + env(safe-area-inset-bottom));
+	background: var(--page-bg);
+	content: "";
+	pointer-events: none;
+}
+
+/* 展开游客资料时隐藏回到底部按钮，避免压住表单 */
+.guestbook-chat__composer-area:has(.guestbook-composer__backplate.is-open)
+	.guestbook-chat__new-messages {
+	display: none;
 }
 
 .guestbook-chat__sync-error {
@@ -515,10 +547,10 @@ html:has(.guestbook-page) {
 }
 
 .guestbook-chat__fallback-composer {
-	padding: var(--space-3) var(--space-4) var(--space-2);
-	border-radius: var(--radius-large);
-	background: color-mix(in srgb, var(--guestbook-dock-bg) 82%, transparent);
-	backdrop-filter: blur(1.5rem) saturate(1.4);
+	padding: var(--space-2) var(--space-3);
+	border-radius: 1.5rem;
+	background: var(--guestbook-editor-bg);
+	box-shadow: inset 0 0 0 1px var(--guestbook-editor-line);
 }
 
 .guestbook-chat__fallback-editor {
@@ -526,23 +558,9 @@ html:has(.guestbook-page) {
 	background: transparent;
 }
 
-.guestbook-chat__fallback-resize-handle {
-	display: grid;
-	place-items: center;
-	height: var(--space-4);
-}
-
-.guestbook-chat__fallback-resize-handle::after {
-	width: 3rem;
-	height: 3px;
-	border-radius: var(--radius-full);
-	background: var(--guestbook-editor-line);
-	content: "";
-}
-
 .guestbook-chat__fallback-textarea {
-	min-height: 6rem;
-	margin: var(--space-3);
+	min-height: 3.5rem;
+	margin: var(--space-2) var(--space-3);
 	border-radius: var(--radius-small);
 	opacity: 0.48;
 }
@@ -556,8 +574,8 @@ html:has(.guestbook-page) {
 }
 
 .guestbook-chat__fallback-toolbar {
-	min-height: 3.5rem;
-	padding: var(--space-1) var(--space-2);
+	min-height: 3rem;
+	padding: 0 var(--space-1);
 	border-top: 0;
 }
 
@@ -565,8 +583,8 @@ html:has(.guestbook-page) {
 .guestbook-chat__fallback-login,
 .guestbook-chat__fallback-send {
 	display: block;
-	width: var(--control-size);
-	height: var(--control-size);
+	width: 2.25rem;
+	height: 2.25rem;
 	border-radius: var(--radius-medium);
 }
 
@@ -731,14 +749,14 @@ html:has(.guestbook-page) {
 	min-width: 3rem;
 	max-width: 100%;
 	padding: var(--space-3) var(--space-4);
-	border-radius: var(--radius-medium);
+	border-radius: 1rem;
 	background: var(--guestbook-bubble);
 	color: var(--guestbook-bubble-text);
 	line-height: 1.65;
 }
 
 .guestbook-message.is-admin .guestbook-message__bubble {
-	border-radius: var(--radius-medium);
+	border-radius: 1rem;
 	background: var(--guestbook-bubble);
 	color: var(--guestbook-bubble-text);
 }
@@ -914,30 +932,41 @@ html:has(.guestbook-page) {
 	align-items: center;
 	gap: var(--space-1);
 	opacity: 0;
+	pointer-events: none;
 	transition: opacity 160ms ease;
 }
 
 .guestbook-message__tools button {
 	display: grid;
 	place-items: center;
-	width: 2rem;
-	height: 2rem;
+	width: 2.5rem;
+	height: 2.5rem;
 	padding: 0;
-	border: 1px solid var(--guestbook-line);
+	border: 0;
 	border-radius: var(--radius-full);
-	background: var(--guestbook-panel);
+	background: transparent;
 	color: var(--guestbook-muted);
-	transition: border-color 160ms ease, color 160ms ease;
+	transition:
+		background-color 160ms ease,
+		color 160ms ease,
+		transform 160ms ease;
 }
 
 .guestbook-message:hover .guestbook-message__tools,
-.guestbook-message__tools:focus-within {
+.guestbook-message__tools:focus-within,
+.guestbook-message.is-actions-open .guestbook-message__tools {
 	opacity: 1;
+	pointer-events: auto;
 }
 
 .guestbook-message__tools button:hover:not(:disabled) {
-	border-color: var(--guestbook-muted);
+	background: var(--btn-plain-bg-hover);
 	color: var(--primary);
+	transform: scale(1.06);
+}
+
+.guestbook-message__tools button:active:not(:disabled) {
+	transform: scale(0.92);
 }
 
 .guestbook-message__edit-input {
@@ -1025,14 +1054,15 @@ html:has(.guestbook-page) {
 	animation: guestbook-highlight 1.6s ease;
 }
 
+/* 输入框只保留一层描边：用 inset box-shadow 代替 border，
+   避免边框占用盒模型导致宽度变化；内部按钮一律无边框，悬停只换底色 */
 .guestbook-composer {
 	position: relative;
 	z-index: 3;
 	padding: var(--space-3) var(--space-4) var(--space-2);
-	border-radius: var(--radius-large);
-	background: color-mix(in srgb, var(--guestbook-dock-bg) 82%, transparent);
-	box-shadow: 0 0.75rem 2.25rem rgb(0 0 0 / 0.14);
-	backdrop-filter: blur(1.5rem) saturate(1.4);
+	border-radius: 1.5rem;
+	background: var(--guestbook-editor-bg);
+	box-shadow: inset 0 0 0 1px var(--guestbook-editor-line);
 }
 
 .guestbook-composer__reply {
@@ -1042,9 +1072,22 @@ html:has(.guestbook-page) {
 	min-height: var(--control-size);
 	margin-bottom: var(--space-2);
 	padding: var(--space-2);
-	border-left: 3px solid var(--primary);
-	background: var(--guestbook-editor-bg);
+	border-radius: 0.75rem;
+	background: var(--guestbook-editor-hover);
 	color: var(--guestbook-editor-text);
+}
+
+.guestbook-composer__reply-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	color: var(--guestbook-editor-muted);
+}
+
+.guestbook-composer__reply-icon svg {
+	width: 1.75rem;
+	height: 1.75rem;
 }
 
 .guestbook-composer__reply > div {
@@ -1078,8 +1121,15 @@ html:has(.guestbook-page) {
 	width: var(--control-size);
 	height: var(--control-size);
 	border: 0;
+	border-radius: var(--radius-full);
 	background: transparent;
 	color: var(--guestbook-editor-muted);
+	transition: background-color 160ms ease, color 160ms ease;
+}
+
+.guestbook-composer__reply > button:hover {
+	background: var(--guestbook-editor-bg);
+	color: var(--guestbook-editor-text);
 }
 
 .guestbook-composer__editor {
@@ -1087,41 +1137,6 @@ html:has(.guestbook-page) {
 	overflow: visible;
 	background: transparent;
 	color: var(--guestbook-editor-text);
-}
-
-.guestbook-chat .guestbook-composer__resize-handle {
-	display: grid;
-	place-items: center;
-	width: 100%;
-	height: var(--space-4);
-	padding: 0;
-	border: 0;
-	background: transparent;
-	cursor: ns-resize;
-	touch-action: none;
-	user-select: none;
-}
-
-.guestbook-composer__resize-handle::after {
-	width: 3rem;
-	height: 3px;
-	border-radius: var(--radius-full);
-	background: var(--guestbook-editor-line);
-	content: "";
-	transition: width 160ms ease, background-color 160ms ease;
-}
-
-.guestbook-composer__resize-handle:hover::after,
-.guestbook-composer__resize-handle:focus-visible::after,
-.guestbook-composer__editor.is-resizing .guestbook-composer__resize-handle::after {
-	width: 4rem;
-	background: var(--guestbook-focus);
-}
-
-.guestbook-composer__editor.is-resizing,
-.guestbook-composer__editor.is-resizing * {
-	cursor: ns-resize;
-	user-select: none;
 }
 
 .guestbook-composer textarea::placeholder {
@@ -1132,16 +1147,16 @@ html:has(.guestbook-page) {
 .guestbook-composer textarea {
 	display: block;
 	width: 100%;
-	min-height: 6rem;
+	min-height: 3.5rem;
 	max-height: min(42dvh, 22rem);
 	resize: none;
-	padding: var(--space-3);
+	padding: var(--space-2) var(--space-3);
 	border: 0;
 	outline: 0;
 	background: transparent;
 	color: var(--guestbook-editor-text);
 	font: inherit;
-	font-size: 0.9rem;
+	font-size: 0.95rem;
 	line-height: 1.5;
 }
 
@@ -1195,8 +1210,8 @@ html:has(.guestbook-page) {
 
 .guestbook-composer__footer {
 	justify-content: space-between;
-	min-height: 3.5rem;
-	padding: var(--space-1) var(--space-2);
+	min-height: 3rem;
+	padding: 0 var(--space-1);
 	border-top: 0;
 }
 
@@ -1205,18 +1220,19 @@ html:has(.guestbook-page) {
 }
 
 .guestbook-composer__tools {
-	gap: var(--space-1);
+	gap: 0.125rem;
 }
 
 .guestbook-composer__tools button {
 	display: grid;
 	place-items: center;
-	width: var(--control-size);
-	height: var(--control-size);
+	width: 2.25rem;
+	height: 2.25rem;
 	border: 0;
-	border-radius: var(--radius-small);
+	border-radius: var(--radius-full);
 	background: transparent;
 	color: var(--guestbook-editor-muted);
+	transition: background-color 160ms ease, color 160ms ease;
 }
 
 .guestbook-composer__tools button:hover,
@@ -1225,16 +1241,83 @@ html:has(.guestbook-page) {
 	color: var(--guestbook-editor-text);
 }
 
+.guestbook-composer__mode {
+	display: grid;
+	place-items: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	padding: 0;
+	border: 0;
+	border-radius: var(--radius-full);
+	background: transparent;
+	color: var(--guestbook-editor-muted);
+	transition: background-color 160ms ease, color 160ms ease;
+}
+
+.guestbook-composer__mode:hover {
+	background: var(--guestbook-editor-hover);
+	color: var(--guestbook-editor-text);
+}
+
+/* 工具按钮悬停提示，样式与音乐播放器按钮一致 */
+.guestbook-composer__tools button[data-tooltip],
+.guestbook-composer__actions button[data-tooltip],
+.guestbook-message__tools button[data-tooltip] {
+	position: relative;
+}
+
+.guestbook-composer__tools button[data-tooltip]::after,
+.guestbook-composer__actions button[data-tooltip]::after,
+.guestbook-message__tools button[data-tooltip]::after {
+	content: attr(data-tooltip);
+	position: absolute;
+	bottom: calc(100% + 0.5rem);
+	left: 50%;
+	z-index: 6;
+	padding: 0.25rem 0.5rem;
+	border-radius: var(--radius-small);
+	background: var(--deep-text);
+	color: var(--page-bg);
+	font-size: 0.75rem;
+	line-height: 1.3;
+	white-space: nowrap;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translate(-50%, 0.25rem);
+	transition:
+		opacity 180ms ease,
+		transform 180ms ease,
+		visibility 180ms ease;
+}
+
+.guestbook-composer__tools button[data-tooltip]:hover::after,
+.guestbook-composer__tools button[data-tooltip]:focus-visible::after,
+.guestbook-composer__actions button[data-tooltip]:hover::after,
+.guestbook-composer__actions button[data-tooltip]:focus-visible::after,
+.guestbook-message__tools button[data-tooltip]:hover::after,
+.guestbook-message__tools button[data-tooltip]:focus-visible::after {
+	opacity: 1;
+	visibility: visible;
+	transform: translate(-50%, 0);
+}
+
+/* 选中的工具按钮用胶囊底，宽度随图标或文字自然变化 */
+.guestbook-composer__tools button.is-active {
+	border-radius: var(--radius-full);
+}
+
 .guestbook-composer__tools .guestbook-chat__dock-chip {
 	position: relative;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 0.25rem;
+	gap: 0.375rem;
 	width: auto;
-	min-width: var(--control-size);
-	padding: 0 var(--space-1);
-	font-size: 0.72rem;
+	min-width: 2.25rem;
+	/* 选中/悬停时的胶囊要托住图标和数字，左右留足内边距 */
+	padding: 0 var(--space-2);
+	font-size: 0.78rem;
 	font-weight: 700;
 }
 
@@ -1248,15 +1331,6 @@ html:has(.guestbook-page) {
 	background: var(--guestbook-danger);
 }
 
-.guestbook-composer__count {
-	position: absolute;
-	right: var(--space-4);
-	bottom: calc(3.5rem + var(--space-1));
-	color: var(--guestbook-editor-muted);
-	font-size: 0.72rem;
-	pointer-events: none;
-}
-
 .guestbook-chat .guestbook-composer__identity {
 	display: inline-flex;
 	align-items: center;
@@ -1265,14 +1339,14 @@ html:has(.guestbook-page) {
 	max-width: 10rem;
 	overflow: hidden;
 	min-height: 2.25rem;
-	padding: 0 0.625rem;
+	padding: 0 0.75rem;
 	border: 0;
-	border-radius: var(--radius-small);
+	border-radius: var(--radius-full);
 	background: transparent;
 	color: var(--guestbook-editor-text);
 	font: inherit;
-	font-size: 0.72rem;
-	font-weight: 650;
+	font-size: 0.82rem;
+	font-weight: 600;
 	cursor: pointer;
 	transition: background-color 160ms ease;
 }
@@ -1304,22 +1378,193 @@ html:has(.guestbook-page) {
 	padding: 0;
 	border: 0;
 	border-radius: var(--radius-full);
-	background: var(--guestbook-link);
-	color: #101010;
-	transition: opacity 160ms ease;
+	background: var(--guestbook-editor-hover);
+	color: var(--guestbook-editor-muted);
+	transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+/* 有内容才切换成黑白主按钮；空内容保持灰底禁用态 */
+.guestbook-composer__send:not(:disabled) {
+	background: var(--guestbook-send-bg);
+	color: var(--guestbook-send-text);
 }
 
 .guestbook-composer__send:hover:not(:disabled) {
 	opacity: 0.85;
 }
 
-.guestbook-profile-modal__panel {
-	max-width: 28rem;
+.guestbook-chat .guestbook-composer__send:disabled {
+	opacity: 1;
+}
+
+/* 输入卡背面：始终露出一条卡片边，登录入口放在左上角 */
+.guestbook-composer-host {
+	position: relative;
+}
+
+.guestbook-composer__backplate {
+	position: absolute;
+	/* 左右对齐到前方输入卡圆角结束、直边开始的位置 */
+	right: 1.5rem;
+	left: 1.5rem;
+	bottom: calc(100% - 0.25rem);
+	z-index: 0;
+	display: flex;
+	flex-direction: column;
+	padding: var(--space-2) 0;
+	border: 0;
+	/* 背面卡片只有上方露出来，底部不需要圆角 */
+	border-radius: 1.25rem 1.25rem 0 0;
+	background: var(--guestbook-editor-hover);
+	box-shadow: none;
+}
+
+.guestbook-composer__backplate-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	min-height: 1.75rem;
+	padding: 0 var(--space-4);
+}
+
+.guestbook-composer__backplate-meta {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	flex: 0 0 auto;
+}
+
+.guestbook-composer__backplate-count {
+	color: var(--guestbook-editor-muted);
+	font-size: 0.72rem;
+	pointer-events: none;
+}
+
+.guestbook-composer__backplate-panel {
+	display: grid;
+	grid-template-rows: 0fr;
+	opacity: 0;
+	transition:
+		grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 160ms ease;
+}
+
+.guestbook-composer__backplate.is-open .guestbook-composer__backplate-panel {
+	grid-template-rows: 1fr;
+	opacity: 1;
+}
+
+/* 收起时不能残留表单的上下内边距，否则登录条下方会多出一截空白 */
+.guestbook-composer__backplate-panel > form {
+	min-height: 0;
+	overflow: hidden;
+	padding-block: 0;
+}
+
+.guestbook-chat
+	.guestbook-composer__backplate
+	.guestbook-composer__identity {
+	min-height: 1.75rem;
+	max-width: 12rem;
+	padding: 0 var(--space-2);
+	border-radius: 0.5rem;
+	background: transparent;
+	color: var(--guestbook-editor-muted);
+	font-size: 0.78rem;
+}
+
+.guestbook-chat
+	.guestbook-composer__backplate
+	.guestbook-composer__identity:hover,
+.guestbook-chat
+	.guestbook-composer__backplate
+	.guestbook-composer__identity:focus-visible {
+	background: color-mix(in srgb, var(--guestbook-editor-bg) 70%, transparent);
+	color: var(--guestbook-editor-text);
+}
+
+.guestbook-composer__profile-close,
+.guestbook-composer__profile-reset {
+	display: grid;
+	place-items: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	padding: 0;
+	border: 0;
+	border-radius: var(--radius-full);
+	background: transparent;
+	color: var(--guestbook-editor-muted);
+}
+
+.guestbook-composer__profile-close:hover {
+	background: color-mix(in srgb, var(--guestbook-editor-bg) 70%, transparent);
+	color: var(--guestbook-editor-text);
+}
+
+.guestbook-composer__profile-reset {
+	color: var(--guestbook-danger);
+}
+
+.guestbook-composer__profile-reset:hover {
+	background: color-mix(in srgb, var(--guestbook-danger) 14%, transparent);
+}
+
+.guestbook-composer__profile {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	padding: var(--space-2) var(--space-4);
+}
+
+.guestbook-composer__profile .guestbook-profile-modal__body {
+	padding-top: var(--space-1);
+}
+
+.guestbook-composer__profile .guestbook-profile-modal__body input {
+	border-color: var(--guestbook-editor-line);
+	background: var(--page-bg);
+}
+
+.guestbook-composer__profile-logout,
+.guestbook-composer__profile-login {
+	min-height: 2.25rem;
+	padding: 0 var(--space-3);
+	border: 0;
+	border-radius: 0.75rem;
+	font: inherit;
+	font-size: 0.85rem;
+	font-weight: 650;
+	cursor: pointer;
+	transition: background-color 160ms ease, color 160ms ease;
+}
+
+.guestbook-composer__profile-logout {
+	background: color-mix(in srgb, var(--guestbook-danger) 12%, transparent);
+	color: var(--guestbook-danger);
+}
+
+.guestbook-composer__profile-logout:hover {
+	background: color-mix(in srgb, var(--guestbook-danger) 20%, transparent);
+}
+
+.guestbook-composer__profile-login {
+	background: color-mix(in srgb, var(--guestbook-editor-bg) 60%, transparent);
+	color: var(--guestbook-editor-text);
+}
+
+.guestbook-composer__profile-login:hover:not(:disabled) {
+	background: var(--guestbook-editor-bg);
 }
 
 .guestbook-profile-modal__body {
 	display: grid;
 	gap: var(--space-3);
+	min-width: 0;
+}
+
+.guestbook-profile-modal__body label {
+	min-width: 0;
 }
 
 .guestbook-profile-modal__signed {
@@ -1340,7 +1585,9 @@ html:has(.guestbook-page) {
 }
 
 .guestbook-profile-modal__body input {
+	box-sizing: border-box;
 	width: 100%;
+	min-width: 0;
 	min-height: var(--control-size);
 	padding: 0 var(--space-3);
 	border: 1px solid var(--guestbook-editor-line);
@@ -1351,10 +1598,10 @@ html:has(.guestbook-page) {
 	font-size: 0.9rem;
 }
 
+/* 选中只改单层边框，不再叠加 outline，避免左右两端被容器裁掉 */
 .guestbook-profile-modal__body input:focus {
 	border-color: var(--guestbook-focus);
-	outline: 2px solid color-mix(in srgb, var(--guestbook-focus) 24%, transparent);
-	outline-offset: 1px;
+	outline: 0;
 }
 
 .guestbook-profile-modal__error {
@@ -1366,7 +1613,7 @@ html:has(.guestbook-page) {
 .guestbook-profile-modal__login-entry {
 	display: grid;
 	gap: var(--space-2);
-	margin-top: var(--space-1);
+	margin-top: var(--space-2);
 }
 
 .guestbook-profile-modal__divider {
@@ -1387,54 +1634,25 @@ html:has(.guestbook-page) {
 .guestbook-profile-modal__login-entry > button {
 	min-height: var(--control-size);
 	padding: 0 var(--space-3);
-	border: 1px solid var(--guestbook-editor-line);
-	border-radius: var(--radius-medium);
-	background: transparent;
+	border: 0;
+	border-radius: 0.75rem;
+	background: color-mix(in srgb, var(--guestbook-editor-bg) 60%, transparent);
 	color: var(--guestbook-editor-text);
 	font: inherit;
 	font-size: 0.85rem;
 	font-weight: 650;
 	cursor: pointer;
-	transition: border-color 160ms ease;
+	transition: background-color 160ms ease, color 160ms ease;
 }
 
 .guestbook-profile-modal__login-entry > button:hover:not(:disabled) {
-	border-color: var(--guestbook-focus);
+	background: var(--guestbook-editor-bg);
+	color: var(--deep-text);
 }
 
 .guestbook-profile-modal__login-entry > button:disabled {
 	cursor: not-allowed;
 	opacity: 0.48;
-}
-
-.guestbook-profile-modal__actions {
-	gap: var(--space-2);
-}
-
-.guestbook-profile-modal__logout {
-	min-height: var(--control-size);
-	padding: 0 var(--space-3);
-	border: 1px solid color-mix(in srgb, var(--guestbook-danger) 55%, transparent);
-	border-radius: var(--radius-medium);
-	background: transparent;
-	color: var(--guestbook-danger);
-	font: inherit;
-	font-size: 0.85rem;
-	font-weight: 650;
-	cursor: pointer;
-}
-
-.guestbook-profile-modal__logout:hover {
-	border-color: var(--guestbook-danger);
-}
-
-.guestbook-profile-modal__actions > button:first-child:not(.guestbook-profile-modal__logout) {
-	min-height: var(--control-size);
-	padding: 0 var(--space-3);
-	border: 1px solid var(--guestbook-editor-line);
-	border-radius: var(--radius-medium);
-	background: transparent;
-	color: var(--deep-text);
 }
 
 .guestbook-composer__file-input {
@@ -1443,7 +1661,7 @@ html:has(.guestbook-page) {
 
 .guestbook-composer__emojis {
 	position: absolute;
-	bottom: calc(3.5rem + var(--space-2));
+	bottom: calc(3rem + var(--space-2));
 	left: var(--space-2);
 	display: flex;
 	flex-direction: column;
@@ -1730,10 +1948,6 @@ html:has(.guestbook-page) {
 		font-size: 0.9rem;
 	}
 
-	.guestbook-message__tools {
-		opacity: 1;
-	}
-
 	.guestbook-message__quote {
 		width: calc(100% - var(--guestbook-avatar-size) / 2);
 		min-height: 2.75rem;
@@ -1741,23 +1955,20 @@ html:has(.guestbook-page) {
 		padding-bottom: var(--space-1);
 	}
 
-	.guestbook-message__tools button {
-		width: 1.875rem;
-		height: 1.875rem;
-	}
-
 	.guestbook-message__edit-input {
 		width: min(68vw, 24rem);
 		min-width: 10rem;
 	}
 
+	/* 留言页隐藏底部 dock，输入条直接贴底，不再预留它的高度 */
 	.guestbook-chat__composer-area {
-		/* 左右留白取 0.75rem，与 dock 的 --mobile-dock-edge / --mobile-dock-inset-left 同值，两条才对齐 */
 		padding-right: var(--space-3);
-		padding-bottom: calc(
-			var(--guestbook-mobile-dock-clearance) + env(safe-area-inset-bottom)
-		);
+		padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
 		padding-left: var(--space-3);
+	}
+
+	.guestbook-chat__composer-area::after {
+		height: calc(var(--space-2) + 1.5rem + env(safe-area-inset-bottom));
 	}
 
 	.guestbook-composer {
@@ -1780,11 +1991,6 @@ html:has(.guestbook-page) {
 	.guestbook-composer textarea {
 		max-height: min(40dvh, 18rem);
 		padding: var(--space-2) var(--space-3);
-	}
-
-	.guestbook-composer__resize-handle,
-	.guestbook-chat__fallback-resize-handle {
-		height: var(--space-3);
 	}
 
 	.guestbook-chat__fallback-textarea {
@@ -1829,154 +2035,64 @@ html:has(.guestbook-page) {
 		grid-template-columns: repeat(6, minmax(0, 1fr));
 	}
 
-	/* ── 移动端留言条：椭圆长条紧凑贴在 dock 上方，点 + 或输入撑出多行时展开成卡片 ── */
+	/* ── 移动端统一使用桌面卡片布局，只精简底栏按钮 ── */
 	.guestbook-composer--mobile {
-		--gb-mobile-motion: cubic-bezier(0.22, 1, 0.36, 1);
 		display: flex;
 		flex-direction: column;
-		padding: 0;
-		border-radius: 0;
-		background: transparent;
-		box-shadow: none;
-		backdrop-filter: none;
+		padding: var(--space-2) var(--space-3);
+		border-radius: 1.5rem;
 	}
 
-	/* 提示条排在输入面上方：composer-area 底边钉住，多出来的一行只会往上长，椭圆条不位移 */
 	.guestbook-composer--mobile .guestbook-composer__error {
 		order: -1;
 		margin: 0 0 var(--space-1);
+		border-radius: var(--radius-medium);
 	}
 
-	.guestbook-composer--mobile .guestbook-composer__stage {
-		display: flex;
-		flex-direction: column;
+	.guestbook-composer--mobile .guestbook-composer__footer {
+		min-height: 2.75rem;
 		gap: var(--space-1);
-	}
-
-	.guestbook-composer--mobile .guestbook-composer__shell {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-1);
-		padding: var(--space-1);
-		border-radius: var(--radius-full);
-		background: var(--mobile-dock-surface);
-		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 14%);
-		/* 高度与圆角的补间都交给 setShape 的 WAAPI：两者必须同一条时间线，
-		   圆角若走 CSS transition 会和高度各算各的；padding 同理不能参与过渡，
-		   否则两套动画叠加，收缩时就会抖 */
-		transition: box-shadow 240ms ease;
-	}
-
-	:root.dark .guestbook-composer--mobile .guestbook-composer__shell {
-		box-shadow: 0 0.65rem 1.8rem rgb(0 0 0 / 34%);
-	}
-
-	/* 高度补间期间裁掉溢出，动画一结束就撤掉，恢复表情面板的外溢显示 */
-	.guestbook-composer--mobile .guestbook-composer__shell.is-morphing {
-		overflow: hidden;
-	}
-
-	/* 外壳内边距两态同值（不参与高度补间），卡片态多出的留白挂在各行的横向内边距上 */
-	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="card"] {
-		border-radius: var(--radius-large);
-	}
-
-	.guestbook-composer--mobile .guestbook-composer__shell.is-listening {
-		box-shadow:
-			0 0 0 0.125rem color-mix(in srgb, var(--guestbook-link) 55%, transparent),
-			0 0.65rem 1.8rem rgb(0 0 0 / 14%);
-	}
-
-	.guestbook-composer--mobile .guestbook-composer__bar {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		transition:
-			padding-left 320ms var(--gb-mobile-motion),
-			padding-right 320ms var(--gb-mobile-motion);
-	}
-
-	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="card"] .guestbook-composer__bar {
-		padding-right: var(--space-1);
-		padding-left: var(--space-1);
-	}
-
-	.guestbook-composer--mobile .guestbook-composer__input {
-		min-height: var(--control-size);
-	}
-
-	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="card"] .guestbook-composer__input {
-		align-items: flex-end;
-	}
-
-	.guestbook-composer--mobile .guestbook-composer__input > :not(textarea):not(.guestbook-composer__voice):not(.guestbook-composer__send) {
-		display: grid;
-		place-items: center;
-		flex: 0 0 auto;
-		width: var(--control-size);
-		height: var(--control-size);
 		padding: 0;
-		border: 0;
-		border-radius: var(--radius-full);
-		background: transparent;
-		color: var(--guestbook-editor-text);
 	}
 
-	/* + 与 × 是同一个图标转 45°，展开/收起时原地旋转而不是换图 */
-	.guestbook-composer--mobile .guestbook-composer__expand > svg {
-		transition: transform 320ms var(--gb-mobile-motion);
+	.guestbook-composer--mobile .guestbook-composer__tools {
+		gap: 0.125rem;
 	}
 
-	.guestbook-composer--mobile .guestbook-composer__expand.is-expanded > svg {
-		transform: rotate(45deg);
+	.guestbook-composer--mobile .guestbook-composer__tools button {
+		width: 2.25rem;
+		height: 2.25rem;
 	}
 
-	.guestbook-composer--mobile .guestbook-composer__input > button:active:not(:disabled) {
-		background: var(--guestbook-editor-hover);
+	.guestbook-composer--mobile .guestbook-composer__actions {
+		gap: 0.25rem;
 	}
 
-	.guestbook-composer--mobile .guestbook-composer__input > button.is-active {
-		background: var(--guestbook-editor-hover);
-		color: var(--guestbook-editor-text);
+	.guestbook-composer--mobile .guestbook-composer__send {
+		width: 2.5rem;
+		height: 2.5rem;
 	}
 
-	.guestbook-composer--mobile .guestbook-composer__input > textarea {
-		flex: 1;
-		min-width: 0;
-		width: auto;
-		height: 1.5em;
-		min-height: 1.5em;
-		max-height: 1.5em;
-		overflow: hidden;
-		padding: 0 var(--space-1);
-		background: transparent;
-		color: var(--guestbook-editor-text);
-		/* 1rem 是下限：iOS Safari 对更小字号的输入框聚焦时会自动放大整页 */
+	.guestbook-composer--mobile textarea {
+		min-height: 3.5rem;
+		max-height: min(40dvh, 18rem);
+		padding: var(--space-2) var(--space-1);
 		font-size: 1rem;
 	}
 
-	/* 卡片态的高度由 resizeTextarea 按内容写内联值，这里只给上下限 */
-	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="card"] .guestbook-composer__input > textarea {
-		height: 2.25rem;
-		min-height: 2.25rem;
-		max-height: min(32dvh, 14rem);
-		overflow-y: auto;
-		padding: var(--space-1) var(--space-2);
-		border-radius: var(--radius-medium);
-		background: var(--guestbook-editor-bg);
-	}
-
 	.guestbook-composer--mobile .guestbook-composer__voice {
-		flex: 1;
-		min-width: 0;
-		min-height: var(--control-size);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		min-height: 3.5rem;
 		padding: 0 var(--space-2);
 		border: 0;
-		border-radius: var(--radius-full);
+		border-radius: var(--radius-medium);
 		background: transparent;
 		color: var(--guestbook-editor-text);
-		font-size: 0.9rem;
+		font: inherit;
+		font-size: 0.95rem;
 		font-weight: 650;
 		touch-action: none;
 		user-select: none;
@@ -1986,61 +2102,70 @@ html:has(.guestbook-page) {
 		text-overflow: ellipsis;
 	}
 
-	.guestbook-composer--mobile .guestbook-composer__shell.is-listening .guestbook-composer__voice {
+	.guestbook-composer--mobile .guestbook-composer__editor.is-listening .guestbook-composer__voice {
 		background: var(--guestbook-editor-hover);
 		color: var(--guestbook-link);
 	}
 
-	.guestbook-composer--mobile .guestbook-composer__tray {
-		justify-content: space-between;
-		gap: var(--space-2);
-		padding-top: var(--space-1);
-		border-top: 1px solid var(--guestbook-editor-line);
-	}
-
-	.guestbook-composer--mobile .guestbook-composer__tray .guestbook-composer__tools button {
-		width: var(--control-size);
-		height: var(--control-size);
-		border-radius: var(--radius-full);
-	}
-
-	.guestbook-composer--mobile .guestbook-composer__send {
-		width: var(--control-size);
-		height: var(--control-size);
-	}
-
-	/* 待发图片只在卡片态露出：椭圆态保持单行，附件成功时由 setShape 展开 */
 	.guestbook-composer--mobile .guestbook-composer__image-preview {
 		margin: 0 0 var(--space-1);
 	}
 
-	.guestbook-composer--mobile .guestbook-composer__shell[data-shape="pill"] .guestbook-composer__image-preview {
-		display: none;
+	.guestbook-composer--mobile .guestbook-composer__reply {
+		border-radius: var(--radius-medium);
 	}
 
-	/* 登录态胶囊排在椭圆条正上方右侧，跟着输入面上移，不压消息流 */
-	.guestbook-composer--mobile .guestbook-composer__identity {
-		align-self: flex-end;
-		max-width: 9rem;
-		min-height: 1.75rem;
-		border: 1px solid var(--guestbook-editor-line);
-		border-radius: var(--radius-full);
-		background: var(--mobile-dock-surface);
-		font-size: 0.7rem;
-	}
-
+	/* 表情面板从输入卡上方弹出，避免挤占输入区 */
 	.guestbook-composer--mobile .guestbook-composer__emojis {
 		bottom: calc(100% + var(--space-2));
 	}
 
-	.guestbook-composer--mobile .guestbook-composer__reply,
-	.guestbook-composer--mobile .guestbook-composer__error {
-		border-radius: var(--radius-medium);
+	/* 留言页用顶部返回 + 汉堡替代底部 dock：隐藏 dock，并让汉堡复用导航抽屉。
+	   两条规则都用 :has(.guestbook-page) 锁定本页，Swup 换页后自动恢复 */
+	body:has(.guestbook-page) .mobile-dock,
+	body:has(.guestbook-page) .mobile-dock__overlay {
+		display: none !important;
 	}
 
-	/* 键盘弹起时 dock 自行让位，留言条跟着贴回屏幕底，不留空档 */
-	.guestbook-chat__composer-area:has(.guestbook-composer.is-keyboard-open) {
-		padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
+	body:has(.guestbook-page) #nav-menu-panel.nav-drawer {
+		display: flex !important;
+	}
+
+	body:has(.guestbook-page) #nav-drawer-overlay.nav-drawer-overlay {
+		display: block !important;
+	}
+
+	.guestbook-chat__mobile-bar {
+		position: sticky;
+		top: 0;
+		z-index: 5;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding:
+			calc(var(--space-2) + env(safe-area-inset-top))
+			var(--space-3)
+			var(--space-2);
+		background: color-mix(in srgb, var(--page-bg) 86%, transparent);
+		backdrop-filter: blur(1rem) saturate(1.2);
+	}
+
+	.guestbook-chat__mobile-action {
+		display: grid;
+		place-items: center;
+		width: var(--control-size);
+		height: var(--control-size);
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--deep-text);
+		transition: background-color 160ms ease;
+	}
+
+	.guestbook-chat__mobile-action:hover,
+	.guestbook-chat__mobile-action:focus-visible {
+		background: var(--guestbook-editor-hover);
 	}
 }
 
@@ -2052,8 +2177,8 @@ html:has(.guestbook-page) {
 
 	.guestbook-composer__tools .guestbook-chat__dock-chip {
 		min-width: 2.25rem;
-		padding: 0 0.25rem;
-		font-size: 0.64rem;
+		padding: 0 0.375rem;
+		font-size: 0.7rem;
 	}
 
 	.guestbook-composer__actions {
@@ -2061,10 +2186,10 @@ html:has(.guestbook-page) {
 	}
 
 	.guestbook-chat .guestbook-composer__identity {
-		max-width: 4.5rem;
-		padding-right: 0.375rem;
-		padding-left: 0.375rem;
-		font-size: 0.64rem;
+		max-width: 5.5rem;
+		padding-right: 0.5rem;
+		padding-left: 0.5rem;
+		font-size: 0.75rem;
 	}
 }
 
