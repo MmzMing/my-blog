@@ -681,6 +681,11 @@ html:has(.guestbook-page) {
 	justify-content: flex-end;
 }
 
+/* 管理员消息的操作按钮放在指纹信息左侧，指纹保持贴齐右缘 */
+.guestbook-message.is-admin .guestbook-message__tools {
+	order: -1;
+}
+
 .guestbook-message.is-admin .guestbook-message__time {
 	order: 1;
 }
@@ -927,10 +932,12 @@ html:has(.guestbook-page) {
 	vertical-align: -0.28em;
 }
 
+/* 操作按钮并入指纹行尾部：透明占位保证显示时不顶开布局，悬停/点按消息时才亮出 */
 .guestbook-message__tools {
+	--guestbook-tool-size: 1.75rem;
 	display: flex;
 	align-items: center;
-	gap: var(--space-1);
+	gap: 0.125rem;
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 160ms ease;
@@ -939,11 +946,11 @@ html:has(.guestbook-page) {
 .guestbook-message__tools button {
 	display: grid;
 	place-items: center;
-	width: 2.5rem;
-	height: 2.5rem;
+	width: var(--guestbook-tool-size);
+	height: var(--guestbook-tool-size);
 	padding: 0;
 	border: 0;
-	border-radius: var(--radius-full);
+	border-radius: var(--radius-medium);
 	background: transparent;
 	color: var(--guestbook-muted);
 	transition:
@@ -953,8 +960,7 @@ html:has(.guestbook-page) {
 }
 
 .guestbook-message:hover .guestbook-message__tools,
-.guestbook-message__tools:focus-within,
-.guestbook-message.is-actions-open .guestbook-message__tools {
+.guestbook-message__tools:focus-within {
 	opacity: 1;
 	pointer-events: auto;
 }
@@ -1939,6 +1945,12 @@ html:has(.guestbook-page) {
 		max-width: calc(100% - 3.125rem);
 	}
 
+	/* 移动端没有悬停，操作按钮常驻显示在指纹行 */
+	.guestbook-message__tools {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
 	.guestbook-message__bubble {
 		padding: var(--space-2) var(--space-3);
 	}
@@ -1963,12 +1975,22 @@ html:has(.guestbook-page) {
 	/* 留言页隐藏底部 dock，输入条直接贴底，不再预留它的高度 */
 	.guestbook-chat__composer-area {
 		padding-right: var(--space-3);
-		padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
+		/* 只保留安全区，避免底部多出一条空白带 */
+		padding-bottom: env(safe-area-inset-bottom);
 		padding-left: var(--space-3);
 	}
 
 	.guestbook-chat__composer-area::after {
-		height: calc(var(--space-2) + 1.5rem + env(safe-area-inset-bottom));
+		height: env(safe-area-inset-bottom);
+	}
+
+	/* 软键盘已经盖住底部安全区，键盘开启时不再额外留白 */
+	.guestbook-chat__composer-area:has(.guestbook-composer.is-keyboard-open) {
+		padding-bottom: 0;
+	}
+
+	.guestbook-chat__composer-area:has(.guestbook-composer.is-keyboard-open)::after {
+		height: 0;
 	}
 
 	.guestbook-composer {

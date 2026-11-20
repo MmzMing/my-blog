@@ -66,15 +66,6 @@ let {
 }: Props = $props();
 
 let copied = $state(false);
-let actionsOpen = $state(false);
-
-function handleMessageClick(event: MouseEvent) {
-	const target = event.target;
-	if (!(target instanceof Element)) return;
-	// 点链接或按钮时保留原行为，只有点消息内容才切换操作按钮
-	if (target.closest("a, button")) return;
-	actionsOpen = !actionsOpen;
-}
 
 const quotePreview = $derived(
 	referencedMessage
@@ -99,9 +90,7 @@ async function copyMessage() {
 	class:is-admin={message.isAdmin}
 	class:is-failed={message.localState === "failed"}
 	class:is-sending={message.localState === "sending"}
-	class:is-actions-open={actionsOpen}
 	class="guestbook-message"
-	onclick={handleMessageClick}
 >
 	{#if message.replyToId}
 		<button
@@ -224,6 +213,24 @@ async function copyMessage() {
 				{/if}
 			</div>
 
+		</div>
+
+		<!-- 指纹行常驻：关闭指纹后这层仍保留，行尾操作按钮悬停/点按消息时才显示 -->
+		<div class="guestbook-message__meta">
+			{#if showFingerprint}
+				{#if message.browser}
+					<span><Monitor size={14} aria-hidden="true" />{message.browser}</span>
+				{/if}
+				{#if message.os}
+					<span><Laptop size={14} aria-hidden="true" />{message.os}</span>
+				{/if}
+				{#if message.addr}
+					<span><MapPin size={14} aria-hidden="true" />{message.addr}</span>
+				{/if}
+			{/if}
+			{#if message.localState === "sending"}
+				<span><LoaderCircle class="is-spinning" size={14} aria-hidden="true" />{i18n(I18nKey.sending)}</span>
+			{/if}
 			{#if !message.localState && !isEditing}
 				<div class="guestbook-message__tools" role="group" aria-label={i18n(I18nKey.gbMessageActionsAria)}>
 					<button
@@ -235,22 +242,20 @@ async function copyMessage() {
 						)}
 						data-tooltip={i18n(I18nKey.gbQuoteReply)}
 					>
-						<Reply size={20} aria-hidden="true" />
+						<Reply size={16} aria-hidden="true" />
 					</button>
 					<button
 						type="button"
 						onclick={copyMessage}
-						aria-label={copied
-							? i18n(I18nKey.gbCopied)
-							: i18n(I18nKey.gbCopyMessage)}
+						aria-label={copied ? i18n(I18nKey.gbCopied) : i18n(I18nKey.gbCopyMessage)}
 						data-tooltip={copied
 							? i18n(I18nKey.gbCopied)
 							: i18n(I18nKey.gbCopyMessage)}
 					>
 						{#if copied}
-							<Check size={20} aria-hidden="true" />
+							<Check size={16} aria-hidden="true" />
 						{:else}
-							<Copy size={20} aria-hidden="true" />
+							<Copy size={16} aria-hidden="true" />
 						{/if}
 					</button>
 					{#if canManage}
@@ -261,7 +266,7 @@ async function copyMessage() {
 							data-tooltip={i18n(I18nKey.gbEditMessage)}
 							disabled={isMutating}
 						>
-							<Pencil size={20} aria-hidden="true" />
+							<Pencil size={16} aria-hidden="true" />
 						</button>
 						<button
 							type="button"
@@ -270,31 +275,12 @@ async function copyMessage() {
 							data-tooltip={i18n(I18nKey.gbDeleteMessage)}
 							disabled={isMutating}
 						>
-							<Trash2 size={20} aria-hidden="true" />
+							<Trash2 size={16} aria-hidden="true" />
 						</button>
 					{/if}
 				</div>
 			{/if}
 		</div>
-
-		{#if showFingerprint || message.localState === "sending"}
-			<div class="guestbook-message__meta">
-				{#if showFingerprint}
-					{#if message.browser}
-						<span><Monitor size={14} aria-hidden="true" />{message.browser}</span>
-					{/if}
-					{#if message.os}
-						<span><Laptop size={14} aria-hidden="true" />{message.os}</span>
-					{/if}
-					{#if message.addr}
-						<span><MapPin size={14} aria-hidden="true" />{message.addr}</span>
-					{/if}
-				{/if}
-				{#if message.localState === "sending"}
-					<span><LoaderCircle class="is-spinning" size={14} aria-hidden="true" />{i18n(I18nKey.sending)}</span>
-				{/if}
-			</div>
-		{/if}
 
 		{#if message.localState === "failed"}
 			<div class="guestbook-message__failure" role="alert">
