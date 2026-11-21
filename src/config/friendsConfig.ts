@@ -754,6 +754,16 @@ export const friendsConfig: FriendLink[] = [
 		weight: 5,
 		enabled: true,
 	},
+	{
+		title: "Levy的博客",
+		imgurl: "https://levy.asia/_nuxt/avatar.DXs9uOgo.webp",
+		desc: "技术、思考与生活碎片",
+		siteurl: "https://levy.asia",
+		image: "/assets/images/friends/levy.webp",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
