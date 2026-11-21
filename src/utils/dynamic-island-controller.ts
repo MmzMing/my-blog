@@ -1691,7 +1691,8 @@ export class DynamicIsland {
 		// 但目录分组开着时仍要收掉分组，回到功能面板
 		if (sameTab && this.menuGroupIndex < 0) return;
 		this.currentTab = key;
-		this.root.dataset.diTab = key;
+		// 注意：不要把 data-di-tab 写到根元素上——onNavClick 用 closest("[data-di-tab]")
+		// 命中目标，根节点带上它后岛屿内所有链接（站点行、周文章等）都会被 preventDefault 吞掉
 		// 顺序要紧：先把面板切到位、作废旧测量，再收目录分组。
 		// closeMenuDropdown 里会按「当前内容」重算展开高度，反过来就会量到上一个面板，
 		// 并把它按新标签的 key 缓存下来——新面板下方于是被截断，且不再自适应
