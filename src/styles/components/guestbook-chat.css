@@ -483,6 +483,16 @@ html:has(.guestbook-page) {
 	overflow: hidden;
 }
 
+/* fallback 是水合前的占位骨架：上限锁定可用视口高度，loading 区随之收缩、
+   composer 始终留在视口内，避免矮视口 / 样式后到时骨架自然高度把输入区
+   顶出折叠线（看起来像被截断）。client:only 的 astro-island 包装层是
+   .guestbook-page 的 flex 项，高度约束要直接落在 section 上才可靠。
+   只约束 fallback：加载后的聊天区由自身布局接管，不在此改变其滚动行为 */
+.guestbook-chat--fallback {
+	max-height: calc(100dvh - var(--guestbook-viewport-offset));
+	overflow: hidden;
+}
+
 .guestbook-chat__skeleton {
 	display: flex;
 	align-items: flex-start;

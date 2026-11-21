@@ -168,6 +168,49 @@ const managerConfigStr = JSON.stringify({
     audio.style.display = 'none';
     if (!audio.parentNode) document.body.appendChild(audio);
 
+    // ── 频谱分析（惰性创建）────────────────────────────────
+    // 灵动岛收起态的波形形变与律动条复用同一份峰值数据。AudioContext 必须在
+    // 用户手势后创建/恢复，否则浏览器会自动挂起；跨域音源接 Analyser 会让
+    // MediaElementSource 静音，所以只在同源（local 模式）时接入，其余回落到
+    // 基于播放状态的合成波形（由控制器侧兜底）。
+    var audioCtx = null;
+    var analyser = null;
+    var freqData = null;
+    function ensureAnalyser() {
+        if (analyser || audioCtx) return;
+        var src = audio.currentSrc || audio.src || '';
+        if (src && /^https?:/.test(src)) {
+            try {
+                if (new URL(src, location.href).origin !== location.origin) return;
+            } catch (e) { return; }
+        }
+        var AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) return;
+        try {
+            audioCtx = new AC();
+            var source = audioCtx.createMediaElementSource(audio);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.8;
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            freqData = new Uint8Array(analyser.frequencyBinCount);
+        } catch (e) {
+            analyser = null;
+            audioCtx = null;
+            freqData = null;
+        }
+    }
+    function getPeak() {
+        if (!analyser || !freqData || state.isPlaying === false) return 0;
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(function () {});
+        analyser.getByteFrequencyData(freqData);
+        var sum = 0;
+        var n = Math.min(freqData.length, 48);
+        for (var i = 0; i < n; i++) sum += freqData[i];
+        return n ? Math.min(1, (sum / n) / 150) : 0;
+    }
+
     // ── State ────────────────────────────────────────────────
     var state = {
         playlist: [],
@@ -287,6 +330,7 @@ const managerConfigStr = JSON.stringify({
         emit('fm:track', { index: index, track: track, autoPlay: !!autoPlay });
 
         if (autoPlay) {
+            ensureAnalyser();
             audio.play().then(function () {
                 state.isPlaying = true;
                 emit('fm:play-state', { isPlaying: true });
@@ -302,6 +346,7 @@ const managerConfigStr = JSON.stringify({
     // ── Playback controls ────────────────────────────────────
     function togglePlay() {
         if (audio.paused) {
+            ensureAnalyser();
             audio.play().then(function () {
                 state.isPlaying = true;
                 emit('fm:play-state', { isPlaying: true });
@@ -478,6 +523,7 @@ const managerConfigStr = JSON.stringify({
     // ── Public API ───────────────────────────────────────────
     window.__fireflyMusic = {
         init: init,
+        getPeak: getPeak,
         getState: function () {
             var track = state.playlist[state.currentIndex] || null;
             return {

@@ -50,6 +50,7 @@ enum I18nKey {
 
 	// Music Widget
 	musicNoPlaying = "musicNoPlaying",
+	musicNowPlaying = "musicNowPlaying",
 	musicLyrics = "musicLyrics",
 	musicLyricsBoth = "musicLyricsBoth",
 	musicLyricsTranslationOnly = "musicLyricsTranslationOnly",
@@ -246,11 +247,26 @@ enum I18nKey {
 	archiveStatsUnavailable = "archiveStatsUnavailable",
 	archiveStatsGoal = "archiveStatsGoal",
 
+	// 灵动岛
+	islandSettings = "islandSettings",
+	islandProfile = "islandProfile",
+	islandBiggest = "islandBiggest",
+	islandModeHover = "islandModeHover",
+	islandModeClick = "islandModeClick",
+	islandResetEdge = "islandResetEdge",
+	islandExpandMode = "islandExpandMode",
+	islandMusicBox = "islandMusicBox",
+	islandOn = "islandOn",
+	pinnedBadge = "pinnedBadge",
+	islandNavToggle = "islandNavToggle",
+	islandOff = "islandOff",
+
 	// 导航 Logo 资料卡
 	profileMonthWeek = "profileMonthWeek",
 	profilePostCount = "profilePostCount",
 	otherSites = "otherSites",
 	profileHeatmap = "profileHeatmap",
+	profileHeatBack = "profileHeatBack",
 
 	contactMe = "contactMe",
 	qqGroup = "qqGroup",

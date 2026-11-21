@@ -15,6 +15,7 @@ import ToastStack from "@components/features/ToastStack.astro";
 import UserAgreementModal from "@components/features/UserAgreementModal.astro";
 import WikiLinkCardManager from "@components/features/WikiLinkCardManager.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
+import DynamicIsland from "@components/layout/DynamicIsland.astro";
 import MobileDock from "@components/layout/MobileDock.astro";
 import NavbarProfileCard from "@components/layout/NavbarProfileCard.astro";
 import FloatingDock from "@/components/controls/FloatingDock.astro";
@@ -272,6 +273,7 @@ const siteLang = lang.replace("_", "-");
     <MusicManager />
     <slot />
     {/* 全局持久化组件 — Swup 容器外，所有页面共享（CLAUDE.md 4.2） */}
+    <DynamicIsland />
     <MusicPlayer />
     <FloatingDock />
     <MobileDock />

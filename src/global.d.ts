@@ -50,6 +50,8 @@ declare global {
 		};
 		__fireflyMusic?: {
 			init: () => Promise<void>;
+			/** 当前音频峰值（0..1），供灵动岛波形形变使用；不支持时返回 0。 */
+			getPeak: () => number;
 			getState: () => {
 				playlist: Array<{
 					name: string;

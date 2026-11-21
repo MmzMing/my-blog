@@ -1,0 +1,1702 @@
+/* ============================================================
+   灵动岛（Dynamic Island）
+   - 本体是固定定位的全屏图层，毛玻璃由 clip-path 裁成液态路径；
+   - 内容层跟随本体矩形移动，收起 / 展开两态交叉淡换；
+   - 深浅色沿用主题变量，面板用半透明表面 + 细描边，不硬编码主题色。
+   ============================================================ */
+
+.dynamic-island {
+	--di-peak: 0;
+	/* 深色玻璃（默认）：基色压到 #161616、接近实色，避免模糊层把感知亮度抬高 */
+	--di-text: #fff;
+	--di-text-dim: rgb(255 255 255 / 66%);
+	--di-surface: rgb(22 22 22 / 90%);
+	--di-surface-solid: rgb(28 28 28 / 96%);
+	--di-line: rgb(0 0 0 / 27%);
+	--di-hover: rgb(255 255 255 / 12%);
+	--di-active: rgb(255 255 255 / 20%);
+	--di-accent: #d6d6d6;
+	--di-on-accent: #10131a;
+	--di-tint-a: rgb(255 255 255 / 9%);
+	--di-tint-b: rgb(255 255 255 / 0%);
+	--di-rim-a: rgb(255 255 255 / 42%);
+	--di-rim-b: rgb(255 255 255 / 10%);
+	--di-outline: rgb(0 0 0 / 27%);
+	--di-shadow: rgb(0 0 0 / 16%);
+	--di-float-shadow: rgb(0 0 0 / 26%);
+	--di-flow: rgb(255 255 255 / 45%);
+	position: fixed;
+	inset: 0;
+	/* 高于 #top-row(1000)/model-message(1001)，低于搜索与弹窗(9998+) */
+	z-index: 1005;
+	pointer-events: none;
+	display: none;
+	font-family: var(--font-sans);
+	color: var(--di-text);
+	/* 岛上是可拖拽 / 可点的界面，不是阅读区：不参与文本选中，
+	   否则悬停到胶囊的文字上会出现 I 型光标，拖拽时还会顺手选中文字 */
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+/* 浅色玻璃：跟随站点主题（对应 wisland 的 light 色板），
+   底色做「实」一些，文字压深，保证小字与数据可读 */
+:root:not(.dark) .dynamic-island {
+	--di-text: #10131a;
+	--di-text-dim: rgb(16 19 26 / 62%);
+	--di-surface: rgb(240 242 247 / 92%);
+	--di-surface-solid: rgb(250 251 253 / 97%);
+	--di-line: rgb(0 0 0 / 8%);
+	--di-hover: rgb(0 0 0 / 7%);
+	--di-active: rgb(0 0 0 / 13%);
+	--di-accent: #2f6fe0;
+	--di-on-accent: #fff;
+	--di-tint-a: rgb(255 255 255 / 72%);
+	--di-tint-b: rgb(255 255 255 / 0%);
+	--di-rim-a: rgb(255 255 255 / 96%);
+	--di-rim-b: rgb(255 255 255 / 46%);
+	--di-outline: rgb(0 0 0 / 12%);
+	--di-shadow: rgb(0 0 0 / 12%);
+	--di-float-shadow: rgb(0 0 0 / 7%);
+	--di-flow: rgb(90 110 140 / 42%);
+}
+
+/* 仅桌面端启用；窄屏保留既有 MobileDock 导航。
+   桌面端旧顶栏整体由灵动岛取代（含左段 logo 胶囊），功能全部保留在面板内。 */
+@media (min-width: 1024px) {
+	.dynamic-island { display: block; }
+	/* 桌面端旧顶栏由灵动岛取代：整层禁用鼠标，避免隐藏区域拦截岛内点击。
+	   注意 #top-row 本身是 pointer-events:none，但 #navbar 是 auto，必须一起关掉。 */
+	body:has(.dynamic-island) #top-row,
+	body:has(.dynamic-island) #navbar,
+	body:has(.dynamic-island) .navbar-segments {
+		pointer-events: none !important;
+	}
+	body:has(.dynamic-island) #navbar .navbar-seg--center,
+	body:has(.dynamic-island) #navbar .navbar-seg--right,
+	body:has(.dynamic-island) #navbar .navbar-seg--left {
+		display: none !important;
+	}
+}
+
+.di-glass,
+.di-vector {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+.di-glass {
+	/* 毛玻璃底：clip-path 由 JS 每帧写入并集液态轮廓；
+	   初始裁成中心一个点——首帧渲染前（无 rAF 的预览环境等）玻璃不会盖住整页 */
+	clip-path: inset(50% 50% 50% 50%);
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	background: var(--di-surface);
+}
+
+/* 纵向光泽：顶部 26→0、底部 10，对应 wisland _paint_glass 第二层渐变 */
+.di-glass::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(to bottom, rgb(255 255 255 / 10%) 0%, transparent 50%, rgb(255 255 255 / 4%) 100%);
+	pointer-events: none;
+}
+
+.di-vector { overflow: visible; }
+
+.di-shadow-path {
+	fill: none;
+	stroke: var(--di-shadow);
+	stroke-width: 12px;
+	transform: translateY(1.5px);
+	filter: blur(3px);
+}
+.di-outline-path { stroke: var(--di-outline); stroke-width: 1.6px; }
+
+.di-tint-stop-a { stop-color: var(--di-tint-a); }
+.di-tint-stop-b { stop-color: var(--di-tint-b); }
+
+.di-rim-stop-a { stop-color: var(--di-rim-a); }
+.di-rim-stop-b { stop-color: var(--di-rim-b); }
+.di-rim-path { stroke-width: 1.1px; }
+
+.di-flow-path { stroke-width: 1.1px; }
+.di-flow-stop { stop-color: var(--di-flow); }
+.di-flow-stop-end { stop-color: transparent; }
+
+/* ---------------------------------------------------------- 内容层 */
+.di-content {
+	position: absolute;
+	pointer-events: auto;
+	overflow: hidden;
+}
+
+.di-compact,
+.di-expanded {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* 初始不可见：控制器首帧起逐帧写入透明度（无 rAF 的预览环境不会凭空浮出收起态内容） */
+.di-compact { opacity: 0; pointer-events: none; }
+.di-expanded { pointer-events: none; }
+
+/* 收起态：两个「面」叠在同一位置，切换时做 3D 翻转。
+   页面面 = 页面信息 · 小形象 · 时间；音乐面 = 唱歌脸 · 正在播放 · 波形。
+   每个面内部是 1fr auto 1fr 三列网格，中间块永远落在胶囊正中 */
+.di-compact {
+	/* 已经是 absolute + inset:0 的定位层，这里只补 3D 视角，别改 position */
+	perspective: 700px;
+	white-space: nowrap;
+}
+.di-compact__face {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	align-items: center;
+	column-gap: 8px;
+	padding: 0 13px;
+	transform-origin: center;
+	backface-visibility: hidden;
+	transition:
+		transform 0.55s cubic-bezier(0.32, 0.72, 0.29, 1),
+		opacity 0.3s ease;
+}
+.di-compact__face--music {
+	grid-template-columns: auto 1fr auto;
+	transform: rotateX(-180deg);
+	opacity: 0;
+	pointer-events: none;
+}
+.dynamic-island[data-di-face="music"] .di-compact__face--page {
+	transform: rotateX(180deg);
+	opacity: 0;
+	pointer-events: none;
+}
+.dynamic-island[data-di-face="music"] .di-compact__face--music {
+	transform: rotateX(0);
+	opacity: 1;
+	pointer-events: auto;
+}
+
+/* 当前页面：图标 + 页面名。图标与文字都按 line-height:1 的盒模型居中，
+   svg 走 display:block 去掉 inline 基线留出的那几像素 */
+.di-compact__page {
+	grid-column: 1;
+	grid-row: 1;
+	justify-self: start;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	min-width: 0;
+	max-width: 100%;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1;
+	letter-spacing: 0.01em;
+	color: var(--di-text);
+}
+.di-compact__page-icon {
+	display: none;
+	align-items: center;
+	justify-content: center;
+	width: 17px;
+	height: 17px;
+	flex: 0 0 17px;
+	opacity: 0.85;
+}
+.di-compact__page-icon.is-on { display: inline-flex; }
+.di-compact__page-icon svg { display: block; width: 17px; height: 17px; }
+.di-compact__page-label {
+	min-width: 0;
+	line-height: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* 小形象：常态发光双眼 */
+.di-pet {
+	grid-column: 2;
+	grid-row: 1;
+	width: 62px;
+	height: 25px;
+	overflow: visible;
+}
+.di-pet__glow { display: none; }
+.di-pet__eye { fill: var(--di-text); }
+.di-pet__heart { fill: var(--di-text); }
+.di-pet__sparkle { fill: color-mix(in oklab, var(--di-surface-solid) 90%, transparent); }
+.di-pet__blush { fill: color-mix(in oklab, var(--di-text) 34%, transparent); }
+.di-pet__mouth { fill: none; stroke: var(--di-text); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 文章页：眼睛排最左，标题精确居中，时间贴右 */
+.dynamic-island[data-di-page-kind="post"] .di-compact__face--page {
+	grid-template-columns: 1fr auto 1fr;
+}
+.dynamic-island[data-di-page-kind="post"] .di-pet { grid-column: 1; justify-self: start; }
+.dynamic-island[data-di-page-kind="post"] .di-compact__page {
+	grid-column: 2;
+	justify-self: center;
+	text-align: center;
+}
+.dynamic-island[data-di-page-kind="post"] .di-compact__clock { grid-column: 3; }
+
+/* 首页只需要小形象：单列居中，形象铺满胶囊高度 */
+.dynamic-island[data-di-page-kind="home"] .di-compact__face--page { grid-template-columns: 1fr; }
+.dynamic-island[data-di-page-kind="home"] .di-compact__page,
+.dynamic-island[data-di-page-kind="home"] .di-compact__clock { display: none; }
+.dynamic-island[data-di-page-kind="home"] .di-pet {
+	grid-column: 1;
+	justify-self: center;
+	width: 110px;
+	height: 44px;
+}
+
+/* 封面：占据唱歌脸的网格位，切歌时由控制器写 src；无封面回退唱歌脸 */
+.di-compact__cover {
+	display: none;
+	grid-column: 1;
+	grid-row: 1;
+	justify-self: start;
+	width: 28px;
+	height: 28px;
+	border-radius: 9px;
+	object-fit: cover;
+	background: color-mix(in oklab, var(--di-text) 12%, transparent);
+}
+.di-compact__cover.is-on { display: block; }
+.di-compact__cover.is-on + .di-sing { display: none; }
+
+/* 唱歌脸：闭眼 + 张嘴，嘴型随节奏开合 */
+.di-sing {
+	grid-column: 1;
+	grid-row: 1;
+	justify-self: start;
+	width: 62px;
+	height: 25px;
+	overflow: visible;
+}
+.di-sing__eye {
+	fill: none;
+	stroke: var(--di-text);
+	stroke-width: 3;
+	stroke-linecap: round;
+}
+.di-sing__mouth {
+	fill: var(--di-text);
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: di-sing 1.6s ease-in-out infinite;
+}
+@keyframes di-sing {
+	0%, 100% { transform: scaleY(0.68) scaleX(0.94); }
+	45% { transform: scaleY(1.08) scaleX(1.04); }
+}
+
+/* 音乐面文字：正在播放 + 歌名 */
+.di-compact__lyric {
+	grid-column: 2;
+	grid-row: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	color: var(--di-text);
+}
+/* 内层承载文本：外层只裁切，放不下时整层左滑把后半段带出来。
+   不滑动时保持 inline：省略号由外层的 text-overflow 画在文本末尾，
+   换成 inline-block 后溢出的是一整个原子盒，末尾就不会再出现省略号 */
+.di-compact__lyric-inner {
+	display: inline;
+	white-space: nowrap;
+}
+/* 滑动时不画省略号（两边都要能露出字），位移与时长由控制器按溢出量写入 */
+.di-compact__lyric.is-scrolling { text-overflow: clip; }
+.di-compact__lyric.is-scrolling .di-compact__lyric-inner {
+	display: inline-block;
+	animation: di-lyric-marquee var(--di-lyric-duration, 8s) ease-in-out infinite;
+}
+@keyframes di-lyric-marquee {
+	0%, 14% { transform: translateX(0); }
+	46%, 64% { transform: translateX(var(--di-lyric-shift, 0px)); }
+	92%, 100% { transform: translateX(0); }
+}
+
+/* 量音乐面自然宽度：三列都按内容撑开、本体按内容定宽，量完立刻还原 */
+.di-compact__face--music.is-measuring {
+	grid-template-columns: max-content max-content max-content;
+	width: max-content;
+}
+
+/* 时间：常态贴右，与左侧页面名等分，保证小形象居中 */
+.di-compact__clock {
+	grid-column: 3;
+	grid-row: 1;
+	justify-self: end;
+	font-size: 12.5px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.02em;
+	color: var(--di-text-dim);
+}
+
+/* 波形：音乐面右下角，同时是播放 / 暂停按钮 */
+.di-compact__bars {
+	display: flex;
+	grid-column: 3;
+	grid-row: 1;
+	justify-self: end;
+	align-items: center;
+	gap: 2.5px;
+	height: 20px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--di-text);
+	cursor: pointer;
+	transition: opacity 0.2s ease;
+}
+.di-compact__bars:hover { opacity: 0.75; }
+.di-compact__bars.is-hover { opacity: 0.65; }
+.di-compact__bar {
+	width: 3px;
+	/* 轨道高度固定，靠 scaleY 伸缩：逐帧改 height 会触发布局，
+	   四根一起动时最容易掉帧；scaleY 走合成层，60fps 更稳 */
+	height: 16px;
+	border-radius: 2px;
+	background: currentColor;
+	transform: scaleY(var(--di-bar, 0.3));
+	transform-origin: center;
+	will-change: transform;
+}
+
+/* ---------------------------------------------------------- 展开态 */
+.di-expanded {
+	display: flex;
+	flex-direction: column;
+	padding: 16px 12px 12px;
+	gap: 10px;
+}
+.dynamic-island[data-di-nav-bottom="true"] .di-expanded { flex-direction: column-reverse; }
+
+.di-nav {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	min-height: 40px;
+	padding: 0 8px;
+}
+
+.di-nav__pill {
+	position: absolute;
+	top: 2px;
+	left: 4px;
+	height: 36px;
+	width: 38px;
+	/* 圆角矩形而非胶囊：与留言对话气泡同一套圆角语言（约元素高度 1/3） */
+	border-radius: var(--radius-large);
+	background: var(--di-active);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%);
+	/* 位置/宽度由 JS 写入，目录菜单里用 CSS 过渡平滑滑动 */
+	pointer-events: none;
+	will-change: transform, width;
+	transition:
+		transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+		width 280ms cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 200ms ease;
+}
+
+/* 右侧功能按钮簇：文章 / 铭牌 / 设置（紧凑图标组）+ 搜索 */
+.di-nav__right {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	flex: 0 0 auto;
+}
+.di-nav__actions {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+.di-nav__action {
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border: 0;
+	border-radius: var(--radius-large);
+	background: transparent;
+	color: color-mix(in oklab, var(--di-text) 58%, transparent);
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.25s ease;
+}
+.di-nav__action:is(:hover, :focus-visible) {
+	background: var(--di-hover);
+	color: var(--di-text);
+}
+.di-nav__action.is-active {
+	background: var(--di-active);
+	color: var(--di-text);
+}
+.di-nav__action-icon { width: 17px; height: 17px; }
+
+/* 搜索：右侧图标入口 */
+.di-nav__search {
+	display: grid;
+	place-items: center;
+	width: 36px;
+	height: 36px;
+	border: 0;
+	border-radius: var(--radius-large);
+	background: transparent;
+	color: color-mix(in oklab, var(--di-text) 58%, transparent);
+	cursor: pointer;
+	transition: background 0.18s ease, color 0.25s ease;
+}
+.di-nav__search:hover { background: var(--di-hover); color: var(--di-text); }
+.di-nav__search-icon { width: 18px; height: 18px; }
+
+.di-panels {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.di-panel {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(6px) scale(0.99);
+	transition: opacity 0.28s ease, transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.28s;
+	pointer-events: none;
+}
+.di-panel.is-active {
+	opacity: 1;
+	visibility: visible;
+	transform: none;
+	pointer-events: auto;
+}
+
+/* ---------------------------------------------------------- 个人信息 */
+.di-panel--home { padding: 0; }
+.di-home {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 12px 12px 14px;
+	overflow: hidden;
+}
+/* 上部：左侧个人卡片 + 右侧热力图。
+   高度由内容决定（不参与 flex 分配）：面板展开尺寸按这里的自然高度算，
+   卡片再由 grid 拉伸到与右栏齐平，右边就不会多出一条空白。 */
+.di-home__top {
+	display: grid;
+	grid-template-columns: 168px minmax(0, 1fr);
+	gap: 14px;
+	flex: 0 0 auto;
+	align-content: start;
+}
+.di-profile-card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0;
+	padding: 0 10px 18px;
+	border-radius: 14px;
+	background: var(--di-hover);
+	min-width: 0;
+	/* 用 min-content 而不是 0：卡片不能被压到比内容还矮，
+	   否则控制器量不到溢出量，展开高度就没法按内容自适应。 */
+	min-height: min-content;
+	overflow: hidden;
+}
+/* 照片墙：铺满名片上半部，头像叠在下沿居中 */
+.di-profile-card__banner {
+	position: relative;
+	width: calc(100% + 20px);
+	height: 72px;
+	min-height: 56px;
+	margin: 0 -10px;
+	overflow: hidden;
+	flex: 0 1 auto;
+}
+.di-profile-card__banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.di-profile-card__banner-fallback { filter: blur(8px) brightness(0.7); transform: scale(1.2); }
+.di-profile__avatar {
+	position: relative;
+	z-index: 1;
+	flex: 0 0 auto;
+	width: 60px;
+	height: 60px;
+	margin-top: -30px;
+	border-radius: 50%;
+	overflow: hidden;
+	display: grid;
+	place-items: center;
+	background: color-mix(in oklab, var(--di-accent) 30%, var(--di-surface-solid));
+	box-shadow: 0 0 0 3px var(--di-hover);
+	font-size: 20px;
+	font-weight: 700;
+	text-decoration: none;
+}
+.di-profile__avatar img { width: 100%; height: 100%; object-fit: cover; }
+/* 悬停遮罩：深色半透 + 白字，和资料卡的头像反馈一致 */
+.di-profile__avatar-mask {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgb(0 0 0 / 58%);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+.di-profile__avatar:hover .di-profile__avatar-mask,
+.di-profile__avatar:focus-visible .di-profile__avatar-mask { opacity: 1; }
+.di-profile__identity {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 3px;
+	min-width: 0;
+	margin-top: 8px;
+	text-align: center;
+}
+.di-profile__name {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--di-text);
+	text-decoration: none;
+	letter-spacing: 0.02em;
+}
+.di-profile__name:hover { color: var(--di-accent); }
+.di-profile__occupation { font-size: 10.5px; line-height: 1.4; color: var(--di-text-dim); }
+.di-profile__socials { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: auto; padding-top: 14px; flex: 0 0 auto; }
+.di-profile__social {
+	display: inline-grid;
+	place-items: center;
+	color: var(--di-text);
+	opacity: 0.75;
+	transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.di-profile__social:hover { opacity: 1; transform: translateY(-2px); }
+.di-profile__social svg { width: 17px; height: 17px; }
+
+.di-profile__heat { position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 0 0 auto; padding-bottom: 42px; }
+.di-profile__heat-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 14px;
+	font-size: 11px;
+	color: var(--di-text-dim);
+}
+/* 标题与「返回热力图」互斥：列表态只留返回入口，图例让位 */
+.di-profile__heat-back {
+	display: none;
+	align-items: center;
+	gap: 4px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--di-text-dim);
+	font: inherit;
+	cursor: pointer;
+	transition: color 0.18s ease;
+}
+.di-profile__heat-back:hover { color: var(--di-text); }
+.di-profile__heat-back-icon { width: 13px; height: 13px; }
+.di-profile__heat[data-di-week-view="true"] .di-profile__heat-title,
+.di-profile__heat[data-di-week-view="true"] .di-profile__heat-legend { display: none; }
+.di-profile__heat[data-di-week-view="true"] .di-profile__heat-back { display: inline-flex; }
+.di-profile__heat-legend { display: inline-flex; gap: 3px; }
+.di-profile__heat-legend i { width: 7px; height: 7px; border-radius: 2px; background: var(--di-hover); }
+.di-profile__heat-legend i:nth-child(1) { background: color-mix(in oklab, var(--di-accent) 18%, var(--di-hover)); }
+.di-profile__heat-legend i:nth-child(2) { background: color-mix(in oklab, var(--di-accent) 40%, var(--di-hover)); }
+.di-profile__heat-legend i:nth-child(3) { background: color-mix(in oklab, var(--di-accent) 70%, var(--di-hover)); }
+.di-profile__heat-legend i:nth-child(4) { background: var(--di-accent); }
+/* 热力图与周文章共用一层：上滚 / 下滚互换，不做上下分层堆叠。
+   舞台高度跟着热力图走，富余空间不会在下面留一条空行。 */
+.di-profile__heat-stage {
+	position: relative;
+	flex: 0 0 auto;
+	overflow: hidden;
+}
+.di-profile__heatmap {
+	position: relative;
+	/* 外扩 4px 给格子悬停放大的溢出留缓冲，否则首末行被 overflow 裁掉 */
+	margin: -4px;
+	padding: 4px;
+	display: grid;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	gap: 3px;
+	align-content: start;
+	transition: transform 0.42s cubic-bezier(0.32, 0.72, 0.29, 1), opacity 0.28s ease;
+	will-change: transform;
+}
+.di-profile__heat[data-di-week-view="true"] .di-profile__heatmap {
+	transform: translateY(-100%);
+	opacity: 0;
+	pointer-events: none;
+}
+.di-profile__heat-col { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.di-profile__heat-month {
+	font-size: 8px;
+	line-height: 1;
+	white-space: nowrap;
+	color: var(--di-text-dim);
+	opacity: 0.7;
+}
+.di-profile__heat-cell {
+	position: relative;
+	/* 方块：宽度由列宽决定，高度跟随宽度，不再被行高拉成长条 */
+	flex: 0 0 auto;
+	width: 100%;
+	aspect-ratio: 1;
+	border: 0;
+	border-radius: 3px;
+	background: var(--di-hover);
+	cursor: pointer;
+	outline: 1.5px solid transparent;
+	outline-offset: -2px;
+	transition: background-color 0.2s ease, transform 0.15s ease, outline-color 0.15s ease, opacity 0.15s ease;
+}
+.di-profile__heat-cell:hover { transform: scale(1.18); z-index: 1; }
+.di-profile__heat-cell[data-di-level="1"] { background: color-mix(in oklab, var(--di-accent) 28%, var(--di-hover)); }
+.di-profile__heat-cell[data-di-level="2"] { background: color-mix(in oklab, var(--di-accent) 55%, var(--di-hover)); }
+.di-profile__heat-cell[data-di-level="3"] { background: var(--di-accent); }
+.di-profile__heat-cell.is-current { outline-color: color-mix(in oklab, var(--di-text) 45%, transparent); }
+.di-profile__heat-cell.is-selected { outline-color: var(--di-text); }
+
+/* 点格后从下方滚入的该周文章 */
+.di-profile__week-posts {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 1px 2px 0;
+	transform: translateY(100%);
+	transition: transform 0.42s cubic-bezier(0.32, 0.72, 0.29, 1);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklab, var(--di-text) 22%, transparent) transparent;
+	will-change: transform;
+}
+.di-profile__heat[data-di-week-view="true"] .di-profile__week-posts { transform: translateY(0); }
+.di-profile__week-posts[hidden] { display: none; }
+.di-profile__posts-title { margin: 0; font-size: 10px; color: var(--di-text-dim); }
+.di-profile__post-list { display: flex; flex-direction: column; gap: 4px; }
+.di-profile__post-link {
+	font-size: 11px;
+	color: var(--di-text);
+	text-decoration: none;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.di-profile__post-link:hover { color: var(--di-accent); }
+
+/* 站点胶囊：贴底的浮层，折叠态一条，展开态向上盖住热力图 */
+.di-profile__sites {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	display: flex;
+	flex-direction: column;
+	height: 34px;
+	box-sizing: border-box;
+	border-radius: 12px;
+	/* 与面板同一套玻璃材质：半透明表面 + 背景模糊 + 内描边，深浅主题都能贴合，
+	   不再是一块纯黑硬底。描边用 inset 阴影，避免 border 挤压 34px 的折叠高度。 */
+	background: color-mix(in oklab, var(--di-surface-solid) 90%, transparent);
+	backdrop-filter: blur(18px) saturate(1.5);
+	-webkit-backdrop-filter: blur(18px) saturate(1.5);
+	box-shadow: 0 2px 8px var(--di-float-shadow);
+	overflow: hidden;
+	transition: height 0.36s cubic-bezier(0.32, 0.72, 0.29, 1);
+	z-index: 2;
+}
+.di-profile__sites-bar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 0 0 34px;
+	height: 34px;
+	padding: 0 8px 0 12px;
+}
+/* 顶/底边布局保留「其他站点」头部与列表的分界线；
+   贴左/右边时面板向上铺满整张名片，去掉分界线让整个面板统一 */
+.dynamic-island[data-edge="top"] .di-profile__sites[data-di-sites-open="true"] .di-profile__sites-bar,
+.dynamic-island[data-edge="bottom"] .di-profile__sites[data-di-sites-open="true"] .di-profile__sites-bar {
+	box-shadow: inset 0 -1px 0 color-mix(in oklab, var(--di-text) 12%, transparent);
+}
+.di-profile__sites-label { font-size: 11px; color: var(--di-text-dim); }
+.di-profile__sites-stack { display: inline-flex; align-items: center; margin-left: auto; }
+.di-profile__sites[data-di-sites-open="true"] .di-profile__sites-stack { visibility: hidden; }
+.di-profile__sites-toggle {
+	width: 26px;
+	height: 26px;
+	display: grid;
+	place-items: center;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--di-text-dim);
+	cursor: pointer;
+	transition: background 0.18s ease, color 0.18s ease;
+}
+.di-profile__sites-toggle:hover { background: var(--di-hover); color: var(--di-text); }
+.di-profile__sites-chevron { width: 15px; height: 15px; transition: transform 0.36s cubic-bezier(0.32, 0.72, 0.29, 1); }
+.di-profile__sites[data-di-sites-open="true"] .di-profile__sites-chevron { transform: rotate(180deg); }
+.di-profile__sites-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: 1 1 auto;
+	min-height: 0;
+	/* 站点多时在浮层内部滚动，不再被 overflow:hidden 裁掉 */
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 8px 8px 12px;
+	margin: 0;
+	list-style: none;
+	visibility: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklab, var(--di-text) 22%, transparent) transparent;
+}
+.di-profile__sites-list::-webkit-scrollbar { width: 6px; }
+.di-profile__sites-list::-webkit-scrollbar-track { background: transparent; }
+.di-profile__sites-list::-webkit-scrollbar-thumb {
+	border-radius: 3px;
+	background: color-mix(in oklab, var(--di-text) 22%, transparent);
+}
+.di-profile__sites[data-di-sites-open="true"] .di-profile__sites-list { visibility: visible; }
+.di-profile__site-row {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	padding: 7px 9px;
+	border-radius: 9px;
+	color: color-mix(in oklab, var(--di-text) 88%, transparent);
+	text-decoration: none;
+	transition: background 0.18s ease, color 0.18s ease;
+}
+.di-profile__site-row:hover { background: var(--di-hover); color: var(--di-text); }
+.di-profile__site-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 11.5px;
+}
+.di-profile__site-arrow { width: 12px; height: 12px; flex: 0 0 12px; opacity: 0.45; }
+.di-profile__site-row:hover .di-profile__site-arrow { opacity: 0.8; }
+.di-profile__site-avatar {
+	display: grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+	flex: 0 0 18px;
+	border-radius: 6px;
+	overflow: hidden;
+	background: color-mix(in oklab, var(--di-accent) 22%, var(--di-hover));
+	font-size: 9px;
+	font-weight: 700;
+}
+.di-profile__site-avatar + .di-profile__site-avatar { margin-left: -6px; }
+.di-profile__sites-stack .di-profile__site-avatar { border: 1.5px solid var(--di-surface-solid); }
+.di-profile__site-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.di-profile__site-avatar[data-avatar-failed="true"] .di-profile__site-avatar-img { display: none; }
+
+/* 贴左 / 右边：面板变成竖长条，个人信息改回原资料卡的单列排版
+   （照片墙 → 头像 → 名字职业 → 社交 → 热力图）。
+   这一版去掉名片自身的底与内边距，让照片墙、文字、社交和热力图连成一体。 */
+.dynamic-island[data-edge="left"] .di-home__top,
+.dynamic-island[data-edge="right"] .di-home__top {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.dynamic-island[data-edge="left"] .di-profile-card,
+.dynamic-island[data-edge="right"] .di-profile-card {
+	flex: 0 0 auto;
+	padding: 0;
+	border-radius: 0;
+	background: transparent;
+	overflow: visible;
+}
+.dynamic-island[data-edge="left"] .di-profile-card__banner,
+.dynamic-island[data-edge="right"] .di-profile-card__banner {
+	width: 100%;
+	height: 104px;
+	min-height: 104px;
+	margin: 0;
+	border-radius: 10px;
+}
+.dynamic-island[data-edge="left"] .di-profile__avatar,
+.dynamic-island[data-edge="right"] .di-profile__avatar {
+	width: 72px;
+	height: 72px;
+	margin-top: -36px;
+	font-size: 24px;
+	box-shadow: 0 0 0 4px var(--di-surface-solid);
+}
+.dynamic-island[data-edge="left"] .di-profile__identity,
+.dynamic-island[data-edge="right"] .di-profile__identity { margin-top: 10px; }
+.dynamic-island[data-edge="left"] .di-profile__name,
+.dynamic-island[data-edge="right"] .di-profile__name { font-size: 17px; }
+.dynamic-island[data-edge="left"] .di-profile__occupation,
+.dynamic-island[data-edge="right"] .di-profile__occupation { font-size: 11px; }
+.dynamic-island[data-edge="left"] .di-profile__socials,
+.dynamic-island[data-edge="right"] .di-profile__socials {
+	margin-top: 12px;
+	padding-top: 0;
+	gap: 18px;
+}
+.dynamic-island[data-edge="left"] .di-profile__social svg,
+.dynamic-island[data-edge="right"] .di-profile__social svg { width: 18px; height: 18px; }
+.dynamic-island[data-edge="left"] .di-profile__avatar-mask,
+.dynamic-island[data-edge="right"] .di-profile__avatar-mask { font-size: 13px; }
+
+/* 热力图悬停提示浮层 */
+.di-profile__tooltip {
+	position: absolute;
+	left: 0;
+	top: 0;
+	transform: translate(-50%, -100%);
+	padding: 4px 8px;
+	border-radius: 8px;
+	background: var(--di-surface-solid);
+	box-shadow: 0 4px 14px var(--di-float-shadow);
+	color: var(--di-text);
+	font-size: 10px;
+	white-space: nowrap;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.14s ease;
+	z-index: 5;
+}
+.di-profile__tooltip.is-visible { opacity: 1; }
+.di-profile__tooltip-roll { display: inline-block; height: 1.2em; overflow: hidden; vertical-align: bottom; }
+.di-profile__tooltip-roll-strip { display: flex; flex-direction: column; will-change: transform; }
+.di-profile__tooltip-roll-strip > span { height: 1.2em; line-height: 1.2em; }
+
+/* ---------------------------------------------------------- 文章 */
+.di-panel--posts { display: flex; flex-direction: column; gap: 12px; padding: 4px 6px 2px; }
+
+/* 顶部信息条：左侧 Apple 活动环组合 + 数值图例，右侧分类列表，下方置顶文章 */
+.di-posts__top {
+	/* 环的数据色为图表用色（对齐 Apple 活动环的惯用三色），不随主题切换 */
+	--di-ring-1: #fa3358;
+	--di-ring-2: #9be13d;
+	--di-ring-3: #2cc9e8;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex: 0 0 auto;
+}
+
+/* 活动环：三环嵌套（外→内：文章/分类/标签），暗轨道 + 渐变值弧 + 圆角端帽 */
+.di-activity { flex: 0 0 auto; }
+.di-activity__svg { display: block; width: 104px; height: 104px; }
+.di-activity__track { fill: none; stroke-linecap: round; }
+.di-activity__track[data-di-ring-track="posts"] { stroke: var(--di-ring-1); opacity: 0.18; }
+.di-activity__track[data-di-ring-track="categories"] { stroke: var(--di-ring-2); opacity: 0.18; }
+.di-activity__track[data-di-ring-track="tags"] { stroke: var(--di-ring-3); opacity: 0.18; }
+.di-activity__value {
+	fill: none;
+	stroke-linecap: round;
+	transition: stroke-dasharray 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.di-ring-stop--1 { stop-color: var(--di-ring-1); }
+.di-ring-stop-bright--1 { stop-color: color-mix(in oklab, var(--di-ring-1) 58%, white); }
+.di-ring-stop--2 { stop-color: var(--di-ring-2); }
+.di-ring-stop-bright--2 { stop-color: color-mix(in oklab, var(--di-ring-2) 58%, white); }
+.di-ring-stop--3 { stop-color: var(--di-ring-3); }
+.di-ring-stop-bright--3 { stop-color: color-mix(in oklab, var(--di-ring-3) 58%, white); }
+
+/* 环的数值图例：色点 + 数值 + 名称，与三环一一对应 */
+.di-activity__metrics {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	flex: 0 0 auto;
+}
+.di-activity__metric { display: inline-flex; align-items: center; gap: 7px; }
+.di-activity__dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+.di-activity__dot[data-di-ring-dot="posts"] { background: var(--di-ring-1); }
+.di-activity__dot[data-di-ring-dot="categories"] { background: var(--di-ring-2); }
+.di-activity__dot[data-di-ring-dot="tags"] { background: var(--di-ring-3); }
+.di-activity__num {
+	font-size: 13px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+	min-width: 2ch;
+}
+.di-activity__label { font-size: 10px; color: var(--di-text-dim); }
+
+/* 分类列表：一个个独立卡片（对齐分类页样式），篇数徽标悬出卡片右上角 */
+.di-posts__cats {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.di-posts__cats-title {
+	font-size: 10px;
+	font-weight: 600;
+	color: var(--di-text-dim);
+	padding-left: 2px;
+}
+.di-posts__cats-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px 8px;
+}
+.di-posts__cat {
+	position: relative;
+	display: flex;
+	align-items: center;
+	min-height: 38px;
+	padding: 8px 12px;
+	border-radius: var(--radius-large);
+	background: var(--di-hover);
+	/* 黑白配色：描边与角标取文字色派生，不随 accent 变色 */
+	box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--di-text) 22%, transparent);
+	color: var(--di-text);
+	text-decoration: none;
+	font-size: 12.5px;
+	font-weight: 600;
+	transition: background 0.15s ease, box-shadow 0.15s ease, translate 0.15s ease;
+}
+.di-posts__cat:hover {
+	background: var(--di-active);
+	box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--di-text) 42%, transparent);
+	translate: 0 -1px;
+}
+.di-posts__cat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.di-posts__cat-count {
+	position: absolute;
+	top: -7px;
+	right: -6px;
+	padding: 1px 7px;
+	border-radius: 999px;
+	background: var(--di-surface-solid);
+	box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--di-text) 35%, transparent);
+	color: var(--di-text);
+	font-size: 10px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.4;
+}
+
+/* 贴左 / 右边（竖版窄条）：文章面板改纵向排——环与图例一行在上，分类卡片整行铺在下，不再截断 */
+.dynamic-island[data-edge="left"] .di-posts__top,
+.dynamic-island[data-edge="right"] .di-posts__top {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 10px;
+}
+.dynamic-island[data-edge="left"] .di-activity,
+.dynamic-island[data-edge="right"] .di-activity {
+	/* 竖版下 .di-posts__top 是 stretch 的纵向 flex：环会被拉满整行贴左，
+	   这里按自身宽度居中（图例仍整行左起） */
+	align-self: center;
+}
+.dynamic-island[data-edge="left"] .di-activity__metrics,
+.dynamic-island[data-edge="right"] .di-activity__metrics {
+	flex-direction: row;
+	gap: 14px;
+	margin-top: 2px;
+}
+.dynamic-island[data-edge="left"] .di-posts__cats-list,
+.dynamic-island[data-edge="right"] .di-posts__cats-list {
+	/* 一行两个 */
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	max-height: none;
+}
+
+/* 文章卡片：封面铺满、文字压在图上，一行三张，比例贴 16:10 */
+.di-cards {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	flex: 0 0 auto;
+}
+.di-cards__row {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 7px;
+}
+.di-card {
+	position: relative;
+	display: block;
+	aspect-ratio: 16 / 10;
+	border-radius: 10px;
+	overflow: hidden;
+	background: var(--di-hover);
+	color: #fff;
+	text-decoration: none;
+}
+.di-card__img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.di-card:hover .di-card__img { transform: scale(1.05); }
+.di-card__shade {
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(to top, rgb(0 0 0 / 80%) 0%, rgb(0 0 0 / 28%) 58%, rgb(0 0 0 / 4%) 100%);
+}
+.di-card__body { position: absolute; inset: auto 8px 7px; display: flex; flex-direction: column; gap: 2px; }
+/* 标题行：红色置顶角标 + 单行标题，超出省略 */
+.di-card__headline {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	min-width: 0;
+}
+.di-card__pin {
+	/* 置顶标记的语义红色，不随主题/accent 变化 */
+	flex: 0 0 auto;
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: #e5484d;
+	color: #fff;
+	font-size: 9px;
+	font-weight: 700;
+	line-height: 1.4;
+}
+.di-card__title {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.32;
+	text-shadow: 0 1px 3px rgb(0 0 0 / 50%);
+}
+.di-card__meta { font-size: 9px; color: rgb(255 255 255 / 74%); }
+/* 没封面时退回纯文字卡片，不再压一层黑底 */
+.di-card--text { background: var(--di-hover); }
+.di-card--text .di-card__shade { display: none; }
+.di-card--text .di-card__title { color: var(--di-text); text-shadow: none; }
+.di-card--text .di-card__meta { color: var(--di-text-dim); }
+
+/* ---------------------------------------------------------- 导航 */
+/* 列表 + 卡片：分组标题带左侧竖杠、可展开收缩（动效对齐工具导航页），
+   跳转页面的链接全部渲染成卡片网格 */
+.di-panel--links {
+	/* 动效谱集中在这一处（工具导航页同款）：面板高度走 ease-out，
+	   内容落位与箭头翻转借带轻微过冲的弹性曲线 */
+	--di-links-panel-duration: 420ms;
+	--di-links-content-duration: 460ms;
+	--di-links-fade-in: 260ms;
+	--di-links-fade-out: 160ms;
+	--di-links-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+	--di-links-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--di-links-content-lift: -6px;
+	--di-links-content-blur: 2px;
+	padding: 2px 6px 6px;
+	overflow-y: auto;
+}
+.di-links__list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+/* 分组标题按钮：左侧胶囊竖杠（悬停伸长）+ 标题，右侧箭头翻转 */
+.di-links__group-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: 9px 8px 9px 14px;
+	border: 0;
+	background: transparent;
+	color: var(--di-text);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 700;
+	text-align: left;
+	cursor: pointer;
+}
+.di-links__title-wrap { position: relative; display: inline-flex; }
+.di-links__title-wrap::before {
+	content: "";
+	position: absolute;
+	left: -9px;
+	top: 3px;
+	bottom: 3px;
+	width: 3px;
+	border-radius: 999px;
+	background: var(--di-accent);
+	transform-origin: center;
+	transition: transform 180ms ease;
+}
+.di-links__group-toggle:is(:hover, :focus-visible) .di-links__title-wrap::before {
+	transform: scaleY(1.12);
+}
+.di-links__group-label { display: block; }
+.di-links__chevron {
+	width: 14px;
+	height: 14px;
+	color: var(--di-text-dim);
+	transition:
+		rotate 360ms var(--di-links-ease-spring),
+		color 0.2s ease;
+}
+.di-links__group-toggle:is(:hover, :focus-visible) .di-links__chevron { color: var(--di-text); }
+.di-links__group[data-open] .di-links__chevron { rotate: 180deg; }
+/* 展开收缩主体：grid 行高过渡（合成层友好），inner 裁内容并管淡入淡出与无障碍树 */
+.di-links__group-items {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows var(--di-links-panel-duration) var(--di-links-ease-settle);
+}
+.di-links__group[data-open] .di-links__group-items { grid-template-rows: 1fr; }
+.di-links__group-inner {
+	min-height: 0;
+	overflow: hidden;
+	/* 负 margin 换出等量 padding：裁剪框向两侧让出余量，卡片悬停放大不被组边界截断 */
+	margin-inline: -8px;
+	padding-inline: 8px;
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		opacity var(--di-links-fade-out) linear,
+		visibility 0s linear var(--di-links-panel-duration);
+}
+.di-links__group[data-open] .di-links__group-inner {
+	opacity: 1;
+	visibility: visible;
+	transition:
+		opacity var(--di-links-fade-in) linear 80ms,
+		visibility 0s;
+}
+/* 卡片网格：auto-fill 定宽列（104–128px）响应式换行，卡片不铺满整行；
+   展开后内容下沉 + 失焦，落位带一点过冲（"沉"进张开的位置） */
+.di-links__card-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(104px, 128px));
+	gap: 8px;
+	padding: 2px 0 6px;
+	translate: 0 var(--di-links-content-lift);
+	filter: blur(var(--di-links-content-blur));
+	transition:
+		translate 200ms var(--di-links-ease-settle),
+		filter 200ms linear;
+}
+.di-links__group[data-open] .di-links__card-grid {
+	translate: 0 0;
+	filter: none;
+	transition:
+		translate var(--di-links-content-duration) var(--di-links-ease-spring) 60ms,
+		filter var(--di-links-panel-duration) linear;
+}
+/* 跳转卡片：4:3 比例，名称放大居左上，图标倾斜作水印出血在右下角 */
+.di-links__card {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	aspect-ratio: 4 / 3;
+	padding: 9px 10px;
+	border-radius: var(--radius-large);
+	background: var(--di-hover);
+	box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--di-text) 14%, transparent);
+	color: var(--di-text);
+	text-decoration: none;
+	/* 倾斜的大图标按卡片圆角裁切，做出参考图那种出血效果 */
+	overflow: hidden;
+	transition:
+		background 0.15s ease,
+		box-shadow 0.15s ease,
+		scale 0.2s var(--di-links-ease-spring);
+}
+.di-links__card:is(:hover, :focus-visible) {
+	background: var(--di-active);
+	box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--di-text) 30%, transparent);
+	scale: 1.02;
+}
+.di-links__card-name {
+	font-size: 17px;
+	font-weight: 700;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	/* 归档同款：悬停时名称右移一格 */
+	transition: translate 220ms var(--di-links-ease-settle);
+}
+.di-links__card:is(:hover, :focus-visible) .di-links__card-name { translate: 3px 0; }
+/* 图标水印：右下角，逆时针倾斜 15° 并溢出卡片边缘（由卡片裁切），低透明度 */
+.di-links__card-icon {
+	position: absolute;
+	right: -4px;
+	bottom: -8px;
+	width: 54px;
+	height: 54px;
+	color: var(--di-text);
+	opacity: 0.26;
+	transform: rotate(-15deg);
+	pointer-events: none;
+}
+/* 悬停箭头：右上角，默认藏于左下滑入 */
+.di-links__card-arrow {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	width: 11px;
+	height: 11px;
+	color: var(--di-text-dim);
+	opacity: 0;
+	transform: translate(-3px, 3px);
+	transition:
+		opacity 180ms ease,
+		transform 240ms var(--di-links-ease-settle);
+}
+.di-links__card:is(:hover, :focus-visible) .di-links__card-arrow { opacity: 1; transform: none; }
+
+/* 站点导航菜单：常驻居中；子列表展开时（data-di-menu-open）隐藏功能面板 */
+/* 站点导航菜单：左侧页面切换；一行放不下时由控制器扩充岛宽，不换行不挤压 */
+.di-nav__menu {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 4px;
+	flex: 0 0 auto;
+	min-height: 36px;
+}
+/* 贴左 / 右边（窄条）：菜单只显示图标（文字隐藏），标题不会折行；
+   选中项的槽位由浮动图标层绘制，自身 visibility 隐藏避免重影 */
+.dynamic-island[data-edge="left"] .di-nav__menu-item,
+.dynamic-island[data-edge="right"] .di-nav__menu-item {
+	font-size: 0;
+	padding: 0 10px;
+}
+.dynamic-island[data-edge="left"] .di-nav__menu-icon,
+.dynamic-island[data-edge="right"] .di-nav__menu-icon {
+	width: 16px;
+	margin-right: 0;
+}
+.dynamic-island[data-edge="left"] .di-nav__menu-item.is-selected .di-nav__menu-icon,
+.dynamic-island[data-edge="right"] .di-nav__menu-item.is-selected .di-nav__menu-icon {
+	visibility: hidden;
+}
+.di-menu-panel { display: none; }
+.dynamic-island[data-di-menu-open] .di-menu-panel { display: block; }
+.dynamic-island[data-di-menu-open] .di-panel { display: none; }
+.di-nav__menu-item {
+	display: inline-flex;
+	align-items: center;
+	height: 36px;
+	padding: 0 12px;
+	border: 0;
+	border-radius: var(--radius-large);
+	background: transparent;
+	color: color-mix(in oklab, var(--di-text) 58%, transparent);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	text-decoration: none;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: color 0.25s ease;
+}
+.di-nav__menu-item:is(:hover, :focus-visible) { color: var(--di-text); }
+/* 图标模板：未选中完全不占位；选中项撑开 16px 槽（visibility 隐藏），浮动层盖在上面绘制 */
+.di-nav__menu-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 0;
+	height: 17px;
+	overflow: hidden;
+	transition:
+		width 220ms var(--di-links-ease-settle),
+		margin-right 220ms var(--di-links-ease-settle);
+}
+.di-nav__menu-item.is-selected .di-nav__menu-icon {
+	width: 16px;
+	margin-right: 6px;
+	/* 槽位只为浮动图标层占位，避免重影 */
+	visibility: hidden;
+}
+.di-nav__menu-icon svg { width: 16px; height: 16px; flex: 0 0 16px; }
+/* 选中项的浮动图标层：独立于菜单项滑动（旧导航栏移动图标同款） */
+.di-nav__menu-icon-float {
+	position: absolute;
+	top: 50%;
+	left: 0;
+	display: grid;
+	place-items: center;
+	width: 16px;
+	height: 17px;
+	color: var(--di-text);
+	opacity: 0;
+	pointer-events: none;
+	z-index: 2;
+	will-change: transform, opacity;
+}
+.di-nav__menu-icon-glyph {
+	grid-area: 1 / 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+}
+.di-nav__menu-icon-glyph svg { width: 16px; height: 16px; }
+.di-nav__menu-icon-glyph--next { opacity: 0; }
+/* 带二级的项右侧箭头：悬停展开子列表时翻转朝上 */
+.di-nav__menu-arrow {
+	width: 13px;
+	height: 13px;
+	margin-left: 2px;
+	color: var(--di-text-dim);
+	transition:
+		rotate 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+		color 0.25s ease;
+}
+.di-nav__menu-item.is-open .di-nav__menu-arrow {
+	rotate: 180deg;
+	color: var(--di-text);
+}
+
+/* 目录子列表面板：铺在面板区，内容随悬停的分组切换 */
+.di-menu-panel {
+	position: absolute;
+	inset: 0;
+	pointer-events: auto;
+}
+.di-menu-panel__group { display: none; }
+.di-menu-panel__group.is-active { display: block; }
+/* 子列表卡片网格不在 .di-links__group 折叠树里，必须显式归位（否则永远带收起态的下沉与失焦） */
+.di-menu-panel__group .di-links__card-grid {
+	translate: 0 0;
+	filter: none;
+	padding-top: 6px;
+}
+
+/* ---------------------------------------------------------- 音乐 */
+.di-panel--music { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 8px 12px; }
+.di-music__visual { display: flex; align-items: center; gap: 16px; width: 100%; }
+.di-music__cover {
+	flex: 0 0 72px;
+	width: 72px;
+	height: 72px;
+	border-radius: 18px;
+	display: grid;
+	place-items: center;
+	background: linear-gradient(135deg, color-mix(in oklab, var(--di-accent) 50%, #fff), color-mix(in oklab, var(--di-accent) 85%, #000));
+	color: #fff;
+	box-shadow: 0 8px 20px color-mix(in oklab, var(--di-accent) 30%, transparent);
+}
+.di-music__cover svg { width: 32px; height: 32px; }
+.di-music__viz { display: flex; align-items: center; gap: 3px; height: 60px; flex: 1 1 auto; }
+.di-music__viz-bar {
+	flex: 1 1 auto;
+	max-width: 6px;
+	height: calc(6px + 44px * var(--di-bar, 0.18) * (0.6 + 0.4 * sin(var(--viz-index))));
+	min-height: 4px;
+	border-radius: 3px;
+	background: var(--di-accent);
+	opacity: 0.85;
+	transition: height 0.09s linear;
+}
+.dynamic-island[data-di-playing="false"] .di-music__viz-bar { height: 5px; opacity: 0.35; }
+.di-music__info { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.di-music__title { font-size: 13px; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.di-music__hint { font-size: 10px; color: var(--di-text-dim); }
+.di-music__controls { display: flex; align-items: center; gap: 12px; }
+.di-music__controls button {
+	width: 34px;
+	height: 34px;
+	display: grid;
+	place-items: center;
+	border: 0;
+	border-radius: 10px;
+	background: var(--di-hover);
+	color: var(--di-text);
+	cursor: pointer;
+	transition: background 0.18s ease, transform 0.18s ease;
+}
+.di-music__controls button:hover { background: var(--di-active); transform: scale(1.06); }
+.di-music__controls button.di-music__play { width: 42px; height: 42px; border-radius: 50%; background: var(--di-accent); color: var(--di-on-accent); }
+.di-music__controls svg { width: 18px; height: 18px; }
+
+/* ---------------------------------------------------------- 设置 */
+.di-panel--settings { display: flex; flex-direction: column; gap: 8px; padding: 4px 6px; }
+
+/* 顶栏：左侧日期时间，右侧齿轮（对齐 iOS 控制中心的顶部布局） */
+.di-settings__head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 0 0 auto;
+	padding: 2px 4px 0;
+}
+.di-settings__date { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.di-settings__date strong { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; }
+.di-settings__date span { font-size: 10px; color: var(--di-text-dim); }
+.di-settings__time {
+	margin-left: auto;
+	font-size: 26px;
+	font-weight: 700;
+	line-height: 1;
+	letter-spacing: -0.01em;
+	font-variant-numeric: tabular-nums;
+}
+.di-settings__gear {
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	flex: 0 0 32px;
+	border: 0;
+	border-radius: 50%;
+	background: var(--di-hover);
+	color: var(--di-text);
+	cursor: pointer;
+	transition: background 0.18s ease, transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.di-settings__gear:hover { background: var(--di-active); transform: rotate(45deg); }
+.di-settings__gear svg { width: 17px; height: 17px; }
+
+/* 公告折叠卡：头部点击展开 / 收起，列表直接铺在卡面，不套卡片 */
+.di-notice-card {
+	flex: 0 0 auto;
+	overflow: hidden;
+	border-radius: var(--radius-large);
+	background: var(--di-hover);
+}
+.di-notice-card__head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 10px 12px;
+	border: 0;
+	background: transparent;
+	color: var(--di-text);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+}
+.di-notice-card__head-icon { width: 16px; height: 16px; flex: 0 0 16px; color: var(--di-text-dim); }
+.di-notice-card__head-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.di-notice-card__chevron {
+	width: 15px;
+	height: 15px;
+	flex: 0 0 15px;
+	color: var(--di-text-dim);
+	transition: rotate 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.di-notice-card[data-open] .di-notice-card__chevron { rotate: 180deg; }
+.di-notice-card__body {
+	display: grid;
+	grid-template-rows: 1fr;
+	transition: grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.di-notice-card:not([data-open]) .di-notice-card__body { grid-template-rows: 0fr; }
+.di-notice-card__body-inner { min-height: 0; overflow: hidden; }
+.di-notice-card__list {
+	margin: 0;
+	padding: 0 12px 10px;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+/* 设置行：左侧文字标签，右侧控件 */
+.di-settings__row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	flex: 0 0 auto;
+	padding: 7px 10px;
+	border-radius: var(--radius-large);
+	background: var(--di-hover);
+}
+.di-settings__row-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	font-size: 11.5px;
+	font-weight: 600;
+	color: var(--di-text);
+}
+.di-settings__row-icon { width: 15px; height: 15px; flex: 0 0 15px; opacity: 0.9; }
+.di-settings__notice-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	padding: 5px 8px;
+	border-radius: 8px;
+	color: var(--di-text);
+	font-size: 11.5px;
+	transition: background 0.15s ease;
+}
+a.di-settings__notice-row { text-decoration: none; }
+a.di-settings__notice-row:hover { background: var(--di-active); }
+.di-settings__notice-tag {
+	flex: 0 0 auto;
+	padding: 2px 6px;
+	border-radius: 999px;
+	background: color-mix(in oklab, var(--di-accent) 20%, transparent);
+	color: var(--di-accent);
+	font-size: 9.5px;
+	font-weight: 700;
+	line-height: 1.2;
+}
+.di-settings__notice-title {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 600;
+}
+.di-settings__notice-time {
+	margin-left: auto;
+	flex: 0 0 auto;
+	font-size: 9.5px;
+	color: var(--di-text-dim);
+	font-variant-numeric: tabular-nums;
+}
+
+/* 分段切换：左标签右控件，视觉对齐导航工具面板的主题滑块（图二样式） */
+.di-settings__segment {
+	position: relative;
+	display: flex;
+	flex: 0 0 auto;
+	padding: 2px;
+	border-radius: 999px;
+	background: color-mix(in oklab, var(--di-text) 8%, transparent);
+}
+.di-settings__segment-thumb {
+	position: absolute;
+	top: 2px;
+	bottom: 2px;
+	left: 2px;
+	width: calc((100% - 4px) / 3);
+	border-radius: 999px;
+	background: color-mix(in oklab, var(--di-text) 18%, transparent);
+	transform: translateX(calc(var(--di-seg-index, 0) * 100%));
+	transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.di-settings__segment-btn {
+	position: relative;
+	z-index: 1;
+	/* 等宽分格：滑块按 (100% - 4px) / N 定位，按钮不等宽会错位 */
+	flex: 1 1 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	height: 28px;
+	min-width: 34px;
+	padding: 0 9px;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--di-text-dim);
+	font: inherit;
+	font-size: 11px;
+	font-weight: 600;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: color 0.15s ease-out;
+}
+.di-settings__segment-btn:hover { color: var(--di-text); }
+.di-settings__segment-btn.is-active { color: var(--di-text); }
+.di-settings__segment-icon { width: 15px; height: 15px; flex: 0 0 15px; }
+
+/* 主题段三格：滑块位置由根节点 data-di-theme（light/dark/system）驱动 */
+.dynamic-island[data-di-theme="dark"] .di-settings__segment--theme .di-settings__segment-thumb { --di-seg-index: 1; }
+.dynamic-island[data-di-theme="system"] .di-settings__segment--theme .di-settings__segment-thumb { --di-seg-index: 2; }
+/* 展开方式段两格：由 data-di-expand-mode（hover/click）驱动 */
+.di-settings__segment--mode .di-settings__segment-thumb { width: calc((100% - 4px) / 2); }
+.dynamic-island[data-di-expand-mode="click"] .di-settings__segment--mode .di-settings__segment-thumb { --di-seg-index: 1; }
+/* 音乐盒子段两格：由 data-di-music-box（true/false）驱动 */
+.di-settings__segment--music-box .di-settings__segment-thumb { width: calc((100% - 4px) / 2); }
+.dynamic-island[data-di-music-box="false"] .di-settings__segment--music-box .di-settings__segment-thumb { --di-seg-index: 1; }
+
+/* 音乐盒子关闭：隐藏左下角悬浮播放器（MusicPlayer，全局渲染在 Layout） */
+.music-box-off .music-player-widget { display: none !important; }
+
+/* 主题切换 View Transition 期间禁用毛玻璃，避免快照层错位 */
+.is-theme-transitioning .di-glass { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+	.di-nav__pill,
+	.di-panel,
+	.di-profile__social,
+	.di-links__card,
+	.di-compact__bar,
+	.di-music__viz-bar,
+	.di-settings__segment-thumb,
+	.di-settings__notice-row,
+	.di-links__card-name,
+	.di-links__card-arrow,
+	.di-links__card-grid,
+	.di-notice-card__body,
+	.di-notice-card__chevron,
+	.di-nav__menu-icon-float { transition-duration: 0.01ms !important; }
+	/* 歌名滑动是纯循环装饰：降低动态偏好下直接停在开头，靠省略号提示截断 */
+	.di-compact__lyric.is-scrolling .di-compact__lyric-inner {
+		display: inline;
+		animation: none;
+		transform: none;
+	}
+	.di-compact__lyric.is-scrolling { text-overflow: ellipsis; }
+}
+
+

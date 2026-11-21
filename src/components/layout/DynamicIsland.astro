@@ -1,0 +1,745 @@
+---
+import Icon from "@components/common/Icon.astro";
+import ProfileCardSiteAvatar from "@components/layout/ProfileCardSiteAvatar.astro";
+import { announcementConfig, footerConfig, homeConfig, navBarConfig, siteConfig } from "@/config";
+import { LinkPresets } from "@/constants/link-presets";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import type { NavBarLink } from "@/types/config";
+import { getSortedPosts, getTagList, getCategoryList } from "@/utils/content-utils";
+import { buildCoverImage, COVER_IMAGE_WIDTH } from "@/utils/cover-image";
+import { processCoverImageSync } from "@/utils/image-utils";
+import { getFileDirFromPath, url } from "@/utils/url-utils";
+
+import "@/styles/layout/dynamic-island.css";
+
+/**
+ * 灵动岛：桌面端持久化导航，收起时贴屏幕边缘呈胶囊，悬停 / 点击展开为信息面板。
+ * 面板数据全部构建期就绪，运行时只读本地 JSON 与公开统计接口。
+ */
+const posts = await getSortedPosts();
+const tags = await getTagList();
+const categories = await getCategoryList();
+
+// 公告：旧导航栏弹窗在桌面端被灵动岛取代后无法触达，改为设置面板顶部的列表
+const noticeItems = announcementConfig.items
+	.slice()
+	.sort((a, b) => b.sort - a.sort);
+// 面板卡片一行三张
+const pinnedPosts = posts.filter((post) => post.data.pinned).slice(0, 3);
+
+// 全部导航跳转：合并一级项与其子菜单，动态页开关已在 navBarConfig 中处理
+interface IslandLink {
+	name: string;
+	href: string;
+	icon: string;
+	external: boolean;
+}
+/* 导航面板按旧导航栏的分组结构渲染：一级项归为一组（无组标题，加粗行），
+   带子菜单的项各自成组（组标题 + 子项行），与移动端菜单同一套层级 */
+interface IslandNavGroup {
+	name: string | null;
+	items: IslandLink[];
+}
+const navGroups: IslandNavGroup[] = [];
+const toLink = (raw: NavBarLink): IslandLink | null => {
+	if (raw.action) return null;
+	return {
+		name: raw.name,
+		href: raw.external ? raw.url : url(raw.url),
+		icon: raw.icon || "material-symbols:link",
+		external: !!raw.external,
+	};
+};
+for (const item of navBarConfig.links) {
+	const link = typeof item === "number" ? LinkPresets[item] : item;
+	if (link.children && link.children.length > 0) {
+		const items = link.children
+			.map((child) => (typeof child === "number" ? LinkPresets[child] : child))
+			.filter((child): child is NavBarLink => child !== null && !child.action)
+			.map(toLink)
+			.filter((entry): entry is IslandLink => entry !== null);
+		if (items.length > 0) navGroups.push({ name: link.name, items });
+	} else {
+		const entry = toLink(link);
+		if (entry) {
+			const last = navGroups[navGroups.length - 1];
+			if (last && last.name === null) last.items.push(entry);
+			else navGroups.push({ name: null, items: [entry] });
+		}
+	}
+}
+// 收起态「当前页面」匹配用扁平列表
+const navLinks: IslandLink[] = navGroups.flatMap((group) => group.items);
+
+const tabs = [
+	{ key: "home", label: i18n(I18nKey.islandProfile), icon: "material-symbols:person" },
+	{ key: "posts", label: i18n(I18nKey.navPosts), icon: "material-symbols:article" },
+	{ key: "settings", label: i18n(I18nKey.islandSettings), icon: "material-symbols:tune-rounded" },
+];
+
+const locale = siteConfig.lang.replace("_", "-");
+const monthFormatter = new Intl.DateTimeFormat(locale, { month: "short" });
+const monthNames = Array.from({ length: 12 }, (_, month) => monthFormatter.format(new Date(2000, month, 1)));
+
+const displayName = homeConfig.displayName || homeConfig.name;
+const avatar = siteConfig.avatar.owner ? url(siteConfig.avatar.owner) : "";
+// 个人名片横幅：public 绝对路径 / 远程 URL 直接用；留空则回退为头像做背景
+const bannerRaw = homeConfig.avatarBanner || "";
+const banner = bannerRaw.startsWith("http") ? bannerRaw : bannerRaw ? url(bannerRaw) : "";
+const aboutUrl = url("/about/");
+const socials = footerConfig.socialLinks;
+const sites = navBarConfig.personalSites;
+
+// 面板里的文章卡片带封面，和列表页共用同一套构建期解析
+async function coverOf(post: (typeof posts)[number]): Promise<string> {
+	const cover = await buildCoverImage({
+		image: processCoverImageSync(post.data.image ?? "", post.id),
+		basePath: getFileDirFromPath(post.filePath || ""),
+		width: COVER_IMAGE_WIDTH,
+	});
+	return cover?.src ?? "";
+}
+
+const pinnedCards = await Promise.all(
+	pinnedPosts.map(async (post) => ({
+		id: post.id,
+		title: post.data.title,
+		category: post.data.category || "",
+		cover: await coverOf(post),
+	})),
+);
+
+// 收起态要显示「当前页面 → 眼睛 → 时间」，页面名与图标直接取自导航配置
+const pages = navLinks.map((link) => ({ path: link.href, name: link.name, icon: link.icon }));
+
+// 活动圆环：文章 / 分类 / 标签三个指标嵌成 Apple 表环样式（外→内），数值刻度给进度感
+const ringGoal = Math.max(1, siteConfig.archiveStats?.annualPostGoal || 60);
+const activityMetrics = [
+	{ key: "posts", label: i18n(I18nKey.siteStatsPostCount), value: posts.length, ratio: Math.min(1, posts.length / ringGoal) },
+	{ key: "categories", label: i18n(I18nKey.siteStatsCategoryCount), value: categories.length, ratio: Math.min(1, categories.length / 12) },
+	{ key: "tags", label: i18n(I18nKey.siteStatsTagCount), value: tags.length, ratio: Math.min(1, tags.length / 60) },
+].map((metric) => ({ ...metric, dash: `${(metric.ratio * 100).toFixed(1)} 100` }));
+
+// 展开默认停在铭牌页（导航面板已移除，站点导航在目录模式下悬停展开）
+const initialTab = "home";
+
+// 目录模式（导航模式）的菜单项：一级项直接跳转，带子菜单的项悬停展开对应分组；
+// 图标随悬停滑出（对应旧导航栏的移动图标）
+interface IslandMenuItem {
+	name: string;
+	href: string | null;
+	icon: string | null;
+	groupIndex: number | null;
+}
+const navMenu: IslandMenuItem[] = [];
+for (const item of navBarConfig.links) {
+	const link = typeof item === "number" ? LinkPresets[item] : item;
+	if (link.children && link.children.length > 0) {
+		const groupIndex = navGroups.findIndex(
+			(group) => group.name === link.name && group.items.length > 0,
+		);
+		navMenu.push({
+			name: link.name,
+			href: null,
+			icon: link.icon || null,
+			groupIndex,
+		});
+	} else {
+		navMenu.push({
+			name: link.name,
+			href: link.external ? link.url : url(link.url),
+			icon: link.icon || null,
+			groupIndex: null,
+		});
+	}
+}
+
+const configJson = JSON.stringify({
+	tabs,
+	pages,
+	initialTab,
+	navGroups: navGroups.map((group) => ({ name: group.name, items: group.items })),
+	navMenu,
+	edge: "top",
+	pos: 0.5,
+	api: url("/api/allPostMeta.json"),
+	postBaseUrl: url("/posts/"),
+	postPath: url("/posts/"),
+	locale,
+	expandMode: "click",
+	labels: {
+		notPlaying: i18n(I18nKey.musicNoPlaying),
+		nowPlaying: i18n(I18nKey.musicNowPlaying),
+		play: i18n(I18nKey.musicPlay),
+		pause: i18n(I18nKey.musicPause),
+		weekFormat: i18n(I18nKey.profileMonthWeek),
+		postCount: i18n(I18nKey.profilePostCount),
+	},
+}).replace(/</g, "\\u003c");
+
+// 热力图格子的完整标签（月/周），与左侧资料卡共用同一套 i18n 模板
+const formatWeekLabel = (month: number, week: number): string =>
+	i18n(I18nKey.profileMonthWeek)
+		.replace("{month}", monthNames[month])
+		.replace("{week}", String(week + 1));
+
+const themeOptions = [
+	{ value: "light", label: i18n(I18nKey.themeLight), icon: "material-symbols:wb-sunny-outline-rounded" },
+	{ value: "dark", label: i18n(I18nKey.themeDark), icon: "material-symbols:dark-mode-outline-rounded" },
+	{ value: "system", label: i18n(I18nKey.themeSystem), icon: "mdi:monitor" },
+];
+
+// 首屏就给出正确的收起态形态：首页只有小形象，文章页是标题居中
+const initialPath = Astro.url.pathname.replace(/\/+$/, "");
+const postRoot = url("/posts/").replace(/\/+$/, "");
+const initialPageKind =
+	initialPath === "" || initialPath === "/"
+		? "home"
+		: initialPath.startsWith(`${postRoot}/`)
+			? "post"
+			: "page";
+---
+
+<div class="dynamic-island" id="dynamic-island" data-di-playing="false" data-di-expanded="false" data-di-page-kind={initialPageKind}>
+	<script is:inline type="application/json" data-di-config set:html={configJson}></script>
+
+	<!-- 毛玻璃本体：clip-path 由控制器每帧写入液态路径 -->
+	<div class="di-glass" data-di-glass aria-hidden="true"></div>
+	<svg class="di-vector" data-di-vector aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+		<defs>
+			<linearGradient id="di-tint-grad" x1="0" y1="0" x2="0" y2="1">
+				<stop offset="0" class="di-tint-stop-a"></stop>
+				<stop offset="1" class="di-tint-stop-b"></stop>
+			</linearGradient>
+			<linearGradient id="di-rim-grad" data-di-rim-grad x1="0" y1="0" x2="0" y2="1">
+				<stop offset="0" class="di-rim-stop-a"></stop>
+				<stop offset="1" class="di-rim-stop-b"></stop>
+			</linearGradient>
+			<radialGradient id="di-flow-grad" data-di-flow-grad gradientUnits="userSpaceOnUse" cx="0" cy="0" r="120">
+				<stop offset="0" class="di-flow-stop"></stop>
+				<stop offset="1" class="di-flow-stop-end"></stop>
+			</radialGradient>
+		</defs>
+		<path class="di-shadow-path" data-di-shadow></path>
+		<path class="di-tint-path" data-di-tint fill="url(#di-tint-grad)"></path>
+		<path class="di-flow-path" data-di-flow fill="none" stroke="url(#di-flow-grad)"></path>
+		<path class="di-outline-path" data-di-outline fill="none"></path>
+		<path class="di-rim-path" data-di-rim fill="none" stroke="url(#di-rim-grad)"></path>
+	</svg>
+
+	<!-- 内容层：定位与尺寸跟随本体，收起 / 展开两态交叉淡换 -->
+	<div class="di-content" data-di-content>
+		<!-- 收起态：两个面叠放，旋转翻页切换 -->
+		<div class="di-compact" data-di-compact>
+			<!-- 页面面：页面信息 · 小形象 · 时间 -->
+			<div class="di-compact__face di-compact__face--page">
+				<span class="di-compact__page" data-di-page>
+					<!-- 每个导航项一个图标槽：收起态点亮当前页面自己的图标（文章正文页用「文档」入口图标） -->
+					{navLinks.map((link) => (
+						<span class="di-compact__page-icon" data-di-page-icon-href={link.href}>
+							<Icon name={link.icon} is:inline></Icon>
+						</span>
+					))}
+					<span class="di-compact__page-icon" data-di-page-icon="page">
+						<Icon name="material-symbols:explore-rounded" is:inline></Icon>
+					</span>
+					<span class="di-compact__page-label" data-di-page-label></span>
+				</span>
+
+				<!-- 小形象：默认东张西望 + 眨眼，靠近随机表情 -->
+				<svg class="di-pet" data-di-pet viewBox="-60 -24 120 48" aria-hidden="true">
+					<g class="di-pet__face" data-di-pet-face>
+						<ellipse class="di-pet__glow" data-di-pet-glow-l cx="-12.5" cy="0" rx="11" ry="13"></ellipse>
+						<ellipse class="di-pet__glow" data-di-pet-glow-r cx="12.5" cy="0" rx="11" ry="13"></ellipse>
+						<rect class="di-pet__eye" data-di-pet-eye-l x="-18" y="-7.5" width="11" height="15" rx="5.5"></rect>
+						<rect class="di-pet__eye" data-di-pet-eye-r x="7" y="-7.5" width="11" height="15" rx="5.5"></rect>
+						<path class="di-pet__heart" data-di-pet-heart d=""></path>
+						<path class="di-pet__sparkle" data-di-pet-sparkle="a" d=""></path>
+						<path class="di-pet__sparkle" data-di-pet-sparkle="b" d=""></path>
+						<ellipse class="di-pet__blush" data-di-pet-blush-l cx="-19" cy="9" rx="4.4" ry="2.4"></ellipse>
+						<ellipse class="di-pet__blush" data-di-pet-blush-r cx="19" cy="9" rx="4.4" ry="2.4"></ellipse>
+						<path class="di-pet__mouth" data-di-pet-mouth d=""></path>
+					</g>
+				</svg>
+
+				<span class="di-compact__clock" data-di-clock></span>
+			</div>
+
+			<!-- 音乐面：封面（无封面回退唱歌脸） · 正在播放 · 波形 -->
+			<div class="di-compact__face di-compact__face--music">
+				<img class="di-compact__cover" data-di-cover alt="" />
+				<svg class="di-sing" data-di-sing viewBox="24 8 72 30" aria-hidden="true">
+					<path class="di-sing__eye" d="M34 23q8-10 16 0"></path>
+					<path class="di-sing__eye" d="M70 23q8-10 16 0"></path>
+					<ellipse class="di-sing__mouth" cx="60" cy="31" rx="8" ry="6"></ellipse>
+				</svg>
+
+				<!-- 外层只做裁切：歌名放不下时内层整体左滑，把后半段带出来 -->
+				<span class="di-compact__lyric" data-di-lyric><span class="di-compact__lyric-inner" data-di-lyric-inner></span></span>
+
+				<!-- 波形：也是播放 / 暂停按钮 -->
+				<button
+					class="di-compact__bars"
+					data-di-play
+					type="button"
+					aria-label={i18n(I18nKey.musicPlay)}
+					data-di-no-drag
+				>
+					<span class="di-compact__bar" data-di-bar></span>
+					<span class="di-compact__bar" data-di-bar></span>
+					<span class="di-compact__bar" data-di-bar></span>
+					<span class="di-compact__bar" data-di-bar></span>
+				</button>
+			</div>
+		</div>
+
+			<!-- 展开态：左右布局——左侧站点导航菜单（悬停带二级的项展开子列表），右侧功能按钮 + 搜索 -->
+				<div class="di-expanded" data-di-expanded>
+					<div class="di-nav" data-di-nav>
+						<span class="di-nav__pill" data-di-pill aria-hidden="true"></span>
+						<nav class="di-nav__menu" data-di-menu aria-label={i18n(I18nKey.navLinks)}>
+							<span class="di-nav__menu-icon-float" data-di-menu-icon-float aria-hidden="true">
+								<span class="di-nav__menu-icon-glyph" data-di-menu-icon-current></span>
+								<span class="di-nav__menu-icon-glyph" data-di-menu-icon-next></span>
+						</span>
+						{navMenu.map((item, index) =>
+							item.href ? (
+								<a class="di-nav__menu-item" data-di-menu-item={String(index)} href={item.href}>
+									<span class="di-nav__menu-icon" aria-hidden="true">
+										<Icon name={item.icon ?? "material-symbols:link"} is:inline></Icon>
+									</span>
+									{item.name}
+								</a>
+							) : (
+								<button type="button" class="di-nav__menu-item" data-di-menu-item={String(index)} data-di-no-drag>
+									<span class="di-nav__menu-icon" aria-hidden="true">
+										<Icon name={item.icon ?? "material-symbols:link"} is:inline></Icon>
+									</span>
+									{item.name}
+									<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline class="di-nav__menu-arrow"></Icon>
+								</button>
+							),
+						)}
+					</nav>
+					<!-- 右侧：三个面板按钮（紧凑图标组）+ 搜索 -->
+					<div class="di-nav__right" data-di-no-drag>
+						<div class="di-nav__actions">
+							{tabs.map((tab) => (
+								<button
+									class:list={["di-nav__action", tab.key === initialTab && "is-active"]}
+									data-di-tab={tab.key}
+									data-di-no-drag
+									type="button"
+									title={tab.label}
+									aria-label={tab.label}
+								>
+									<Icon name={tab.icon} is:inline class="di-nav__action-icon"></Icon>
+								</button>
+							))}
+						</div>
+						<!-- 搜索：与设置里原搜索按钮同一动作 -->
+						<button
+							class="di-nav__search"
+							data-di-action="search"
+							data-di-no-drag
+							type="button"
+							aria-label={i18n(I18nKey.search)}
+							title={i18n(I18nKey.search)}
+						>
+							<Icon name="material-symbols:search-rounded" is:inline class="di-nav__search-icon"></Icon>
+						</button>
+					</div>
+				</div>
+
+				<div class="di-panels" data-di-no-drag>
+					<!-- 目录模式的子菜单面板：悬停菜单项时展示对应分组的卡片 -->
+					<div class="di-menu-panel" data-di-menu-panel data-di-no-drag>
+						{navGroups.map((group, groupIndex) =>
+							group.name ? (
+								<div
+									class="di-menu-panel__group"
+									data-di-menu-group={String(groupIndex)}
+								>
+									<div class="di-links__card-grid">
+										{group.items.map((link) => (
+											<a
+												class="di-links__card"
+												href={link.href}
+												target={link.external ? "_blank" : undefined}
+												rel={link.external ? "noopener noreferrer" : undefined}
+											>
+												<Icon name={link.icon} is:inline class="di-links__card-icon"></Icon>
+												<span class="di-links__card-name">{link.name}</span>
+												<Icon name="material-symbols:arrow-outward-rounded" is:inline class="di-links__card-arrow"></Icon>
+											</a>
+										))}
+									</div>
+								</div>
+							) : null,
+						)}
+					</div>
+					<!-- 个人信息面板：融合原资料卡的头像 / 名字 / 社交 / 热力图 / 站点 -->
+						<section class="di-panel di-panel--home" data-di-panel="home">
+					<div class="di-home" data-di-home>
+						<!-- 上部：左侧个人卡片 + 右侧热力图 -->
+						<div class="di-home__top">
+							<!-- 左侧：个人名片（照片墙 banner + 居中头像 + 名字职业 + 社交） -->
+							<div class="di-profile-card">
+								<div class="di-profile-card__banner" aria-hidden="true">
+									{banner ? <img src={banner} alt="" /> : <img src={avatar} alt="" class="di-profile-card__banner-fallback" />}
+								</div>
+								<a class="di-profile__avatar" href={aboutUrl} aria-label={i18n(I18nKey.about)}>
+									{avatar ? <img src={avatar} alt="" /> : <span>{displayName.slice(0, 1)}</span>}
+									<!-- 悬停遮罩：头像本身就是关于页入口，与资料卡保持一致的反馈 -->
+									<span class="di-profile__avatar-mask" aria-hidden="true">{i18n(I18nKey.about)}</span>
+								</a>
+								<div class="di-profile__identity">
+									<a href={aboutUrl} class="di-profile__name">{displayName}</a>
+									{homeConfig.occupation && <span class="di-profile__occupation">{homeConfig.occupation}</span>}
+								</div>
+								<div class="di-profile__socials">
+									{socials.map((social) => {
+										const isDirect = social.href.startsWith("mailto:") || social.href.startsWith("tel:");
+										return (
+											<a
+												class="di-profile__social"
+												href={social.href}
+												target={isDirect ? undefined : "_blank"}
+												rel={isDirect ? undefined : "noopener noreferrer"}
+												aria-label={social.label}
+												title={social.label}
+												data-di-tooltip-label={social.label}
+											>
+												<Icon name={social.icon} is:inline></Icon>
+											</a>
+										);
+									})}
+								</div>
+							</div>
+
+							<!-- 右侧：热力图 → 点格后整块上滚换成该周文章列表 -->
+							<div class="di-profile__heat" data-di-heat data-di-week-view="false">
+								<div class="di-profile__heat-head">
+									<span class="di-profile__heat-title">{i18n(I18nKey.profileHeatmap)}</span>
+									<button
+										type="button"
+										class="di-profile__heat-back"
+										data-di-heat-back
+										aria-label={i18n(I18nKey.profileHeatBack)}
+									>
+										<Icon name="material-symbols:arrow-back-rounded" is:inline class="di-profile__heat-back-icon"></Icon>
+										<span>{i18n(I18nKey.profileHeatBack)}</span>
+									</button>
+									<span class="di-profile__heat-legend" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+								</div>
+								<div class="di-profile__heat-stage">
+									<div class="di-profile__heatmap" data-di-heatmap role="group" aria-label={i18n(I18nKey.profileHeatmap)}>
+										{Array.from({ length: 12 }, (_, month) => (
+											<div class="di-profile__heat-col">
+												<span class="di-profile__heat-month">{monthNames[month]}</span>
+												{Array.from({ length: 4 }, (_, week) => (
+													<button
+														type="button"
+														class="di-profile__heat-cell"
+														data-di-heat-cell={`${month}-${week}`}
+														data-di-tooltip-label={formatWeekLabel(month, week)}
+														data-di-level="0"
+														aria-label={formatWeekLabel(month, week)}
+														aria-pressed="false"
+													></button>
+												))}
+											</div>
+										))}
+									</div>
+									<!-- 该周文章：与热力图同处一层，点格时从下方滚入顶掉热力图 -->
+									<div class="di-profile__week-posts" data-di-week hidden>
+										<p class="di-profile__posts-title" data-di-posts-title></p>
+										<div class="di-profile__post-list" data-di-post-list></div>
+									</div>
+								</div>
+								<!-- 站点胶囊：贴右栏底部，展开态向上覆盖热力图 -->
+								{sites.length > 0 && (
+									<div
+										class="di-profile__sites"
+										data-di-sites
+										data-di-sites-open="false"
+									>
+										<div class="di-profile__sites-bar" data-di-sites-bar>
+											<span class="di-profile__sites-label">{i18n(I18nKey.otherSites)}</span>
+											<span class="di-profile__sites-stack" data-di-sites-stack>
+												{sites.slice(0, 3).map((site, index) => (
+													<ProfileCardSiteAvatar site={site} index={index} />
+												))}
+											</span>
+											<button
+												type="button"
+												class="di-profile__sites-toggle"
+												data-di-sites-toggle
+												aria-expanded="false"
+												aria-label={i18n(I18nKey.otherSites)}
+											>
+												<svg class="di-profile__sites-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+													<circle cx="12" cy="12" r="10" />
+													<path d="m16 10-4 4-4-4" />
+												</svg>
+											</button>
+										</div>
+										<ul class="di-profile__sites-list" data-di-sites-list>
+											{sites.map((site, index) => (
+												<li>
+													<a class="di-profile__site-row" href={site.url} target="_blank" rel="noopener noreferrer">
+														<ProfileCardSiteAvatar site={site} index={index} />
+														<span class="di-profile__site-name">{site.name}</span>
+														<Icon name="fa7-solid:arrow-up-right-from-square" is:inline class="di-profile__site-arrow" />
+													</a>
+												</li>
+											))}
+										</ul>
+									</div>
+								)}
+							</div>
+						</div>
+
+						<!-- 热力图提示浮层：与内容区同级，由控制器定位 -->
+						<div class="di-profile__tooltip" data-di-tooltip aria-hidden="true"></div>
+					</div>
+				</section>
+
+				<!-- 文章面板：Apple 活动环组合（左）+ 分类列表（右），下方置顶文章 -->
+				<section class:list={["di-panel", "di-panel--posts"]} data-di-panel="posts">
+					<div class="di-posts__top">
+						<!-- 活动环：文章 / 分类 / 标签三环嵌套（外→内），圆角端帽 + 暗色轨道 -->
+						<div class="di-activity" role="group" aria-label={i18n(I18nKey.siteStatsPostCount)}>
+							<svg class="di-activity__svg" viewBox="0 0 120 120" aria-hidden="true">
+								<defs>
+									<linearGradient id="di-ring-grad-1" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="0" class="di-ring-stop di-ring-stop--1"></stop>
+										<stop offset="1" class="di-ring-stop-bright di-ring-stop-bright--1"></stop>
+									</linearGradient>
+									<linearGradient id="di-ring-grad-2" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="0" class="di-ring-stop di-ring-stop--2"></stop>
+										<stop offset="1" class="di-ring-stop-bright di-ring-stop-bright--2"></stop>
+									</linearGradient>
+									<linearGradient id="di-ring-grad-3" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="0" class="di-ring-stop di-ring-stop--3"></stop>
+										<stop offset="1" class="di-ring-stop-bright di-ring-stop-bright--3"></stop>
+									</linearGradient>
+								</defs>
+								{activityMetrics.map((metric, index) => {
+									const radius = 52 - index * 12;
+									return (
+										<g>
+											<circle
+												class="di-activity__track"
+												cx="60" cy="60" r={radius}
+												stroke-width="10"
+												data-di-ring-track={metric.key}
+											></circle>
+											<circle
+												class="di-activity__value"
+												cx="60" cy="60" r={radius}
+												stroke-width="10"
+												pathLength="100"
+												stroke-dasharray={metric.dash}
+												stroke={`url(#di-ring-grad-${String(index + 1)})`}
+												transform="rotate(-90 60 60)"
+												data-di-ring-value={metric.key}
+											></circle>
+										</g>
+									);
+								})}
+							</svg>
+						</div>
+						<!-- 环的数值图例：三行对应三环 -->
+						<div class="di-activity__metrics">
+							{activityMetrics.map((metric) => (
+								<span class="di-activity__metric" data-di-ring-metric={metric.key}>
+									<i class="di-activity__dot" data-di-ring-dot={metric.key}></i>
+									<strong class="di-activity__num">{metric.value}</strong>
+									<span class="di-activity__label">{metric.label}</span>
+								</span>
+							))}
+						</div>
+						<!-- 分类列表：名称 + 篇数，点击进分类页 -->
+						<div class="di-posts__cats">
+							<span class="di-posts__cats-title">{i18n(I18nKey.siteStatsCategoryCount)}</span>
+							<ul class="di-posts__cats-list">
+								{categories.map((category) => (
+									<li>
+										<a class="di-posts__cat" href={url(category.url)}>
+											<span class="di-posts__cat-name">{category.name}</span>
+											<span class="di-posts__cat-count">{category.count}</span>
+										</a>
+									</li>
+								))}
+							</ul>
+						</div>
+					</div>
+					<div class="di-cards">
+						<div class="di-cards__row">
+							{pinnedCards.map((card) => (
+								<a class:list={["di-card", !card.cover && "di-card--text"]} href={url(`/posts/${card.id}/`)}>
+									{card.cover && <img class="di-card__img" src={card.cover} alt="" loading="lazy" decoding="async" />}
+									<span class="di-card__shade"></span>
+									<span class="di-card__body">
+										<span class="di-card__headline">
+											<span class="di-card__pin">{i18n(I18nKey.pinnedBadge)}</span>
+											<span class="di-card__title">{card.title}</span>
+										</span>
+										{card.category && <span class="di-card__meta">{card.category}</span>}
+									</span>
+								</a>
+							))}
+						</div>
+					</div>
+				</section>
+
+				<!-- 音乐面板：播放控制与律动可视化（与收起态共用峰值） -->
+				<section class:list={["di-panel", "di-panel--music"]} data-di-panel="music">
+					<div class="di-music__visual">
+						<div class="di-music__cover"><Icon name="material-symbols:album" is:inline></Icon></div>
+						<div class="di-music__viz" aria-hidden="true">
+							{Array.from({ length: 24 }, (_, i) => (
+								<span class="di-music__viz-bar" style={`--viz-index:${i}`}></span>
+							))}
+						</div>
+					</div>
+					<div class="di-music__info">
+						<strong class="di-music__title" data-di-track>{i18n(I18nKey.musicNoPlaying)}</strong>
+						<span class="di-music__hint">{i18n(I18nKey.musicLyrics)}</span>
+					</div>
+					<div class="di-music__controls">
+						<button type="button" data-di-action="music-prev" aria-label={i18n(I18nKey.musicPrev)}><Icon name="material-symbols:skip-previous-rounded" is:inline></Icon></button>
+						<button type="button" class="di-music__play" data-di-action="music-toggle" aria-label={i18n(I18nKey.musicPlay)}><Icon name="material-symbols:play-arrow-rounded" is:inline></Icon></button>
+						<button type="button" data-di-action="music-next" aria-label={i18n(I18nKey.musicNext)}><Icon name="material-symbols:skip-next-rounded" is:inline></Icon></button>
+					</div>
+				</section>
+
+				<!-- 设置面板：手机通知中心式堆叠卡——固定窗口只露当前展开卡与下一张收起行，
+				     滚动 / 点击推进：当前卡收成列表行后，下一张才上滑展开；内容不再套卡片 -->
+					<section class:list={["di-panel", "di-panel--settings"]} data-di-panel="settings">
+						<div class="di-settings__head">
+							<div class="di-settings__date">
+								<strong data-di-date></strong>
+								<span data-di-weekday></span>
+							</div>
+							<span class="di-settings__time" data-di-time></span>
+							<button
+								type="button"
+								class="di-settings__gear"
+								data-di-action="reset-edge"
+								aria-label={i18n(I18nKey.islandResetEdge)}
+								title={i18n(I18nKey.islandResetEdge)}
+							>
+								<Icon name="material-symbols:settings-rounded" is:inline></Icon>
+							</button>
+						</div>
+
+						<!-- 公告折叠卡：头部点击展开 / 收起，列表直接铺在卡面 -->
+						<div class="di-notice-card" data-open>
+							<button type="button" class="di-notice-card__head" data-di-notice-toggle aria-expanded="true">
+								<Icon name="material-symbols:notifications-outline-rounded" is:inline class="di-notice-card__head-icon"></Icon>
+								<span class="di-notice-card__head-title">{announcementConfig.title || i18n(I18nKey.announcement)}</span>
+								<Icon name="material-symbols:keyboard-arrow-down-rounded" is:inline class="di-notice-card__chevron"></Icon>
+							</button>
+							<div class="di-notice-card__body">
+								<div class="di-notice-card__body-inner">
+									{noticeItems.length > 0 && (
+										<ul class="di-notice-card__list">
+											{noticeItems.map((item) => (
+												<li>
+													{item.link ? (
+														<a class="di-settings__notice-row" href={url(item.link)}>
+															<span class="di-settings__notice-tag">{item.tag}</span>
+															<span class="di-settings__notice-title">{item.title}</span>
+															<time class="di-settings__notice-time">{item.time}</time>
+														</a>
+													) : (
+														<div class="di-settings__notice-row">
+															<span class="di-settings__notice-tag">{item.tag}</span>
+															<span class="di-settings__notice-title">{item.title}</span>
+															<time class="di-settings__notice-time">{item.time}</time>
+														</div>
+													)}
+												</li>
+											))}
+										</ul>
+									)}
+								</div>
+							</div>
+						</div>
+
+						<!-- 主题：左标签 + 右侧三段图标切换 -->
+						<div class="di-settings__row">
+							<span class="di-settings__row-label">
+								<Icon name="material-symbols:dark-mode-outline-rounded" is:inline class="di-settings__row-icon"></Icon>
+								{i18n(I18nKey.theme)}
+							</span>
+							<div class="di-settings__segment di-settings__segment--theme" role="group" aria-label={i18n(I18nKey.theme)}>
+								<span class="di-settings__segment-thumb" aria-hidden="true"></span>
+								{themeOptions.map((option) => (
+									<button
+										type="button"
+										class="di-settings__segment-btn"
+										data-di-action={`theme-${option.value}`}
+										title={option.label}
+										aria-label={option.label}
+									>
+										<Icon name={option.icon} is:inline class="di-settings__segment-icon"></Icon>
+									</button>
+								))}
+							</div>
+						</div>
+
+						<!-- 展开方式：悬停 / 点击分段切换 -->
+						<div class="di-settings__row">
+							<span class="di-settings__row-label">
+								<Icon name="material-symbols:ads-click-rounded" is:inline class="di-settings__row-icon"></Icon>
+								{i18n(I18nKey.islandExpandMode)}
+							</span>
+							<div class="di-settings__segment di-settings__segment--mode" role="group" aria-label={i18n(I18nKey.islandExpandMode)}>
+								<span class="di-settings__segment-thumb" aria-hidden="true"></span>
+								<button type="button" class="di-settings__segment-btn" data-di-action="mode-hover" title={i18n(I18nKey.islandModeHover)}>
+									<Icon name="material-symbols:ads-click-rounded" is:inline class="di-settings__segment-icon"></Icon>
+									<span>{i18n(I18nKey.islandModeHover)}</span>
+								</button>
+								<button type="button" class="di-settings__segment-btn" data-di-action="mode-click" title={i18n(I18nKey.islandModeClick)}>
+									<Icon name="material-symbols:touch-app-rounded" is:inline class="di-settings__segment-icon"></Icon>
+									<span>{i18n(I18nKey.islandModeClick)}</span>
+								</button>
+							</div>
+						</div>
+
+						<!-- 音乐盒子：左下角悬浮音乐播放器的显示开关 -->
+						<div class="di-settings__row">
+							<span class="di-settings__row-label">
+								<Icon name="material-symbols:library-music-rounded" is:inline class="di-settings__row-icon"></Icon>
+								{i18n(I18nKey.islandMusicBox)}
+							</span>
+							<div class="di-settings__segment di-settings__segment--music-box" role="group" aria-label={i18n(I18nKey.islandMusicBox)}>
+								<span class="di-settings__segment-thumb" aria-hidden="true"></span>
+								<button type="button" class="di-settings__segment-btn" data-di-action="music-box-on" title={i18n(I18nKey.islandOn)}>
+									<span>{i18n(I18nKey.islandOn)}</span>
+								</button>
+								<button type="button" class="di-settings__segment-btn" data-di-action="music-box-off" title={i18n(I18nKey.islandOff)}>
+									<span>{i18n(I18nKey.islandOff)}</span>
+								</button>
+							</div>
+						</div>
+					</section>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- 样式见 src/styles/layout/dynamic-island.css -->
+<script>
+	import { initDynamicIsland } from "@/utils/dynamic-island-controller";
+	import { definePersistentIsland } from "@/utils/swup-lifecycle";
+
+	const islandRoot = document.getElementById("dynamic-island");
+	if (islandRoot) {
+		definePersistentIsland("dynamic-island", () => initDynamicIsland(islandRoot));
+	}
+</script>
