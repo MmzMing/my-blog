@@ -5,7 +5,7 @@
  * （happy / wink / love / star / shy / pout / squint），新消息惊讶。
  * 这里把 QPainter 的绘制换成对其 SVG DOM 节点的逐帧更新，弹簧参数照搬。
  */
-import { Spring, clamp } from "@/utils/island-physics";
+import { clamp, Spring } from "@/utils/island-physics";
 
 export type PetMood =
 	| "default"
@@ -19,7 +19,15 @@ export type PetMood =
 	| "laugh"
 	| "surprise";
 
-const MOODS: PetMood[] = ["happy", "wink", "love", "star", "shy", "pout", "squint"];
+const MOODS: PetMood[] = [
+	"happy",
+	"wink",
+	"love",
+	"star",
+	"shy",
+	"pout",
+	"squint",
+];
 
 export class PetFace {
 	private readonly ex = new Spring(0, 140, 0.8, 0.01);
@@ -48,10 +56,17 @@ export class PetFace {
 		this.wide.v += 9;
 	}
 
-	step(dt: number, now: number, look: { x: number; y: number }, near: boolean, scale = 1): PetFrame {
+	step(
+		dt: number,
+		now: number,
+		look: { x: number; y: number },
+		near: boolean,
+		scale = 1,
+	): PetFrame {
 		if (near && !this.near) {
 			const choices = MOODS.filter((m) => m !== this.lastMood);
-			this.mood = choices[Math.floor(Math.random() * choices.length)] ?? "happy";
+			this.mood =
+				choices[Math.floor(Math.random() * choices.length)] ?? "happy";
 			this.lastMood = this.mood;
 		} else if (!near && this.near) {
 			this.mood = "default";
@@ -62,23 +77,56 @@ export class PetFace {
 		if (now < this.surpriseUntil) mood = "surprise";
 
 		// 视线：无人时缓慢游走，有人靠近时看向光标
-		const tx = !near && Math.abs(look.x) > 420 * scale
-			? Math.sin(now * 0.55) * 0.8 + Math.sin(now * 1.7) * 0.15
-			: clamp(look.x / (90 * scale), -1, 1);
-		const ty = !near && Math.abs(look.x) > 420 * scale
-			? Math.sin(now * 0.37) * 0.35
-			: clamp(look.y / (60 * scale), -1, 1);
+		const tx =
+			!near && Math.abs(look.x) > 420 * scale
+				? Math.sin(now * 0.55) * 0.8 + Math.sin(now * 1.7) * 0.15
+				: clamp(look.x / (90 * scale), -1, 1);
+		const ty =
+			!near && Math.abs(look.x) > 420 * scale
+				? Math.sin(now * 0.37) * 0.35
+				: clamp(look.y / (60 * scale), -1, 1);
 		const gazeX = mood === "shy" ? tx * 0.3 + 0.5 : tx;
 		const gazeY = mood === "shy" ? 0.75 : ty;
 		this.ex.to(gazeX);
 		this.ey.to(gazeY);
 
-		this.happyL.to(mood === "wink" ? 0 : mood === "happy" || mood === "laugh" || mood === "shy" ? 1 : 0);
-		this.happyR.to(mood === "happy" || mood === "laugh" || mood === "shy" ? 1 : 0.55 * (mood === "wink" ? 1 : 0));
+		this.happyL.to(
+			mood === "wink"
+				? 0
+				: mood === "happy" || mood === "laugh" || mood === "shy"
+					? 1
+					: 0,
+		);
+		this.happyR.to(
+			mood === "happy" || mood === "laugh" || mood === "shy"
+				? 1
+				: 0.55 * (mood === "wink" ? 1 : 0),
+		);
 		this.wide.to(mood === "star" ? 0.3 : mood === "surprise" ? 0.35 : 0);
-		this.morph.to(mood === "love" || mood === "squint" || mood === "pout" ? 1 : 0);
-		this.blush.to(mood === "shy" ? 1 : mood === "love" ? 0.8 : mood === "happy" || mood === "laugh" ? 0.55 : mood === "wink" ? 0.45 : 0);
-		for (const sp of [this.ex, this.ey, this.wide, this.morph, this.blush, this.happyL, this.happyR]) sp.step(dt);
+		this.morph.to(
+			mood === "love" || mood === "squint" || mood === "pout" ? 1 : 0,
+		);
+		this.blush.to(
+			mood === "shy"
+				? 1
+				: mood === "love"
+					? 0.8
+					: mood === "happy" || mood === "laugh"
+						? 0.55
+						: mood === "wink"
+							? 0.45
+							: 0,
+		);
+		for (const sp of [
+			this.ex,
+			this.ey,
+			this.wide,
+			this.morph,
+			this.blush,
+			this.happyL,
+			this.happyR,
+		])
+			sp.step(dt);
 
 		// 眨眼：特殊表情不眨
 		const dur = 0.16;
@@ -86,10 +134,12 @@ export class PetFace {
 			const gap = 2.4 + (Math.sin(now * 12.9898) * 0.5 + 0.5) * 3.2;
 			this.blinkAt = now + gap * (this.tired(now, mood) > 0.3 ? 1.6 : 1);
 		}
-		const blink = this.blinkAt <= now && now < this.blinkAt + dur &&
+		const blink =
+			this.blinkAt <= now &&
+			now < this.blinkAt + dur &&
 			["default", "pout", "shy", "star"].includes(mood)
-			? Math.sin(((now - this.blinkAt) / dur) * Math.PI)
-			: 0;
+				? Math.sin(((now - this.blinkAt) / dur) * Math.PI)
+				: 0;
 
 		const tired = this.tired(now, mood);
 		const bounce = mood === "laugh" ? Math.sin(now * 16) * 1.6 * scale : 0;
@@ -101,7 +151,13 @@ export class PetFace {
 	}
 
 	/** 生成驱动 SVG 的属性集合；返回 null 表示隐藏。 */
-	private render(mood: PetMood, blink: number, tired: number, bounce: number, scale: number): PetFrame {
+	private render(
+		mood: PetMood,
+		blink: number,
+		tired: number,
+		bounce: number,
+		scale: number,
+	): PetFrame {
 		const wide = clamp(this.wide.x, -0.3, 1);
 		const morph = clamp(this.morph.x, 0, 1);
 		const lx = this.ex.x;
@@ -114,7 +170,13 @@ export class PetFace {
 			const happy = clamp(side < 0 ? this.happyL.x : this.happyR.x, 0, 1);
 			const curious = 1 + 0.22 * Math.max(0, lx * side);
 			const width = baseW * (1 + 0.12 * wide) * (1 + 0.25 * blink);
-			const height = baseH * curious * (1 + 0.18 * wide) * (1 - 0.88 * blink) * (1 - 0.85 * tired) * (1 - 0.55 * happy);
+			const height =
+				baseH *
+				curious *
+				(1 + 0.18 * wide) *
+				(1 - 0.88 * blink) *
+				(1 - 0.85 * tired) *
+				(1 - 0.55 * happy);
 			return {
 				cx: side * (gap / 2 + baseW / 2) + lx * 5 * scale,
 				cy: eyeY,

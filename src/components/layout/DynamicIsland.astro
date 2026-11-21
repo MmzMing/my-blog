@@ -1,12 +1,22 @@
 ---
 import Icon from "@components/common/Icon.astro";
 import ProfileCardSiteAvatar from "@components/layout/ProfileCardSiteAvatar.astro";
-import { announcementConfig, footerConfig, homeConfig, navBarConfig, siteConfig } from "@/config";
+import {
+	announcementConfig,
+	footerConfig,
+	homeConfig,
+	navBarConfig,
+	siteConfig,
+} from "@/config";
 import { LinkPresets } from "@/constants/link-presets";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import type { NavBarLink } from "@/types/config";
-import { getSortedPosts, getTagList, getCategoryList } from "@/utils/content-utils";
+import {
+	getCategoryList,
+	getSortedPosts,
+	getTagList,
+} from "@/utils/content-utils";
 import { buildCoverImage, COVER_IMAGE_WIDTH } from "@/utils/cover-image";
 import { processCoverImageSync } from "@/utils/image-utils";
 import { getFileDirFromPath, url } from "@/utils/url-utils";
@@ -73,20 +83,38 @@ for (const item of navBarConfig.links) {
 const navLinks: IslandLink[] = navGroups.flatMap((group) => group.items);
 
 const tabs = [
-	{ key: "home", label: i18n(I18nKey.islandProfile), icon: "material-symbols:person" },
-	{ key: "posts", label: i18n(I18nKey.navPosts), icon: "material-symbols:article" },
-	{ key: "settings", label: i18n(I18nKey.islandSettings), icon: "material-symbols:tune-rounded" },
+	{
+		key: "home",
+		label: i18n(I18nKey.islandProfile),
+		icon: "material-symbols:person",
+	},
+	{
+		key: "posts",
+		label: i18n(I18nKey.navPosts),
+		icon: "material-symbols:article",
+	},
+	{
+		key: "settings",
+		label: i18n(I18nKey.islandSettings),
+		icon: "material-symbols:tune-rounded",
+	},
 ];
 
 const locale = siteConfig.lang.replace("_", "-");
 const monthFormatter = new Intl.DateTimeFormat(locale, { month: "short" });
-const monthNames = Array.from({ length: 12 }, (_, month) => monthFormatter.format(new Date(2000, month, 1)));
+const monthNames = Array.from({ length: 12 }, (_, month) =>
+	monthFormatter.format(new Date(2000, month, 1)),
+);
 
 const displayName = homeConfig.displayName || homeConfig.name;
 const avatar = siteConfig.avatar.owner ? url(siteConfig.avatar.owner) : "";
 // 个人名片横幅：public 绝对路径 / 远程 URL 直接用；留空则回退为头像做背景
 const bannerRaw = homeConfig.avatarBanner || "";
-const banner = bannerRaw.startsWith("http") ? bannerRaw : bannerRaw ? url(bannerRaw) : "";
+const banner = bannerRaw.startsWith("http")
+	? bannerRaw
+	: bannerRaw
+		? url(bannerRaw)
+		: "";
 const aboutUrl = url("/about/");
 const socials = footerConfig.socialLinks;
 const sites = navBarConfig.personalSites;
@@ -111,15 +139,37 @@ const pinnedCards = await Promise.all(
 );
 
 // 收起态要显示「当前页面 → 眼睛 → 时间」，页面名与图标直接取自导航配置
-const pages = navLinks.map((link) => ({ path: link.href, name: link.name, icon: link.icon }));
+const pages = navLinks.map((link) => ({
+	path: link.href,
+	name: link.name,
+	icon: link.icon,
+}));
 
 // 活动圆环：文章 / 分类 / 标签三个指标嵌成 Apple 表环样式（外→内），数值刻度给进度感
 const ringGoal = Math.max(1, siteConfig.archiveStats?.annualPostGoal || 60);
 const activityMetrics = [
-	{ key: "posts", label: i18n(I18nKey.siteStatsPostCount), value: posts.length, ratio: Math.min(1, posts.length / ringGoal) },
-	{ key: "categories", label: i18n(I18nKey.siteStatsCategoryCount), value: categories.length, ratio: Math.min(1, categories.length / 12) },
-	{ key: "tags", label: i18n(I18nKey.siteStatsTagCount), value: tags.length, ratio: Math.min(1, tags.length / 60) },
-].map((metric) => ({ ...metric, dash: `${(metric.ratio * 100).toFixed(1)} 100` }));
+	{
+		key: "posts",
+		label: i18n(I18nKey.siteStatsPostCount),
+		value: posts.length,
+		ratio: Math.min(1, posts.length / ringGoal),
+	},
+	{
+		key: "categories",
+		label: i18n(I18nKey.siteStatsCategoryCount),
+		value: categories.length,
+		ratio: Math.min(1, categories.length / 12),
+	},
+	{
+		key: "tags",
+		label: i18n(I18nKey.siteStatsTagCount),
+		value: tags.length,
+		ratio: Math.min(1, tags.length / 60),
+	},
+].map((metric) => ({
+	...metric,
+	dash: `${(metric.ratio * 100).toFixed(1)} 100`,
+}));
 
 // 展开默认停在铭牌页（导航面板已移除，站点导航在目录模式下悬停展开）
 const initialTab = "home";
@@ -159,7 +209,10 @@ const configJson = JSON.stringify({
 	tabs,
 	pages,
 	initialTab,
-	navGroups: navGroups.map((group) => ({ name: group.name, items: group.items })),
+	navGroups: navGroups.map((group) => ({
+		name: group.name,
+		items: group.items,
+	})),
 	navMenu,
 	edge: "top",
 	pos: 0.5,
@@ -185,8 +238,16 @@ const formatWeekLabel = (month: number, week: number): string =>
 		.replace("{week}", String(week + 1));
 
 const themeOptions = [
-	{ value: "light", label: i18n(I18nKey.themeLight), icon: "material-symbols:wb-sunny-outline-rounded" },
-	{ value: "dark", label: i18n(I18nKey.themeDark), icon: "material-symbols:dark-mode-outline-rounded" },
+	{
+		value: "light",
+		label: i18n(I18nKey.themeLight),
+		icon: "material-symbols:wb-sunny-outline-rounded",
+	},
+	{
+		value: "dark",
+		label: i18n(I18nKey.themeDark),
+		icon: "material-symbols:dark-mode-outline-rounded",
+	},
 	{ value: "system", label: i18n(I18nKey.themeSystem), icon: "mdi:monitor" },
 ];
 

@@ -92,7 +92,10 @@ export class Spring {
 	}
 
 	get rest(): boolean {
-		return Math.abs(this.x - this.target) < this.eps && Math.abs(this.v) < this.eps * 8;
+		return (
+			Math.abs(this.x - this.target) < this.eps &&
+			Math.abs(this.v) < this.eps * 8
+		);
 	}
 }
 
@@ -111,7 +114,10 @@ export interface Point {
 export type Radii = [number, number, number, number]; // tl, tr, br, bl
 
 /** (u, v) -> 屏幕坐标；line 是吸附边所在的屏幕线。 */
-export function edgeMap(edge: Edge, line: number): (u: number, v: number) => Point {
+export function edgeMap(
+	edge: Edge,
+	line: number,
+): (u: number, v: number) => Point {
 	switch (edge) {
 		case "top":
 			return (u, v) => ({ x: u, y: line + v });
@@ -125,7 +131,9 @@ export function edgeMap(edge: Edge, line: number): (u: number, v: number) => Poi
 }
 
 /** 哪些角贴着吸附边：(tl, tr, br, bl)。 */
-export function edgeCorners(edge: Edge | null): [boolean, boolean, boolean, boolean] {
+export function edgeCorners(
+	edge: Edge | null,
+): [boolean, boolean, boolean, boolean] {
 	switch (edge) {
 		case "top":
 			return [true, true, false, false];
@@ -152,13 +160,25 @@ export function bodyPathD(r: Rect, radii: Radii): string {
 	const out: string[] = [];
 	out.push(`M ${x + tl} ${y}`);
 	out.push(`L ${x + w - tr} ${y}`);
-	if (tr) out.push(`C ${x + w - tr + tr * K} ${y} ${x + w} ${y + tr - tr * K} ${x + w} ${y + tr}`);
+	if (tr)
+		out.push(
+			`C ${x + w - tr + tr * K} ${y} ${x + w} ${y + tr - tr * K} ${x + w} ${y + tr}`,
+		);
 	out.push(`L ${x + w} ${y + h - br}`);
-	if (br) out.push(`C ${x + w} ${y + h - br + br * K} ${x + w - br + br * K} ${y + h} ${x + w - br} ${y + h}`);
+	if (br)
+		out.push(
+			`C ${x + w} ${y + h - br + br * K} ${x + w - br + br * K} ${y + h} ${x + w - br} ${y + h}`,
+		);
 	out.push(`L ${x + bl} ${y + h}`);
-	if (bl) out.push(`C ${x + bl - bl * K} ${y + h} ${x} ${y + h - bl + bl * K} ${x} ${y + h - bl}`);
+	if (bl)
+		out.push(
+			`C ${x + bl - bl * K} ${y + h} ${x} ${y + h - bl + bl * K} ${x} ${y + h - bl}`,
+		);
 	out.push(`L ${x} ${y + tl}`);
-	if (tl) out.push(`C ${x} ${y + tl - tl * K} ${x + tl - tl * K} ${y} ${x + tl} ${y}`);
+	if (tl)
+		out.push(
+			`C ${x} ${y + tl - tl * K} ${x + tl - tl * K} ${y} ${x + tl} ${y}`,
+		);
 	out.push("Z");
 	return out.join(" ");
 }
@@ -282,116 +302,160 @@ export function polyPathD(pts: Point[]): string {
  * → 底边 → 左下圆角 → 左边 → 左上圆角 → 本体顶边左段 → 左内凹 → 回液桥顶边左。
  */
 export function unitedNeckPoints(
-  edge: Edge,
-  line: number,
-  body: Rect,
-  baseRadius: number,
-  fillet: number,
-  corner: number,
-  gap: number,
-  t: number,
-  strength: number,
-  step = 4,
+	edge: Edge,
+	line: number,
+	body: Rect,
+	baseRadius: number,
+	fillet: number,
+	corner: number,
+	gap: number,
+	t: number,
+	strength: number,
+	step = 4,
 ): Point[] {
-  const m = edgeMap(edge, line);
-  const horiz = isHorizontal(edge);
-  const L = horiz ? body.w : body.h;
-  const D = horiz ? body.h : body.w;
-  const u0 = horiz ? body.x : body.y;
-  const u1 = u0 + L;
-  const c = u0 + L / 2;
-  const half = L / 2;
-  const tc = clamp(t, 0, 1);
-  // tc 已经扣掉贴边阈值；前 35% 再加一道 smooth 门控：sqrt 在 0 附近斜率无穷大，
-  // 收腰会跟着亚像素级的 gap 抖动，贴边瞬间两侧内凹圆角就会"两边往中间闪"。
-  const ts = Math.sqrt(tc) * smooth(tc / 0.35);
-  let wz = lerp(half, Math.max(2.5, Math.min(7, L * 0.035)), ts);
-  wz = lerp(1, wz, strength);
-  const fe = lerp(fillet, fillet * 0.75, tc) * strength;
-  const fb = fillet * smooth(tc * 3) * strength;
-  const e = wz + fe;
-  const b = Math.min(wz + fb, Math.max(wz, half - corner * 0.5));
-  const rNear = corner;             // 贴边侧两角半径
-  const rFar = Math.min(baseRadius, D / 2); // 远离侧两角半径
-  // 收腰深度不能越过远离侧圆角的起点：越过之后本体侧边会反向折回，又是一条竖直假边
-  const ym = Math.min(Math.max(gap * 0.5, fe), gap + D - rFar);
-  const yb = gap + 0.5;
-  const pts: Point[] = [];
+	const m = edgeMap(edge, line);
+	const horiz = isHorizontal(edge);
+	const L = horiz ? body.w : body.h;
+	const D = horiz ? body.h : body.w;
+	const u0 = horiz ? body.x : body.y;
+	const u1 = u0 + L;
+	const c = u0 + L / 2;
+	const half = L / 2;
+	const tc = clamp(t, 0, 1);
+	// tc 已经扣掉贴边阈值；前 35% 再加一道 smooth 门控：sqrt 在 0 附近斜率无穷大，
+	// 收腰会跟着亚像素级的 gap 抖动，贴边瞬间两侧内凹圆角就会"两边往中间闪"。
+	const ts = Math.sqrt(tc) * smooth(tc / 0.35);
+	let wz = lerp(half, Math.max(2.5, Math.min(7, L * 0.035)), ts);
+	wz = lerp(1, wz, strength);
+	const fe = lerp(fillet, fillet * 0.75, tc) * strength;
+	const fb = fillet * smooth(tc * 3) * strength;
+	const e = wz + fe;
+	const b = Math.min(wz + fb, Math.max(wz, half - corner * 0.5));
+	const rNear = corner; // 贴边侧两角半径
+	const rFar = Math.min(baseRadius, D / 2); // 远离侧两角半径
+	// 收腰深度不能越过远离侧圆角的起点：越过之后本体侧边会反向折回，又是一条竖直假边
+	const ym = Math.min(Math.max(gap * 0.5, fe), gap + D - rFar);
+	const yb = gap + 0.5;
+	const pts: Point[] = [];
 
-  const seg = (a: number, b_: number, cc: number, d: number): void => {
-    const n = Math.max(1, Math.ceil(Math.hypot(cc - a, d - b_) / step));
-    for (let i = 0; i < n; i++) {
-      const q = i / n;
-      pts.push(m(a + (cc - a) * q, b_ + (d - b_) * q));
-    }
-  };
-  const cubic = (p0: [number, number], p1: [number, number], p2: [number, number], p3: [number, number]): void => {
-    const n = Math.max(3, Math.ceil((Math.abs(p3[0] - p0[0]) + Math.abs(p3[1] - p0[1])) / step));
-    for (let i = 0; i < n; i++) {
-      const q = i / n;
-      const it = 1 - q;
-      pts.push(m(
-        it ** 3 * p0[0] + 3 * it ** 2 * q * p1[0] + 3 * it * q ** 2 * p2[0] + q ** 3 * p3[0],
-        it ** 3 * p0[1] + 3 * it ** 2 * q * p1[1] + 3 * it * q ** 2 * p2[1] + q ** 3 * p3[1],
-      ));
-    }
-  };
-  const arc = (cu: number, cv: number, radius: number, a0: number): void => {
-    if (radius <= 0.01) { pts.push(m(cu, cv)); return; }
-    const n = Math.max(2, Math.ceil((radius * Math.PI) / 2 / step));
-    for (let i = 0; i < n; i++) {
-      const a = a0 + ((Math.PI / 2) * i) / n;
-      pts.push(m(cu + radius * Math.cos(a), cv + radius * Math.sin(a)));
-    }
-  };
+	const seg = (a: number, b_: number, cc: number, d: number): void => {
+		const n = Math.max(1, Math.ceil(Math.hypot(cc - a, d - b_) / step));
+		for (let i = 0; i < n; i++) {
+			const q = i / n;
+			pts.push(m(a + (cc - a) * q, b_ + (d - b_) * q));
+		}
+	};
+	const cubic = (
+		p0: [number, number],
+		p1: [number, number],
+		p2: [number, number],
+		p3: [number, number],
+	): void => {
+		const n = Math.max(
+			3,
+			Math.ceil((Math.abs(p3[0] - p0[0]) + Math.abs(p3[1] - p0[1])) / step),
+		);
+		for (let i = 0; i < n; i++) {
+			const q = i / n;
+			const it = 1 - q;
+			pts.push(
+				m(
+					it ** 3 * p0[0] +
+						3 * it ** 2 * q * p1[0] +
+						3 * it * q ** 2 * p2[0] +
+						q ** 3 * p3[0],
+					it ** 3 * p0[1] +
+						3 * it ** 2 * q * p1[1] +
+						3 * it * q ** 2 * p2[1] +
+						q ** 3 * p3[1],
+				),
+			);
+		}
+	};
+	const arc = (cu: number, cv: number, radius: number, a0: number): void => {
+		if (radius <= 0.01) {
+			pts.push(m(cu, cv));
+			return;
+		}
+		const n = Math.max(2, Math.ceil((radius * Math.PI) / 2 / step));
+		for (let i = 0; i < n; i++) {
+			const a = a0 + ((Math.PI / 2) * i) / n;
+			pts.push(m(cu + radius * Math.cos(a), cv + radius * Math.sin(a)));
+		}
+	};
 
-  // 液桥顶边（贴屏幕边缘，v=-1.5 微出屏盖住接缝）
-  seg(c - e, -1.5, c + e, -1.5);
-  seg(c + e, -1.5, c + e, 0);
-  // 右内凹曲线：宽口 -> 收腰 -> 本体侧；终点即与本体顶边的衔接点（无底边横线）
-  cubic([c + e, 0], [c + wz + (e - wz) * (1 - K), 0], [c + wz, ym * (1 - K)], [c + wz, ym]);
-  let rightU = c + wz;
-  let rightV = ym;
-  if (yb > ym + 0.5) {
-    cubic([c + wz, ym], [c + wz, ym + (yb - ym) * K], [c + b - (b - wz) * K, yb], [c + b, yb]);
-    rightU = c + b;
-    rightV = yb;
-  }
-  // 本体轮廓：顶边右段 -> 右上圆角 -> 右 -> 右下 -> 底 -> 左下 -> 左 -> 左上 -> 顶边左段
-  // 收腰点已经落到本体顶边以下（gap 只剩零点几像素）时，再折回顶边会沿本体右侧
-  // 原路折返：这段折返没有面积、填充看不出来，描边却是实打实一根竖直亮线。
-  // 这种情况直接接到本体侧边，与贴合（gap→0）时的轮廓同形。
-  const docked = rightV > gap + 0.5;
-  const leftU = 2 * c - rightU;
-  if (docked) {
-    if (Math.abs(u1 - rightU) > 0.05) seg(rightU, rightV, u1, rightV);
-  } else {
-    seg(rightU, rightV, u1 - rNear, gap);
-    arc(u1 - rNear, gap + rNear, rNear, -Math.PI / 2);
-  }
-  seg(u1, docked ? rightV : gap + rNear, u1, gap + D - rFar);
-  arc(u1 - rFar, gap + D - rFar, rFar, 0);
-  seg(u1 - rFar, gap + D, u0 + rFar, gap + D);
-  arc(u0 + rFar, gap + D - rFar, rFar, Math.PI / 2);
-  if (docked) {
-    seg(u0, gap + D - rFar, u0, rightV);
-    seg(u0, rightV, leftU, rightV);
-  } else {
-    seg(u0, gap + D - rFar, u0, gap + rNear);
-    arc(u0 + rNear, gap + rNear, rNear, Math.PI);
-    seg(u0 + rNear, gap, leftU, rightV);
-  }
-  // 左内凹曲线：镜像返回液桥顶边左
-  if (yb > ym + 0.5) {
-    cubic([leftU, rightV], [c - (b - (b - wz) * K), yb], [c - wz, ym + (yb - ym) * K], [c - wz, ym]);
-  }
-  cubic([c - wz, ym], [c - wz, ym * (1 - K)], [c - (wz + (e - wz) * (1 - K)), 0], [c - e, 0]);
-  seg(c - e, 0, c - e, -1.5);
-  return pts;
+	// 液桥顶边（贴屏幕边缘，v=-1.5 微出屏盖住接缝）
+	seg(c - e, -1.5, c + e, -1.5);
+	seg(c + e, -1.5, c + e, 0);
+	// 右内凹曲线：宽口 -> 收腰 -> 本体侧；终点即与本体顶边的衔接点（无底边横线）
+	cubic(
+		[c + e, 0],
+		[c + wz + (e - wz) * (1 - K), 0],
+		[c + wz, ym * (1 - K)],
+		[c + wz, ym],
+	);
+	let rightU = c + wz;
+	let rightV = ym;
+	if (yb > ym + 0.5) {
+		cubic(
+			[c + wz, ym],
+			[c + wz, ym + (yb - ym) * K],
+			[c + b - (b - wz) * K, yb],
+			[c + b, yb],
+		);
+		rightU = c + b;
+		rightV = yb;
+	}
+	// 本体轮廓：顶边右段 -> 右上圆角 -> 右 -> 右下 -> 底 -> 左下 -> 左 -> 左上 -> 顶边左段
+	// 收腰点已经落到本体顶边以下（gap 只剩零点几像素）时，再折回顶边会沿本体右侧
+	// 原路折返：这段折返没有面积、填充看不出来，描边却是实打实一根竖直亮线。
+	// 这种情况直接接到本体侧边，与贴合（gap→0）时的轮廓同形。
+	const docked = rightV > gap + 0.5;
+	const leftU = 2 * c - rightU;
+	if (docked) {
+		if (Math.abs(u1 - rightU) > 0.05) seg(rightU, rightV, u1, rightV);
+	} else {
+		seg(rightU, rightV, u1 - rNear, gap);
+		arc(u1 - rNear, gap + rNear, rNear, -Math.PI / 2);
+	}
+	seg(u1, docked ? rightV : gap + rNear, u1, gap + D - rFar);
+	arc(u1 - rFar, gap + D - rFar, rFar, 0);
+	seg(u1 - rFar, gap + D, u0 + rFar, gap + D);
+	arc(u0 + rFar, gap + D - rFar, rFar, Math.PI / 2);
+	if (docked) {
+		seg(u0, gap + D - rFar, u0, rightV);
+		seg(u0, rightV, leftU, rightV);
+	} else {
+		seg(u0, gap + D - rFar, u0, gap + rNear);
+		arc(u0 + rNear, gap + rNear, rNear, Math.PI);
+		seg(u0 + rNear, gap, leftU, rightV);
+	}
+	// 左内凹曲线：镜像返回液桥顶边左
+	if (yb > ym + 0.5) {
+		cubic(
+			[leftU, rightV],
+			[c - (b - (b - wz) * K), yb],
+			[c - wz, ym + (yb - ym) * K],
+			[c - wz, ym],
+		);
+	}
+	cubic(
+		[c - wz, ym],
+		[c - wz, ym * (1 - K)],
+		[c - (wz + (e - wz) * (1 - K)), 0],
+		[c - e, 0],
+	);
+	seg(c - e, 0, c - e, -1.5);
+	return pts;
 }
 
 /** 液桥断开后残留在边缘、正在缩回的半个小水滴。 */
-export function dripPathD(edge: Edge, line: number, c: number, r: number): string {
+export function dripPathD(
+	edge: Edge,
+	line: number,
+	c: number,
+	r: number,
+): string {
 	if (r <= 0.4) return "";
 	const m = edgeMap(edge, line);
 	const f = r * 0.8;
@@ -450,17 +514,30 @@ export function attachedOutlinePoints(
 		}
 	};
 	const cubic = (
-		p0: [number, number], p1: [number, number],
-		p2: [number, number], p3: [number, number],
+		p0: [number, number],
+		p1: [number, number],
+		p2: [number, number],
+		p3: [number, number],
 	): void => {
-		const n = Math.max(3, Math.ceil((Math.abs(p3[0] - p0[0]) + Math.abs(p3[1] - p0[1])) / step));
+		const n = Math.max(
+			3,
+			Math.ceil((Math.abs(p3[0] - p0[0]) + Math.abs(p3[1] - p0[1])) / step),
+		);
 		for (let i = 0; i < n; i++) {
 			const t = i / n;
 			const it = 1 - t;
-			pts.push(m(
-				it ** 3 * p0[0] + 3 * it ** 2 * t * p1[0] + 3 * it * t ** 2 * p2[0] + t ** 3 * p3[0],
-				it ** 3 * p0[1] + 3 * it ** 2 * t * p1[1] + 3 * it * t ** 2 * p2[1] + t ** 3 * p3[1],
-			));
+			pts.push(
+				m(
+					it ** 3 * p0[0] +
+						3 * it ** 2 * t * p1[0] +
+						3 * it * t ** 2 * p2[0] +
+						t ** 3 * p3[0],
+					it ** 3 * p0[1] +
+						3 * it ** 2 * t * p1[1] +
+						3 * it * t ** 2 * p2[1] +
+						t ** 3 * p3[1],
+				),
+			);
 		}
 	};
 	const arc = (cu: number, cv: number, radius: number, a0: number): void => {
@@ -538,7 +615,7 @@ export function attachedOutlineD(
 	// 右侧内凹圆角：边缘宽口 -> 收窄到本体右上角
 	out.push(
 		`C ${fmt(m(c + L / 2 + (e - L / 2) * (1 - K), 0))} ` +
-		`${fmt(m(c + L / 2, ym * (1 - K)))} ${fmt(m(u1, ym))}`,
+			`${fmt(m(c + L / 2, ym * (1 - K)))} ${fmt(m(u1, ym))}`,
 	);
 
 	// 本体右侧 -> 右下圆角 -> 底边 -> 左下圆角 -> 左侧
@@ -559,7 +636,7 @@ export function attachedOutlineD(
 	// 左侧内凹圆角：本体左上角 -> 张宽到边缘
 	out.push(
 		`C ${fmt(m(u0, ym * (1 - K)))} ` +
-		`${fmt(m(c - L / 2 - (e - L / 2) * (1 - K), 0))} ${fmt(m(c - e, 0))}`,
+			`${fmt(m(c - L / 2 - (e - L / 2) * (1 - K), 0))} ${fmt(m(c - e, 0))}`,
 	);
 	out.push(`L ${fmt(m(c - e, -1.5))}`);
 	out.push("Z");
