@@ -33,6 +33,7 @@ import {
 	smooth,
 	unitedNeckPoints,
 } from "@/utils/island-physics";
+import { requestSearchModalToggle } from "@/utils/search-modal-controller";
 import { getStoredTheme, setTheme } from "@/utils/setting-utils";
 import { onNavigation } from "@/utils/swup-lifecycle";
 
@@ -1079,7 +1080,9 @@ export class DynamicIsland {
 			case "search":
 				// 搜索弹窗虽在最上层，但岛保持展开会挡住下方内容：先收起再唤起搜索
 				this.collapse();
-				window.dispatchEvent(new CustomEvent("firefly:search-modal-toggle"));
+				// 必须走统一入口：首次点击时 SearchModal 尚未挂载，
+				// 直接派发事件会丢失打开意图，导致需要点第二次
+				requestSearchModalToggle();
 				break;
 			case "music-toggle":
 				musicApi()?.togglePlay?.();

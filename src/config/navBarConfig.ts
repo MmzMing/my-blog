@@ -13,12 +13,12 @@ import { siteConfig } from "./siteConfig";
 // icon 取各站自己的 favicon 路径，图标加载失败会回落到 name 的首字符
 const personalSites: PersonalSite[] = [
 	{
-		name: "个人主站",
-		url: "https://www.mmzhiku.xyz/",
-		icon: "https://www.mmzhiku.xyz/favicon.svg",
+		name: "工具包",
+		url: "https://tool.mmzhiku.xyz/",
+		icon: "https://tool.mmzhiku.xyz/images/favicon/favicon-48x48.png",
 	},
 	{
-		name: "memos记事本",
+		name: "memos",
 		url: "https://memos.mmzhiku.xyz/",
 		icon: "https://memos.mmzhiku.xyz/logo.webp",
 	},
@@ -26,11 +26,6 @@ const personalSites: PersonalSite[] = [
 		name: "站点统计",
 		url: "https://stats.mmzhiku.xyz/share/HZrqqAfVdx1UEVNm",
 		icon: "https://stats.mmzhiku.xyz/favicon-32x32.png",
-	},
-	{
-		name: "工具盒子",
-		url: "https://tool.mmzhiku.xyz/",
-		icon: "https://tool.mmzhiku.xyz/images/favicon/favicon-48x48.png",
 	},
 ];
 
