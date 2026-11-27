@@ -10,6 +10,10 @@ import { createHeroPuzzleLayout } from "@/utils/home-hero-motion";
 const { hero } = homeConfig;
 const title = homeConfig.displayName || homeConfig.name;
 const occupation = homeConfig.occupation;
+// 卡面副标题用一句 bio（与移动端、页脚同源），没配 bio 时退回职业标签
+const bio = Array.isArray(homeConfig.bio)
+	? homeConfig.bio[0] || ""
+	: homeConfig.bio || "";
 const puzzle = createHeroPuzzleLayout();
 const { rows, columns, seed, ...mosaicMotion } = hero.mosaic;
 const runtimeConfig = {
@@ -73,14 +77,15 @@ const introCards = intro
 		overlay={hero.photo.overlay}
 	/>
 
-	<!-- 卡面把同一组文字印在各张卡上，读屏只读这里的标题和职业。 -->
+	<!-- 卡面把同一组文字印在各张卡上，读屏只读这里的标题和职业 -->
 	<header class="sr-only">
 		<h1>{title}{i18n(I18nKey.techBlogSuffix)}</h1>
 		{occupation && <p>{occupation}</p>}
+		{bio && <p>{bio}</p>}
 	</header>
 
 	<!-- 封面卡面压在拼图散片之上，滑动翻面后让位给拼合阶段 -->
-	<HeroCover title={title} note={occupation} puzzleViewBox={puzzle.viewBox} />
+	<HeroCover title={title} note={bio || occupation} puzzleViewBox={puzzle.viewBox} />
 
 	{
 		introCards.length > 0 && (

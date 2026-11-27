@@ -361,6 +361,17 @@ html:has(.home-hero) #top-row {
 	text-wrap: pretty;
 }
 
+/* 封面副标题的手写体：鸿雷拙书简体（免费商用，来源与说明见 /fonts/SOURCE-hong-lei-zhuo-shu.txt）。
+   比行楷更随意，字形自带大小错落；子集只保留当前文案与常见中文、ASCII 字形，
+   缺字自动回退到下面的楷体。 */
+@font-face {
+	font-family: "HongLei ZhuoShu";
+	src: url("/fonts/hong-lei-zhuo-shu-cover-note.woff2") format("woff2");
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+}
+
 .home-hero__cover {
 	--cover-card: #e9e9e9;
 	--cover-ink: oklch(0.2 0 0);
@@ -448,11 +459,14 @@ html:has(.home-hero) #top-row {
 
 .home-hero__cover-note {
 	color: color-mix(in oklch, var(--cover-ink) 68%, transparent);
-	font-family: "KaiTi", "STKaiti", "Kaiti SC", "Songti SC", "SimSun", serif;
-	font-size: min(4.5cqh, 2.5cqi);
+	font-family:
+		"HongLei ZhuoShu", "KaiTi", "STKaiti", "Kaiti SC", "Songti SC", "SimSun",
+		serif;
+	font-size: min(5.2cqh, 2.9cqi);
 	font-weight: 400;
 	letter-spacing: 0;
-	transform: rotate(-1.4deg);
+	/* 左高右低：标题末尾的 g 有下伸，副标题右端跟着往下走才不顶到它 */
+	transform: rotate(1.4deg);
 	white-space: nowrap;
 }
 

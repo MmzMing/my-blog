@@ -12,9 +12,17 @@ import { requestScrollTriggerRefresh } from "@/utils/scroll-trigger-refresh";
 gsap.registerPlugin(ScrollTrigger);
 
 const RAIN_ACTIVATE_TIME = 1.14;
-const COVER_FLIP_DURATION = 1.3;
+/**
+ * elastic.out(0.8, 0.4) 走到 62% 时卡牌已经贴在背面（差值 0.15°），之后只剩 ±1° 的微弹，
+ * 肉眼几乎看不出。只取到落点这一段：缓动取前 62%，时长同比从 1.3s 缩到 0.81s，
+ * 翻面的速度与弧度与原来逐帧一致，但卡牌落平即交接，不再空等尾巴。
+ */
+const COVER_FLIP_LAND_RATIO = 0.62;
+const COVER_FLIP_ELASTIC = gsap.parseEase("elastic.out(0.8, 0.4)");
+const COVER_FLIP_DURATION = 1.3 * COVER_FLIP_LAND_RATIO;
 const COVER_FLIP_STAGGER = 0.006;
-const COVER_FLIP_EASE = "elastic.out(0.8, 0.4)";
+const COVER_FLIP_EASE = (progress: number): number =>
+	COVER_FLIP_ELASTIC(progress * COVER_FLIP_LAND_RATIO);
 const COVER_CLOSE_TIME = 0.4;
 const COVER_CLOSE_DURATION = 0.2;
 const COVER_CORNER_DURATION = 0.1;

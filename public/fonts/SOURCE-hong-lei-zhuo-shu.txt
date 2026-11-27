@@ -1,0 +1,9 @@
+鸿雷拙书简体 / HongLei ZhuoShu
+Author: 鸿雷 (HongLei)
+Source package: https://www.npmjs.com/package/@fontpkg/hong-lei-zhuo-shu
+
+用于首页封面第一形态的副标题（occupation 文案）。文件为按文案裁剪的子集
+（保留当前文案、常见职业相关汉字、ASCII 与常用标点），仅包含 400 字重。
+
+许可：作者公开声明该字体可免费商用（含个人博客等非商业站点），但字体文件内未附
+正式许可文本。如需二次分发或商业使用，请自行向作者核实授权条款。

@@ -55,8 +55,8 @@ export const homeConfig: HomeConfig = {
 			},
 			intro: {
 				direction: "站点专研方向Java后端、前端、Agent和Python",
-				hobby: "热衷于制作一些没人用的小组件和收集好看的AI绘画",
-				bio: "且视他人之疑目如盏盏鬼火，大胆地去走你的夜路",
+				hobby: "热衷于制作没人用的小组件和收集的AI绘画画师串",
+				bio: "白天处理业务代码，空下来折腾AI和博客",
 			},
 		},
 		// 左下角角色的想法气泡：首次出现自动冒第一句，之后点击角色逐句弹出，末句后从头循环

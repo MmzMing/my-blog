@@ -7,6 +7,7 @@ import HomeMobile from "@components/layout/HomeMobile.astro";
 import SiteStructuredData from "@/components/seo/SiteStructuredData.astro";
 import { siteConfig } from "@/config";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { url } from "@/utils/url-utils";
 import "@/styles/components/home-data-layer.css";
 import "@/styles/components/home-hero-dialogue.css";
 import "@/styles/components/home-hero.css";
@@ -20,6 +21,15 @@ import "@/styles/components/home-blinds.css";---
 	hasOwnH1={true}
 >
 	<SiteStructuredData slot="head" />
+	<!-- 封面副标题的手写字体只在首页用到，提前拉取避免首屏出现楷体回退再换字 -->
+	<link
+		slot="head"
+		rel="preload"
+		href={url("/fonts/hong-lei-zhuo-shu-cover-note.woff2")}
+		as="font"
+		type="font/woff2"
+		crossorigin
+	/>
 	<div class="home-page">
 		<HomeHero />
 		<HomeDataLayer />
