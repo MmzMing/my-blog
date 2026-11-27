@@ -8,9 +8,12 @@ import { i18n } from "@/i18n/translation";
 import { createHeroPuzzleLayout } from "@/utils/home-hero-motion";
 
 const { hero } = homeConfig;
+const title = homeConfig.displayName || homeConfig.name;
+const occupation = homeConfig.occupation;
 const puzzle = createHeroPuzzleLayout();
+const { rows, columns, seed, ...mosaicMotion } = hero.mosaic;
 const runtimeConfig = {
-	mosaic: hero.mosaic,
+	mosaic: mosaicMotion,
 	rain: {
 		enabled: hero.rain?.enabled ?? true,
 		intensity: hero.rain?.intensity ?? 0.6,
@@ -64,54 +67,24 @@ const introCards = intro
 	<HomeGuideFrame />
 
 	<HeroMosaic
-		desktopImage={hero.photo.main.image}
-		mobileImage={hero.photo.main.image}
-		config={hero.mosaic}
+		image={hero.photo.main.image}
+		config={{ rows, columns, seed }}
 		mainAuthor={hero.photo.main.author ?? ""}
 		overlay={hero.photo.overlay}
 	/>
 
-	<!-- 封面把字标印在卡面上，这棵语义树只留给读屏与滚动时间线，不参与视觉 -->
-	<header class="home-hero__identity home-hero__identity--sr" data-hero-title>
-		<svg class="home-hero__filter" aria-hidden="true" focusable="false">
-			<defs>
-				<filter
-					id="home-hero-gooey"
-					x="-20%"
-					y="-30%"
-					width="140%"
-					height="160%"
-					color-interpolation-filters="sRGB"
-				>
-					<feMorphology operator="dilate" radius="0.8" in="SourceGraphic" result="dilate" />
-					<feGaussianBlur in="dilate" stdDeviation="2.2" result="blur" />
-					<feColorMatrix
-						in="blur"
-						type="matrix"
-						values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
-						result="goo"
-					/>
-					<feComposite in="SourceGraphic" in2="goo" operator="atop" />
-				</filter>
-			</defs>
-		</svg>
-		<h1 class="home-hero__title">
-			<span class="home-hero__wordmark">
-				<span class="home-hero__wordmark-text">{homeConfig.displayName || homeConfig.name}</span>
-			</span>
-			<span class="sr-only">{i18n(I18nKey.techBlogSuffix)}</span>
-		</h1>
-		{homeConfig.occupation && (
-			<p class="home-hero__occupation">{homeConfig.occupation}</p>
-		)}
+	<!-- 卡面把同一组文字印在各张卡上，读屏只读这里的标题和职业。 -->
+	<header class="sr-only">
+		<h1>{title}{i18n(I18nKey.techBlogSuffix)}</h1>
+		{occupation && <p>{occupation}</p>}
 	</header>
 
 	<!-- 封面卡面压在拼图散片之上，滑动翻面后让位给拼合阶段 -->
-	<HeroCover />
+	<HeroCover title={title} note={occupation} puzzleViewBox={puzzle.viewBox} />
 
 	{
 		introCards.length > 0 && (
-			<div class="home-hero__intro" data-hero-intro>
+			<div class="home-hero__intro">
 				<!-- 序号大字的裁切形状：内框纸面路径按 640×112 归一化，三张票签共用 -->
 				<svg class="home-hero__intro-defs" aria-hidden="true" focusable="false">
 					<defs>
@@ -151,12 +124,9 @@ const introCards = intro
 
 	let cleanupHomeHero: (() => void) | null = null;
 
-	// 挂载时机与去重全部交给 bindHomeLayer：顶层自启和 astro:page-load 谁先谁后都只挂一次，
-	// 否则第二次挂载会把第一次那条 document.fonts.ready 回调放进来，contact 被拆成两套字符节点
 	bindHomeLayer("hero", {
 		media: "(min-width: 769px)",
 		boot: () => {
-			cleanupHomeHero?.();
 			cleanupHomeHero = mountHomeHero();
 		},
 		teardown: () => {

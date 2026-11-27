@@ -22,7 +22,6 @@ type HomeBlindsRuntimeConfig = {
 		};
 	};
 	scenes: {
-		scrollDistance: number;
 		sceneCount: number;
 		bubbleMessages: BubbleMessage[];
 		commentBubble: {
@@ -40,57 +39,38 @@ type SetupContext = {
 	ScrollTrigger: ScrollTriggerPlugin;
 	config: HomeBlindsRuntimeConfig;
 	signal: AbortSignal;
-	/**
-	 * 入场标题的播放状态。setupReveal 比 setupHeadline 先建，但退场 scrub 需要
-	 * 知道「标题是否已入场」才能决定回滚锚定的目标值，故由 initializeHomeBlinds
-	 * 先建好这个共享对象，setupHeadline 在 play() 时置位。
-	 */
-	headlineState: { played: boolean };
 };
-
-/**
- * 固定舞台的可视阶段。
- * reveal = 全屏背景 + 磨砂玻璃；shrink = 全屏背景收缩成首幕图框；
- * scenes = 横向影像层；done = 影像层已滚过，舞台整体隐藏。
- * 视口缩放会触发 ScrollTrigger.refresh()，而 onEnter/onLeave 这类回调在
- * refresh 时不会补发，所以阶段必须能随时从滚动位置反推出来（见 resolvePhase）。
- */
-type StagePhase = "reveal" | "shrink" | "scenes" | "done";
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 769px)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-const REVEAL_ENTER_END = 1 / 3;
-const REVEAL_EXIT_START = 2 / 3;
-/**
- * 背景视差行程中由入场补间承担的比例，余下部分交给揭示层的滚动进度推进，
- * 于是往下滑有跟随感、往回滚也有对应的回退。
- */
-const BACKGROUND_ENTER_SHARE = 2 / 3;
+const BLIND_COUNT = 8;
+const BLIND_STAGGER_SHARE = 0.52;
+const REVEAL_CATCH_UP_DURATION = 1.02;
+const STAGE_MIN_DURATION = 0.14;
+const ENTRY_END = 0.54;
+const HEADLINE_START = 0.2;
+const GLASS_OPEN_START = 0.56;
+const GLASS_OPEN_END = 0.79;
+const SHRINK_START = 0.8;
+const PHOTO_HANDOFF = 0.97;
+const PAPER_START = 0.83;
+const SCENES_INTRO_SHARE = 0.18;
+const SCENES_OUTRO_START = 0.82;
+// 给成形和收场留出独立的播放时间，即使一次滚轮事件跨过整段也能按顺序跟上。
+const GALLERY_START = 1;
+const GALLERY_TRAVEL_START = 1.34;
+const GALLERY_OUTRO_START = 1.88;
+const GALLERY_END = 2.22;
+const GALLERY_SIDE_SCALE = 0.8;
+const GALLERY_OUTRO_SCALE = 0.9;
+const WHEEL_AXIS_IDLE = 150;
+const SWAY_MAX_ANGLE = 6;
+const SWAY_SPRING = 125;
+const SWAY_DAMPING = 11;
+const SWAY_RELEASE_DELAY = 48;
 /** 视差起始缩放：上下各留出 (1.18 - 1) / 2 = 9% 的位移余量，位移期间不露边 */
 const BACKGROUND_ENTER_SCALE = 1.18;
-/** 视差起始纵向位移（占背景盒高度百分比），必须小于起始缩放留出的余量 */
-const BACKGROUND_ENTER_TRAVEL_PERCENT = 7.5;
-/** 视差入场补间时长（秒） */
-const BACKGROUND_ENTER_DURATION = 1.15;
-/**
- * 留言墙入场的「Q弹」：卡面从这么小弹到原位，elastic 的过冲负责那一下回弹。
- * 错峰用随机起点，免得 12 颗气泡齐步走。
- */
-const BUBBLE_POP_FROM_SCALE = 0.24;
-const BUBBLE_POP_DURATION = 0.78;
-const BUBBLE_POP_STAGGER = 0.055;
-const BUBBLE_POP_EASE = "elastic.out(1, 0.42)";
-/**
- * 图框收缩到位后才开始逐层显示文字，居中容差内即视为「这一幕的正片」。
- * 每幕只播一次，播完不再复位，来回滚动也不会重播或隐藏。
- */
-const SCENE_ENTER_DISTANCE = 0.42;
-/**
- * pin 前这么一段滚动量专门播明信片墙的入场（跑马灯描线 + 明信片滑入描边），
- * 走完才开始横向移动；入场与横移都按滚动进度推进，反向滚动原路退回。
- */
-const SCENES_INTRO_SHARE = 0.16;
-
+const BACKGROUND_ENTER_TRAVEL = 0.075;
 let activeRoot: HTMLElement | null = null;
 let activeCleanup: (() => void) | null = null;
 let bootGeneration = 0;
@@ -98,16 +78,9 @@ let bootGeneration = 0;
 /** 一幕之内需要分层显示的所有元素 */
 type SceneRefs = {
 	card: HTMLElement;
-	/** 明信片描边容器：四个边条由 CSS 变量控制画出进度 */
-	cardOutline: HTMLElement;
+	photo: HTMLElement;
 	swing: HTMLElement;
-	bandTitle: HTMLElement;
-	/** 日期可省略，标题与分隔线始终保留 */
-	bandDate: HTMLElement | null;
-	bandDivider: HTMLElement;
-	bandNote: HTMLElement;
-	intro: GsapTimeline | null;
-	active: boolean;
+	isVisible: boolean;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -117,6 +90,31 @@ function clamp(value: number, min: number, max: number) {
 /** 平滑收边：两端缓、中段快，入场行程不直来直去 */
 function smoothstep(value: number) {
 	return value * value * (3 - 2 * value);
+}
+
+function progressBetween(value: number, start: number, end: number): number {
+	return clamp((value - start) / (end - start), 0, 1);
+}
+
+/** 让同一块遮罩在左边缘串起各横条，磨砂只需一个滤镜。 */
+function renderShutter(element: HTMLElement, progress: number): void {
+	element.style.visibility = progress === 1 ? "hidden" : "visible";
+	if (progress === 0 || progress === 1) {
+		element.style.clipPath = "none";
+		return;
+	}
+
+	const points = Array.from({ length: BLIND_COUNT }, (_, index) => {
+		const delay =
+			((BLIND_COUNT - 1 - index) / (BLIND_COUNT - 1)) * BLIND_STAGGER_SHARE;
+		const open = smoothstep(
+			clamp((progress - delay) / (1 - BLIND_STAGGER_SHARE), 0, 1),
+		);
+		const top = (index / BLIND_COUNT) * 100;
+		const bottom = ((index + 1 - open) / BLIND_COUNT) * 100;
+		return `0 ${top}%, 100% ${top}%, 100% ${bottom}%, 0 ${bottom}%`;
+	});
+	element.style.clipPath = `polygon(${points.join(", ")})`;
 }
 
 function selectRequired<T extends Element>(
@@ -147,90 +145,46 @@ function canInitialize(root: HTMLElement) {
 function collectScene(card: HTMLElement): SceneRefs {
 	return {
 		card,
-		cardOutline: selectRequired<HTMLElement>(card, "[data-scene-card-outline]"),
+		photo: selectRequired<HTMLElement>(card, "[data-scene-frame]"),
 		swing: selectRequired<HTMLElement>(card, "[data-scene-swing]"),
-		bandTitle: selectRequired<HTMLElement>(card, "[data-scene-title]"),
-		bandDate: card.querySelector<HTMLElement>("[data-scene-date]"),
-		bandDivider: selectRequired<HTMLElement>(card, "[data-scene-band-divider]"),
-		bandNote: selectRequired<HTMLElement>(card, "[data-scene-note]"),
-		intro: null,
-		active: false,
+		isVisible: false,
 	};
 }
 
-/** 该幕所有文字与 UI 的初始（隐藏）状态，也是离场后的复位状态 */
-function hideSceneChrome(gsap: Gsap, scene: SceneRefs) {
-	gsap.set(scene.bandTitle, { autoAlpha: 0, y: -10 });
-	if (scene.bandDate) gsap.set(scene.bandDate, { autoAlpha: 0, y: 8 });
-	gsap.set(scene.bandDivider, { autoAlpha: 0, scaleY: 0 });
-	gsap.set(scene.bandNote, { autoAlpha: 0, y: 8 });
-}
-
-/**
- * 分层显示：底栏标题 → 完整日期 → 竖杠 → 右栏说明。
- * 只在图框收缩到位（阶段已进入 scenes）且该幕居中时调用，
- * 因此文字永远不会与背景收缩动画抢镜。
- */
-function playSceneIntro(gsap: Gsap, scene: SceneRefs) {
-	if (scene.active) return;
-	scene.active = true;
-	scene.intro?.kill();
-	hideSceneChrome(gsap, scene);
-
-	// 底栏不在 CSS 里常驻 will-change：入场期间临时挂上，播完立刻清成 auto。
-	const boosted = [
-		scene.bandTitle,
-		scene.bandDate,
-		scene.bandDivider,
-		scene.bandNote,
-	].filter((element): element is HTMLElement => element !== null);
-	const timeline = gsap.timeline({
-		onStart: () =>
-			gsap.set(boosted, {
-				willChange: "transform, opacity",
-			}),
-		onComplete: () => gsap.set(boosted, { willChange: "auto" }),
-	});
-
-	timeline.to(
-		scene.bandTitle,
-		{
-			autoAlpha: 1,
-			y: 0,
-			duration: 0.66,
-			ease: "power3.out",
-		},
-		0.2,
+/** 字幕沿纸边依次露出，滚回去和退场时都复用同一组裁切。 */
+function createSceneCaption(gsap: Gsap, card: HTMLElement): GsapTimeline {
+	const title = selectRequired<HTMLElement>(card, "[data-scene-title]");
+	const date = card.querySelector<HTMLElement>("[data-scene-date]");
+	const divider = selectRequired<HTMLElement>(
+		card,
+		"[data-scene-band-divider]",
 	);
-
-	if (scene.bandDate) {
-		timeline.to(
-			scene.bandDate,
-			{ autoAlpha: 1, y: 0, duration: 0.46, ease: "power2.out" },
-			0.55,
-		);
-	}
-	timeline
-		.to(
-			scene.bandDivider,
-			{ autoAlpha: 1, scaleY: 1, duration: 0.34, ease: "power2.inOut" },
-			0.62,
+	const note = selectRequired<HTMLElement>(card, "[data-scene-note]");
+	const hidden = { yPercent: 75, clipPath: "inset(0% 0% 100% 0%)" };
+	const shown = {
+		yPercent: 0,
+		clipPath: "inset(0% 0% 0% 0%)",
+		duration: 0.48,
+		ease: "power2.out",
+	};
+	const caption = gsap.timeline({ paused: true });
+	caption.fromTo(title, hidden, shown, 0);
+	if (date) caption.fromTo(date, hidden, shown, 0.1);
+	return caption
+		.fromTo(
+			divider,
+			{ scaleY: 0 },
+			{ scaleY: 1, duration: 0.34, ease: "power2.out" },
+			0.16,
 		)
-		.to(
-			scene.bandNote,
-			{ autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" },
-			0.66,
-		);
-
-	scene.intro = timeline;
+		.fromTo(note, hidden, shown, 0.23);
 }
 
-/**
- * 影像层 + 固定舞台的可见性。
- * 舞台各层的显隐只由这里的 applyPhase 写入，reveal 层只负责前景图自身的
- * 透明度/位移，避免两套逻辑抢同一个属性。
- */
-function setupScenes(context: SetupContext) {
+/** 百叶、明信片和页脚共用同一段滚动，场地由 sticky 固定在原来的文档流中。 */
+function setupScenes(
+	context: SetupContext,
+	setHeadlineVisible: (visible: boolean) => void,
+): () => void {
 	const { root, gsap, ScrollTrigger, config, signal } = context;
 	const section = selectRequired<HTMLElement>(
 		root,
@@ -240,206 +194,203 @@ function setupScenes(context: SetupContext) {
 		section,
 		"[data-scenes-viewport]",
 	);
-	const portal = selectRequired<HTMLElement>(root, "[data-scenes-portal]");
+	const stage = selectRequired<HTMLElement>(root, "[data-blinds-stage]");
+	const portal = selectRequired<HTMLElement>(stage, "[data-scenes-portal]");
 	const portalImage = selectRequired<HTMLImageElement>(
 		portal,
 		"[data-scenes-portal-image]",
 	);
-	const stage = selectRequired<HTMLElement>(root, "[data-blinds-stage]");
-	const stageBackground = selectRequired<HTMLImageElement>(
+	const entryShutter = selectRequired<HTMLElement>(
 		stage,
-		"[data-blinds-background]",
+		"[data-blinds-entry-shutter]",
 	);
-	// 磨砂玻璃没有自己的补间，整块窗口的显隐只由这里的阶段决定。
-	const stageRevealGlass = selectRequired<HTMLElement>(
-		stage,
-		"[data-reveal-glass]",
-	);
-	// 入场标题同理：根节点的 autoAlpha 归 setupHeadline / setupReveal，这里只切窗口。
-	const stageHeadlineWindow = selectRequired<HTMLElement>(
-		stage,
-		"[data-headline-window]",
-	);
+	const glass = selectRequired<HTMLElement>(stage, "[data-reveal-glass]");
+	const headline = selectRequired<HTMLElement>(stage, "[data-headline-window]");
 	const scenes = Array.from(
 		section.querySelectorAll<HTMLElement>("[data-home-blinds-scene]"),
-	).map(collectScene);
-	const cards = scenes.map((scene) => scene.card);
-	const cardOutlines = scenes.map((scene) => scene.cardOutline);
-	const swings = scenes.map((scene) => scene.swing);
+		collectScene,
+	).slice(0, config.scenes.sceneCount);
+	const first = scenes[0];
+	const lastIndex = scenes.length - 1;
+	const captions = scenes.map(({ card }) => createSceneCaption(gsap, card));
 	const stands = selectRequired<HTMLElement>(section, "[data-scenes-stands]");
 	const standsTrack = selectRequired<HTMLElement>(
 		stands,
 		"[data-scenes-stands-track]",
 	);
 	const standImages = Array.from(
-		stands.querySelectorAll<HTMLImageElement>("[data-scenes-stand-image]"),
+		stands.querySelectorAll<HTMLElement>("[data-scenes-stand-image]"),
 	);
-	const setImageRailPaused = startBlindsImageRail(stands, standsTrack, signal);
 	const marqueeLayer = selectRequired<HTMLElement>(
 		section,
 		"[data-scenes-marquee]",
 	);
-	const marquee = startBlindsMarquee({ layer: marqueeLayer, gsap, signal });
 	const bubbleLayer = selectRequired<HTMLElement>(
 		section,
 		"[data-scenes-bubbles]",
 	);
 	const bubbleSlots = Array.from(
 		bubbleLayer.querySelectorAll<HTMLElement>("[data-scene-bubble]"),
-	).map((root) => ({
-		root,
-		body: selectRequired<HTMLElement>(root, "[data-scene-bubble-body]"),
-		text: selectRequired<HTMLElement>(root, "[data-scene-bubble-text]"),
-	}));
-	// 弹跳只打在内层卡面上：外层那个 transform 归 CSS 的横向漂移，两层各持一个才不打架
-	const bubbleBodies = bubbleSlots.map((slot) => slot.body);
-
-	/** 一颗（或一批）卡面从小弹回原位；stagger 传 0 就是单颗不错峰 */
-	const popBubbles = (
-		targets: HTMLElement[],
-		stagger: number | { each: number; from: "random" },
-	) =>
-		gsap.fromTo(
-			targets,
-			{ scale: BUBBLE_POP_FROM_SCALE, autoAlpha: 0 },
-			{
-				scale: 1,
-				autoAlpha: 1,
-				duration: BUBBLE_POP_DURATION,
-				ease: BUBBLE_POP_EASE,
-				stagger,
-				overwrite: "auto",
-			},
-		);
-
+		(root) => ({
+			root,
+			body: selectRequired<HTMLElement>(root, "[data-scene-bubble-body]"),
+			text: selectRequired<HTMLElement>(root, "[data-scene-bubble-text]"),
+		}),
+	);
+	const marquee = startBlindsMarquee({ layer: marqueeLayer, gsap, signal });
+	const setImageRailPaused = startBlindsImageRail(stands, standsTrack, signal);
 	const bubbleWall = startBubbleWall({
 		container: bubbleLayer,
 		bubbles: bubbleSlots,
 		messages: config.scenes.bubbleMessages,
 		signal,
-		// 换条那一刻气泡整颗藏在屏幕右侧之外，补一次弹跳，飘进来时正好看得到 Q 弹
-		onRespawn: (body) => popBubbles([body], 0),
 	});
-	const sceneCount = Math.min(
-		scenes.length,
-		Math.max(1, config.scenes.sceneCount),
-	);
-	const lastSceneIndex = Math.max(0, sceneCount - 1);
-	const previousSceneX = Array.from({ length: sceneCount }, () => Number.NaN);
-	const rotationSetters = swings.slice(0, sceneCount).map((swing) =>
-		gsap.quickTo(swing, "rotation", {
-			duration: 0.28,
-			ease: "power2.out",
-		}),
-	);
-	let resetWindTimer: number | undefined;
-	let resizeTimer: number | undefined;
-	let horizontalEnabled = false;
-	let phase: StagePhase = "reveal";
-	let rootInView = false;
-	let shrinkTrigger: ScrollTriggerInstance | null = null;
-	let pinTrigger: ScrollTriggerInstance | null = null;
-	let actVisible = false;
-	let bubbleTransition: GsapTween | null = null;
-	let bubblePop: GsapTween | null = null;
-	let standTransition: GsapTween | null = null;
-	/** 上一次 pin 进度，用来把相邻两次 onUpdate 的差值换算成横滑像素速度 */
-	let lastPinProgress = 0;
-	/**
-	 * 三组判据各管各的，混用会做出「退场段动画被掐掉」这类怪事：
-	 * - `isStageInView`：固定舞台（全屏背景与收缩门）该不该露出，滚过影像层就隐藏。
-	 * - `isLayerLive`：影像层本身还在屏幕上，**含横移结束后的退场段** —— 跑马灯、留言墙、
-	 *   图片列表、字幕入场与横移姿态都要继续跟着 section 一起离场，不能在 done 阶段停下。
-	 * - `loopsShouldRun`：在 `isLayerLive` 之上再让开后台标签页，只用于暂停无限循环。
-	 * 文档可见性不得参与显隐判断，否则页面被判定不可见时整块舞台会消失。
-	 */
-	const isStageInView = () => !signal.aborted && rootInView && phase !== "done";
-	const isLayerLive = () =>
-		!signal.aborted && rootInView && (phase === "scenes" || phase === "done");
-	const isScrubActive = () =>
-		!signal.aborted && rootInView && phase === "scenes";
-	const loopsShouldRun = () =>
-		isLayerLive() && document.visibilityState === "visible";
+	const shrinkEase = gsap.parseEase("power2.inOut");
+	const stageMotion = { progress: 0 };
+	let stageTarget = 0;
+	let isInView = false;
+	let renderedProgress = Number.NaN;
+	let wasInView = false;
+	let lastGalleryPosition = 0;
+	let marqueeProgress = 0;
+	let foregroundProgress = Number.NaN;
+	let requestedComment = false;
+	let galleryStart = 0;
+	let galleryEnd = 0;
+	let viewportTop = 0;
+	let renderedViewportTop = Number.NaN;
+	let swayAngle = 0;
+	let swayVelocity = 0;
+	let swayTarget = 0;
+	let swayStrength = 0;
+	let lastSwayInput = 0;
+	let isSwaying = false;
 
-	// 图框尺寸完全由 CSS 变量决定；offset* 取的是不受 transform 影响的布局尺寸，
-	// 所以可以直接当作全屏背景收缩的终点，无需和 CSS 重复一遍计算公式。
-	// 这三个值只随视口变化，因此按 resize / refresh 缓存：横移的每一帧都要用它们，
-	// 而逐帧读 offsetWidth 会在样式写入之后强制同步布局，是 pin 段掉帧的主因之一。
-	let cachedSceneWidth = 0;
-	let cachedSceneHeight = 0;
-	let cachedSceneStep = 0;
-	// 图框中心相对整卡中心的垂直布局偏移（图框在明信片上半部，通常为负）；
-	// 过渡层的收缩终点整体平移这个偏移，才能与首幕图框严丝合缝
-	let cachedPhotoOffsetY = 0;
-	// 过渡层收缩的终点缩放比 = 图框 cover 缩放 / 视口 cover 缩放
-	let cachedPortalScale = 1;
-	/** 把图片按 cover 铺满给定框所需的缩放比 */
-	const coverScale = (boxWidth: number, boxHeight: number) =>
-		Math.max(
-			boxWidth / portalImage.naturalWidth,
-			boxHeight / portalImage.naturalHeight,
-		);
-	const measureScene = () => {
-		const firstCard = cards[0] ?? null;
-		const firstPhoto =
-			firstCard?.querySelector<HTMLElement>("[data-scene-frame]") ?? null;
-		// 量的是卡内 4:3 图框而不是整张明信片；节点未就绪时按旧比例兜底
-		cachedSceneWidth =
-			firstPhoto?.offsetWidth || Math.round(window.innerWidth * 0.44);
-		cachedSceneHeight =
-			firstPhoto?.offsetHeight || Math.round(window.innerWidth * 0.33);
-		const cardHeight = firstCard?.offsetHeight ?? cachedSceneHeight;
-		cachedPhotoOffsetY = firstPhoto
-			? firstPhoto.offsetTop + cachedSceneHeight / 2 - cardHeight / 2
-			: 0;
-		// 画面放大后横向间距同步拉开：一幕宽度 + 至少 16vw 的留白
-		cachedSceneStep =
-			cachedSceneWidth + Math.max(150, window.innerWidth * 0.16);
-
-		// 过渡层：给图片写死「视口 cover 的渲染尺寸」作为布局宽高，收缩全程只做等比
-		// scale，object-fit 因此不再随尺寸重算裁切（那正是每帧重光栅的来源）。
-		// 起点 scale=1 精确等于视口 cover，终点等于图框 cover，两端分别与 reveal 层
-		// 背景、首幕图框重合。等比缩放对任意长宽比都成立，无边界条件。
-		// 注意 y 不在此处写：终点偏移 cachedPhotoOffsetY 交给收缩时间线按进度插值，
-		// 起点必须与 reveal 背景完全重合（居中、y=0），否则收缩一开始图片就先上移，
-		// 底部露出 portal 底色裂隙，交接瞬间也会跳变。
-		// 尺寸量的是舞台内容盒：window.innerWidth 含纵向滚动条，会算出偏宽的 cover。
-		gsap.set(portalImage, { xPercent: -50, yPercent: -50 });
-		if (portalImage.naturalWidth > 0 && portalImage.naturalHeight > 0) {
-			const viewportCover = coverScale(stage.clientWidth, stage.clientHeight);
-			const frameCover = coverScale(cachedSceneWidth, cachedSceneHeight);
-			cachedPortalScale = frameCover / viewportCover;
-			gsap.set(portalImage, {
-				width: portalImage.naturalWidth * viewportCover,
-				height: portalImage.naturalHeight * viewportCover,
-			});
-		}
-	};
-	measureScene();
-	// 首次测量时图片可能尚未解码，naturalWidth 为 0、上面那个分支会被跳过；
-	// 就绪后补量一次，并让 ScrollTrigger 按新几何重算收缩终点。
-	if (!portalImage.complete || portalImage.naturalWidth === 0) {
-		portalImage.addEventListener(
-			"load",
-			() => {
-				measureScene();
-				ScrollTrigger.refresh();
-			},
-			{ once: true, signal },
-		);
+	function renderSway(scene: SceneRefs): void {
+		scene.swing.style.transform = `rotate(${swayAngle * swayStrength}deg)`;
 	}
 
-	/**
-	 * 评论区那条只在影像层第一次露脸时取一次：没滚到这里就一个请求都不发。
-	 * 取回来是往气泡池尾部追加，等哪颗气泡飘完回收时自然被抽中，不打断正在飘的。
-	 */
-	let commentBubbleRequested = false;
-	const requestCommentBubble = () => {
-		if (commentBubbleRequested) return;
-		commentBubbleRequested = true;
+	function stopSway(): void {
+		if (!isSwaying) return;
+		gsap.ticker.remove(tickSway);
+		isSwaying = false;
+		swayAngle = 0;
+		swayVelocity = 0;
+		swayTarget = 0;
+		lastSwayInput = 0;
+	}
+
+	function tickSway(_time: number, deltaMs: number): void {
+		const target =
+			performance.now() - lastSwayInput < SWAY_RELEASE_DELAY ? swayTarget : 0;
+		const step = Math.min(deltaMs / 1000, 1 / 30);
+		// 欠阻尼弹簧让卡片在停手后越过中线一次，再摆回静止。
+		swayVelocity +=
+			((target - swayAngle) * SWAY_SPRING - swayVelocity * SWAY_DAMPING) * step;
+		swayAngle += swayVelocity * step;
+		if (
+			target === 0 &&
+			Math.abs(swayAngle) < 0.02 &&
+			Math.abs(swayVelocity) < 0.1
+		)
+			stopSway();
+		for (const scene of scenes) {
+			if (scene.isVisible) renderSway(scene);
+		}
+	}
+
+	const driveSway = (distance: number): void => {
+		if (Math.abs(distance) < 0.1 || swayStrength === 0 || document.hidden)
+			return;
+		const now = performance.now();
+		const elapsed = clamp(now - lastSwayInput, 8, 34);
+		swayTarget = clamp(
+			(-distance / elapsed) * 4,
+			-SWAY_MAX_ANGLE,
+			SWAY_MAX_ANGLE,
+		);
+		lastSwayInput = now;
+		if (!isSwaying) {
+			isSwaying = true;
+			gsap.ticker.add(tickSway);
+		}
+	};
+
+	// 量布局盒而非动画后的矩形，之后每一帧只写样式。
+	const sizes = {
+		stageWidth: 0,
+		stageHeight: 0,
+		viewportHeight: 0,
+		photoX: 0,
+		photoY: 0,
+		photoWidth: 0,
+		photoHeight: 0,
+		photoScale: 1,
+		outroOffsetY: 0,
+		step: 0,
+	};
+	const measure = (): void => {
+		const stageBounds = stage.getBoundingClientRect();
+		const viewportBounds = viewport.getBoundingClientRect();
+		sizes.stageWidth = stageBounds.width;
+		sizes.stageHeight = stageBounds.height;
+		sizes.viewportHeight = viewportBounds.height;
+		// 卡的局部定位不随挂卡摆动变化。保留分数像素，切换两张图时边缘才能重合。
+		const frame = getComputedStyle(first.photo);
+		const card = getComputedStyle(first.card);
+		const cardHeight = Number.parseFloat(card.height);
+		// 按原先上收结束时的间距折半，页脚提前接近卡片底边。
+		const previousOutroOffsetY = -sizes.stageHeight * 0.12;
+		const centeredGap =
+			(sizes.viewportHeight - cardHeight * GALLERY_OUTRO_SCALE) / 2;
+		sizes.outroOffsetY = (previousOutroOffsetY + centeredGap) / 2;
+		const paperFrame = getComputedStyle(
+			first.photo.parentElement ?? first.card,
+		);
+		const frameTop =
+			Number.parseFloat(paperFrame.paddingTop) +
+			Number.parseFloat(paperFrame.borderTopWidth);
+		sizes.photoWidth = Number.parseFloat(frame.width);
+		sizes.photoHeight = Number.parseFloat(frame.height);
+		sizes.photoX =
+			viewportBounds.left +
+			viewportBounds.width / 2 -
+			(stageBounds.left + stageBounds.width / 2);
+		sizes.photoY =
+			frameTop +
+			sizes.photoHeight / 2 -
+			cardHeight / 2 +
+			(sizes.viewportHeight - sizes.stageHeight) / 2;
+		sizes.step = sizes.photoWidth + Math.max(150, viewportBounds.width * 0.16);
+
+		const { naturalWidth, naturalHeight } = portalImage;
+		if (!naturalWidth || !naturalHeight) return;
+		const viewportScale = Math.max(
+			sizes.stageWidth / naturalWidth,
+			sizes.stageHeight / naturalHeight,
+		);
+		const photoScale = Math.max(
+			sizes.photoWidth / naturalWidth,
+			sizes.photoHeight / naturalHeight,
+		);
+		sizes.photoScale = photoScale / viewportScale;
+		portalImage.style.width = `${naturalWidth * viewportScale}px`;
+		portalImage.style.height = `${naturalHeight * viewportScale}px`;
+	};
+
+	const images = [portalImage, first.photo.querySelector("img")].filter(
+		(image): image is HTMLImageElement => image !== null,
+	);
+	const pendingImages = new Set(
+		images.filter((image) => !image.hasAttribute("src") || !image.complete),
+	);
+
+	const requestCommentBubble = (): void => {
+		if (requestedComment) return;
+		requestedComment = true;
 		const source = config.scenes.commentBubble;
 		if (!source.enabled) return;
-		loadCommentBubble({
+		void loadCommentBubble({
 			serverURL: source.serverURL,
 			lang: source.lang,
 			weight: source.weight,
@@ -449,629 +400,341 @@ function setupScenes(context: SetupContext) {
 				if (message && !signal.aborted) bubbleWall.addMessages([message]);
 			})
 			.catch(() => {
-				// 评论服务停了、跨域被拒、导航过来请求被 abort 都落到这里：
-				// 少一条混进来的真实留言而已，不该让首页动效跟着出问题
+				// 评论服务失败时继续使用本地留言。
 			});
 	};
 
-	// 明信片入场：描边 SVG 就是明信片的边框本体（纸面不再画实线）。
-	// 进度完全由滚动距离驱动（renderIntro），不是自动播放的时间线；
-	// 错峰 + 跨度恰好收在 intro=1，最后一幕画满时整条线正好闭合
-	const CARD_INTRO_SHARE = 0.8;
-	const CARD_INTRO_STAGGER = 0.05;
-	const SWING_INTRO_OFFSET = 7;
-	/** 卡片本体浮现占用的 intro 比例：淡入 + 滑入，不再瞬间出现 */
-	const CARD_APPEAR_SHARE = 0.22;
-
-	/** 一幕的入场完成度：错峰窗口内 0→1，越靠前的幕越早画完 */
-	const sceneIntroProgress = (intro: number, index: number) =>
-		clamp((intro - index * CARD_INTRO_STAGGER) / CARD_INTRO_SHARE, 0, 1);
-
-	/**
-	 * 影像层入场（滚动进度驱动）：跑马灯沿各自轴向描线展开。
-	 * 首幕是收缩门的接收者：图片原地不动，只有纸面背景渐入 + 描边绕一圈；
-	 * 其余幕纸面早已就位，卡面本体错峰滑入淡入。往回滚时整段动画按来路退回。
-	 */
-	const renderIntro = (intro: number) => {
-		marquee.renderIntro(intro);
-		const paperFade = smoothstep(clamp(intro / CARD_APPEAR_SHARE, 0, 1));
-		cardOutlines.forEach((outline, index) => {
-			const eased = smoothstep(sceneIntroProgress(intro, index));
-			// 一支笔顺时针绕一圈：上→右→下→左，各占四分之一进度
-			outline.style.setProperty(
-				"--outline-top",
-				String(clamp(eased / 0.25, 0, 1)),
-			);
-			outline.style.setProperty(
-				"--outline-right",
-				String(clamp((eased - 0.25) / 0.25, 0, 1)),
-			);
-			outline.style.setProperty(
-				"--outline-bottom",
-				String(clamp((eased - 0.5) / 0.25, 0, 1)),
-			);
-			outline.style.setProperty(
-				"--outline-left",
-				String(clamp((eased - 0.75) / 0.25, 0, 1)),
-			);
-		});
-		swings.forEach((swing, index) => {
-			// 首幕纸面从无到有；其余幕一入场就是成品纸面。
-			// 变量写在 swing 上：纸面、吊线与木夹都是它的后代，一起随纸面渐入
-			swing.style.setProperty(
-				"--scene-paper-alpha",
-				index === 0 ? paperFade.toFixed(3) : "1",
-			);
-			// 首幕与收缩门严丝合缝，滑动会看着像图片向左跳，直接钉死原位
-			if (index === 0) {
-				gsap.set(swing, { xPercent: 0 });
-				return;
-			}
-			const eased = smoothstep(sceneIntroProgress(intro, index));
-			const offset = index % 2 === 0 ? -SWING_INTRO_OFFSET : SWING_INTRO_OFFSET;
-			gsap.set(swing, { xPercent: offset * (1 - eased) });
-		});
-	};
-
-	/**
-	 * 留言墙与立牌的显隐：跑马灯和明信片描边由滚动进度驱动，不在这里管。
-	 * 留言墙不跟着淡入：整层糊在一起会盖掉每颗自己的节奏，容器直接就位，
-	 * 卡面一颗颗从小弹到原位，elastic 的过冲就是那下「Q弹」。
-	 */
-	const showAct = () => {
-		if (actVisible) return;
-		actVisible = true;
-		requestCommentBubble();
-
-		bubbleTransition?.kill();
-		gsap.set(bubbleLayer, { autoAlpha: 1 });
-		bubblePop?.kill();
-		bubblePop = popBubbles(bubbleBodies, {
-			each: BUBBLE_POP_STAGGER,
-			from: "random",
-		});
-
-		standTransition?.kill();
-		gsap.set(stands, { autoAlpha: 1 });
-		standTransition = gsap.to(standImages, {
-			autoAlpha: 1,
-			rotationX: 0,
-			duration: 0.78,
-			ease: "power4.out",
-			overwrite: "auto",
-		});
-	};
-
-	/**
-	 * 退场：跑马灯反着收线（文字先淡出、线条依次滑回）；
-	 * 留言墙与立牌保持竖直姿态淡出，淡完（此时已不可见）才把 rotationX 悄悄复位，
-	 * 下次进场照样从后方立起。淡出被 showAct 打断时 onComplete 不执行，
-	 * 元素保持竖直直接淡回来，不会突然摊平。
-	 */
-	const hideAct = () => {
-		if (!actVisible) return;
-		actVisible = false;
-
-		marquee.playExit();
-
-		bubbleTransition?.kill();
-		bubblePop?.kill();
-		bubbleTransition = gsap.to(bubbleLayer, {
-			autoAlpha: 0,
-			duration: 0.5,
-			ease: "power2.in",
-			overwrite: "auto",
-		});
-		bubbleWall.setPaused(true);
-
-		standTransition?.kill();
-		standTransition = gsap.to(standImages, {
-			autoAlpha: 0,
-			duration: 0.46,
-			ease: "power2.in",
-			overwrite: "auto",
-			onComplete: () => {
-				gsap.set(standImages, { rotationX: 88 });
-				gsap.set(stands, { autoAlpha: 0 });
-			},
-		});
-	};
-
-	// 循环暂停时保留当前帧，回到前台或滚回本层后继续。
-	const syncAnimationPlayback = () => {
-		const layerLive = isLayerLive();
-		const loopsRun = loopsShouldRun();
-		// 跑马灯的入退场由滚动进度/收线时间线自己推进，这里只停它的无限循环。
-		// 跑马灯循环、留言墙和图片轨道额外让开后台标签页；退场段仍随 section 离场。
-		marquee.setPaused(!loopsRun);
-		bubbleWall.setPaused(!loopsRun || !actVisible);
-		setImageRailPaused(!loopsRun || !actVisible);
-		for (const scene of scenes) {
-			if (scene.intro && scene.intro.progress() < 1) {
-				scene.intro.paused(!layerLive);
-			}
-		}
-		for (const setRotation of rotationSetters) {
-			if (setRotation.tween.progress() < 1) {
-				setRotation.tween.paused(!layerLive);
+	const syncPlayback = (): void => {
+		const running = isInView && document.visibilityState === "visible";
+		marquee.setPaused(!running || marqueeProgress === 0);
+		bubbleWall.setPaused(!running || foregroundProgress === 0);
+		setImageRailPaused(!running || foregroundProgress === 0);
+		if (!running && isSwaying) {
+			stopSway();
+			for (const scene of scenes) {
+				if (scene.isVisible) renderSway(scene);
 			}
 		}
 	};
 
-	const resetWind = () => {
-		if (signal.aborted) return;
-		for (const setRotation of rotationSetters) setRotation(0);
-		syncAnimationPlayback();
-	};
-
-	const renderScenes = (
-		sceneProgress: number,
-		isVisible: boolean,
-		intro: number,
-	) => {
-		const step = cachedSceneStep;
-		const layerLive = isLayerLive();
-		// 卡片本体随入场进度滑入淡入，不是一到位置就整张亮出来
-		const appear = smoothstep(clamp(intro / CARD_APPEAR_SHARE, 0, 1));
-		let moving = false;
-
-		for (let index = 0; index < sceneCount; index += 1) {
-			const scene = scenes[index];
-			const distance = Math.abs(index - sceneProgress);
-			const x = (index - sceneProgress) * step;
-			// 近大远小：只靠缩放拉开层次，侧边卡片不再整体调透明；
-			// 进出屏的柔化交给视口两侧的渐隐遮罩
-			const scale = 1 - Math.min(distance, 1) * 0.14;
-			// 出屏足够远的幕直接收起，纯为省绘制，屏幕内不参与透明度渐变
-			const inRange = distance <= 1.6;
-			const previousX = previousSceneX[index];
-
-			// 首幕图片在收缩门落点原地就位（alpha 1），其余幕随入场错峰滑入淡入
-			const alpha = index === 0 ? 1 : appear;
-			gsap.set(scene.card, {
-				xPercent: -50,
-				yPercent: -50,
-				x,
-				y: 0,
-				scale,
-				autoAlpha: isVisible && inRange ? alpha : 0,
-				zIndex: Math.round(20 - distance * 3),
-			});
-
-			// 图片就位（isVisible）且该幕居中后，文字与 UI 才开始分层显示；
-			// playSceneIntro 内部有 active 短路，所以每幕只播一次，之后一直留在画面上。
-			// 首幕要等纸面渐入得差不多再亮底栏文字，避免字浮在空底上
-			if (
-				isVisible &&
-				layerLive &&
-				distance < SCENE_ENTER_DISTANCE &&
-				intro > 0.3
-			) {
-				playSceneIntro(gsap, scene);
-			}
-
-			if (layerLive && Number.isFinite(previousX)) {
-				const deltaX = x - previousX;
-				if (Math.abs(deltaX) > 0.08) {
-					rotationSetters[index](clamp(deltaX * 0.16, -9, 9));
-					moving = true;
-				}
-			}
-			previousSceneX[index] = x;
-		}
-
-		if (moving) {
-			window.clearTimeout(resetWindTimer);
-			resetWindTimer = window.setTimeout(resetWind, 110);
-		}
-
-		// 跑马灯与明信片描边都按滚动进度渲染；留言墙与底部图片列表仍按可见性整体进出。
-		if (isVisible) {
-			renderIntro(intro);
-			showAct();
-		} else {
-			hideAct();
-		}
-	};
-
-	function applyPhase() {
-		gsap.set(stage, { autoAlpha: isStageInView() ? 1 : 0 });
-		// 背景、磨砂玻璃与标题窗口放在同一次 set 里：揭示层三者同帧进出，
-		// 拆成两次写就会有一帧玻璃还没压住背景的闪跳
-		gsap.set([stageBackground, stageRevealGlass, stageHeadlineWindow], {
-			autoAlpha: phase === "reveal" ? 1 : 0,
-		});
-		gsap.set(portal, { autoAlpha: phase === "shrink" ? 1 : 0 });
-	}
-
-	/** 只依赖滚动位置，因此 refresh 之后也能得到正确阶段 */
-	function resolvePhase(): StagePhase {
-		if (!pinTrigger || !shrinkTrigger) return "reveal";
-		const scroll = window.scrollY;
-		if (scroll >= pinTrigger.end) return "done";
-		if (scroll >= pinTrigger.start) return "scenes";
-		if (scroll >= shrinkTrigger.start) return "shrink";
-		return "reveal";
-	}
-
-	/** 舞台显隐与各幕位置的唯一入口 */
-	function syncStage() {
-		if (signal.aborted) return;
-		phase = resolvePhase();
-		applyPhase();
-
-		const progress = pinTrigger?.progress ?? 0;
-		horizontalEnabled = isScrubActive() && progress < 0.999;
-		viewport.classList.toggle("is-horizontal", horizontalEnabled);
-		// pin 的前一小段专用于入场（跑马灯描线 + 明信片滑入描边），之后才开始横移；
-		// 两段都按滚动距离推进，反向滚动原路退回。
-		// done 保留最后一幕随 section 离场，但不再启动或继续任何循环。
-		const rawProgress =
-			phase === "scenes" ? progress : phase === "done" ? 1 : 0;
-		const intro = clamp(rawProgress / SCENES_INTRO_SHARE, 0, 1);
-		const sceneProgress =
-			phase === "scenes"
-				? clamp(
-						(rawProgress - SCENES_INTRO_SHARE) / (1 - SCENES_INTRO_SHARE),
-						0,
-						1,
-					) * lastSceneIndex
-				: phase === "done"
-					? lastSceneIndex
-					: 0;
-		renderScenes(sceneProgress, phase === "scenes" || phase === "done", intro);
-		syncAnimationPlayback();
-	}
-
-	// 尺寸恒等于视口（inset:0），收缩由 clip-path 收窗完成，故这里不再写 width / height，
-	// 也无需任何居中 transform
-	gsap.set(portal, {
-		x: 0,
-		y: 0,
-		clipPath: "inset(0px 0px 0px 0px)",
-		autoAlpha: 0,
-	});
-	gsap.set(cards, { autoAlpha: 0 });
-	gsap.set(stands, { autoAlpha: 0 });
-	gsap.set(standImages, {
-		rotationX: 88,
-		transformPerspective: 1400,
-		autoAlpha: 0,
-	});
-	for (const scene of scenes) hideSceneChrome(gsap, scene);
-
-	const shrinkTimeline = gsap.timeline({
-		scrollTrigger: {
-			id: "home-blinds-scenes-shrink",
-			trigger: section,
-			start: "top 66.666%",
-			end: "top top",
-			scrub: 0.4,
-			invalidateOnRefresh: true,
-			onToggle: syncStage,
-		},
-	});
-	shrinkTrigger = shrinkTimeline.scrollTrigger ?? null;
-
-	// 全屏背景 → 首幕 4:3 图框，全程不碰布局属性：portal 用 clip-path 把可视窗口
-	// 从满屏收到图框（只触发 paint），内部图片同步做等比 scale（走合成），
-	// 终点与 .home-blinds-scene__frame 完全重合。
-	// 这条时间线开了 invalidateOnRefresh，用 fromTo 显式写出起始值，
-	// 缩放窗口后重新记录的起点才不会被当前已渲染的终点状态污染。
-	shrinkTimeline
-		.fromTo(
-			portal,
-			{ clipPath: "inset(0px 0px 0px 0px)" },
-			{
-				clipPath: () => {
-					const insetX = Math.max(
-						0,
-						(stage.clientWidth - cachedSceneWidth) / 2,
-					);
-					const centerGap = (stage.clientHeight - cachedSceneHeight) / 2;
-					// 图框在卡内偏上，收窗终点随之上移，上下 inset 不再对称
-					const insetTop = Math.max(0, centerGap + cachedPhotoOffsetY);
-					const insetBottom = Math.max(0, centerGap - cachedPhotoOffsetY);
-					return `inset(${insetTop}px ${insetX}px ${insetBottom}px ${insetX}px)`;
-				},
-				duration: 1,
-				ease: "power3.inOut",
-				immediateRender: false,
-			},
-			0,
-		)
-		.fromTo(
-			portalImage,
-			{ y: 0 },
-			{
-				// 与收窗同步上移：起点 y=0 与 reveal 背景严丝合缝，终点落在首幕图框中心
-				y: () => cachedPhotoOffsetY,
-				duration: 1,
-				ease: "power3.inOut",
-				immediateRender: false,
-			},
-			0,
-		)
-		.fromTo(
-			portalImage,
-			{ scale: 1 },
-			{
-				scale: () => cachedPortalScale,
-				duration: 1,
-				ease: "power3.inOut",
-				immediateRender: false,
-			},
-			0,
+	const renderBackdrop = (progress: number): void => {
+		const entry = progressBetween(progress, 0, ENTRY_END);
+		const opening = progressBetween(progress, GLASS_OPEN_START, GLASS_OPEN_END);
+		const crop = shrinkEase(
+			progressBetween(progress, SHRINK_START, PHOTO_HANDOFF),
 		);
+		renderShutter(entryShutter, entry);
+		renderShutter(glass, opening);
 
-	pinTrigger = ScrollTrigger.create({
-		id: "home-blinds-scenes-pin",
-		trigger: section,
-		// 相比原来的 5.5 屏缩短到 3.4 屏：同样的滚动量能推进更长的横向距离
-		start: "top top",
-		end: () =>
-			`+=${Math.max(config.scenes.scrollDistance, window.innerHeight * 3.4)}`,
-		pin: true,
-		pinSpacing: true,
-		anticipatePin: 1,
-		invalidateOnRefresh: true,
-		onToggle: (self) => {
-			// 触发器换挡时重置进度基准，避免拿跨档差值当横滑速度甩出去
-			lastPinProgress = self.progress;
-			syncStage();
-		},
-		onUpdate: (self) => {
-			if (!self.isActive) return;
-			syncStage();
-			// 相邻两次 onUpdate 的进度差 × 触发区间长度 = 本次滚动跨过的像素量；
-			// 传给跑马灯叠加加速，反向滚动时它会直接掉头跑
-			const deltaPx =
-				(self.progress - lastPinProgress) * (self.end - self.start);
-			lastPinProgress = self.progress;
-			marquee.nudge(deltaPx);
-		},
+		const headlineExit = smoothstep(opening);
+		headline.style.opacity = String(1 - headlineExit);
+		headline.style.visibility = opening === 1 ? "hidden" : "visible";
+		headline.style.transform = `translateY(${-38 * headlineExit}%)`;
+
+		const parallax = 1 - smoothstep(entry);
+		const scale =
+			1 +
+			(BACKGROUND_ENTER_SCALE - 1) * parallax +
+			(sizes.photoScale - 1) * crop;
+		const x = sizes.photoX * crop;
+		const targetY = sizes.photoY + viewportTop;
+		const y =
+			sizes.stageHeight * BACKGROUND_ENTER_TRAVEL * parallax + targetY * crop;
+		portalImage.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${scale})`;
+		const insetX = (sizes.stageWidth - sizes.photoWidth) / 2;
+		const insetY = (sizes.stageHeight - sizes.photoHeight) / 2;
+		portal.style.clipPath =
+			crop === 0
+				? "none"
+				: `inset(${(insetY + targetY) * crop}px ${(insetX - sizes.photoX) * crop}px ${(insetY - targetY) * crop}px ${(insetX + sizes.photoX) * crop}px)`;
+	};
+
+	const renderDecoration = (position: number, outro: number): void => {
+		marqueeProgress =
+			progressBetween(position, 0.91, GALLERY_TRAVEL_START) *
+			(1 - progressBetween(outro, 0.26, 0.94));
+		marquee.render(marqueeProgress);
+
+		const foreground =
+			progressBetween(position, 1.15, GALLERY_TRAVEL_START + 0.11) *
+			(1 - progressBetween(outro, 0.04, 0.67));
+		if (foreground === foregroundProgress) return;
+		foregroundProgress = foreground;
+		bubbleLayer.style.visibility = foreground > 0 ? "visible" : "hidden";
+		stands.style.visibility = foreground > 0 ? "visible" : "hidden";
+		if (foreground > 0) requestCommentBubble();
+		for (const [index, slot] of bubbleSlots.entries()) {
+			const delay = (index % 6) * 0.045;
+			const reveal = smoothstep(
+				progressBetween(foreground, delay, delay + 0.65),
+			);
+			slot.body.style.setProperty("--bubble-reveal", String(reveal));
+		}
+		for (const [index, image] of standImages.entries()) {
+			const delay = (index % 3) * 0.08;
+			const remaining =
+				1 - smoothstep(progressBetween(foreground, delay, delay + 0.76));
+			image.style.transform = `translateY(${remaining * 105}%) rotateX(${remaining * 55}deg)`;
+		}
+	};
+
+	const renderCards = (
+		position: number,
+		galleryPosition: number,
+		outro: number,
+	): void => {
+		const scrollOffset = galleryPosition * sizes.step;
+		const pull = smoothstep(progressBetween(outro, 0.23, 1));
+		const outroScale = 1 + (GALLERY_OUTRO_SCALE - 1) * pull;
+		const y = sizes.outroOffsetY * pull;
+		for (const [index, scene] of scenes.entries()) {
+			const distance = Math.abs(index - galleryPosition);
+			const entryDelay = Math.min(index, 4) * 0.035;
+			const assembly =
+				index === 0
+					? progressBetween(position, PAPER_START, 1.18)
+					: progressBetween(position, 0.98 + entryDelay, 1.29 + entryDelay);
+			const assembled = smoothstep(assembly);
+			const sideExit =
+				index === lastIndex ? 0 : smoothstep(progressBetween(outro, 0, 0.72));
+			const x =
+				index * sizes.step -
+				scrollOffset +
+				(index === 0 ? 0 : 42 * (1 - assembled)) -
+				64 * sideExit;
+			if (
+				assembly === 0 ||
+				sideExit === 1 ||
+				Math.abs(x) > sizes.stageWidth / 2 + sizes.step
+			) {
+				scene.isVisible = false;
+				scene.card.style.visibility = "hidden";
+				continue;
+			}
+
+			scene.isVisible = true;
+			scene.card.style.visibility = "visible";
+			scene.card.style.opacity = String(
+				(index === 0 ? 1 : assembled) * (1 - sideExit),
+			);
+			const side = smoothstep(progressBetween(distance, 0, 1));
+			const scale = outroScale * (1 - (1 - GALLERY_SIDE_SCALE) * side);
+			scene.card.style.transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+			scene.card.style.zIndex = String(Math.round(20 - distance * 3));
+			renderSway(scene);
+
+			scene.swing.style.setProperty(
+				"--scene-hanger-reveal",
+				String(smoothstep(progressBetween(assembly, 0.4, 0.72))),
+			);
+			if (index === 0) {
+				const paper = smoothstep(progressBetween(position, PAPER_START, 1.1));
+				scene.swing.style.setProperty("--scene-paper-reveal", String(paper));
+				scene.photo.style.visibility =
+					position >= PHOTO_HANDOFF ? "" : "hidden";
+			}
+
+			const focus = 1 - smoothstep(progressBetween(distance, 0.23, 0.94));
+			const caption = smoothstep(progressBetween(position, 1.02, 1.3));
+			captions[index].progress(
+				focus * caption * (1 - smoothstep(progressBetween(outro, 0.06, 0.54))),
+			);
+		}
+	};
+
+	function renderStage(force = false): void {
+		if (signal.aborted) return;
+		const position = stageMotion.progress;
+		if (
+			!force &&
+			position === renderedProgress &&
+			isInView === wasInView &&
+			(position >= PHOTO_HANDOFF || viewportTop === renderedViewportTop)
+		)
+			return;
+		renderedProgress = position;
+		renderedViewportTop = viewportTop;
+		const showingBackdrop = isInView && position < PHOTO_HANDOFF;
+		stage.style.opacity = showingBackdrop ? "1" : "0";
+		stage.style.visibility = showingBackdrop ? "visible" : "hidden";
+		if (showingBackdrop) renderBackdrop(position);
+		setHeadlineVisible(
+			showingBackdrop &&
+				position >= HEADLINE_START &&
+				position < GLASS_OPEN_END,
+		);
+		if (!isInView && !wasInView && !force) return;
+		wasInView = isInView;
+
+		const galleryPosition =
+			lastIndex *
+			smoothstep(
+				progressBetween(position, GALLERY_TRAVEL_START, GALLERY_OUTRO_START),
+			);
+		const outro = progressBetween(position, GALLERY_OUTRO_START, GALLERY_END);
+		swayStrength =
+			smoothstep(
+				progressBetween(position, PHOTO_HANDOFF, GALLERY_TRAVEL_START),
+			) *
+			(1 - smoothstep(progressBetween(outro, 0, 0.46)));
+		renderDecoration(isInView ? position : 0, outro);
+		syncPlayback();
+		if (isInView) {
+			renderCards(position, galleryPosition, outro);
+			if (!force) {
+				const distance = (galleryPosition - lastGalleryPosition) * sizes.step;
+				marquee.nudge(distance);
+				driveSway(distance);
+			}
+		} else {
+			for (const scene of scenes) {
+				scene.isVisible = false;
+				scene.card.style.visibility = "hidden";
+			}
+		}
+		lastGalleryPosition = galleryPosition;
+		viewport.style.setProperty(
+			"--home-blinds-footer-reveal",
+			String(smoothstep(progressBetween(outro, 0.12, 0.86))),
+		);
+	}
+
+	const advanceStage = gsap.quickTo(stageMotion, "progress", {
+		duration: REVEAL_CATCH_UP_DURATION,
+		ease: "none",
+		onUpdate: () => renderStage(),
 	});
+	const syncScroll = (trigger: ScrollTriggerInstance, settle = false): void => {
+		if (signal.aborted) return;
+		const scroll = window.scrollY;
+		galleryStart = trigger.start + sizes.stageHeight + sizes.viewportHeight;
+		galleryEnd = trigger.end - sizes.viewportHeight;
+		// 一次跳过粘滞边界时，收缩照片也要跟上正在离场的卡片。
+		viewportTop =
+			Math.max(0, galleryStart - sizes.viewportHeight - scroll) +
+			Math.min(0, galleryEnd - scroll);
+		stage.style.clipPath =
+			viewportTop < 0 ? `inset(0 0 ${-viewportTop}px 0)` : "";
+		isInView = scroll > trigger.start && scroll < trigger.end;
+		const gallery = progressBetween(scroll, galleryStart, galleryEnd);
+		const reveal = progressBetween(scroll, trigger.start, galleryStart);
+		let target = reveal;
+		if (gallery > 0) {
+			target =
+				reveal +
+				(GALLERY_TRAVEL_START - GALLERY_START) *
+					progressBetween(gallery, 0, SCENES_INTRO_SHARE) +
+				(GALLERY_OUTRO_START - GALLERY_TRAVEL_START) *
+					progressBetween(gallery, SCENES_INTRO_SHARE, SCENES_OUTRO_START) +
+				(GALLERY_END - GALLERY_OUTRO_START) *
+					progressBetween(gallery, SCENES_OUTRO_START, 1);
+		}
+		if (isInView && pendingImages.size > 0)
+			target = Math.min(target, GLASS_OPEN_START);
 
+		if (target !== stageTarget) {
+			stageTarget = target;
+			advanceStage(target).duration(
+				Math.max(
+					STAGE_MIN_DURATION,
+					Math.abs(target - stageMotion.progress) * REVEAL_CATCH_UP_DURATION,
+				),
+			);
+		}
+		// 离屏时落到对应端点。页脚刚出现时舞台仍在屏内，补间继续收场。
+		if ((settle || !isInView) && stageMotion.progress !== target) {
+			advanceStage.tween.progress(1, true).pause();
+		}
+		renderStage(settle);
+	};
+
+	measure();
 	const rootTrigger = ScrollTrigger.create({
 		id: "home-blinds-fixed-stage",
 		trigger: root,
 		start: "top bottom",
 		end: "bottom top",
-		invalidateOnRefresh: true,
-		onToggle: (self) => {
-			rootInView = self.isActive;
-			syncStage();
-		},
+		onUpdate: (self) => syncScroll(self),
 	});
-	rootInView = rootTrigger.isActive;
+	syncScroll(rootTrigger, true);
 
-	// refresh 事件在所有触发器重新测量之后触发，是缩放后唯一可靠的补偿时机。
-	// 必须先按新视口量一遍图框尺寸，再同步各幕位置与跑马灯轨道宽度，顺序不能颠倒。
-	const handleRefresh = () => {
-		rootInView = rootTrigger.isActive;
-		measureScene();
+	for (const image of pendingImages) {
+		const finish = (): void => {
+			pendingImages.delete(image);
+			requestScrollTriggerRefresh(ScrollTrigger);
+		};
+		image.addEventListener("load", finish, { once: true, signal });
+		image.addEventListener("error", finish, { once: true, signal });
+	}
+
+	const handleRefresh = (): void => {
+		measure();
 		marquee.refresh();
-		lastPinProgress = pinTrigger?.progress ?? 0;
-		syncStage();
+		syncScroll(rootTrigger);
+		renderStage(true);
 	};
 	ScrollTrigger.addEventListener("refresh", handleRefresh);
-	document.addEventListener("visibilitychange", syncStage, { signal });
+	document.addEventListener("visibilitychange", syncPlayback, { signal });
 
-	// 明信片仍由滚轮/触控板推进；底部图片轨道的拖拽不换算成页面滚动。
+	let lastWheelTime = Number.NEGATIVE_INFINITY;
+	let horizontalGesture = false;
 	viewport.addEventListener(
 		"wheel",
 		(event) => {
 			if (
-				(event.target instanceof Node && stands.contains(event.target)) ||
-				!horizontalEnabled ||
-				!pinTrigger ||
-				Math.abs(event.deltaX) <= Math.abs(event.deltaY)
+				event.ctrlKey ||
+				!event.cancelable ||
+				(event.target instanceof Node && stands.contains(event.target))
 			)
 				return;
+			const scroll = window.scrollY;
+			if (event.timeStamp - lastWheelTime > WHEEL_AXIS_IDLE) {
+				horizontalGesture =
+					scroll >= galleryStart &&
+					scroll <= galleryEnd &&
+					Math.abs(event.deltaX) > 1.2 * Math.abs(event.deltaY);
+			}
+			lastWheelTime = event.timeStamp;
+			if (!horizontalGesture || scroll < galleryStart || scroll > galleryEnd)
+				return;
+			// 一次双轴手势锁定主方向，余下的纵向抖量不在临界点改变页面坐标。
+			const unit =
+				event.deltaMode === WheelEvent.DOM_DELTA_LINE
+					? 16
+					: event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+						? sizes.stageHeight
+						: 1;
 			event.preventDefault();
 			window.scrollTo({
 				top: clamp(
-					// 触控板横滑按 1.8 倍换算成滚动量，横移更快
-					window.scrollY + event.deltaX * 1.8,
-					pinTrigger.start,
-					pinTrigger.end,
+					scroll + event.deltaX * unit * 1.8,
+					Math.ceil(galleryStart),
+					Math.floor(galleryEnd),
 				),
-				behavior: "auto",
+				behavior: "instant",
 			});
 		},
 		{ passive: false, signal },
 	);
-	window.addEventListener(
-		"resize",
-		() => {
-			window.clearTimeout(resizeTimer);
-			resizeTimer = window.setTimeout(() => ScrollTrigger.refresh(), 160);
-		},
-		{ signal },
-	);
-
-	syncStage();
 
 	return () => {
-		window.clearTimeout(resetWindTimer);
-		window.clearTimeout(resizeTimer);
+		advanceStage.tween.kill();
+		stopSway();
+		rootTrigger.kill();
 		ScrollTrigger.removeEventListener("refresh", handleRefresh);
-		bubbleTransition?.kill();
-		bubblePop?.kill();
-		standTransition?.kill();
 		setImageRailPaused(true);
 		marquee.destroy();
-		for (const setRotation of rotationSetters) setRotation.tween.kill();
-		for (const scene of scenes) {
-			scene.intro?.kill();
-			scene.intro = null;
-			scene.active = false;
-			gsap.set(
-				[
-					scene.bandTitle,
-					scene.bandDate,
-					scene.bandDivider,
-					scene.bandNote,
-				].filter((element): element is HTMLElement => element !== null),
-				{ clearProps: "willChange" },
-			);
+		for (const caption of captions) caption.revert();
+		stage.style.opacity = "0";
+		stage.style.visibility = "hidden";
+		stage.style.removeProperty("clip-path");
+		viewport.style.removeProperty("--home-blinds-footer-reveal");
+		for (const { card, swing } of scenes) {
+			card.style.visibility = "hidden";
+			swing.style.removeProperty("transform");
 		}
-		viewport.classList.remove("is-horizontal");
-		gsap.killTweensOf([
-			...cards,
-			...cardOutlines,
-			...swings,
-			stands,
-			...standImages,
-			bubbleLayer,
-			...bubbleBodies,
-			stage,
-			portal,
-			portalImage,
-			stageBackground,
-			stageRevealGlass,
-			stageHeadlineWindow,
-		]);
-		rootTrigger.kill();
-		pinTrigger?.kill();
-		shrinkTrigger?.kill();
-		shrinkTimeline.kill();
-		gsap.set(stage, { autoAlpha: 0 });
-	};
-}
-
-/**
- * 揭示层：背景视差与入场标题的退场。
- * 视差行程分两笔——入场补间先播掉前 2/3，剩下的 1/3 交给揭示层的滚动进度推进，
- * 于是往下滑有跟随感、往回滚也有对应的回退，滚到 REVEAL_ENTER_END 即全部到位。
- * 两个来源各写各的标量，transform 只由 renderBackground 一处写入，
- * 补间与 scrub 不会互相抢属性。
- */
-function setupReveal(context: SetupContext) {
-	const { root, gsap, ScrollTrigger } = context;
-	const section = selectRequired<HTMLElement>(
-		root,
-		"[data-home-blinds-reveal]",
-	);
-	const stageBackground = selectRequired<HTMLImageElement>(
-		root,
-		"[data-blinds-background]",
-	);
-	const headline = selectRequired<HTMLElement>(root, "[data-blinds-headline]");
-
-	const travel = { entrance: 0, scroll: 0 };
-	let entranceTween: GsapTween | null = null;
-	let entranceTrigger: ScrollTriggerInstance | null = null;
-
-	/** 行程 0 = 起始位（放大且偏下），1 = 落定位（恒等变换，与过渡层逐像素对齐） */
-	const renderBackground = () => {
-		const remain =
-			1 -
-			clamp(
-				travel.entrance * BACKGROUND_ENTER_SHARE +
-					travel.scroll * (1 - BACKGROUND_ENTER_SHARE),
-				0,
-				1,
-			);
-		gsap.set(stageBackground, {
-			scale: 1 + (BACKGROUND_ENTER_SCALE - 1) * remain,
-			yPercent: BACKGROUND_ENTER_TRAVEL_PERCENT * remain,
-		});
-	};
-
-	/** 判定入场走完：补间与触发器一并拆掉，重复调用无副作用 */
-	const finishEntrance = () => {
-		entranceTween?.kill();
-		entranceTween = null;
-		entranceTrigger?.kill();
-		entranceTrigger = null;
-		if (travel.entrance === 1) return;
-		travel.entrance = 1;
-		renderBackground();
-	};
-
-	/** 滚动来源：进度 0 → REVEAL_ENTER_END 走完剩下的 1/3 行程 */
-	const syncBackgroundTravel = (progress: number) => {
-		travel.scroll = clamp(progress / REVEAL_ENTER_END, 0, 1);
-		// 滚到揭示层末尾就要与过渡层交接，此刻背景必须正好落在恒等位。
-		// 入场补间还没走完就当场判定到位，否则会闪出一格残余位移
-		if (progress >= 0.999) finishEntrance();
-		renderBackground();
-	};
-
-	// 舞台刚进视口即起播入场，与 applyPhase 露出背景是同一时刻。
-	// 不用 once：从别页恢复坐标时触发器一建好就已越过起点，那种情况靠 onRefresh 兜底。
-	entranceTrigger = ScrollTrigger.create({
-		id: "home-blinds-background-entrance",
-		trigger: section,
-		start: "top bottom",
-		onEnter: () => {
-			entranceTween = gsap.to(travel, {
-				entrance: 1,
-				duration: BACKGROUND_ENTER_DURATION,
-				ease: "power3.out",
-				onUpdate: renderBackground,
-			});
-		},
-		onRefresh: (self) => {
-			// 挂载点已落在揭示层之内：入场直接到位，不补那 2/3 行程，免得背景凭空跳一次。
-			// 补间已在跑时不插手，交给它自己走完，否则一次 refresh 就把入场掐成跳变
-			if (self.progress > 0 && !entranceTween) finishEntrance();
-		},
-	});
-	const revealTimeline = gsap.timeline({
-		scrollTrigger: {
-			id: "home-blinds-reveal",
-			trigger: section,
-			start: "top 66.666%",
-			end: "bottom 66.666%",
-			scrub: 0.35,
-			invalidateOnRefresh: true,
-			// 从别的页面深处跳入首页时，标题退场补间的初次渲染就落在终点态，
-			// 之后回滚到退场区间之下时 GSAP 不会再补渲染它的起点，常驻标题
-			// 因此一直隐身；relayout()/fonts.ready 的 reset() 也可能把根节点
-			// 打回隐藏。只要已入场且滚动位于退场区间之下，这里显式把标题锚回
-			// 可见态，退场交给上面的 fromTo 在区间内正常接管。
-			onUpdate: (self) => {
-				if (self.progress < REVEAL_EXIT_START && context.headlineState.played) {
-					gsap.set(headline, { yPercent: 0, autoAlpha: 1 });
-				}
-				syncBackgroundTravel(self.progress);
-			},
-			// refresh 不补发 onUpdate，视差得自己按新进度重算一遍
-			onRefresh: (self) => syncBackgroundTravel(self.progress),
-		},
-	});
-
-	// 入场标题不做 scrub 进场（它有自己的入场时间线），只在这里跟着揭示层一起滑出。
-	// 它的 autoAlpha 只由这条 scrub 时间线写入，refresh 时会按进度重新渲染，
-	// 因此滚过揭示层后缩放窗口不会让它重新出现。
-	revealTimeline.fromTo(
-		headline,
-		{ yPercent: 0, autoAlpha: 1 },
-		{
-			yPercent: -38,
-			autoAlpha: 0,
-			duration: 1 - REVEAL_EXIT_START,
-			ease: "power3.in",
-			immediateRender: false,
-		},
-		REVEAL_EXIT_START,
-	);
-
-	// scrub 时间线建好之后才读得到当前进度：初次挂载按现有位置锚定一次视差，
-	// 免得从别的页面深处跳进首页时背景停在起始位移上
-	syncBackgroundTravel(revealTimeline.scrollTrigger?.progress ?? 0);
-
-	return () => {
-		entranceTween?.kill();
-		entranceTrigger?.kill();
-		gsap.killTweensOf([headline]);
-		// 背景 transform 的唯一写入点在此，退场后清成无内联变换，
-		// 下一次挂载从恒等位重新起算
-		gsap.set(stageBackground, { clearProps: "transform" });
-		revealTimeline.scrollTrigger?.kill();
-		revealTimeline.kill();
+		bubbleLayer.style.visibility = "hidden";
+		stands.style.visibility = "hidden";
 	};
 }
 
@@ -1083,14 +746,10 @@ function setupReveal(context: SetupContext) {
  * ③ 长条在竖线位置原地缩没；中央刻度环自小放大转正，
  *    中缝横线带方块自中间往两侧摊开；
  * ④ 长条快缩没时两侧竖线就位并纵向长出；
- * ⑤ 落定后标题上移，第二层祝福语逐字翻入并循环。退场交给 setupReveal 的 scrub 时间线。
+ * ⑤ 落定后标题上移，第二层祝福语逐字翻入并循环。外层标题窗口随磨砂退场。
  */
 function setupHeadline(context: SetupContext) {
-	const { root, gsap, ScrollTrigger, config, signal } = context;
-	const section = selectRequired<HTMLElement>(
-		root,
-		"[data-home-blinds-reveal]",
-	);
+	const { root, gsap, config, signal } = context;
 	const headline = selectRequired<HTMLElement>(root, "[data-blinds-headline]");
 	const stack = selectRequired<HTMLElement>(headline, "[data-headline-stack]");
 	const title = selectRequired<HTMLElement>(headline, "[data-headline-title]");
@@ -1269,8 +928,7 @@ function setupHeadline(context: SetupContext) {
 
 	/**
 	 * 播完后遇到视口变化时直接落到终态重新对齐。
-	 * 根节点的 autoAlpha / yPercent 归入场时间线与 setupReveal 的退场段所有，
-	 * 这里一律不碰，否则滚过退场段再缩放窗口会把标题重新亮出来。
+	 * 标题窗的显隐由舞台进度决定，重新量尺寸只更新窗内布局。
 	 */
 	const settle = () => {
 		const { stackY } = measure();
@@ -1302,7 +960,6 @@ function setupHeadline(context: SetupContext) {
 	const play = () => {
 		if (played) return;
 		played = true;
-		context.headlineState.played = true;
 		const { openScale, blockScale, blockShift, stopShift, titleY, stackY } =
 			measure();
 		const span = enterSpan;
@@ -1404,33 +1061,15 @@ function setupHeadline(context: SetupContext) {
 		if (cycleCall && cycleCall.progress() < 1) cycleCall.paused(!looping);
 	};
 
-	const setAwake = (next: boolean) => {
-		awake = next;
+	const setVisible = (visible: boolean): void => {
+		if (signal.aborted || awake === visible) return;
+		awake = visible;
 		applyAwake();
-	};
-
-	const syncVisibility = (isActive: boolean) => {
-		if (signal.aborted) return;
-		setAwake(isActive);
 		if (awake) play();
 	};
 
 	reset();
-
-	const trigger = ScrollTrigger.create({
-		id: "home-blinds-headline",
-		trigger: section,
-		start: "top 66.666%",
-		end: "bottom top",
-		invalidateOnRefresh: true,
-		onToggle: (self) => syncVisibility(self.isActive),
-	});
-
-	// onToggle 在 refresh 时不补发，所以缩放视口后要按当前滚动位置补一次
-	const syncFromScroll = () => syncVisibility(trigger.isActive);
-	ScrollTrigger.addEventListener("refresh", syncFromScroll);
-	document.addEventListener("visibilitychange", syncFromScroll, { signal });
-	syncFromScroll();
+	document.addEventListener("visibilitychange", applyAwake, { signal });
 
 	// 视口变化后重新量标题宽度：未播则复位起点，播完则直接落到终态重新对齐
 	const relayout = () => {
@@ -1456,10 +1095,8 @@ function setupHeadline(context: SetupContext) {
 		if (!signal.aborted && headline.isConnected) relayout();
 	});
 
-	return () => {
+	const destroy = (): void => {
 		window.clearTimeout(relayoutTimer);
-		ScrollTrigger.removeEventListener("refresh", syncFromScroll);
-		trigger.kill();
 		stopCycle();
 		enter?.kill();
 		enter = null;
@@ -1477,6 +1114,7 @@ function setupHeadline(context: SetupContext) {
 		gsap.set(messages.flat(), { clearProps: "willChange" });
 		gsap.set(headline, { autoAlpha: 0 });
 	};
+	return { setVisible, destroy };
 }
 
 /** 固定且隐藏的图片不能依赖原生 lazy 的几何判断，改为观察正常文档流中的整层。 */
@@ -1529,7 +1167,6 @@ async function initializeHomeBlinds(root: HTMLElement, generation: number) {
 		ScrollTrigger,
 		config,
 		signal: abortController.signal,
-		headlineState: { played: false },
 	};
 
 	/**
@@ -1546,9 +1183,9 @@ async function initializeHomeBlinds(root: HTMLElement, generation: number) {
 	};
 
 	try {
-		cleanups.push(setupReveal(context));
-		cleanups.push(setupHeadline(context));
-		cleanups.push(setupScenes(context));
+		const headline = setupHeadline(context);
+		cleanups.push(headline.destroy);
+		cleanups.push(setupScenes(context, headline.setVisible));
 		cleanups.push(setupStageImages(context));
 	} catch (error) {
 		teardown();

@@ -2,16 +2,11 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { HeroMosaicConfig } from "@/types/config";
 import { initHomeHeroDialogue } from "@/utils/home-hero-dialogue";
-import { createFlyText, type FlyTextHandle } from "@/utils/home-hero-fly-text";
 import {
 	createHeroPhotoFramePaths,
 	getHeroPinEndDistance,
 } from "@/utils/home-hero-motion";
 import { initHomeHeroRain } from "@/utils/home-hero-rain";
-import {
-	type HomeHeroWordmarkController,
-	initHomeHeroWordmark,
-} from "@/utils/home-hero-wordmark";
 import { requestScrollTriggerRefresh } from "@/utils/scroll-trigger-refresh";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -77,10 +72,6 @@ const GUIDE_DASH_PERIOD = 26;
 /** 竖线视差走的周期数：位移恒为整周期，交接处的虚线相位才不会错位 */
 const GUIDE_DASH_CYCLES = 2;
 const GUIDE_DASH_FLOW = GUIDE_DASH_PERIOD * GUIDE_DASH_CYCLES;
-/** 标题从这一刻开始淡出，字标的 canvas 动画同步停摆 */
-const TITLE_EXIT_TIME = 0.72;
-/** 标题淡出时向上抬的距离（px），与整图离场同向 */
-const TITLE_EXIT_LIFT = 46;
 let initialReloadHandled = false;
 
 /**
@@ -120,7 +111,7 @@ function resetHeroScrollOnReload() {
 }
 
 type HeroRuntimeConfig = {
-	mosaic: HeroMosaicConfig;
+	mosaic: Omit<HeroMosaicConfig, "rows" | "columns" | "seed">;
 	rain: {
 		enabled?: boolean;
 		intensity?: number;
@@ -130,15 +121,12 @@ type HeroRuntimeConfig = {
 
 type TileState = {
 	element: HTMLElement;
-	row: number;
-	column: number;
 	order: number;
 	offsetX: number;
 	offsetY: number;
 	rotation: number;
 	scale: number;
 	blur: number;
-	initiallyVisible: boolean;
 };
 
 type TileTransform = {
@@ -149,9 +137,6 @@ type TileTransform = {
 	scaleY: number;
 	blur: number;
 };
-
-type TileEntranceTransform = TileTransform;
-type TileIdleTransform = TileTransform;
 
 function parseRuntimeConfig(hero: HTMLElement): HeroRuntimeConfig | null {
 	try {
@@ -170,65 +155,51 @@ function getTileStates(hero: HTMLElement): TileState[] {
 	return Array.from(hero.querySelectorAll<HTMLElement>("[data-hero-tile]")).map(
 		(element) => ({
 			element,
-			row: readNumber(element, "row", 0),
-			column: readNumber(element, "column", 0),
 			order: readNumber(element, "order", 0),
 			offsetX: readNumber(element, "offsetX", 0),
 			offsetY: readNumber(element, "offsetY", 0),
 			rotation: readNumber(element, "rotation", 0),
 			scale: readNumber(element, "scale", 1),
 			blur: readNumber(element, "blur", 0),
-			initiallyVisible: element.dataset.idleVisible === "true",
 		}),
 	);
 }
 
-/**
- * 摘掉首页的 motion-pending 状态类。
- * 这个类在 index.astro 上静态渲染，CSS 会按住 identity 与 contact 不显示，
- * 所以 mountHomeHero 的每条返回路径都必须走到这里，包括提前 return 的分支。
- */
-function clearMotionPending() {
-	document
-		.querySelector(".home-page--motion-pending")
-		?.classList.remove("home-page--motion-pending");
-}
+/** 固定布局会搬动 Hero，用文档时间轴接续首帧的 CSS 入场。 */
+function keepCoverTextEntrance(cover: HTMLElement): () => void {
+	const animations: Animation[] = [];
+	for (const source of cover.getAnimations({ subtree: true })) {
+		if (
+			!(source instanceof CSSAnimation) ||
+			source.animationName !== "home-hero-cover-text-in" ||
+			!(source.effect instanceof KeyframeEffect)
+		)
+			continue;
 
-function setReducedMotionState(
-	hero: HTMLElement,
-	dialogue: ReturnType<typeof initHomeHeroDialogue>,
-) {
-	hero.dataset.reducedMotion = "true";
-	dialogue.setSceneVisible(true);
-	dialogue.setGreetingVisible(true);
-	clearMotionPending();
+		const animation = new Animation(
+			new KeyframeEffect(source.effect),
+			document.timeline,
+		);
+		animation.play();
+		animation.startTime = source.startTime ?? document.timeline.currentTime;
+		animations.push(animation);
+	}
+	cover.dataset.coverTextStarted = "";
+	return () => {
+		for (const animation of animations) animation.cancel();
+		delete cover.dataset.coverTextStarted;
+	};
 }
 
 export function mountHomeHero(): () => void {
 	const hero = document.querySelector<HTMLElement>("[data-home-hero]");
 	if (!hero || hero.dataset.heroMounted === "true") return () => undefined;
 
-	// 移动端首页由 HomeMobile 渲染，桌面 Hero 隐藏时跳过挂载（马赛克/雨/对话框等）
-	if (
-		document.getElementById("home-mobile") &&
-		window.matchMedia("(max-width: 768px)").matches
-	) {
-		clearMotionPending();
-		return () => undefined;
-	}
-
 	const config = parseRuntimeConfig(hero);
-	// 配置读不出来时也要摘掉 motion-pending，否则 identity / contact 会被 CSS 一直按住
-	if (!config) {
-		clearMotionPending();
-		return () => undefined;
-	}
+	if (!config) return () => undefined;
 	const resetAfterReload = resetHeroScrollOnReload();
 
 	hero.dataset.heroMounted = "true";
-	// 本次挂载是否已被拆掉。document.fonts.ready 这类异步回调不能只看
-	// hero.dataset.heroMounted —— 那个标记会被下一次挂载重新写成 "true"，
-	// 上一次挂载的回调于是照样往下走，把 contact 拆成两套字符节点。
 	let disposed = false;
 	// revert 既回收动画也恢复挂载前样式，断点切换会在同一批 DOM 上重新挂载。
 	const animationContext = gsap.context(() => {}, hero);
@@ -245,9 +216,6 @@ export function mountHomeHero(): () => void {
 	const reducedMotionQuery = window.matchMedia(
 		"(prefers-reduced-motion: reduce)",
 	);
-	const mobileQuery = window.matchMedia("(max-width: 768px)");
-	const title = hero.querySelector<HTMLElement>("[data-hero-title]");
-	const contact = hero.querySelector<HTMLElement>("[data-hero-contact]");
 	const mosaic = hero.querySelector<HTMLElement>("[data-hero-mosaic]");
 	const mosaicTarget = hero.querySelector<HTMLElement>(
 		"[data-hero-mosaic-target]",
@@ -278,6 +246,8 @@ export function mountHomeHero(): () => void {
 		hero.querySelectorAll<SVGPathElement>("[data-hero-photo-frame] path"),
 	);
 	const cover = hero.querySelector<HTMLElement>("[data-hero-cover]");
+	const stopCoverTextEntrance =
+		cover && !reducedMotionQuery.matches ? keepCoverTextEntrance(cover) : null;
 	// 第一形态的整块背景是纯色：舞台那层缝线先藏起来，翻面时再浮出来接第二形态。
 	// 隐藏的是包在外面的容器，不是路径本身 —— 卡背 <use> 克隆的正是路径，
 	// 直接改路径透明度会把卡背的图案一起弄没
@@ -285,22 +255,8 @@ export function mountHomeHero(): () => void {
 		".home-hero__puzzle-seams-stage",
 	);
 	const tiles = getTileStates(hero);
-	const tileElements = tiles.map((tile) => tile.element);
-	const tileIntroElements = Array.from(
-		hero.querySelectorAll<HTMLElement>(
-			".home-hero__mosaic-tile.is-idle-visible .home-hero__mosaic-tile-image",
-		),
-	);
 	let timeline: ReturnType<typeof gsap.timeline> | null = null;
-	let heroScrollTrigger: ReturnType<typeof ScrollTrigger.create> | null = null;
 	let scrollDriver: ReturnType<typeof gsap.to> | null = null;
-	let tilesIntroTimeline: ReturnType<typeof gsap.timeline> | null = null;
-	let textIntroTimeline: ReturnType<typeof gsap.timeline> | null = null;
-	let flyHandles: FlyTextHandle[] = [];
-	let contactScatterTimeline: ReturnType<typeof gsap.timeline> | null = null;
-	let wordmark: HomeHeroWordmarkController | null = null;
-	let flyLayoutTimer = 0;
-	let hasPlayedTilesIntro = false;
 	/** 翻面期间冻住拼合进度，翻完才解冻 */
 	let coverFrozen = false;
 	/** 由 setupCoverFlip 写入，滚动一有进度就由 ScrollTrigger 兜底触发 */
@@ -318,23 +274,6 @@ export function mountHomeHero(): () => void {
 		x: 0,
 		y: 0,
 		scale: 1,
-	};
-
-	// 用户开始滚动时立即完成进行中的入场动画，交由 scrub 时间线接管
-	const completePendingIntros = () => {
-		if (tilesIntroTimeline) {
-			tilesIntroTimeline.progress(1);
-			tilesIntroTimeline = null;
-		} else if (!hasPlayedTilesIntro && tileIntroElements.length) {
-			// 图片未就绪就开始滚动时也直接显露内层，避免外层拼合后仍是空白。
-			gsap.set(tileIntroElements, { autoAlpha: 1, y: 0, scale: 1 });
-		}
-		hasPlayedTilesIntro = true;
-		if (textIntroTimeline) {
-			textIntroTimeline.progress(1);
-			textIntroTimeline.kill();
-			textIntroTimeline = null;
-		}
 	};
 
 	/**
@@ -370,7 +309,6 @@ export function mountHomeHero(): () => void {
 		if (greetingWanted) dialogue.setGreetingVisible(true);
 		rainWanted = rainActive;
 		syncRain();
-		wordmark?.setActive(timelineTime < TITLE_EXIT_TIME);
 	};
 
 	// computed width / height 不受 transform 影响且保留小数；只在挂载和 refresh 时读布局。
@@ -467,118 +405,40 @@ export function mountHomeHero(): () => void {
 		});
 	};
 
-	const getTileEntranceTransform = (tile: TileState): TileEntranceTransform => {
+	const getTileEntranceTransform = (tile: TileState): TileTransform => {
 		const horizontalRange = Math.max(
-			mosaicGeometry.heroWidth * (mobileQuery.matches ? 0.22 : 0.29),
+			mosaicGeometry.heroWidth * 0.29,
 			mosaicGeometry.width * 0.48,
 		);
 		const verticalRange = Math.max(
-			mosaicGeometry.heroHeight * (mobileQuery.matches ? 0.16 : 0.24),
+			mosaicGeometry.heroHeight * 0.24,
 			mosaicGeometry.height * 0.78,
 		);
-		const blurBase = mobileQuery.matches ? 8 : 13;
-		const blurRange = mobileQuery.matches ? 6 : 10;
 		const normalizedX = tile.offsetX / 75;
 		const normalizedY = tile.offsetY / 57.5;
 		const distance = Math.hypot(normalizedX, normalizedY);
 		const minimumTravel = 0.52;
 		const travelMultiplier =
 			distance > 0 && distance < minimumTravel ? minimumTravel / distance : 1;
+		const scale =
+			0.66 + Math.min(0.16, Math.max(0, (tile.scale - 0.72) * 0.48));
 
 		return {
 			x: normalizedX * travelMultiplier * horizontalRange,
 			y: normalizedY * travelMultiplier * verticalRange,
 			rotation: tile.rotation * 0.12,
-			scaleX: 0.66 + Math.min(0.16, Math.max(0, (tile.scale - 0.72) * 0.48)),
-			scaleY: 0.66 + Math.min(0.16, Math.max(0, (tile.scale - 0.72) * 0.48)),
-			blur: blurBase + (tile.blur / 5) * blurRange,
+			scaleX: scale,
+			scaleY: scale,
+			blur: 13 + (tile.blur / 5) * 10,
 		};
-	};
-
-	const getTileIdleTransform = (tile: TileState): TileIdleTransform => {
-		const mosaicWidth = mosaicGeometry.width;
-		const mosaicHeight = mosaicGeometry.height;
-		const idleVisible = Math.max(1, config.mosaic.idleVisible);
-		const depth = tile.order % idleVisible;
-		const depthProgress = idleVisible > 1 ? depth / (idleVisible - 1) : 0;
-		const normalizedX = (tile.offsetX + 75) / 150;
-		const normalizedY = (tile.offsetY + 57.5) / 115;
-		const targetX = mosaicWidth * (0.04 + normalizedX * 0.92);
-		const targetY = mosaicHeight * (0.3 + normalizedY * 0.62);
-		const tileCenterX =
-			((tile.column + 0.5) / config.mosaic.columns) * mosaicWidth;
-		const tileCenterY = ((tile.row + 0.5) / config.mosaic.rows) * mosaicHeight;
-
-		return {
-			x: targetX - tileCenterX,
-			y: targetY - tileCenterY,
-			rotation: tile.rotation,
-			scaleX: 1.18 - depthProgress * 0.38,
-			scaleY: 1.18 - depthProgress * 0.38,
-			blur: depthProgress * 7,
-		};
-	};
-
-	// 首屏布局和拼合入场共用当前画布尺寸，refresh 后不会沿用旧窗口的像素位移。
-	const getTileInitialTransform = (tile: TileState): TileTransform => {
-		const layout = config.mosaic.initialLayout?.[tile.order];
-		if (mobileQuery.matches || !mosaic || !layout) {
-			return getTileIdleTransform(tile);
-		}
-
-		const mosaicWidth = mosaicGeometry.width;
-		const mosaicHeight = mosaicGeometry.height;
-		const columns = Math.max(1, config.mosaic.columns);
-		const rows = Math.max(1, config.mosaic.rows);
-		const clampRatio = (value: number, fallback: number) =>
-			Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
-		const centerX = clampRatio(layout.x, 0.5) * mosaicWidth;
-		const centerY = clampRatio(layout.y, 0.5) * mosaicHeight;
-		const tileCenterX = ((tile.column + 0.5) / columns) * mosaicWidth;
-		const tileCenterY = ((tile.row + 0.5) / rows) * mosaicHeight;
-		const width = Math.max(0.01, clampRatio(layout.width, 1 / columns));
-		const height = Math.max(0.01, clampRatio(layout.height, 1 / rows));
-		const rotation =
-			typeof layout.rotation === "number" && Number.isFinite(layout.rotation)
-				? layout.rotation
-				: 0;
-		const blur = Number.isFinite(layout.blur)
-			? Math.max(0, layout.blur ?? 0)
-			: 0;
-
-		return {
-			x: centerX - tileCenterX,
-			y: centerY - tileCenterY,
-			rotation,
-			scaleX: width * columns,
-			scaleY: height * rows,
-			blur,
-		};
-	};
-	const initialTileVars = {
-		x: (index: number) => getTileInitialTransform(tiles[index]).x,
-		y: (index: number) => getTileInitialTransform(tiles[index]).y,
-		rotation: (index: number) => getTileInitialTransform(tiles[index]).rotation,
-		scaleX: (index: number) => getTileInitialTransform(tiles[index]).scaleX,
-		scaleY: (index: number) => getTileInitialTransform(tiles[index]).scaleY,
-		filter: (index: number) =>
-			`blur(${getTileInitialTransform(tiles[index]).blur}px)`,
-		// 首屏已经交给封面卡面，拼图散片不再预先摆在半空：开局全藏，靠滚动入场时才飞进来
-		autoAlpha: () => 0,
 	};
 
 	const getBaseScrollDistance = () =>
-		mobileQuery.matches
-			? getHeroPinEndDistance(
-					config.mosaic.mobileScrollDistance,
-					window.innerHeight,
-					config.mosaic.mobileMinViewports,
-				)
-			: getHeroPinEndDistance(
-					config.mosaic.desktopScrollDistance,
-					window.innerHeight,
-					config.mosaic.desktopMinViewports,
-				);
+		getHeroPinEndDistance(
+			config.mosaic.desktopScrollDistance,
+			window.innerHeight,
+			config.mosaic.desktopMinViewports,
+		);
 
 	const getDialogueEndProgress = () => {
 		const duration = Math.max(0.001, timeline?.duration() ?? 1);
@@ -587,12 +447,7 @@ export function mountHomeHero(): () => void {
 
 	const getDialogueTailDistance = () => {
 		if (getDialogueEndProgress() >= 1) return 0;
-		return Math.max(
-			0,
-			mobileQuery.matches
-				? config.mosaic.mobileDialogueTailDistance
-				: config.mosaic.desktopDialogueTailDistance,
-		);
+		return Math.max(0, config.mosaic.desktopDialogueTailDistance);
 	};
 
 	const getCompressedScrollDistance = () =>
@@ -632,8 +487,6 @@ export function mountHomeHero(): () => void {
 			return;
 		}
 		const progress = mapScrollProgressToTimelineProgress(scrollProgress);
-		// 先结束入场再渲染滚动帧，避免入场终帧覆盖本帧已经算好的淡出状态。
-		if (progress > 0.002) completePendingIntros();
 		timeline?.totalProgress(progress);
 		updateSceneState(progress);
 	};
@@ -642,23 +495,13 @@ export function mountHomeHero(): () => void {
 		if (!timeline || !measureMosaic()) return;
 		updatePhotoFrame();
 		const progress = timeline.totalProgress();
-		// 入场只作用于内层图片，刷新外层几何时保留渐入进度。
 		timeline.totalProgress(0, true);
-		// 进度为 0 时，invalidate 不会立即初始化尚未开始的补间，静止碎片要同步重定位。
-		gsap.set(tileElements, { ...initialTileVars });
 		timeline.invalidate();
 		timeline.totalProgress(progress, true);
 	};
 
 	const buildTimeline = () => {
-		if (
-			!title ||
-			!mosaic ||
-			!mosaicComplete ||
-			!mosaicGrid ||
-			tiles.length === 0
-		)
-			return;
+		if (!mosaic || !mosaicComplete || !mosaicGrid || tiles.length === 0) return;
 
 		measureMosaic();
 		updatePhotoFrame();
@@ -680,30 +523,12 @@ export function mountHomeHero(): () => void {
 				yPercent: 0,
 			});
 		}
-		gsap.set(tileElements, { ...initialTileVars });
-
 		timeline = gsap.timeline({
 			defaults: { ease: "none" },
 			paused: true,
 		});
 
 		timeline.to({}, { duration: 1 });
-		// 这条 scrub 时间线会在画布尺寸变化后 invalidate()。
-		// GSAP 的 to 补间在 invalidate 后会把「当前 DOM 值」重新记录为起点：
-		// 若 invalidate 发生在标题已淡出的深滚动状态，起点被记成 autoAlpha 0，
-		// 之后滚回顶部标题永远不可见。因此所有补间一律 fromTo 显式锚定起点。
-		timeline.fromTo(
-			title,
-			{ autoAlpha: 1, yPercent: 0, scale: 1 },
-			{
-				yPercent: -20,
-				scale: 0.58,
-				transformOrigin: "0% 50%",
-				duration: 0.1,
-				ease: "power3.inOut",
-			},
-			0,
-		);
 		// 首屏不再摆散片，入场从时间线开头就起步，翻完面一滚就能看到碎片聚拢
 		for (const tile of tiles) {
 			const start = 0.02 + tile.order * 0.02;
@@ -746,21 +571,6 @@ export function mountHomeHero(): () => void {
 			{ display: "block" },
 			{ display: "none", duration: 0, immediateRender: false },
 			0.75,
-		);
-
-		// 淡出段只加 y 位移，不碰 yPercent：yPercent 已由上一段补间锚定，若这里再显式给
-		// yPercent 起点，进度归零的回滚渲染会按时间序先后渲染两段，后渲染的这段把
-		// yPercent 又写回自己的起点，标题会停在 -20% 偏移上。
-		timeline.fromTo(
-			title,
-			{ autoAlpha: 1, y: 0 },
-			{
-				autoAlpha: 0,
-				y: -TITLE_EXIT_LIFT,
-				duration: 0.08,
-				ease: "power2.in",
-			},
-			TITLE_EXIT_TIME,
 		);
 
 		if (dialogueAnchor) {
@@ -947,7 +757,7 @@ export function mountHomeHero(): () => void {
 			onUpdate: () => renderTimelineForScroll(scrollState.progress),
 		});
 
-		heroScrollTrigger = ScrollTrigger.create({
+		const heroScrollTrigger = ScrollTrigger.create({
 			id: "home-hero-two-layer",
 			trigger: hero,
 			start: "top top",
@@ -963,7 +773,6 @@ export function mountHomeHero(): () => void {
 				animationContext.add(refreshMosaicGeometry);
 				self.update();
 				renderTimelineForScroll(scrollDriver?.progress() ?? self.progress);
-				animationContext.add(playTilesIntro);
 			},
 			onUpdate: (self) => {
 				// 兜底：滚动进度只要起步就先播翻面，不依赖滚轮拦截是否生效
@@ -1240,144 +1049,13 @@ export function mountHomeHero(): () => void {
 		};
 	};
 
-	// 入场只动内部图片，外层的位置、景深和透明度始终交给滚动时间线。
-	// 不再补间模糊，避免入场时反复栅格化图片；初始景深仍由外层保留。
-	const playTilesIntro = () => {
-		if (
-			hasPlayedTilesIntro ||
-			!mosaicImage?.complete ||
-			mosaicImage.naturalWidth === 0
-		)
-			return;
-		hasPlayedTilesIntro = true;
-		if (!tileIntroElements.length) return;
-		tilesIntroTimeline = gsap.timeline({
-			onComplete: () => {
-				tilesIntroTimeline = null;
-			},
-		});
-		tilesIntroTimeline.fromTo(
-			tileIntroElements,
-			{ y: 18, scale: 0.96, autoAlpha: 0 },
-			{
-				y: 0,
-				scale: 1,
-				autoAlpha: 1,
-				duration: 0.7,
-				stagger: 0.05,
-				ease: "power2.out",
-				immediateRender: true,
-			},
-			0.06,
-		);
-	};
-
-	// 右下角 contact：Scatter random 入场；下滑时字符风散退场
-	const prepareFlyText = () => {
-		const titleHost = hero.querySelector<HTMLElement>("[data-hero-wordmark]");
-		const contactHosts = (
-			contact
-				? [
-						hero.querySelector<HTMLElement>(".home-hero__contact-platform"),
-						hero.querySelector<HTMLElement>(".home-hero__contact-handle"),
-					]
-				: []
-		).filter((host): host is HTMLElement => host !== null);
-		const occupation = hero.querySelector<HTMLElement>(
-			".home-hero__occupation",
-		);
-		const identityText = [titleHost, occupation].filter(
-			(element): element is HTMLElement => element !== null,
-		);
-
-		// 字体就绪前先隐藏 contact，避免拆字前闪现原始整段文字。
-		contactHosts.forEach((host) => {
-			gsap.set(host, { autoAlpha: 0 });
-		});
-		identityText.forEach((element) => {
-			gsap.set(element, { autoAlpha: 0, y: 14 });
-		});
-
-		const mountContactScatter = () => {
-			if (!timeline || !flyHandles.length) return;
-			contactScatterTimeline?.kill();
-			const scatter = gsap.timeline();
-			for (const handle of flyHandles) {
-				const tl = handle.buildScatter(0.12);
-				if (tl) scatter.add(tl, 0);
-			}
-			contactScatterTimeline = scatter;
-			timeline.add(scatter, 0.04);
-		};
-
-		const handleFlyLayoutChange = () => {
-			window.clearTimeout(flyLayoutTimer);
-			flyLayoutTimer = window.setTimeout(() => {
-				if (disposed) return;
-				textIntroTimeline?.kill();
-				textIntroTimeline = null;
-				contactScatterTimeline?.kill();
-				contactScatterTimeline = null;
-				animationContext.add(() => {
-					for (const handle of flyHandles) handle.rebuild();
-					mountContactScatter();
-				});
-			}, 200);
-		};
-
-		document.fonts.ready.then(() => {
-			if (disposed) return;
-			// Promise 回调不继承同步 context，必须显式登记，包括 identity 的延迟补间。
-			animationContext.add(() => {
-				flyHandles = contactHosts.map((host) => createFlyText(host));
-				for (const handle of flyHandles) {
-					handle.prepare();
-					handle.onLayoutChange(handleFlyLayoutChange);
-				}
-				contactHosts.forEach((host) => {
-					gsap.set(host, { autoAlpha: 1 });
-				});
-
-				mountContactScatter();
-
-				const progress = heroScrollTrigger?.progress ?? 0;
-				if (progress <= 0.01) {
-					const intro = gsap.timeline();
-					const contactEntrances = flyHandles
-						.map((handle) => handle.buildEntrance(0.8))
-						.filter(
-							(tl): tl is ReturnType<typeof gsap.timeline> => tl !== null,
-						);
-					contactEntrances.forEach((tl, index) => {
-						intro.add(tl, 0.22 + index * 0.05);
-					});
-					textIntroTimeline = intro;
-				} else {
-					for (const handle of flyHandles) handle.setNatural();
-				}
-
-				if (identityText.length) {
-					gsap.to(identityText, {
-						autoAlpha: 1,
-						y: 0,
-						duration: 0.7,
-						ease: "power2.out",
-						delay: 0.5,
-					});
-				}
-			});
-		});
-	};
-
 	animationContext.add(() => {
 		if (reducedMotionQuery.matches) {
-			setReducedMotionState(hero, dialogue);
+			dialogue.setSceneVisible(true);
+			dialogue.setGreetingVisible(true);
 		} else {
-			// 字标要在 buildTimeline 之前建好：时间线首轮渲染会立刻 setActive 驱动它
-			wordmark = initHomeHeroWordmark(hero);
 			buildTimeline();
-			playTilesIntro();
-			// 慢速图片先建立 pin；图片撑出自然高度后统一刷新几何，再播放碎片入场。
+			// 慢速图片先建立 pin，图片撑出自然高度后再统一刷新几何。
 			for (const image of [mosaicImage, photoOverlay?.querySelector("img")]) {
 				if (!image || image.complete) continue;
 				image.addEventListener(
@@ -1386,14 +1064,10 @@ export function mountHomeHero(): () => void {
 					{ once: true, signal: abortController.signal },
 				);
 			}
-			prepareFlyText();
 			// 翻面是独立的一次性动画，不挂在 scrub 时间线上，放在 pin 建好之后
 			setupCoverFlip();
 		}
 	});
-	document
-		.querySelector(".home-page--motion-pending")
-		?.classList.remove("home-page--motion-pending");
 
 	// 复位要等 pin 与时间线都建好之后的那一帧，且必须可被卸载取消：
 	// 快速离开首页时这一帧若还跑着，会在新页面上 scrollTo(0,0) 并改全局恢复模式。
@@ -1415,27 +1089,16 @@ export function mountHomeHero(): () => void {
 		if (disposed) return;
 		disposed = true;
 		if (reloadResetFrame) cancelAnimationFrame(reloadResetFrame);
-		// 合并刷新是跨层共享的，不能在 Hero 单独卸载时取消其它层的请求。
-		window.clearTimeout(flyLayoutTimer);
 		heroVisibility.disconnect();
 		rain.destroy();
 		dialogue.destroy();
 		coverCleanup?.();
 		coverCleanup = null;
+		stopCoverTextEntrance?.();
 		abortController.abort();
 		animationContext.revert();
-		heroScrollTrigger = null;
 		scrollDriver = null;
 		timeline = null;
-		tilesIntroTimeline = null;
-		textIntroTimeline = null;
-		contactScatterTimeline = null;
-		// 先回退字符动画，再还原宿主 DOM，避免同节点重挂载时重复拆字。
-		for (const handle of flyHandles) handle.destroy();
-		flyHandles = [];
-		wordmark?.destroy();
-		wordmark = null;
 		delete hero.dataset.heroMounted;
-		delete hero.dataset.reducedMotion;
 	};
 }

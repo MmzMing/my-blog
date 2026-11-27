@@ -1,10 +1,13 @@
 ---
-import { homeConfig } from "@/config";
-import { createHeroPuzzleLayout } from "@/utils/home-hero-motion";
+interface Props {
+	title: string;
+	note?: string;
+	puzzleViewBox: string;
+}
 
+const { title, note, puzzleViewBox } = Astro.props;
 const COVER_COLUMNS = 6;
 const COVER_ROWS = 6;
-const puzzle = createHeroPuzzleLayout();
 
 const tiles = Array.from(
 	{ length: COVER_COLUMNS * COVER_ROWS },
@@ -21,9 +24,6 @@ const coverStyle = [
 	`--cover-print-width: calc(${COVER_COLUMNS} * 100% + ${COVER_COLUMNS - 1} * var(--cover-gap))`,
 	`--cover-print-height: calc(${COVER_ROWS} * 100% + ${COVER_ROWS - 1} * var(--cover-gap))`,
 ].join(";");
-
-const title = homeConfig.displayName || homeConfig.name;
-const note = homeConfig.occupation;
 ---
 
 <div
@@ -37,7 +37,6 @@ const note = homeConfig.occupation;
 			tiles.map((tile) => (
 				<div
 					class="home-hero__cover-tile"
-					data-hero-cover-tile
 					style={[
 						`--cover-offset-x: calc(-${tile.column} * 100% - ${tile.column} * var(--cover-gap));`,
 						`--cover-offset-y: calc(-${tile.row} * 100% - ${tile.row} * var(--cover-gap));`,
@@ -53,7 +52,7 @@ const note = homeConfig.occupation;
 						<div class="home-hero__cover-face home-hero__cover-back">
 							<svg
 								class="home-hero__cover-seams"
-								viewBox={puzzle.viewBox}
+								viewBox={puzzleViewBox}
 								preserveAspectRatio="xMidYMid slice"
 								aria-hidden="true"
 								focusable="false"

@@ -22,58 +22,47 @@
 	display: none;
 }
 
-.home-blinds-reveal,
 .home-blinds-scenes {
+	--home-blinds-stage-height: 100vh;
 	position: relative;
-	z-index: 1;
 	width: 100%;
-	height: 100vh;
-	min-height: 100vh;
-	background: transparent;
+	height: calc(
+		2 * var(--home-blinds-stage-height) +
+		max(var(--home-blinds-scroll-distance), 3.4 * var(--home-blinds-stage-height))
+	);
 }
 
-.home-blinds-reveal__viewport,
 .home-blinds-scenes__viewport {
-	position: relative;
+	position: sticky;
+	top: 0;
 	width: 100%;
-	height: 100vh;
-	min-height: 100vh;
+	height: var(--home-blinds-stage-height);
 	overflow: hidden;
-	background: transparent;
+}
+
+.home-blinds-scenes__viewport::before {
+	position: absolute;
+	inset: auto 0 0;
+	height: 15%;
+	content: "";
+	pointer-events: none;
+	background: linear-gradient(transparent, var(--site-footer-surface));
+	opacity: var(--home-blinds-footer-reveal, 0);
 }
 
 .home-blinds__fixed-stage {
 	position: fixed;
 	inset: 0;
-	z-index: 0;
+	z-index: 1;
 	/* 刻意不写 width / height：100vw 含纵向滚动条，会比真实视口宽出一截，
 	   reveal 背景的 cover 裁切与 portal 收缩几何都以此为基准，宽一点就对不上缝。
 	   inset: 0 恒等于视口，两端交接才能逐像素重合。 */
 	overflow: hidden;
-	background: var(--page-bg);
-	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
 }
 
-.home-blinds__background {
-	position: absolute;
-	inset: 0;
-	display: block;
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	object-position: center;
-	user-select: none;
-	-webkit-user-drag: none;
-	/* 视差位移由 setupReveal 逐帧写 transform：起始放大留出上下余量，落定回到恒等变换，
-	   与过渡层的满屏起点逐像素重合 */
-	will-change: transform;
-}
-
-/* 过渡层里的图片不吃 inset：控制器按「视口 cover 的渲染尺寸」给它显式宽高，
-   收缩全程只用等比 scale，object-fit 因此永不重算裁切，也就不再每帧重光栅。
-   居中交给控制器写的 xPercent / yPercent，这里只给 top / left。 */
+/* 图片按视口 cover 尺寸铺开，揭示和收缩时只变换位置与比例。 */
 .home-blinds__portal-image {
 	position: absolute;
 	top: 50%;
@@ -91,13 +80,7 @@
 	will-change: transform;
 }
 
-.home-blinds__background {
-	z-index: 1;
-}
-
-/* 揭示层全屏磨砂玻璃：满屏模糊 + 暗色遮罩，把线稿背景压成入场标题的衬底。
-   位于背景（z-index 1）之上、入场标题（z-index 4）之下；显隐与背景同一次
-   gsap.set 写入，因此与背景同帧入场、同帧退场。 */
+/* 在同一块磨砂玻璃上裁出多道横缝，避免每条百叶都单独滤镜。 */
 .home-blinds__reveal-glass {
 	--home-blinds-glass-blur: 18px;
 	--home-blinds-glass-tint: 10, 12, 16;
@@ -115,7 +98,14 @@
 		rgba(var(--home-blinds-glass-tint), var(--home-blinds-glass-flat));
 	backdrop-filter: blur(var(--home-blinds-glass-blur)) saturate(1.08);
 	-webkit-backdrop-filter: blur(var(--home-blinds-glass-blur)) saturate(1.08);
-	opacity: 0;
+	visibility: hidden;
+}
+
+.home-blinds__entry-shutter {
+	position: absolute;
+	inset: 0;
+	z-index: 6;
+	background: var(--page-bg);
 	visibility: hidden;
 }
 
@@ -137,12 +127,10 @@
    收窗（只触发 paint）加内部图片的等比 scale（走合成），不再补间 width / height。
    起点可视区精确等于「视口 cover」、终点精确等于「图框 cover」，两端交接都不跳变。 */
 .home-blinds__portal {
-	z-index: 5;
+	z-index: 1;
 	overflow: hidden;
 	background: var(--page-bg);
-	opacity: 0;
-	visibility: hidden;
-	will-change: clip-path, opacity;
+	will-change: clip-path;
 }
 
 /* ============================================
@@ -671,7 +659,6 @@
 	inset: 0;
 	z-index: 0;
 	overflow: hidden;
-	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
 	--home-blinds-marquee-line: color-mix(
@@ -777,7 +764,6 @@
 	/* 压在明信片之上（track 是 2），但仍让底部图片列表压在身前 */
 	z-index: 3;
 	overflow: hidden;
-	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
 	--home-blinds-bubble-ink: var(--deep-text);
@@ -813,11 +799,11 @@
 	visibility: hidden;
 }
 
-/* 内层是气泡本体，入场的 Q 弹只打在这一层。
-   两层各持一个 transform，弹跳的 scale 不会把漂移的 translate 覆盖掉
-   （同首页移动层那条约定：外层管位移、内层管入场）。
-   弹幕式排版：无底无边框，靠灰阶阴影把字从拼图底纹上托起来 */
+/* 外层循环漂移，内层错峰滑入。 */
 .home-blinds-bubble__body {
+	display: block;
+	transform: translateY(calc((1 - var(--bubble-reveal, 0)) * 0.85em));
+	opacity: var(--bubble-reveal, 0);
 	color: var(--home-blinds-bubble-ink);
 	font-size: calc(0.86rem * var(--home-blinds-bubble-scale, 1));
 	font-weight: 600;
@@ -844,8 +830,6 @@
 
 @keyframes home-blinds-bubble-drift {
 	from {
-		/* 起点取 100vw 而不是 100vw + 自身宽度：整颗确实藏在容器右缘之外（被 overflow 裁掉），
-		   但下一帧就开始露头 —— 换条时补的那次弹跳才看得见，否则 0.78s 早在屏幕外跑完了 */
 		transform: translate3d(100vw, 0, 0);
 	}
 	to {
@@ -873,8 +857,8 @@
 }
 
 /* ============================================
-   单幕结构：吊线 / 明信片卡（4:3 图框 + 底部介绍）/ 底部图片列表
-   单数幕垂直居中、双数幕挂在视口上 1/3 处，左右错落；
+   单幕结构：双吊线与木夹 / 明信片卡（4:3 图框 + 底部介绍）/ 底部图片列表
+   所有明信片共用同一垂直基线；
    标题与完整日期放在卡片底栏
    ============================================ */
 
@@ -911,22 +895,16 @@
 	/* 纸面与墨色不随主题翻转：明信片在深浅色底上都是同一张纸 */
 	--home-blinds-postcard-paper: #f9f3e4;
 	--home-blinds-postcard-ink: #4c4536;
-	/* 夹子和贴纸统一用无彩度灰色，明暗仍取自纸面与墨色。 */
 	--home-blinds-postcard-wood: oklch(
-		from var(--home-blinds-postcard-ink)
-		calc(l + 0.16) 0 h
+		from var(--home-blinds-postcard-ink) calc(l + 0.16) 0 h
 	);
 	--home-blinds-postcard-highlight: oklch(
 		from var(--home-blinds-postcard-paper) l 0 h
 	);
 	--home-blinds-scene-clip-height: clamp(3.4rem, 5.7vw, 5rem);
-	/* 吊线长度 = 视窗顶到卡顶，另加 8rem 余量（超出视口的部分被裁掉），
-	   100vh 与 100dvh 的差值因此不影响接线。
-	   注意：该变量会在双数幕上被覆盖，凡引用它必须在「使用它的元素」上
-	   现算（直接写 calc），不能在此处预先派生新变量——自定义属性在声明
-	   元素上就完成 var() 求值，预先派生的值不会跟随后代的覆盖 */
 	--home-blinds-scene-string-length: calc(
-		50vh - var(--home-blinds-scene-height) / 2 + 8rem
+		(var(--home-blinds-stage-height) - var(--home-blinds-scene-height)) / 2 +
+		max(8rem, 25vh)
 	);
 }
 
@@ -942,23 +920,12 @@
 	will-change: transform, opacity;
 }
 
-/* 双数幕挂高：垂直中心落在视口 42% 处，与单数幕（50%）错落。
-   卡顶因此离视窗顶约 12vh —— 卡片高度按 60vh 定尺，再往上就会贴到导航栏 */
-.home-blinds-scene--raised {
-	top: 42%;
-	--home-blinds-scene-string-length: calc(
-		42vh - var(--home-blinds-scene-height) / 2 + 8rem
-	);
-}
-
-/* 左右挂点各带一根线和一只木夹，用同一个横坐标避免摆动时接头错位。
-   吊线与木夹属于纸面的一部分：随纸面渐入，不先于背景出现 */
+/* 左右挂点各带一根直线和一只木夹，线端藏在木夹后。 */
 .home-blinds-scene__hanger {
 	--home-blinds-clip-tilt: -8deg;
 	position: absolute;
 	top: 0;
 	left: 20%;
-	opacity: var(--scene-paper-alpha, 1);
 	width: 0;
 	height: 0;
 }
@@ -968,7 +935,6 @@
 	left: 80%;
 }
 
-/* 吊线顶端上探到视窗外，底端藏在木夹后，与卡身一起绕挂点倾斜。 */
 .home-blinds-scene__string {
 	position: absolute;
 	top: calc(-1 * var(--home-blinds-scene-string-length));
@@ -978,12 +944,15 @@
 	height: var(--home-blinds-scene-string-length);
 	margin-left: -1px;
 	background: color-mix(in srgb, var(--deep-text) 44%, transparent);
+	opacity: var(--scene-hanger-reveal, 0);
 }
 
 .home-blinds-scene__swing {
+	--scene-paper-reveal: 1;
 	position: absolute;
 	inset: 0;
-	/* 双吊线以顶部中点为共用摆轴，线、木夹与卡整体倾斜。 */
+	z-index: 1;
+	/* 在视口外的两根线之间设摆轴，让木夹、直线与卡身一起转动。 */
 	transform-origin: 50% calc(-1 * var(--home-blinds-scene-string-length));
 	will-change: transform;
 }
@@ -992,7 +961,6 @@
 .home-blinds-scene__card {
 	position: absolute;
 	inset: 0;
-	/* 后木臂在 0 层，纸面在 1 层，前夹口在 2 层，纸边从两片木臂间穿过。 */
 	z-index: 1;
 	display: flex;
 	flex-direction: column;
@@ -1001,21 +969,37 @@
 	/* 底边不另外留白：整条底部纸面交给底栏，文字在其中垂直居中，
 	   于是「照片→文字」与「文字→卡边」两段间距天然等宽 */
 	padding-bottom: 0;
-	/* 纸边不画实线：边框就是描边本身；保留透明边框只为锁定几何尺寸 */
+	/* 为纸面边框预留空间，保持收缩照片和图框的定位一致。 */
 	border: var(--home-blinds-scene-edge) solid transparent;
 }
 
-/* 纸面底色与投影独立成层（压在照片、底栏之下）：
-   首幕接收缩门时，图片先在原位就位，纸面背景再渐入 */
+/* 纸面、描边和投影共用边界，避免投影提前显露整张卡片。 */
 .home-blinds-scene__paper {
 	position: absolute;
 	inset: calc(-1 * var(--home-blinds-scene-edge));
 	z-index: 0;
+	border: var(--home-blinds-scene-edge) solid var(--home-blinds-postcard-ink);
 	background: var(--home-blinds-postcard-paper);
 	box-shadow:
-		0 1.1rem 2.4rem rgb(0 0 0 / 0.22),
-		0 0.25rem 0.7rem rgb(0 0 0 / 0.14);
-	opacity: var(--scene-paper-alpha, 1);
+		0 1.1rem 2.4rem rgb(0 0 0 / calc(0.22 * var(--scene-paper-reveal))),
+		0 0.25rem 0.7rem rgb(0 0 0 / calc(0.14 * var(--scene-paper-reveal)));
+}
+
+.home-blinds-scene--composite .home-blinds-scene__paper {
+	--paper-remaining: calc(1 - var(--scene-paper-reveal));
+	--paper-inset: calc(
+		(var(--home-blinds-scene-pad) + var(--home-blinds-scene-edge)) *
+			var(--paper-remaining) -
+		var(--home-blinds-scene-edge)
+	);
+	inset:
+		var(--paper-inset)
+		var(--paper-inset)
+		calc(
+			var(--paper-inset) +
+			var(--home-blinds-scene-band-height) * var(--paper-remaining)
+		)
+		var(--paper-inset);
 }
 
 /* 照片不单独描边，边框由明信片纸面承担 */
@@ -1041,70 +1025,8 @@
 	-webkit-user-drag: none;
 }
 
-/* 明信片描边：这条线就是明信片的边框本身（纸面不再画实线）。
-   墨色固定取纸面墨色，不随主题翻转；四个边条各从上一条的终点接力，
-   用 scale 依次画出"一支笔顺时针绕一圈"的入场，画满后一直保留。
-   向外扩出一个边框宽度，让线条压在卡片外沿而不是纸面内部（同顶部 home 照片框） */
-.home-blinds-scene__outline {
-	position: absolute;
-	inset: calc(-1 * var(--home-blinds-scene-edge));
-	z-index: 2;
-	display: block;
-	pointer-events: none;
-}
-
-.home-blinds-scene__outline-edge {
-	position: absolute;
-	display: block;
-	background: var(--home-blinds-postcard-ink);
-}
-
-/* 上沿：从左往右画 */
-.home-blinds-scene__outline-edge[data-outline-edge="top"] {
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: var(--home-blinds-scene-edge);
-	transform: scaleX(var(--outline-top, 0));
-	transform-origin: 0 50%;
-}
-
-/* 右沿：从上往下画 */
-.home-blinds-scene__outline-edge[data-outline-edge="right"] {
-	top: 0;
-	right: 0;
-	width: var(--home-blinds-scene-edge);
-	height: 100%;
-	transform: scaleY(var(--outline-right, 0));
-	transform-origin: 50% 0;
-}
-
-/* 下沿：从右往左画 */
-.home-blinds-scene__outline-edge[data-outline-edge="bottom"] {
-	bottom: 0;
-	right: 0;
-	width: 100%;
-	height: var(--home-blinds-scene-edge);
-	transform: scaleX(var(--outline-bottom, 0));
-	transform-origin: 100% 50%;
-}
-
-/* 左沿：从下往上画，回到起点闭合 */
-.home-blinds-scene__outline-edge[data-outline-edge="left"] {
-	bottom: 0;
-	left: 0;
-	width: var(--home-blinds-scene-edge);
-	height: 100%;
-	transform: scaleY(var(--outline-left, 0));
-	transform-origin: 50% 100%;
-}
-
 /* 两片木臂分别处在纸面前后；侧面的咬口凹槽与银灰弹簧保留参考木夹的结构。
    夹口伸过纸边，轻压照片上沿；用静态错位阴影表现接触，不使用模糊滤镜。 */
-.home-blinds-scene__clip {
-	color: oklch(from var(--home-blinds-postcard-ink) l 0 h);
-}
-
 .home-blinds-scene__clip {
 	position: absolute;
 	top: calc(var(--home-blinds-scene-clip-height) * -0.52);
@@ -1112,6 +1034,8 @@
 	width: calc(var(--home-blinds-scene-clip-height) * 84 / 182);
 	height: var(--home-blinds-scene-clip-height);
 	overflow: visible;
+	color: oklch(from var(--home-blinds-postcard-ink) l 0 h);
+	opacity: var(--scene-hanger-reveal, 0);
 	transform: translateX(-50%) rotate(var(--home-blinds-clip-tilt));
 	transform-origin: 50% 52%;
 	stroke-linecap: round;
@@ -1197,6 +1121,7 @@
 	gap: clamp(0.6rem, 1.2vw, 0.95rem);
 	min-height: 0;
 	margin-top: 0;
+	overflow: hidden;
 }
 
 /* 左列：标题压完整日期，两行之间不留额外空隙 */
@@ -1233,6 +1158,7 @@
 	flex: 0 0 1px;
 	align-self: stretch;
 	background: color-mix(in srgb, var(--home-blinds-postcard-ink) 22%, transparent);
+	transform-origin: 50% 0;
 }
 
 /* 右栏说明：固定两行，超出以省略号截断 */
@@ -1265,7 +1191,6 @@
 	z-index: 5;
 	height: var(--home-blinds-stand-height);
 	overflow: hidden;
-	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
 }
@@ -1306,12 +1231,8 @@
 }
 
 @supports (height: 100dvh) {
-	.home-blinds-reveal,
-	.home-blinds-scenes,
-	.home-blinds-reveal__viewport,
-	.home-blinds-scenes__viewport {
-		height: 100dvh;
-		min-height: 100dvh;
+	.home-blinds-scenes {
+		--home-blinds-stage-height: 100dvh;
 	}
 
 	.home-blinds-scenes__stands {

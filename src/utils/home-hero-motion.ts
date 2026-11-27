@@ -1,5 +1,4 @@
-export type HeroTileLayout = {
-	index: number;
+type HeroTileLayout = {
 	row: number;
 	column: number;
 	order: number;
@@ -8,16 +7,16 @@ export type HeroTileLayout = {
 	rotation: number;
 	scale: number;
 	blur: number;
-	idleDepth: number;
-	initiallyVisible: boolean;
+	zIndex: number;
 };
 
 type HeroTileLayoutOptions = {
 	rows: number;
 	columns: number;
-	idleVisible: number;
 	seed: number;
 };
+
+const LEADING_TILE_COUNT = 6;
 
 function createSeededRandom(seed: number) {
 	let value = seed >>> 0;
@@ -33,10 +32,10 @@ function createSeededRandom(seed: number) {
 export function createHeroTileLayout({
 	rows,
 	columns,
-	idleVisible,
 	seed,
 }: HeroTileLayoutOptions): HeroTileLayout[] {
 	const tileCount = Math.max(1, rows * columns);
+	const leadingCount = Math.min(tileCount, LEADING_TILE_COUNT);
 	const random = createSeededRandom(seed);
 	const order = Array.from({ length: tileCount }, (_, index) => index);
 
@@ -50,15 +49,9 @@ export function createHeroTileLayout({
 	);
 	return Array.from({ length: tileCount }, (_, index) => {
 		const rank = revealOrder.get(index) ?? index;
-		const initiallyVisible =
-			rank < Math.min(tileCount, Math.max(1, idleVisible));
-		const idleDepth = initiallyVisible ? rank : idleVisible;
-		const idleProgress =
-			Math.min(tileCount, Math.max(1, idleVisible)) > 1
-				? idleDepth / (Math.min(tileCount, Math.max(1, idleVisible)) - 1)
-				: 0;
+		const isLeading = rank < leadingCount;
+		const depth = rank / Math.max(1, leadingCount - 1);
 		return {
-			index,
 			row: Math.floor(index / columns),
 			column: index % columns,
 			order: rank,
@@ -66,16 +59,10 @@ export function createHeroTileLayout({
 			offsetY: Number(((random() - 0.5) * 115).toFixed(3)),
 			rotation: Number(((random() - 0.5) * 18).toFixed(3)),
 			scale: Number(
-				(initiallyVisible
-					? 1.18 - idleProgress * 0.38
-					: 0.72 + random() * 0.34
-				).toFixed(3),
+				(isLeading ? 1.18 - depth * 0.38 : 0.72 + random() * 0.34).toFixed(3),
 			),
-			blur: Number(
-				(initiallyVisible ? idleProgress * 7 : random() * 5).toFixed(3),
-			),
-			idleDepth,
-			initiallyVisible,
+			blur: Number((isLeading ? depth * 7 : random() * 5).toFixed(3)),
+			zIndex: Math.max(0, LEADING_TILE_COUNT - rank),
 		};
 	});
 }

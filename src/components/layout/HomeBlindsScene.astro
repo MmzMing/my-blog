@@ -11,10 +11,6 @@ interface Props {
 
 const { index, item, composite = false } = Astro.props;
 
-// 五幕统一为明信片版式：双数幕挂高（垂直中心落在视口 42% 处），
-// 单数幕垂直居中，左右两张错落排布
-const isRaised = index % 2 === 1;
-
 const sceneDate = item.date
 	? dayjs(item.date.replace(/\s+/gu, "")).format("YYYY/MM/DD")
 	: null;
@@ -23,7 +19,6 @@ const sceneDate = item.date
 <article
 	class:list={[
 		"home-blinds-scene",
-		{ "home-blinds-scene--raised": isRaised },
 		{ "home-blinds-scene--composite": composite },
 	]}
 	data-home-blinds-scene
@@ -104,19 +99,8 @@ const sceneDate = item.date
 		}
 
 		<div class="home-blinds-scene__card">
-			<!-- 纸面背景单独成层：首幕接收缩门时图片原地不动，由这层纸面渐入 -->
+			<!-- 首幕纸边从收缩中的照片背后展开。 -->
 			<span class="home-blinds-scene__paper" aria-hidden="true"></span>
-			<!-- 明信片描边：一支笔从上沿起顺时针绕一圈，画满后就是卡片边框本身 -->
-			<span
-				class="home-blinds-scene__outline"
-				aria-hidden="true"
-				data-scene-card-outline
-			>
-				<i class="home-blinds-scene__outline-edge" data-outline-edge="top"></i>
-				<i class="home-blinds-scene__outline-edge" data-outline-edge="right"></i>
-				<i class="home-blinds-scene__outline-edge" data-outline-edge="bottom"></i>
-				<i class="home-blinds-scene__outline-edge" data-outline-edge="left"></i>
-			</span>
 			<div class="home-blinds-scene__frame" data-scene-frame>
 				<img
 					class="home-blinds-scene__image"

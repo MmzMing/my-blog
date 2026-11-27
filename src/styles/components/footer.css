@@ -1,11 +1,15 @@
-.site-footer {
-	margin-top: 4rem;
-	background: color-mix(in oklch, var(--page-bg) 96%, var(--deep-text));
-	color: var(--deep-text);
+:root {
+	--site-footer-surface: color-mix(in oklch, var(--page-bg) 96%, var(--deep-text));
 }
 
-:root.dark .site-footer {
-	background: #161616;
+:root.dark {
+	--site-footer-surface: #161616;
+}
+
+.site-footer {
+	margin-top: 4rem;
+	background: var(--site-footer-surface);
+	color: var(--deep-text);
 }
 
 .site-footer__inner {

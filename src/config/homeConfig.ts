@@ -12,39 +12,26 @@ export const homeConfig: HomeConfig = {
 	displayName: "MmzMing",
 
 	// 职业/身份标签
-	occupation: "[全干工程师 / 技术博主]",
+	occupation: "全干工程师 / 技术博主",
 
-	// 个人签名（支持多条，会循环打字+删除效果）
+	// 个人签名（移动端首页与页脚展示首条）
 	bio: ["且视他人之疑目如盏盏鬼火，大胆地去走你的夜路"],
 
 	hero: {
 		mosaic: {
 			rows: 4,
 			columns: 6,
-			idleVisible: 6,
 			seed: 20260814,
-			// 首屏六块碎片按 reveal rank 放置，入场后停在这套布局上不再轮换。
-			initialLayout: [
-				{ x: 0.14, y: 0.305, width: 0.104, height: 0.205 },
-				{ x: 0.435, y: 0.18, width: 0.068, height: 0.13, blur: 5.5 },
-				{ x: 0.642, y: 0.368, width: 0.047, height: 0.092, blur: 5 },
-				{ x: 0.863, y: 0.402, width: 0.097, height: 0.19 },
-				{ x: 0.337, y: 0.653, width: 0.159, height: 0.313 },
-				{ x: 0.639, y: 0.751, width: 0.116, height: 0.228 },
-			],
 			scrub: 0.45,
 			// 滑动距离整体砍半，同样的滚动量推进更快
 			desktopScrollDistance: 3250,
-			mobileScrollDistance: 2300,
 			desktopDialogueTailDistance: 240,
-			mobileDialogueTailDistance: 180,
 			desktopMinViewports: 4.05,
-			mobileMinViewports: 3.05,
 			interactionHold: 0.06,
 		},
+		// 第二屏「订阅与联系」缩略态展示的平台，取 links 中同名链接。
 		contact: {
 			platform: "B站",
-			handle: "Mmz明崽",
 		},
 		sticker: {
 			image: "/assets/images/home/doll.avif",
@@ -88,7 +75,7 @@ export const homeConfig: HomeConfig = {
 				"感兴趣可以加 QQ 群喵，放心，傻爸爸不咬人的。",
 			],
 		},
-		// 玻璃雨珠 + 撞击水花（移动端自动降低密度，尊重 prefers-reduced-motion）
+		// 桌面首屏照片态的玻璃雨珠与水花。
 		rain: {
 			enabled: true,
 			intensity: 0.6,

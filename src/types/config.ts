@@ -330,44 +330,17 @@ export type HeroDialogueConfig = {
 	lines: string[];
 };
 
-export type HeroMosaicInitialTile = {
-	/** 碎片中心点在马赛克画布中的横向比例（0–1）。 */
-	x: number;
-	/** 碎片中心点在马赛克画布中的纵向比例（0–1）。 */
-	y: number;
-	/** 碎片宽度占马赛克画布的比例（0–1）。 */
-	width: number;
-	/** 碎片高度占马赛克画布的比例（0–1）。 */
-	height: number;
-	/** 初始旋转角度。 */
-	rotation?: number;
-	/** 初始模糊半径。 */
-	blur?: number;
-};
-
 export type HeroMosaicConfig = {
 	rows: number;
 	columns: number;
-	idleVisible: number;
 	seed: number;
 	scrub: number;
 	desktopScrollDistance: number;
-	mobileScrollDistance: number;
 	/** 对话框完成后保留的固定滚动距离。 */
 	desktopDialogueTailDistance: number;
-	mobileDialogueTailDistance: number;
 	desktopMinViewports: number;
-	mobileMinViewports: number;
-	/** 仅用于首屏静止状态的碎片布局，后续轮换仍使用随机参数。 */
-	initialLayout?: HeroMosaicInitialTile[];
 	/** 第二层全部出现后继续固定 Hero 的时间线长度，用于交互驻留。 */
 	interactionHold: number;
-};
-
-export type HeroContactConfig = {
-	platform: string;
-	handle: string;
-	href?: string;
 };
 
 export type HeroStickerConfig = {
@@ -389,7 +362,8 @@ export type HomeConfig = {
 	bio?: string | string[];
 	hero: {
 		mosaic: HeroMosaicConfig;
-		contact?: HeroContactConfig;
+		/** 第二屏「订阅与联系」的缩略态平台名，对应 links 中的 name。 */
+		contact?: { platform: string };
 		sticker: HeroStickerConfig;
 		/** 拼合完成后的照片态：居中微倾后左移，右侧介绍卡片 + 下方滑入叠加图 */
 		photo: {
@@ -408,7 +382,7 @@ export type HomeConfig = {
 		};
 		/** 左下角角色的想法气泡 */
 		dialogue?: HeroDialogueConfig;
-		/** 玻璃雨珠 + 撞击水花动效，移动端自动降低密度。 */
+		/** 桌面照片态的玻璃雨珠与水花。 */
 		rain?: {
 			enabled?: boolean;
 			/** 雨量强度，0–1，默认 0.6（克制） */

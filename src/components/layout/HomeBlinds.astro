@@ -52,7 +52,6 @@ const runtimeConfig = {
 		},
 	},
 	scenes: {
-		scrollDistance: config.scenes.scrollDistance,
 		sceneCount: sceneItems.length,
 		bubbleMessages,
 		commentBubble,
@@ -67,16 +66,18 @@ const runtimeConfig = {
 	data-pagefind-ignore
 >
 	<div class="home-blinds__fixed-stage" data-blinds-stage aria-hidden="true">
-		<img
-			class="home-blinds__background"
-			data-home-blinds-src={background}
-			alt=""
-			decoding="async"
-			data-blinds-background
-		/>
+		<!-- 同一张图承接全屏揭示与收缩，收至首张明信片的图框再交接。 -->
+		<div class="home-blinds__portal" data-scenes-portal>
+			<img
+				class="home-blinds__portal-image"
+				data-home-blinds-src={background}
+				alt=""
+				decoding="async"
+				data-scenes-portal-image
+			/>
+		</div>
 
-		<!-- 揭示层全屏磨砂玻璃：压在背景之上、入场标题之下当暗色衬底。
-		     显隐与背景由 setupScenes 的 applyPhase 同一次写入，同帧进出不会错闪 -->
+		<!-- 磨砂在标题下方，百叶开启时从同一张底图上露出清晰画面。 -->
 		<div class="home-blinds__reveal-glass" data-reveal-glass></div>
 
 		<!-- 入场标题：长条与标题同色，长条内缘退开时标题才「从背面」显露；
@@ -159,24 +160,16 @@ const runtimeConfig = {
 			</div>
 		</div>
 
-		<!-- 全屏背景收缩成首幕画面的过渡层：元素恒为满屏，收缩靠 clip-path 收窗
-		     加图片等比 scale -->
-		<div class="home-blinds__portal" data-scenes-portal>
-			<img
-				class="home-blinds__portal-image"
-				data-home-blinds-src={background}
-				alt=""
-				decoding="async"
-				data-scenes-portal-image
-			/>
-		</div>
+		<!-- 导览底色分成横条，滚动时从下往上错峰露出揭示层。 -->
+		<div class="home-blinds__entry-shutter" data-blinds-entry-shutter></div>
 	</div>
 
-	<section class="home-blinds-reveal" data-home-blinds-reveal aria-label="影像揭示">
-		<div class="home-blinds-reveal__viewport"></div>
-	</section>
-
-	<section class="home-blinds-scenes" data-home-blinds-scenes aria-label="横向影像叙事">
+	<section
+		class="home-blinds-scenes"
+		data-home-blinds-scenes
+		aria-label="横向影像叙事"
+		style={`--home-blinds-scroll-distance: ${config.scenes.scrollDistance}px`}
+	>
 		<div class="home-blinds-scenes__viewport" data-scenes-viewport>
 			<!-- 背景跑马灯胶带：三条不同角度斜着横贯影像层，文字沿胶带匀速循环滚动。
 			     胶带边缘由实线与斜纹组成，入场时沿各自轴向描线展开，退场反着收走 -->
@@ -295,8 +288,7 @@ const runtimeConfig = {
 	} from "@/utils/home-blinds-controller";
 	import { bindHomeLayer } from "@/utils/home-lifecycle";
 
-	// 这一层带 pin、循环动画与可拖拽轨道，必须在 Swup 替换容器之前拆掉，
-	// 否则 kill() 会落在已经脱离文档的节点上（同 HomeHero）
+	// Swup 换页前停止舞台、跑马灯和拖拽轨道。
 	bindHomeLayer("blinds", {
 		media: "(min-width: 769px)",
 		boot: bootHomeBlinds,
