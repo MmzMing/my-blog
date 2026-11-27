@@ -17,6 +17,23 @@ import { requestScrollTriggerRefresh } from "@/utils/scroll-trigger-refresh";
 gsap.registerPlugin(ScrollTrigger);
 
 const RAIN_ACTIVATE_TIME = 1.14;
+const COVER_FLIP_DURATION = 1.3;
+const COVER_FLIP_STAGGER = 0.006;
+const COVER_FLIP_EASE = "elastic.out(0.8, 0.4)";
+const COVER_CLOSE_TIME = 0.4;
+const COVER_CLOSE_DURATION = 0.2;
+const COVER_CORNER_DURATION = 0.1;
+const COVER_FLIP_FADE = 0.26;
+/** 舞台缝线随翻面浮出的时长 */
+const COVER_SEAM_FADE = 0.5;
+const COVER_HOVER_DURATION = 1000;
+const COVER_HOVER_KEYFRAMES: Keyframe[] = [
+	{ offset: 0, transform: "rotateX(0deg)" },
+	{ offset: 0.22, transform: "rotateX(-180deg)" },
+	{ offset: 0.47, transform: "rotateX(-400deg)" },
+	{ offset: 0.8, transform: "rotateX(-350deg)" },
+	{ offset: 1, transform: "rotateX(-360deg)" },
+];
 const DIALOGUE_REVEAL_TIME = 1.23;
 const DIALOGUE_REVEAL_DURATION = 0.11;
 const DIALOGUE_REVEAL_END_TIME =
@@ -260,6 +277,13 @@ export function mountHomeHero(): () => void {
 	const photoFramePaths = Array.from(
 		hero.querySelectorAll<SVGPathElement>("[data-hero-photo-frame] path"),
 	);
+	const cover = hero.querySelector<HTMLElement>("[data-hero-cover]");
+	// 第一形态的整块背景是纯色：舞台那层缝线先藏起来，翻面时再浮出来接第二形态。
+	// 隐藏的是包在外面的容器，不是路径本身 —— 卡背 <use> 克隆的正是路径，
+	// 直接改路径透明度会把卡背的图案一起弄没
+	const puzzleSeams = hero.querySelector<SVGGElement>(
+		".home-hero__puzzle-seams-stage",
+	);
 	const tiles = getTileStates(hero);
 	const tileElements = tiles.map((tile) => tile.element);
 	const tileIntroElements = Array.from(
@@ -277,6 +301,12 @@ export function mountHomeHero(): () => void {
 	let wordmark: HomeHeroWordmarkController | null = null;
 	let flyLayoutTimer = 0;
 	let hasPlayedTilesIntro = false;
+	/** 翻面期间冻住拼合进度，翻完才解冻 */
+	let coverFrozen = false;
+	/** 由 setupCoverFlip 写入，滚动一有进度就由 ScrollTrigger 兜底触发 */
+	let startCoverFlip: (() => void) | null = null;
+	/** 封面自己的清理（悬停补间、冻结帧、翻面时间线） */
+	let coverCleanup: (() => void) | null = null;
 	const mosaicGeometry = {
 		heroWidth: 0,
 		heroHeight: 0,
@@ -377,7 +407,9 @@ export function mountHomeHero(): () => void {
 			(bandHeight * PHOTO_HEIGHT_RATIO) / (stackBottom + rotationPadding),
 		);
 		const photoW = width * scale;
-		const center = Number.parseFloat(style.top) + height / 2;
+		// 画框改为上下留白均分后，位置以布局偏移为准（transform 不参与），
+		// 照片态的纵向落点仍按画框中心对齐舞台中心
+		const center = mosaic.offsetTop + height / 2;
 		const y = heroHeight / 2 - center - ((stackBottom - height) * scale) / 2;
 		const x = (photoW - guideW) / 2;
 		// 照片实际宽度回写成 CSS 变量，介绍面板靠它贴到照片右侧
@@ -531,7 +563,8 @@ export function mountHomeHero(): () => void {
 		scaleY: (index: number) => getTileInitialTransform(tiles[index]).scaleY,
 		filter: (index: number) =>
 			`blur(${getTileInitialTransform(tiles[index]).blur}px)`,
-		autoAlpha: (index: number) => (tiles[index].initiallyVisible ? 1 : 0),
+		// 首屏已经交给封面卡面，拼图散片不再预先摆在半空：开局全藏，靠滚动入场时才飞进来
+		autoAlpha: () => 0,
 	};
 
 	const getBaseScrollDistance = () =>
@@ -591,6 +624,13 @@ export function mountHomeHero(): () => void {
 	};
 
 	const renderTimelineForScroll = (scrollProgress: number) => {
+		// 翻面期间把拼合进度钉在 0：不管滚动是滚轮、滚动条还是脚本触发的，
+		// 都不会和翻面同时推进，翻完再由 startCoverFlip 把滚动位置拉回起点。
+		if (coverFrozen) {
+			timeline?.totalProgress(0);
+			updateSceneState(0);
+			return;
+		}
 		const progress = mapScrollProgressToTimelineProgress(scrollProgress);
 		// 先结束入场再渲染滚动帧，避免入场终帧覆盖本帧已经算好的淡出状态。
 		if (progress > 0.002) completePendingIntros();
@@ -664,21 +704,9 @@ export function mountHomeHero(): () => void {
 			},
 			0,
 		);
-		// 右下角 contact 的退场不再整体渐隐，改为字符随风散落，
-		// 由 prepareFlyText() 在字体就绪后将 scatter 时间线挂载到 0.04 位置。
-		timeline.fromTo(
-			tileElements,
-			{ ...initialTileVars },
-			{
-				autoAlpha: 0,
-				duration: 0.06,
-				ease: "power2.in",
-			},
-			0.04,
-		);
-
+		// 首屏不再摆散片，入场从时间线开头就起步，翻完面一滚就能看到碎片聚拢
 		for (const tile of tiles) {
-			const start = 0.1 + tile.order * 0.02;
+			const start = 0.02 + tile.order * 0.02;
 			timeline.fromTo(
 				tile.element,
 				{
@@ -938,6 +966,8 @@ export function mountHomeHero(): () => void {
 				animationContext.add(playTilesIntro);
 			},
 			onUpdate: (self) => {
+				// 兜底：滚动进度只要起步就先播翻面，不依赖滚轮拦截是否生效
+				if (self.progress > 0.0005) startCoverFlip?.();
 				if (!scrollDriver) renderTimelineForScroll(self.progress);
 			},
 		});
@@ -947,6 +977,267 @@ export function mountHomeHero(): () => void {
 		// 立刻 refresh 会按「还没有影像层 .pin-spacer」的文档高度算 pin 起止点，
 		// 攒到下一帧统一 refresh，那时各层的 pin 都已插好。
 		requestScrollTriggerRefresh(ScrollTrigger);
+	};
+
+	/**
+	 * 封面翻面：停在顶端时往下滑 = 整面卡翻成背景；往上滑 = 翻回第一形态。
+	 *
+	 * 两个方向都是一次性播完的动画：播放期间滚轮 / 触控 / 翻页键全部吃掉，
+	 * 并且持续把滚动按回顶端，pin 的 scrub 时间线不会和翻面同时推进。
+	 * 各卡以随机顺序起转，整组同时向视点靠近并收拢卡缝。
+	 */
+	const setupCoverFlip = () => {
+		if (!cover) return;
+		const cards = Array.from(
+			cover.querySelectorAll<HTMLElement>("[data-hero-cover-card]"),
+		);
+		if (cards.length === 0) return;
+
+		// 监听统一挂在挂载级的 abortController 上：卸载时一次性解绑。
+		// 不能用 animationContext.add(() => gate.abort()) —— context.add 会立即执行，
+		// 那样挂载瞬间就把自己刚绑的监听全删了。
+		const signal = abortController.signal;
+		let form: "cover" | "stage" = "cover";
+		let isAnimating = false;
+		let touchStartY = 0;
+
+		const hoverAnimations = new Map<HTMLElement, Animation>();
+		const spinCard = (card: HTMLElement) => {
+			if (form !== "cover" || isAnimating || hoverAnimations.has(card)) return;
+			const animation = card.animate(
+				COVER_HOVER_KEYFRAMES,
+				COVER_HOVER_DURATION,
+			);
+			hoverAnimations.set(card, animation);
+			animation.onfinish = () => hoverAnimations.delete(card);
+		};
+
+		const stopHover = () => {
+			for (const animation of hoverAnimations.values()) animation.cancel();
+			hoverAnimations.clear();
+		};
+
+		let freezeFrame = 0;
+		const freezeScroll = () => {
+			freezeFrame = 0;
+			if (!isAnimating) return;
+			if (window.scrollY !== 0) window.scrollTo(0, 0);
+			freezeFrame = requestAnimationFrame(freezeScroll);
+		};
+
+		const lock = () => {
+			isAnimating = true;
+			coverFrozen = true;
+			stopHover();
+			window.scrollTo(0, 0);
+			scrollDriver?.progress(0);
+			// 只靠 preventDefault 不够稳：不可取消的滚轮、键盘、拖滚动条都能绕过，
+			// 所以动画期间每帧再把位置按回 0，pin 期间视觉本来就停在原处
+			if (!freezeFrame) freezeFrame = requestAnimationFrame(freezeScroll);
+		};
+
+		const unlock = () => {
+			isAnimating = false;
+			coverFrozen = false;
+		};
+
+		if (puzzleSeams) gsap.set(puzzleSeams, { opacity: 0 });
+
+		// 两个方向都让卡片越过落点再回弹。返回时先显露铺平的背面再翻开。
+		const createCoverTurn = (toStage: boolean) => {
+			const turnAt = toStage ? 0 : COVER_FLIP_FADE;
+			const spacing = toStage ? 0 : 1;
+			const flip = gsap.timeline({
+				paused: true,
+				onComplete: () => {
+					form = toStage ? "stage" : "cover";
+					unlock();
+				},
+			});
+			flip.to(
+				cards,
+				{
+					rotateX: toStage ? -180 : 0,
+					duration: COVER_FLIP_DURATION,
+					ease: COVER_FLIP_EASE,
+					stagger: { each: COVER_FLIP_STAGGER, from: "random" },
+				},
+				turnAt,
+			);
+			flip.to(
+				cover,
+				{
+					"--cover-spacing": spacing,
+					duration: COVER_CLOSE_DURATION,
+					ease: "power3.inOut",
+				},
+				toStage ? COVER_CLOSE_TIME : turnAt,
+			);
+			flip.to(
+				cover,
+				{ "--cover-corners": spacing, duration: COVER_CORNER_DURATION },
+				toStage ? COVER_CLOSE_TIME + COVER_CLOSE_DURATION : turnAt,
+			);
+			flip.to(
+				cover,
+				{
+					autoAlpha: toStage ? 0 : 1,
+					duration: COVER_FLIP_FADE,
+					ease: "power1.out",
+				},
+				toStage ? flip.duration() : 0,
+			);
+			if (puzzleSeams) {
+				flip.to(
+					puzzleSeams,
+					{
+						opacity: toStage ? 1 : 0,
+						duration: COVER_SEAM_FADE,
+						ease: "power1.out",
+					},
+					toStage ? 0 : flip.duration() - COVER_SEAM_FADE,
+				);
+			}
+			return flip;
+		};
+		const forward = createCoverTurn(true);
+		const back = createCoverTurn(false);
+		const skipToStage = () => {
+			stopHover();
+			forward.pause(0, true).progress(1, true);
+			form = "stage";
+		};
+
+		// 恢复到页面中段时直接落在翻面后的状态，回到顶部仍可翻回封面。
+		if (window.scrollY > window.innerHeight * 0.5) skipToStage();
+
+		const playForward = () => {
+			if (form !== "cover" || isAnimating) return;
+			if (window.scrollY > window.innerHeight * 0.5) {
+				skipToStage();
+				return;
+			}
+			lock();
+			forward.restart();
+		};
+
+		const playBack = () => {
+			if (form !== "stage" || isAnimating) return;
+			lock();
+			back.restart();
+		};
+		startCoverFlip = playForward;
+
+		for (const card of cards) {
+			card.parentElement?.addEventListener(
+				"pointerenter",
+				(event) => {
+					if (event.pointerType !== "touch") spinCard(card);
+				},
+				{ signal },
+			);
+		}
+
+		const handleWheel = (event: WheelEvent) => {
+			if (isAnimating) {
+				event.preventDefault();
+				return;
+			}
+			if (window.scrollY > 1) return;
+			if (event.deltaY > 0) {
+				if (form !== "cover") return;
+				event.preventDefault();
+				playForward();
+				return;
+			}
+			if (event.deltaY < 0 && form === "stage") {
+				event.preventDefault();
+				playBack();
+			}
+		};
+
+		const handleTouchStart = (event: TouchEvent) => {
+			touchStartY = event.touches[0]?.clientY ?? 0;
+		};
+
+		const handleTouchMove = (event: TouchEvent) => {
+			if (isAnimating) {
+				event.preventDefault();
+				return;
+			}
+			if (window.scrollY > 1) return;
+			const currentY = event.touches[0]?.clientY ?? touchStartY;
+			const delta = currentY - touchStartY;
+			if (delta < 0 && form === "cover") {
+				event.preventDefault();
+				playForward();
+				return;
+			}
+			if (delta > 0 && form === "stage") {
+				event.preventDefault();
+				playBack();
+			}
+		};
+
+		const forwardKeys = [" ", "PageDown", "ArrowDown", "End"];
+		const backKeys = ["PageUp", "ArrowUp", "Home"];
+		const handleKeydown = (event: KeyboardEvent) => {
+			const wantsForward = forwardKeys.includes(event.key);
+			const wantsBack = backKeys.includes(event.key);
+			if (!wantsForward && !wantsBack) return;
+			// 焦点在按钮/链接/输入框上时，这些键归控件
+			const target = event.target;
+			if (
+				target instanceof Element &&
+				target.closest(
+					"button, a, input, textarea, select, [contenteditable='true']",
+				)
+			) {
+				return;
+			}
+			if (isAnimating) {
+				event.preventDefault();
+				return;
+			}
+			if (window.scrollY > 1) return;
+			if (wantsForward && form === "cover") {
+				event.preventDefault();
+				playForward();
+				return;
+			}
+			if (wantsBack && form === "stage") {
+				event.preventDefault();
+				playBack();
+			}
+		};
+
+		window.addEventListener("wheel", handleWheel, { passive: false, signal });
+		window.addEventListener("touchstart", handleTouchStart, {
+			passive: true,
+			signal,
+		});
+		window.addEventListener("touchmove", handleTouchMove, {
+			passive: false,
+			signal,
+		});
+		window.addEventListener("keydown", handleKeydown, { signal });
+
+		// 动画期间不管滚动从哪来（拖滚动条、脚本、锚点）都按回顶端；
+		// 静止时封面形态一离开顶端就补一次翻面，真跑到中段则直接收掉这层
+		const handleScroll = () => {
+			if (isAnimating) {
+				if (window.scrollY !== 0) window.scrollTo(0, 0);
+				return;
+			}
+			if (window.scrollY > 0) playForward();
+		};
+		window.addEventListener("scroll", handleScroll, { passive: true, signal });
+
+		// 交给挂载入口在卸载时调用（不能走 animationContext.add —— 它会立即执行）
+		coverCleanup = () => {
+			if (freezeFrame) cancelAnimationFrame(freezeFrame);
+			stopHover();
+		};
 	};
 
 	// 入场只动内部图片，外层的位置、景深和透明度始终交给滚动时间线。
@@ -1096,6 +1387,8 @@ export function mountHomeHero(): () => void {
 				);
 			}
 			prepareFlyText();
+			// 翻面是独立的一次性动画，不挂在 scrub 时间线上，放在 pin 建好之后
+			setupCoverFlip();
 		}
 	});
 	document
@@ -1127,6 +1420,8 @@ export function mountHomeHero(): () => void {
 		heroVisibility.disconnect();
 		rain.destroy();
 		dialogue.destroy();
+		coverCleanup?.();
+		coverCleanup = null;
 		abortController.abort();
 		animationContext.revert();
 		heroScrollTrigger = null;

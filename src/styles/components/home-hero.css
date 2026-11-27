@@ -124,6 +124,11 @@ html:has(.home-hero) #top-row {
 
 .home-hero__visual {
 	z-index: 0;
+	/* 画幅在舞台正中：居中交给 flex，transform 全部留给滚动时间线。
+	   不能用 inset:0 + margin:auto —— 高度为 auto 时会被拉伸成整屏高 */
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	overflow: hidden;
 }
 
@@ -135,15 +140,13 @@ html:has(.home-hero) #top-row {
 	pointer-events: none;
 }
 
+/* 拼合画框：横向、纵向都由 .home-hero__visual 的 flex 居中，碎片向中间聚拢成整图。
+   高度交给图片自然比例，这里不设 height，避免被拉伸成整屏 */
 .home-hero__mosaic-frame {
-	position: absolute;
-	left: 0;
-	right: 0;
-	bottom: clamp(1rem, 3vh, 2.75rem);
+	position: relative;
 	z-index: 1;
 	width: min(84vw, 90rem);
-	/* 布局负责居中，整图的自然比例负责高度；transform 只交给滚动动画。 */
-	margin-inline: auto;
+	flex: none;
 	transform-origin: 50% 50%;
 	will-change: transform;
 }
@@ -403,6 +406,19 @@ html:has(.home-hero) #top-row {
 	color: var(--home-hero-title-ink);
 }
 
+/* 封面把字标印在卡面上，这棵语义树只留给读屏与滚动时间线：
+   视觉上裁成一个像素，h1 仍在无障碍树里，滚动时间线也还有目标可驱动 */
+.home-hero__identity--sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
 .home-hero__filter {
 	position: absolute;
 	width: 0;
@@ -580,6 +596,109 @@ html:has(.home-hero) #top-row {
 	}
 }
 
+.home-hero__cover {
+	--cover-card: #e9e9e9;
+	--cover-ink: oklch(0.2 0 0);
+	--cover-spacing: 1;
+	--cover-corners: 1;
+	--cover-gap: calc(min(3px, 0.192vw, 0.308svh) * var(--cover-spacing));
+	--cover-radius: calc(min(10px, 0.625vw, 1.002svh) * var(--cover-corners));
+	position: absolute;
+	inset: 0;
+	z-index: 40;
+	perspective: 1000px;
+}
+
+:root.dark .home-hero__cover {
+	--cover-card: #161616;
+	--cover-ink: oklch(1 0 0);
+}
+
+.home-hero__cover-grid {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	grid-template-columns: repeat(var(--cover-columns), 1fr);
+	grid-template-rows: repeat(var(--cover-rows), 1fr);
+	gap: var(--cover-gap);
+	/* 卡阵靠近视点并收缝，落平的背面与下方舞台用同一套坐标。 */
+	transform: translateZ(calc(-20px * var(--cover-spacing)));
+	transform-style: preserve-3d;
+}
+
+.home-hero__cover-tile {
+	position: relative;
+	transform-style: preserve-3d;
+}
+
+.home-hero__cover-card {
+	position: absolute;
+	inset: 0;
+	transform-style: preserve-3d;
+	/* 悬停由卡位命中，倾斜中的卡面可以越过卡位边缘。 */
+	pointer-events: none;
+}
+
+.home-hero__cover-face {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	border-radius: var(--cover-radius);
+	backface-visibility: hidden;
+}
+
+.home-hero__cover-front {
+	background: var(--cover-card);
+}
+
+.home-hero__cover-back {
+	background: var(--page-bg);
+	transform: rotateX(180deg);
+}
+
+/* 印花层：每张卡里都放着一整块画布，按自己的行列位往左上挪 */
+.home-hero__cover-print {
+	position: absolute;
+	top: var(--cover-offset-y);
+	left: var(--cover-offset-x);
+	display: grid;
+	width: var(--cover-print-width);
+	height: var(--cover-print-height);
+	container-type: size;
+	place-content: center;
+	justify-items: center;
+	gap: clamp(0.6rem, 1.6vh, 1.2rem);
+	color: var(--cover-ink);
+	pointer-events: none;
+}
+
+.home-hero__cover-title {
+	font-family: var(--font-sans);
+	font-size: min(19cqh, 10.6cqi);
+	font-weight: 760;
+	line-height: 0.92;
+	letter-spacing: 0;
+	white-space: nowrap;
+}
+
+.home-hero__cover-note {
+	color: color-mix(in oklch, var(--cover-ink) 68%, transparent);
+	font-family: "KaiTi", "STKaiti", "Kaiti SC", "Songti SC", "SimSun", serif;
+	font-size: min(4.5cqh, 2.5cqi);
+	font-weight: 400;
+	letter-spacing: 0;
+	transform: rotate(-1.4deg);
+	white-space: nowrap;
+}
+
+.home-hero__cover-seams {
+	position: absolute;
+	top: var(--cover-offset-y);
+	left: var(--cover-offset-x);
+	width: var(--cover-print-width);
+	height: var(--cover-print-height);
+}
+
 @media (max-width: 768px) {
 	.home-hero {
 		height: 100vh;
@@ -588,7 +707,6 @@ html:has(.home-hero) #top-row {
 	}
 
 	.home-hero__mosaic-frame {
-		bottom: max(var(--space-5), 5svh);
 		width: min(86vw, 28rem);
 	}
 
@@ -646,6 +764,8 @@ html:has(.home-hero) #top-row {
 	}
 
 	.home-hero__mosaic-frame {
+		/* 减弱动效不走 flex 居中，直接回到绝对定位的照片态落点 */
+		position: absolute;
 		top: 42%;
 		left: calc(50% - var(--guide-col) / 2);
 		right: auto;
@@ -653,9 +773,14 @@ html:has(.home-hero) #top-row {
 		/* 为叠图伸出主图的部分和两张照片的倾角一起预留高度。 */
 		width: var(--home-hero-photo-w);
 		/* left 的百分比按舞台宽度计算，避免在 transform 中误按照片自身宽度落位。 */
-		margin-inline: 0;
+		margin: 0;
 		transform: translateY(-50%) rotate(-3deg);
 		will-change: auto;
+	}
+
+	/* 减弱动效下没有翻面，直接给照片态，封面卡组不参与 */
+	.home-hero__cover {
+		display: none;
 	}
 
 	.home-hero__mosaic-grid {

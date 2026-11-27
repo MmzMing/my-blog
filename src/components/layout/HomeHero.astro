@@ -1,5 +1,5 @@
 ---
-import HeroContact from "@components/layout/HeroContact.astro";
+import HeroCover from "@components/layout/HeroCover.astro";
 import HeroMosaic from "@components/layout/HeroMosaic.astro";
 import HomeGuideFrame from "@components/layout/HomeGuideFrame.astro";
 import { homeConfig } from "@/config";
@@ -42,15 +42,21 @@ const introCards = intro
 			width={puzzle.width}
 			height={puzzle.height}
 		/>
-		{
-			puzzle.seams.map((d) => (
-				<path
-					class="home-hero__puzzle-seam"
-					d={d}
-					vector-effect="non-scaling-stroke"
-				/>
-			))
-		}
+		<!-- 缝线只画一次，封面卡背用 <use> 引用内层那份几何，图案才对得上。
+		     外面这层只用于第一形态整体隐藏：<use> 克隆的是内层，不会跟着一起变透明 -->
+		<g class="home-hero__puzzle-seams-stage">
+			<g id="home-hero-puzzle-seams">
+				{
+					puzzle.seams.map((d) => (
+						<path
+							class="home-hero__puzzle-seam"
+							d={d}
+							vector-effect="non-scaling-stroke"
+						/>
+					))
+				}
+			</g>
+		</g>
 	</svg>
 
 	<div class="home-hero__backdrop" aria-hidden="true"></div>
@@ -65,7 +71,8 @@ const introCards = intro
 		overlay={hero.photo.overlay}
 	/>
 
-	<header class="home-hero__identity" data-hero-title>
+	<!-- 封面把字标印在卡面上，这棵语义树只留给读屏与滚动时间线，不参与视觉 -->
+	<header class="home-hero__identity home-hero__identity--sr" data-hero-title>
 		<svg class="home-hero__filter" aria-hidden="true" focusable="false">
 			<defs>
 				<filter
@@ -89,9 +96,8 @@ const introCards = intro
 			</defs>
 		</svg>
 		<h1 class="home-hero__title">
-			<span class="home-hero__wordmark" data-hero-wordmark>
+			<span class="home-hero__wordmark">
 				<span class="home-hero__wordmark-text">{homeConfig.displayName || homeConfig.name}</span>
-				<canvas class="home-hero__wordmark-canvas" aria-hidden="true"></canvas>
 			</span>
 			<span class="sr-only">{i18n(I18nKey.techBlogSuffix)}</span>
 		</h1>
@@ -100,7 +106,8 @@ const introCards = intro
 		)}
 	</header>
 
-	{hero.contact && <HeroContact contact={hero.contact} />}
+	<!-- 封面卡面压在拼图散片之上，滑动翻面后让位给拼合阶段 -->
+	<HeroCover />
 
 	{
 		introCards.length > 0 && (
